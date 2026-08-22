@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mightymodels eval report</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6; --series-2: #eb6834;
+  --good: #0ca30c; --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface-1: #1a1a19;
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5; --series-2: #d95926;
+}
+body { margin: 0; }
+.viz-root { background: var(--page); color: var(--text-primary);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; padding: 24px; }
+main { max-width: 1080px; margin: 0 auto; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+.meta { color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 22px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.tile-label { color: var(--text-secondary); font-size: 12px; }
+.tile-value { font-size: 26px; font-weight: 650; margin: 2px 0; }
+.tile-sub { color: var(--muted); font-size: 12px; }
+.legend { display: flex; gap: 16px; align-items: center; margin: 0 0 8px; color: var(--text-secondary); font-size: 12px; }
+.chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.chip.s1 { background: var(--series-1); } .chip.s2 { background: var(--series-2); }
+.skills { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 22px; }
+.skill-row { display: grid; grid-template-columns: 220px 1fr; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--grid); }
+.skill-row:last-child { border-bottom: 0; }
+.skill-name { color: var(--text-secondary); font-size: 13px; }
+.bar-line { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+.bar { display: inline-block; height: 10px; border-radius: 0 4px 4px 0; }
+.bar.s1 { background: var(--series-1); } .bar.s2 { background: var(--series-2); }
+.bar-val { color: var(--text-primary); font-size: 12px; font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.case-head th { background: color-mix(in srgb, var(--surface-1) 88%, var(--baseline)); font-size: 13px; }
+.check { color: var(--text-secondary); width: 34%; }
+.pill { font-weight: 650; font-size: 12px; margin-right: 8px; white-space: nowrap; }
+td.pass .pill { color: var(--good); } td.fail .pill { color: var(--critical); }
+.reason { color: var(--muted); font-size: 12px; }
+td.na { color: var(--muted); }
+.failures { color: var(--critical); }
+footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+</style></head>
+<body><div class="viz-root"><main>
+<h1>mightymodels eval report</h1>
+<div class="meta">generated 2026-08-20T21:37:59+00:00</div>
+<div class="tiles">
+<div class="tile"><div class="tile-label">With skill</div><div class="tile-value">100%</div><div class="tile-sub">65/65 checks</div></div>
+<div class="tile"><div class="tile-label">Baseline</div><div class="tile-value">48%</div><div class="tile-sub">31/65 checks</div></div>
+<div class="tile"><div class="tile-label">Delta</div><div class="tile-value">+52%</div><div class="tile-sub">pass-rate lift</div></div>
+<div class="tile"><div class="tile-label">Mode</div><div class="tile-value">replay</div><div class="tile-sub">unspecified</div></div>
+</div>
+<div class="legend"><span><span class="chip s1"></span>With skill</span><span><span class="chip s2"></span>Baseline</span><span>per-skill pass rate</span></div>
+<div class="skills">
+<div class="skill-row"><div class="skill-name">agents-assemble</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:33%" title="baseline 33%"></span><span class="bar-val">33%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">finish-assembly</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:50%" title="baseline 50%"></span><span class="bar-val">50%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">inline-sendoff</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:60%" title="baseline 60%"></span><span class="bar-val">60%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">lets-investigate</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:75%" title="baseline 75%"></span><span class="bar-val">75%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">plan-work</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:40%" title="baseline 40%"></span><span class="bar-val">40%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">prepare-handoff</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:12%" title="baseline 12%"></span><span class="bar-val">12%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">prune-ticket</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:50%" title="baseline 50%"></span><span class="bar-val">50%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">review-circus</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:50%" title="baseline 50%"></span><span class="bar-val">50%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">using-mightmodels</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:57%" title="baseline 57%"></span><span class="bar-val">57%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">what-we-know</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:40%" title="baseline 40%"></span><span class="bar-val">40%</span></div>
+</div></div>
+<div class="skill-row"><div class="skill-name">whats-broken</div><div class="bars">
+<div class="bar-line"><span class="bar s1" style="width:100%" title="with skill 100%"></span><span class="bar-val">100%</span></div>
+<div class="bar-line"><span class="bar s2" style="width:83%" title="baseline 83%"></span><span class="bar-val">83%</span></div>
+</div></div>
+</div>
+<table>
+<tr><th>Check</th><th>With skill</th><th>Baseline</th></tr>
+<tr class="case-head"><th colspan="3">agents-assemble &middot; agents-assemble-two-tasks</th></tr>
+<tr><td class="check">REPORT within cap</td>
+<td class="pass" title=".mightymodels/rate-limit/REPORT.md: 29 lines (cap 50)"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/rate-limit/REPORT.md: 29 lines (cap 50)</span></td>
+<td class="fail" title="missing: .mightymodels/rate-limit/REPORT.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/rate-limit/REPORT.md</span></td>
+</tr>
+<tr><td class="check">both tasks checked off</td>
+<td class="pass" title="2 checked boxes in .mightymodels/rate-limit/issue-body.md"><span class="pill">&#10003; pass</span><span class="reason">2 checked boxes in .mightymodels/rate-limit/issue-body.md</span></td>
+<td class="pass" title="2 checked boxes in .mightymodels/rate-limit/issue-body.md"><span class="pill">&#10003; pass</span><span class="reason">2 checked boxes in .mightymodels/rate-limit/issue-body.md</span></td>
+</tr>
+<tr><td class="check">engineer dispatches written first</td>
+<td class="pass" title="4 files match .mightymodels/rate-limit/dispatches/*: [&#39;task-01-engineer.md&#39;, &#39;task-01-scout.md&#39;, &#39;task-02-engineer.md&#39;, &#39;task-02-scout.md&#39;]"><span class="pill">&#10003; pass</span><span class="reason">4 files match .mightymodels/rate-limit/dispatches/*: [&#39;task-01-engineer.md&#39;, &#39;task-01-scout.md&#39;, &#39;task-02-engineer.md&#39;, &#39;task-02-scout.md&#39;]</span></td>
+<td class="pass" title="2 files match .mightymodels/rate-limit/dispatches/*: [&#39;t1-engineer.md&#39;, &#39;t2-engineer.md&#39;]"><span class="pill">&#10003; pass</span><span class="reason">2 files match .mightymodels/rate-limit/dispatches/*: [&#39;t1-engineer.md&#39;, &#39;t2-engineer.md&#39;]</span></td>
+</tr>
+<tr><td class="check">no placeholder criteria</td>
+<td class="pass" title="&#39;works correctly&#39; absent in .mightymodels/rate-limit/briefs/task-01.md"><span class="pill">&#10003; pass</span><span class="reason">&#39;works correctly&#39; absent in .mightymodels/rate-limit/briefs/task-01.md</span></td>
+<td class="fail" title="missing: .mightymodels/rate-limit/briefs/task-01.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/rate-limit/briefs/task-01.md</span></td>
+</tr>
+<tr><td class="check">suite green at sprint end</td>
+<td class="pass" title="pytest green: 2 passed in 0.02s"><span class="pill">&#10003; pass</span><span class="reason">pytest green: 2 passed in 0.02s</span></td>
+<td class="pass" title="pytest green: 2 passed in 0.01s"><span class="pill">&#10003; pass</span><span class="reason">pytest green: 2 passed in 0.01s</span></td>
+</tr>
+<tr><td class="check">task-01 brief two-halved</td>
+<td class="pass" title="all 3 needles in .mightymodels/rate-limit/briefs/task-01.md"><span class="pill">&#10003; pass</span><span class="reason">all 3 needles in .mightymodels/rate-limit/briefs/task-01.md</span></td>
+<td class="fail" title="missing: .mightymodels/rate-limit/briefs/task-01.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/rate-limit/briefs/task-01.md</span></td>
+</tr>
+<tr><td class="check">task-01 brief within cap</td>
+<td class="pass" title=".mightymodels/rate-limit/briefs/task-01.md: 18 lines (cap 80)"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/rate-limit/briefs/task-01.md: 18 lines (cap 80)</span></td>
+<td class="fail" title="missing: .mightymodels/rate-limit/briefs/task-01.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/rate-limit/briefs/task-01.md</span></td>
+</tr>
+<tr><td class="check">task-02 brief two-halved</td>
+<td class="pass" title="all 3 needles in .mightymodels/rate-limit/briefs/task-02.md"><span class="pill">&#10003; pass</span><span class="reason">all 3 needles in .mightymodels/rate-limit/briefs/task-02.md</span></td>
+<td class="fail" title="missing: .mightymodels/rate-limit/briefs/task-02.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/rate-limit/briefs/task-02.md</span></td>
+</tr>
+<tr><td class="check">task-02 brief within cap</td>
+<td class="pass" title=".mightymodels/rate-limit/briefs/task-02.md: 18 lines (cap 80)"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/rate-limit/briefs/task-02.md: 18 lines (cap 80)</span></td>
+<td class="fail" title="missing: .mightymodels/rate-limit/briefs/task-02.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/rate-limit/briefs/task-02.md</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">finish-assembly &middot; finish-assembly-lint-fail</th></tr>
+<tr><td class="check">lint routed to skeleton with Fix/Verify</td>
+<td class="pass" title="budgetron-e501.md carries [&#39;Fix:&#39;, &#39;Verify:&#39;]"><span class="pill">&#10003; pass</span><span class="reason">budgetron-e501.md carries [&#39;Fix:&#39;, &#39;Verify:&#39;]</span></td>
+<td class="fail" title="no file under .mightymodels/rate-limit/dispatches/* (name~&#39;skeleton&#39;) carries [&#39;Fix:&#39;, &#39;Verify:&#39;]"><span class="pill">&#10007; fail</span><span class="reason">no file under .mightymodels/rate-limit/dispatches/* (name~&#39;skeleton&#39;) carries [&#39;Fix:&#39;, &#39;Verify:&#39;]</span></td>
+</tr>
+<tr><td class="check">mechanical case not sent to whats-broken</td>
+<td class="pass" title="&#39;whats-broken&#39; in no file under .mightymodels/rate-limit/dispatches/*"><span class="pill">&#10003; pass</span><span class="reason">&#39;whats-broken&#39; in no file under .mightymodels/rate-limit/dispatches/*</span></td>
+<td class="pass" title="&#39;whats-broken&#39; in no file under .mightymodels/rate-limit/dispatches/*"><span class="pill">&#10003; pass</span><span class="reason">&#39;whats-broken&#39; in no file under .mightymodels/rate-limit/dispatches/*</span></td>
+</tr>
+<tr><td class="check">no direct source patch</td>
+<td class="pass" title="no diff (src)"><span class="pill">&#10003; pass</span><span class="reason">no diff (src)</span></td>
+<td class="pass" title="no diff (src)"><span class="pill">&#10003; pass</span><span class="reason">no diff (src)</span></td>
+</tr>
+<tr><td class="check">no source commits by the finish session</td>
+<td class="pass" title="1 commits touch src (max 1)"><span class="pill">&#10003; pass</span><span class="reason">1 commits touch src (max 1)</span></td>
+<td class="fail" title="4 commits touch src (max 1): [&#39;9597247 fix lint: wrap long raise in validate_limit (E501, CI run 42); report gitty-up status&#39;, &#39;024015b T2: enforce upload limit in handler, 429 when over (rate-limit)&#39;, &#39;402ed1d T1: implement validate_limit threshold check (rate-limit)&#39;]"><span class="pill">&#10007; fail</span><span class="reason">4 commits touch src (max 1): [&#39;9597247 fix lint: wrap long raise in validate_limit (E501, CI run 42); report gitty-up status&#39;, &#39;024015b T2: enforce upload limit in handler, 429 when over (rate-limit)&#39;, &#39;402ed1d T1: implement validate_limit threshold check (rate-limit)&#39;]</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">inline-sendoff &middot; inline-sendoff-stale-claim</th></tr>
+<tr><td class="check">checklist not written past the gate</td>
+<td class="pass" title="&#39;[ ] T&#39; absent in .mightymodels/rate-limit/issue-body.md"><span class="pill">&#10003; pass</span><span class="reason">&#39;[ ] T&#39; absent in .mightymodels/rate-limit/issue-body.md</span></td>
+<td class="pass" title="&#39;[ ] T&#39; absent in .mightymodels/rate-limit/issue-body.md"><span class="pill">&#10003; pass</span><span class="reason">&#39;[ ] T&#39; absent in .mightymodels/rate-limit/issue-body.md</span></td>
+</tr>
+<tr><td class="check">framed as a delta</td>
+<td class="pass" title="response carries [&#39;stale&#39;, &#39;delta&#39;, &#39;renamed&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries [&#39;stale&#39;, &#39;delta&#39;, &#39;renamed&#39;]</span></td>
+<td class="pass" title="response carries [&#39;stale&#39;, &#39;renamed&#39;, &#39;rename&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries [&#39;stale&#39;, &#39;renamed&#39;, &#39;rename&#39;]</span></td>
+</tr>
+<tr><td class="check">no source modified in the ramp</td>
+<td class="pass" title="git status clean (src tests)"><span class="pill">&#10003; pass</span><span class="reason">git status clean (src tests)</span></td>
+<td class="fail" title="dirty: [&#39; M src/limiter.py&#39;, &#39; M src/routes.py&#39;]"><span class="pill">&#10007; fail</span><span class="reason">dirty: [&#39; M src/limiter.py&#39;, &#39; M src/routes.py&#39;]</span></td>
+</tr>
+<tr><td class="check">stale claim named</td>
+<td class="pass" title="response has &#39;routes.py&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;routes.py&#39;</span></td>
+<td class="pass" title="response has &#39;routes.py&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;routes.py&#39;</span></td>
+</tr>
+<tr><td class="check">stops and asks before proceeding</td>
+<td class="pass" title="response tail asks the user"><span class="pill">&#10003; pass</span><span class="reason">response tail asks the user</span></td>
+<td class="fail" title="no question in the response tail"><span class="pill">&#10007; fail</span><span class="reason">no question in the response tail</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">lets-investigate &middot; lets-investigate-slow-queue</th></tr>
+<tr><td class="check">findings cite the drain facts</td>
+<td class="pass" title="response carries all of [&#39;queue.py&#39;, &#39;DRAIN_BATCH&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries all of [&#39;queue.py&#39;, &#39;DRAIN_BATCH&#39;]</span></td>
+<td class="pass" title="response carries all of [&#39;queue.py&#39;, &#39;DRAIN_BATCH&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries all of [&#39;queue.py&#39;, &#39;DRAIN_BATCH&#39;]</span></td>
+</tr>
+<tr><td class="check">offers what-we-know at the boundary</td>
+<td class="pass" title="response has &#39;what-we-know&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;what-we-know&#39;</span></td>
+<td class="fail" title="response unexpectedly lacks &#39;what-we-know&#39;"><span class="pill">&#10007; fail</span><span class="reason">response unexpectedly lacks &#39;what-we-know&#39;</span></td>
+</tr>
+<tr><td class="check">read-only outside scout-dispatches</td>
+<td class="pass" title="git status clean"><span class="pill">&#10003; pass</span><span class="reason">git status clean</span></td>
+<td class="pass" title="git status clean"><span class="pill">&#10003; pass</span><span class="reason">git status clean</span></td>
+</tr>
+<tr><td class="check">scout dispatches written and shaped</td>
+<td class="pass" title="5 files match scout-dispatches/*: [&#39;01.md&#39;, &#39;02.md&#39;, &#39;03.md&#39;, &#39;04.md&#39;, &#39;05.md&#39;]"><span class="pill">&#10003; pass</span><span class="reason">5 files match scout-dispatches/*: [&#39;01.md&#39;, &#39;02.md&#39;, &#39;03.md&#39;, &#39;04.md&#39;, &#39;05.md&#39;]</span></td>
+<td class="pass" title="3 files match scout-dispatches/*: [&#39;01.md&#39;, &#39;02.md&#39;, &#39;03.md&#39;]"><span class="pill">&#10003; pass</span><span class="reason">3 files match scout-dispatches/*: [&#39;01.md&#39;, &#39;02.md&#39;, &#39;03.md&#39;]</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">plan-work &middot; plan-work-large-ticket</th></tr>
+<tr><td class="check">loop not started before approval</td>
+<td class="pass" title="absent: .mightymodels/queue-overhaul/briefs"><span class="pill">&#10003; pass</span><span class="reason">absent: .mightymodels/queue-overhaul/briefs</span></td>
+<td class="pass" title="absent: .mightymodels/queue-overhaul/briefs"><span class="pill">&#10003; pass</span><span class="reason">absent: .mightymodels/queue-overhaul/briefs</span></td>
+</tr>
+<tr><td class="check">non-goals section present</td>
+<td class="pass" title="&#39;on-goals&#39; found in .mightymodels/queue-overhaul/plan.md"><span class="pill">&#10003; pass</span><span class="reason">&#39;on-goals&#39; found in .mightymodels/queue-overhaul/plan.md</span></td>
+<td class="fail" title="&#39;on-goals&#39; unexpectedly absent in .mightymodels/queue-overhaul/plan.md"><span class="pill">&#10007; fail</span><span class="reason">&#39;on-goals&#39; unexpectedly absent in .mightymodels/queue-overhaul/plan.md</span></td>
+</tr>
+<tr><td class="check">plan is citation-free</td>
+<td class="pass" title="&#39;\\.py:\\d+&#39; in .mightymodels/queue-overhaul/plan.md: no match"><span class="pill">&#10003; pass</span><span class="reason">&#39;\\.py:\\d+&#39; in .mightymodels/queue-overhaul/plan.md: no match</span></td>
+<td class="fail" title="&#39;\\.py:\\d+&#39; matched in .mightymodels/queue-overhaul/plan.md"><span class="pill">&#10007; fail</span><span class="reason">&#39;\\.py:\\d+&#39; matched in .mightymodels/queue-overhaul/plan.md</span></td>
+</tr>
+<tr><td class="check">tasks enumerated with size hints</td>
+<td class="pass" title="5x &#39;\\((sm|med|large)\\)&#39; in .mightymodels/queue-overhaul/plan.md"><span class="pill">&#10003; pass</span><span class="reason">5x &#39;\\((sm|med|large)\\)&#39; in .mightymodels/queue-overhaul/plan.md</span></td>
+<td class="fail" title="only 0x &#39;\\((sm|med|large)\\)&#39; in .mightymodels/queue-overhaul/plan.md (need 3)"><span class="pill">&#10007; fail</span><span class="reason">only 0x &#39;\\((sm|med|large)\\)&#39; in .mightymodels/queue-overhaul/plan.md (need 3)</span></td>
+</tr>
+<tr><td class="check">waits on user approval</td>
+<td class="pass" title="response carries [&#39;approv&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries [&#39;approv&#39;]</span></td>
+<td class="pass" title="response carries [&#39;approv&#39;, &#39;Approv&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries [&#39;approv&#39;, &#39;Approv&#39;]</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">prepare-handoff &middot; prepare-handoff-rate-limit</th></tr>
+<tr><td class="check">SPRINT.md thin: no models or scope copied</td>
+<td class="pass" title="&#39;gpt-5\\.6|opus|sonnet|scope:&#39; in .mightymodels/upload-rate-limit/handoffs/SPRINT.md: no match"><span class="pill">&#10003; pass</span><span class="reason">&#39;gpt-5\\.6|opus|sonnet|scope:&#39; in .mightymodels/upload-rate-limit/handoffs/SPRINT.md: no match</span></td>
+<td class="fail" title="missing: .mightymodels/upload-rate-limit/handoffs/SPRINT.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/upload-rate-limit/handoffs/SPRINT.md</span></td>
+</tr>
+<tr><td class="check">SPRINT.md within thin cap</td>
+<td class="pass" title=".mightymodels/upload-rate-limit/handoffs/SPRINT.md: 7 lines (cap 25)"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/upload-rate-limit/handoffs/SPRINT.md: 7 lines (cap 25)</span></td>
+<td class="fail" title="missing: .mightymodels/upload-rate-limit/handoffs/SPRINT.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/upload-rate-limit/handoffs/SPRINT.md</span></td>
+</tr>
+<tr><td class="check">branch created</td>
+<td class="pass" title="branch fix/upload-rate-limit exists"><span class="pill">&#10003; pass</span><span class="reason">branch fix/upload-rate-limit exists</span></td>
+<td class="pass" title="branch fix/upload-rate-limit exists"><span class="pill">&#10003; pass</span><span class="reason">branch fix/upload-rate-limit exists</span></td>
+</tr>
+<tr><td class="check">ignore ritual ran</td>
+<td class="pass" title="&#39;.mightymodels&#39; found in .git/info/exclude"><span class="pill">&#10003; pass</span><span class="reason">&#39;.mightymodels&#39; found in .git/info/exclude</span></td>
+<td class="fail" title="&#39;.mightymodels&#39; unexpectedly absent in .git/info/exclude"><span class="pill">&#10007; fail</span><span class="reason">&#39;.mightymodels&#39; unexpectedly absent in .git/info/exclude</span></td>
+</tr>
+<tr><td class="check">issue draft carries abuse-case criteria</td>
+<td class="pass" title="&#39;abuse|AC-&#39; in .mightymodels/upload-rate-limit/issue-body.md: abuse"><span class="pill">&#10003; pass</span><span class="reason">&#39;abuse|AC-&#39; in .mightymodels/upload-rate-limit/issue-body.md: abuse</span></td>
+<td class="fail" title="missing: .mightymodels/upload-rate-limit/issue-body.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/upload-rate-limit/issue-body.md</span></td>
+</tr>
+<tr><td class="check">issue draft has security surface</td>
+<td class="pass" title="&#39;ecurity&#39; found in .mightymodels/upload-rate-limit/issue-body.md"><span class="pill">&#10003; pass</span><span class="reason">&#39;ecurity&#39; found in .mightymodels/upload-rate-limit/issue-body.md</span></td>
+<td class="fail" title="missing: .mightymodels/upload-rate-limit/issue-body.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/upload-rate-limit/issue-body.md</span></td>
+</tr>
+<tr><td class="check">plan-first derived false</td>
+<td class="pass" title="&#39;plan-first:\\s*(false|no)&#39; in .mightymodels/upload-rate-limit/ticket.yml: plan-first: false"><span class="pill">&#10003; pass</span><span class="reason">&#39;plan-first:\\s*(false|no)&#39; in .mightymodels/upload-rate-limit/ticket.yml: plan-first: false</span></td>
+<td class="fail" title="missing: .mightymodels/upload-rate-limit/ticket.yml"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/upload-rate-limit/ticket.yml</span></td>
+</tr>
+<tr><td class="check">ticket.yml carries derived scope and models</td>
+<td class="pass" title="all 4 needles in .mightymodels/upload-rate-limit/ticket.yml"><span class="pill">&#10003; pass</span><span class="reason">all 4 needles in .mightymodels/upload-rate-limit/ticket.yml</span></td>
+<td class="fail" title="missing: .mightymodels/upload-rate-limit/ticket.yml"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/upload-rate-limit/ticket.yml</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">prune-ticket &middot; prune-ticket-closeout</th></tr>
+<tr><td class="check">README untouched pending approval</td>
+<td class="pass" title="no diff (README.md)"><span class="pill">&#10003; pass</span><span class="reason">no diff (README.md)</span></td>
+<td class="pass" title="no diff (README.md)"><span class="pill">&#10003; pass</span><span class="reason">no diff (README.md)</span></td>
+</tr>
+<tr><td class="check">archive carries the PR pointer</td>
+<td class="pass" title="&#39;204&#39; found in .mightymodels/archives/legacy-export-removal.md"><span class="pill">&#10003; pass</span><span class="reason">&#39;204&#39; found in .mightymodels/archives/legacy-export-removal.md</span></td>
+<td class="fail" title="missing: .mightymodels/archives/legacy-export-removal.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/archives/legacy-export-removal.md</span></td>
+</tr>
+<tr><td class="check">archive within 30-line cap</td>
+<td class="pass" title=".mightymodels/archives/legacy-export-removal.md: 9 lines (cap 30)"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/archives/legacy-export-removal.md: 9 lines (cap 30)</span></td>
+<td class="fail" title="missing: .mightymodels/archives/legacy-export-removal.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/archives/legacy-export-removal.md</span></td>
+</tr>
+<tr><td class="check">doc removal proposed as a diff</td>
+<td class="pass" title="response carries [&#39;```diff&#39;, &#39;-Small upload service. Supports&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries [&#39;```diff&#39;, &#39;-Small upload service. Supports&#39;]</span></td>
+<td class="pass" title="response carries [&#39;```diff&#39;, &#39;-Small upload service. Supports&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries [&#39;```diff&#39;, &#39;-Small upload service. Supports&#39;]</span></td>
+</tr>
+<tr><td class="check">single archive file at archives/&lt;slug&gt;.md</td>
+<td class="pass" title=".mightymodels/archives/legacy-export-removal.md"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/archives/legacy-export-removal.md</span></td>
+<td class="fail" title="missing: .mightymodels/archives/legacy-export-removal.md"><span class="pill">&#10007; fail</span><span class="reason">missing: .mightymodels/archives/legacy-export-removal.md</span></td>
+</tr>
+<tr><td class="check">ticket directory removed</td>
+<td class="pass" title="absent: .mightymodels/legacy-export-removal"><span class="pill">&#10003; pass</span><span class="reason">absent: .mightymodels/legacy-export-removal</span></td>
+<td class="pass" title="absent: .mightymodels/legacy-export-removal"><span class="pill">&#10003; pass</span><span class="reason">absent: .mightymodels/legacy-export-removal</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">review-circus &middot; review-circus-aggregate-route</th></tr>
+<tr><td class="check">3 findings, dedup, Critical mapping</td>
+<td class="pass" title="3 findings, dual provenance, Blocker mapped to Critical"><span class="pill">&#10003; pass</span><span class="reason">3 findings, dual provenance, Blocker mapped to Critical</span></td>
+<td class="fail" title="triple=True dedup=True critical_mapped=False"><span class="pill">&#10007; fail</span><span class="reason">triple=True dedup=True critical_mapped=False</span></td>
+</tr>
+<tr><td class="check">Low finding gets no remediation dispatch</td>
+<td class="pass" title="&#39;deploy_target_host&#39; in no file under .mightymodels/checkout-fix/dispatches/*"><span class="pill">&#10003; pass</span><span class="reason">&#39;deploy_target_host&#39; in no file under .mightymodels/checkout-fix/dispatches/*</span></td>
+<td class="fail" title="&#39;deploy_target_host&#39; appears in [&#39;engineer-remediation.md&#39;]"><span class="pill">&#10007; fail</span><span class="reason">&#39;deploy_target_host&#39; appears in [&#39;engineer-remediation.md&#39;]</span></td>
+</tr>
+<tr><td class="check">Medium routed to skeleton</td>
+<td class="pass" title="budgetron-remediate-agg2.md carries [&#39;README&#39;]"><span class="pill">&#10003; pass</span><span class="reason">budgetron-remediate-agg2.md carries [&#39;README&#39;]</span></td>
+<td class="fail" title="no file under .mightymodels/checkout-fix/dispatches/* (name~&#39;skeleton&#39;) carries [&#39;README&#39;]"><span class="pill">&#10007; fail</span><span class="reason">no file under .mightymodels/checkout-fix/dispatches/* (name~&#39;skeleton&#39;) carries [&#39;README&#39;]</span></td>
+</tr>
+<tr><td class="check">PR comment written regardless of outcome</td>
+<td class="pass" title=".mightymodels/checkout-fix/review/pr-comment.md"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/checkout-fix/review/pr-comment.md</span></td>
+<td class="pass" title=".mightymodels/checkout-fix/review/pr-comment.md"><span class="pill">&#10003; pass</span><span class="reason">.mightymodels/checkout-fix/review/pr-comment.md</span></td>
+</tr>
+<tr><td class="check">dual-provenance Critical routed to engineer</td>
+<td class="pass" title="engineer-remediate-agg1.md carries [&#39;deploy.py&#39;]"><span class="pill">&#10003; pass</span><span class="reason">engineer-remediate-agg1.md carries [&#39;deploy.py&#39;]</span></td>
+<td class="pass" title="engineer-remediation.md carries [&#39;deploy.py&#39;]"><span class="pill">&#10003; pass</span><span class="reason">engineer-remediation.md carries [&#39;deploy.py&#39;]</span></td>
+</tr>
+<tr><td class="check">no remediation applied directly</td>
+<td class="pass" title="no diff (scripts)"><span class="pill">&#10003; pass</span><span class="reason">no diff (scripts)</span></td>
+<td class="pass" title="no diff (scripts)"><span class="pill">&#10003; pass</span><span class="reason">no diff (scripts)</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">using-mightmodels &middot; using-mightmodels-routing</th></tr>
+<tr><td class="check">answered without touching the repo</td>
+<td class="pass" title="git status clean"><span class="pill">&#10003; pass</span><span class="reason">git status clean</span></td>
+<td class="pass" title="git status clean"><span class="pill">&#10003; pass</span><span class="reason">git status clean</span></td>
+</tr>
+<tr><td class="check">knows the fleet refusal vocabulary</td>
+<td class="pass" title="2x &#39;(?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat&#39; in response"><span class="pill">&#10003; pass</span><span class="reason">2x &#39;(?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat&#39; in response</span></td>
+<td class="fail" title="only 0x &#39;(?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat&#39; in response (need 1)"><span class="pill">&#10007; fail</span><span class="reason">only 0x &#39;(?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat&#39; in response (need 1)</span></td>
+</tr>
+<tr><td class="check">knows the fleet roster by name</td>
+<td class="pass" title="response carries all of [&#39;scout&#39;, &#39;budgetron&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries all of [&#39;scout&#39;, &#39;budgetron&#39;]</span></td>
+<td class="pass" title="response carries all of [&#39;scout&#39;, &#39;budgetron&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries all of [&#39;scout&#39;, &#39;budgetron&#39;]</span></td>
+</tr>
+<tr><td class="check">lint residual routed to budgetron, not a full engineer</td>
+<td class="pass" title="1x &#39;(?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron&#39; in response"><span class="pill">&#10003; pass</span><span class="reason">1x &#39;(?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron&#39; in response</span></td>
+<td class="fail" title="only 0x &#39;(?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron&#39; in response (need 1)"><span class="pill">&#10007; fail</span><span class="reason">only 0x &#39;(?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron&#39; in response (need 1)</span></td>
+</tr>
+<tr><td class="check">model answers sourced from the ticket, not agent pins</td>
+<td class="pass" title="response has &#39;ticket.yml&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;ticket.yml&#39;</span></td>
+<td class="pass" title="response has &#39;ticket.yml&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;ticket.yml&#39;</span></td>
+</tr>
+<tr><td class="check">reads the actual routed model from the ticket</td>
+<td class="pass" title="response has &#39;gpt-5.6-luna&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;gpt-5.6-luna&#39;</span></td>
+<td class="pass" title="response has &#39;gpt-5.6-luna&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;gpt-5.6-luna&#39;</span></td>
+</tr>
+<tr><td class="check">verification routed to a scout checking DONE against ASKED</td>
+<td class="pass" title="2x &#39;(?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout&#39; in response"><span class="pill">&#10003; pass</span><span class="reason">2x &#39;(?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout&#39; in response</span></td>
+<td class="fail" title="only 0x &#39;(?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout&#39; in response (need 1)"><span class="pill">&#10007; fail</span><span class="reason">only 0x &#39;(?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout&#39; in response (need 1)</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">what-we-know &middot; what-we-know-duplicate-uploads</th></tr>
+<tr><td class="check">SWOT present</td>
+<td class="pass" title="response carries all of [&#39;Strength&#39;, &#39;Threat&#39;]"><span class="pill">&#10003; pass</span><span class="reason">response carries all of [&#39;Strength&#39;, &#39;Threat&#39;]</span></td>
+<td class="fail" title="response lacks: [&#39;Strength&#39;, &#39;Threat&#39;]"><span class="pill">&#10007; fail</span><span class="reason">response lacks: [&#39;Strength&#39;, &#39;Threat&#39;]</span></td>
+</tr>
+<tr><td class="check">assumptions stated per question</td>
+<td class="pass" title="response has &#39;ssumption&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;ssumption&#39;</span></td>
+<td class="pass" title="response has &#39;ssumption&#39;"><span class="pill">&#10003; pass</span><span class="reason">response has &#39;ssumption&#39;</span></td>
+</tr>
+<tr><td class="check">chat-only: no files written</td>
+<td class="pass" title="git status clean"><span class="pill">&#10003; pass</span><span class="reason">git status clean</span></td>
+<td class="pass" title="git status clean"><span class="pill">&#10003; pass</span><span class="reason">git status clean</span></td>
+</tr>
+<tr><td class="check">knowns carry file:line citations</td>
+<td class="pass" title="10x &#39;src/\\w+\\.py:\\d+&#39; in response"><span class="pill">&#10003; pass</span><span class="reason">10x &#39;src/\\w+\\.py:\\d+&#39; in response</span></td>
+<td class="fail" title="only 0x &#39;src/\\w+\\.py:\\d+&#39; in response (need 3)"><span class="pill">&#10007; fail</span><span class="reason">only 0x &#39;src/\\w+\\.py:\\d+&#39; in response (need 3)</span></td>
+</tr>
+<tr><td class="check">uncertainties become questions</td>
+<td class="pass" title="6x &#39;?&#39; in response"><span class="pill">&#10003; pass</span><span class="reason">6x &#39;?&#39; in response</span></td>
+<td class="fail" title="only 0x &#39;?&#39; in response (need 3)"><span class="pill">&#10007; fail</span><span class="reason">only 0x &#39;?&#39; in response (need 3)</span></td>
+</tr>
+<tr class="case-head"><th colspan="3">whats-broken &middot; whats-broken-format-bug</th></tr>
+<tr><td class="check">falsifiable hypothesis logged</td>
+<td class="pass" title="whats-broken.md referenced in response (deleted on close)"><span class="pill">&#10003; pass</span><span class="reason">whats-broken.md referenced in response (deleted on close)</span></td>
+<td class="fail" title="no evidence of whats-broken.md"><span class="pill">&#10007; fail</span><span class="reason">no evidence of whats-broken.md</span></td>
+</tr>
+<tr><td class="check">fix lands at the cause</td>
+<td class="pass" title="&#39;{:d}&#39; found in src/appconfig.py"><span class="pill">&#10003; pass</span><span class="reason">&#39;{:d}&#39; found in src/appconfig.py</span></td>
+<td class="pass" title="&#39;{:d}&#39; found in src/appconfig.py"><span class="pill">&#10003; pass</span><span class="reason">&#39;{:d}&#39; found in src/appconfig.py</span></td>
+</tr>
+<tr><td class="check">float coercion removed</td>
+<td class="pass" title="&#39;float(n)&#39; absent in src/appconfig.py"><span class="pill">&#10003; pass</span><span class="reason">&#39;float(n)&#39; absent in src/appconfig.py</span></td>
+<td class="pass" title="&#39;float(n)&#39; absent in src/appconfig.py"><span class="pill">&#10003; pass</span><span class="reason">&#39;float(n)&#39; absent in src/appconfig.py</span></td>
+</tr>
+<tr><td class="check">no symptom-side hack in report.py</td>
+<td class="pass" title="&#39;replace|int\\(|rstrip&#39; in src/report.py: no match"><span class="pill">&#10003; pass</span><span class="reason">&#39;replace|int\\(|rstrip&#39; in src/report.py: no match</span></td>
+<td class="pass" title="&#39;replace|int\\(|rstrip&#39; in src/report.py: no match"><span class="pill">&#10003; pass</span><span class="reason">&#39;replace|int\\(|rstrip&#39; in src/report.py: no match</span></td>
+</tr>
+<tr><td class="check">regression test added</td>
+<td class="pass" title="regression test at tests/test_appconfig.py"><span class="pill">&#10003; pass</span><span class="reason">regression test at tests/test_appconfig.py</span></td>
+<td class="pass" title="response claims a regression test"><span class="pill">&#10003; pass</span><span class="reason">response claims a regression test</span></td>
+</tr>
+<tr><td class="check">suite green after fix</td>
+<td class="pass" title="pytest green: 2 passed in 0.01s"><span class="pill">&#10003; pass</span><span class="reason">pytest green: 2 passed in 0.01s</span></td>
+<td class="pass" title="pytest green: 1 passed in 0.01s"><span class="pill">&#10003; pass</span><span class="reason">pytest green: 1 passed in 0.01s</span></td>
+</tr>
+</table>
+<footer>mightymodels-evals &middot; pydantic-evals harness &middot; pass/fail carries a glyph and label, never color alone</footer>
+</main></div></body></html>

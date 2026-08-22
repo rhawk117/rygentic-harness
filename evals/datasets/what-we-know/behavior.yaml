@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-what-we-know
+cases:
+- name: what-we-know-duplicate-uploads
+  inputs:
+    case: what-we-know-duplicate-uploads
+    skill: what-we-know
+    fixture: fx-webapp
+    task: 'We have been investigating duplicate upload records. Facts gathered so
+      far in this conversation: (1) src/handler.py enqueues the payload before returning
+      202; (2) src/queue.py drains one item per interval (DRAIN_BATCH = 1); (3) clients
+      retry any request slower than 2 seconds (from the incident thread — not in code).
+      We suspect but have not confirmed: whether enqueue deduplicates, whether drain
+      can run concurrently, and what the client retry cap is. Consolidate what we
+      know. The ask-user dialog is unavailable: list the exact questions you would
+      ask, state a working assumption for each, and proceed to the analysis. Your
+      final message IS the deliverable.'
+    sim_notes: ''
+  metadata:
+    skill: what-we-know
+  expected_output: null
+  evaluators:
+  - GitStatusClean: 'chat-only: no files written'
+  - ResponseRegexCount:
+      check: knowns carry file:line citations
+      pattern: src/\w+\.py:\d+
+      minimum: 3
+  - ResponseCountAtLeast:
+      check: uncertainties become questions
+      needle: '?'
+      minimum: 3
+  - ResponseContains:
+      check: assumptions stated per question
+      needle: ssumption
+  - ResponseContainsAll:
+      check: SWOT present
+      needles:
+      - Strength
+      - Threat
+evaluators: []
+report_evaluators: []

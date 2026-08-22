@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: using-mightmodels-trigger
+cases:
+- name: using-mightmodels-trigger-00
+  inputs:
+    query: what agents do i have available in this repo again?
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-01
+  inputs:
+    query: which worker should verify the engineer's DONE claims on task-02, and what model does it run on?
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-02
+  inputs:
+    query: who do I send this ruff E501 residual to, budgetron or a full engineer?
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-03
+  inputs:
+    query: review came back with 3 merge-vader findings and 1 uncle-bob one, who fixes what
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-04
+  inputs:
+    query: remind me what gitty-up is allowed to do, can it push a fixup commit when CI fails?
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-05
+  inputs:
+    query: new to this plugin, give me the rundown of the subagent fleet before I start dispatching
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-06
+  inputs:
+    query: whats the difference between scout and engineer here and when do i bump the engineer a tier
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: using-mightmodels-trigger-07
+  inputs:
+    query: generate an AGENTS.md for this repo so copilot knows the toolchain and conventions
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: using-mightmodels-trigger-08
+  inputs:
+    query: ticket's ramped, begin the sprint on rate-limit
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: using-mightmodels-trigger-09
+  inputs:
+    query: set up copilot hooks so agents get repo context injected at session start
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: using-mightmodels-trigger-10
+  inputs:
+    query: add a new deploy agent to our CI pipeline in github actions
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: using-mightmodels-trigger-11
+  inputs:
+    query: my jira board shows 4 agents assigned to this sprint, move OPS-231 to in progress
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: using-mightmodels-trigger-12
+  inputs:
+    query: review this branch before i merge it, mostly worried about security
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: using-mightmodels-trigger-13
+  inputs:
+    query: write me a prompt for the copilot coding agent to refactor the queue module
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []

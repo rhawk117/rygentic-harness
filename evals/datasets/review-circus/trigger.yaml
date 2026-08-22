@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: review-circus-trigger
+cases:
+- name: review-circus-trigger-00
+  inputs:
+    query: PR's green — run the review circus
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: review-circus-trigger-01
+  inputs:
+    query: full review pass on the sprint branch, both reviewers
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: review-circus-trigger-02
+  inputs:
+    query: time for the endgame review on .mightymodels/checkout-fix
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: review-circus-trigger-03
+  inputs:
+    query: run uncle bob and merge vader on this and consolidate
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: review-circus-trigger-04
+  inputs:
+    query: deep review the whole codebase, circus mode
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: review-circus-trigger-05
+  inputs:
+    query: aggregate the reviewer reports and set up remediation
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: review-circus-trigger-06
+  inputs:
+    query: is this branch safe to merge? quick check
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: review-circus-trigger-07
+  inputs:
+    query: run merge-vader on this diff
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: review-circus-trigger-08
+  inputs:
+    query: grade the codebase against clean code
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: review-circus-trigger-09
+  inputs:
+    query: review this function real quick
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: review-circus-trigger-10
+  inputs:
+    query: review the plan before we start
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: review-circus-trigger-11
+  inputs:
+    query: post a review comment on the PR about naming
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

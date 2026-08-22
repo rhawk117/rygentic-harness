@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: whats-broken-trigger
+cases:
+- name: whats-broken-trigger-00
+  inputs:
+    query: whats broken — this test won't stop failing and we've patched it twice
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: whats-broken-trigger-01
+  inputs:
+    query: CI is red with some behavioral failure nobody understands
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: whats-broken-trigger-02
+  inputs:
+    query: the summary endpoint returns wrong totals only in prod, debug it properly
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: whats-broken-trigger-03
+  inputs:
+    query: verification failed twice on the same task, figure out the real cause
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: whats-broken-trigger-04
+  inputs:
+    query: why does this pass locally and fail in CI? actually diagnose it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: whats-broken-trigger-05
+  inputs:
+    query: we keep fixing this flaky test and it keeps coming back — root cause it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: whats-broken-trigger-06
+  inputs:
+    query: CI failed on a lint rule, just fix the formatting
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: whats-broken-trigger-07
+  inputs:
+    query: investigate whether the cache claim is true
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: whats-broken-trigger-08
+  inputs:
+    query: the build is missing an import, patch it
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: whats-broken-trigger-09
+  inputs:
+    query: review the branch for bugs before merge
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: whats-broken-trigger-10
+  inputs:
+    query: what broke in the market today?
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: whats-broken-trigger-11
+  inputs:
+    query: run the test suite and tell me if it passes
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

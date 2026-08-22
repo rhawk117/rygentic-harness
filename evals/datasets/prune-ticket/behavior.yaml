@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-prune-ticket
+cases:
+- name: prune-ticket-closeout
+  inputs:
+    case: prune-ticket-closeout
+    skill: prune-ticket
+    fixture: fx-prune
+    task: 'The unit of work at .mightymodels/legacy-export-removal shipped last week:
+      PR #204 merged, CI green. Prune the ticket. The ask-user dialog is unavailable:
+      propose any documentation diffs in your final response as awaiting approval
+      — do not apply them.'
+    sim_notes: ''
+  metadata:
+    skill: prune-ticket
+  expected_output: null
+  evaluators:
+  - FileExists:
+      check: single archive file at archives/<slug>.md
+      path: .mightymodels/archives/legacy-export-removal.md
+  - FileLineCap:
+      check: archive within 30-line cap
+      path: .mightymodels/archives/legacy-export-removal.md
+      max_lines: 30
+  - FileContains:
+      check: archive carries the PR pointer
+      path: .mightymodels/archives/legacy-export-removal.md
+      needle: '204'
+  - PathAbsent:
+      check: ticket directory removed
+      path: .mightymodels/legacy-export-removal
+  - GitDiffEmpty:
+      check: README untouched pending approval
+      pathspec: README.md
+  - ResponseContainsAny:
+      check: doc removal proposed as a diff
+      needles:
+      - '```diff'
+      - -Small upload service. Supports
+evaluators: []
+report_evaluators: []

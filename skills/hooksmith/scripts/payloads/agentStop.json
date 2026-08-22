@@ -1,0 +1,8 @@
+{
+  "sessionId": "s-test-001",
+  "timestamp": 1754500000000,
+  "cwd": "/tmp/repo",
+  "transcriptPath": "/tmp/transcript.json",
+  "stopReason": "end_turn",
+  "stop_hook_active": false
+}

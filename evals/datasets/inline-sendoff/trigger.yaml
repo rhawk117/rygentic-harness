@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: inline-sendoff-trigger
+cases:
+- name: inline-sendoff-trigger-00
+  inputs:
+    query: pick up the ticket we prepared yesterday, it's a small one
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: inline-sendoff-trigger-01
+  inputs:
+    query: start on the rate-limit ticket — scope sm, no plan needed
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: inline-sendoff-trigger-02
+  inputs:
+    query: 'session start: .mightymodels/fix-nullcheck, kick it off'
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: inline-sendoff-trigger-03
+  inputs:
+    query: grab the small mightymodels ticket and get the loop going
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: inline-sendoff-trigger-04
+  inputs:
+    query: confirm the ticket still holds and start the work
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: inline-sendoff-trigger-05
+  inputs:
+    query: ramp the quick one we staged friday
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: inline-sendoff-trigger-06
+  inputs:
+    query: prepare the handoff for the bug we just triaged
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: inline-sendoff-trigger-07
+  inputs:
+    query: ramp the big migration ticket — it needs a plan first
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: inline-sendoff-trigger-08
+  inputs:
+    query: pick up the jira ticket from the backlog
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: inline-sendoff-trigger-09
+  inputs:
+    query: start a new investigation into the login failures
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: inline-sendoff-trigger-10
+  inputs:
+    query: send off the PR for review
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: inline-sendoff-trigger-11
+  inputs:
+    query: hand this off to the next oncall
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

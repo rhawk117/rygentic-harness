@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-using-mightmodels
+cases:
+- name: using-mightmodels-routing
+  inputs:
+    case: using-mightmodels-routing
+    skill: using-mightmodels
+    fixture: fx-sprint
+    task: 'You are the primary agent in this repo; the active ticket is .mightymodels/rate-limit
+      (read its ticket.yml). The engineer just reported done on task-01 and appended
+      the DONE half of the brief. Three things need to happen next: (a) the DONE claims
+      must be checked against the ASKED criteria; (b) ruff reports one failing lint
+      rule, E501 in src/handler.py line 88, wrap the line; (c) before task-02 renames
+      src/limiter.py we need to know whether anything outside tests/ imports it. For
+      each, name which worker you would dispatch, the model it runs on and where that
+      answer comes from, and the one thing that worker must not be asked to do. Answer
+      in prose; do not dispatch anyone and do not edit any files.'
+    sim_notes: ''
+  metadata:
+    skill: using-mightmodels
+  expected_output: null
+  evaluators:
+  - ResponseContainsAll:
+      check: knows the fleet roster by name
+      needles:
+      - scout
+      - budgetron
+  - ResponseRegexCount:
+      check: lint residual routed to budgetron, not a full engineer
+      pattern: (?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron
+  - ResponseRegexCount:
+      check: verification routed to a scout checking DONE against ASKED
+      pattern: (?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout
+  - ResponseContains:
+      check: model answers sourced from the ticket, not agent pins
+      needle: ticket.yml
+  - ResponseContains:
+      check: reads the actual routed model from the ticket
+      needle: gpt-5.6-luna
+  - ResponseRegexCount:
+      check: knows the fleet refusal vocabulary
+      pattern: (?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat
+  - GitStatusClean: answered without touching the repo
+evaluators: []
+report_evaluators: []

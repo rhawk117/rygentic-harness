@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-agents-assemble
+cases:
+- name: agents-assemble-two-tasks
+  inputs:
+    case: agents-assemble-two-tasks
+    skill: agents-assemble
+    fixture: fx-sprint
+    task: 'An active mightymodels ticket exists at .mightymodels/rate-limit (read
+      its ticket.yml and issue-body.md). Begin the sprint and run it to completion.
+      Worker simulation: for engineer dispatches, after writing the dispatch prompt,
+      open canned/task-01-response.md or canned/task-02-response.md, apply the patch
+      it contains as the engineer''s work, append its DONE block to the brief, and
+      treat its XML as the returned report; run verification commands yourself. Use
+      python3 -m pytest for tests. Git commits are fine; do not push.'
+    sim_notes: 'Environment constraints: worker subagents are unavailable — when the
+      process calls for dispatching a worker, write the exact dispatch prompt you
+      would send to the tickets dispatches/ directory instead, then continue per the
+      case instructions. gh and git push are unavailable: fall back gracefully and
+      surface the exact commands a user would run.'
+  metadata:
+    skill: agents-assemble
+  expected_output: null
+  evaluators:
+  - FileContainsAll:
+      check: task-01 brief two-halved
+      path: .mightymodels/rate-limit/briefs/task-01.md
+      needles:
+      - '## ASKED'
+      - '## DONE'
+      - AC-
+  - FileContainsAll:
+      check: task-02 brief two-halved
+      path: .mightymodels/rate-limit/briefs/task-02.md
+      needles:
+      - '## ASKED'
+      - '## DONE'
+      - AC-
+  - FileLineCap:
+      check: task-01 brief within cap
+      path: .mightymodels/rate-limit/briefs/task-01.md
+      max_lines: 80
+  - FileLineCap:
+      check: task-02 brief within cap
+      path: .mightymodels/rate-limit/briefs/task-02.md
+      max_lines: 80
+  - FileContains:
+      check: no placeholder criteria
+      path: .mightymodels/rate-limit/briefs/task-01.md
+      needle: works correctly
+      expect: false
+  - GlobCountAtLeast:
+      check: engineer dispatches written first
+      pattern: .mightymodels/rate-limit/dispatches/*
+      minimum: 2
+      containing_regex: (?i)engineer|ASKED
+  - CheckboxCount:
+      check: both tasks checked off
+      path: .mightymodels/rate-limit/issue-body.md
+      minimum: 2
+  - FileLineCap:
+      check: REPORT within cap
+      path: .mightymodels/rate-limit/REPORT.md
+      max_lines: 50
+  - PytestGreen: suite green at sprint end
+evaluators: []
+report_evaluators: []

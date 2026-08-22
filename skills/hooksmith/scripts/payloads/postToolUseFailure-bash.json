@@ -1,0 +1,8 @@
+{
+  "sessionId": "s-test-001",
+  "timestamp": 1754500000000,
+  "cwd": "/tmp/repo",
+  "toolName": "bash",
+  "toolArgs": { "command": "pytest" },
+  "error": "bash: pytest: command not found"
+}

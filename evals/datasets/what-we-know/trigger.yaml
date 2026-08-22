@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: what-we-know-trigger
+cases:
+- name: what-we-know-trigger-00
+  inputs:
+    query: alright, what do we know at this point about the memory leak?
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-01
+  inputs:
+    query: summarize what we've learned so far and where the unknowns are
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-02
+  inputs:
+    query: consolidate the findings from this investigation before we file anything
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-03
+  inputs:
+    query: run what-we-know on the checkout latency thing
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-04
+  inputs:
+    query: 'before we ticket this: knowns, unknowns, and your read on the risk'
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-05
+  inputs:
+    query: where are we — lay out the facts we've verified vs what's still guesswork
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-06
+  inputs:
+    query: do the swot pass on what we found
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-07
+  inputs:
+    query: summarize this repo for the new hire
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-08
+  inputs:
+    query: what do you know about redis cluster mode?
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-09
+  inputs:
+    query: write up the investigation as a postmortem doc
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-10
+  inputs:
+    query: give me a status rollup of the jira epic
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-11
+  inputs:
+    query: summarize the PR description for the changelog
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-12
+  inputs:
+    query: what's the state of the art on rate limiting algorithms?
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-13
+  inputs:
+    query: document what this module does in the README
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

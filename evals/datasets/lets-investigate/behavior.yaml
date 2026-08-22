@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-lets-investigate
+cases:
+- name: lets-investigate-slow-queue
+  inputs:
+    case: lets-investigate-slow-queue
+    skill: lets-investigate
+    fixture: fx-webapp
+    task: 'Users report the retry queue drains far too slowly under load, and nobody
+      knows why. Investigate. Scout simulation: write each scout dispatch you would
+      send to scout-dispatches/NN.md at the repo root (creating that directory is
+      your only permitted write), then perform the retrieval yourself and continue.
+      Do not modify any repo file. Your final message IS the investigation deliverable.'
+    sim_notes: ''
+  metadata:
+    skill: lets-investigate
+  expected_output: null
+  evaluators:
+  - GlobCountAtLeast:
+      check: scout dispatches written and shaped
+      pattern: scout-dispatches/*
+      minimum: 2
+      containing_regex: src/|queue|DRAIN
+  - GitStatusClean:
+      check: read-only outside scout-dispatches
+      allow_untracked_under:
+      - scout-dispatches
+  - ResponseContainsAll:
+      check: findings cite the drain facts
+      needles:
+      - queue.py
+      - DRAIN_BATCH
+  - ResponseContains:
+      check: offers what-we-know at the boundary
+      needle: what-we-know
+evaluators: []
+report_evaluators: []

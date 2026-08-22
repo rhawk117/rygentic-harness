@@ -1,0 +1,124 @@
+line-length = 90
+preview = false
+unsafe-fixes = false
+# Fixture template bodies are eval material with intentional style violations, not
+# package code. docs/ is published prose. skills/ is agent execution material whose
+# bundled scripts ship to foreign harnesses and follow their own conventions.
+extend-exclude = ["evals/src/mightymodels_evals/templates", "docs", "skills"]
+
+[lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "UP",
+    "FAST",
+    "S",
+    "ERA",
+    "G",
+    "ASYNC",
+    "PERF",
+    "B",
+    "TID",
+    "SIM",
+    "C4",
+    "DTZ",
+    "PTH",
+    "PT",
+    "A",
+    "LOG",
+    "TC",
+    "PGH",
+    "FURB",
+    "RUF",
+    "TRY",
+    "N",
+    "FLY",
+    "COM",
+    "EXE",
+    "PIE",
+    "C901",
+    "D404",
+    "D417",
+    "D419",
+    "RET",
+    "SLF",
+    "RSE",
+    "PYI",
+    "ARG",
+    "ANN001",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN205",
+    "ANN206",
+    "FBT001",
+    "FBT002",
+    "YTT",    # Unsafe or fragile Python-version checks
+    "BLE",    # Blind Exception/BaseException handling
+    "T10",    # Forgotten debugger calls
+    "ISC004", # Accidental string concatenation inside collections
+    "INP",    # Missing __init__.py files
+    "SLOT",   # Missing slots on immutable builtin subclasses
+    "PL",     # Ruff's Pylint correctness and structural rules
+    "ANN002", # Missing *args annotation
+    "ANN003", # Missing **kwargs annotation
+    "FBT003", # Positional Boolean at call sites
+    "D418",   # Docstring incorrectly attached to @overload
+]
+
+ignore = [
+    "COM812",
+    "PGH003",
+    # Python 3.14 lazy annotations plus pydantic-evals' runtime introspection of
+    # Evaluator dataclasses make moved-to-TYPE_CHECKING imports a runtime NameError
+    # waiting to happen; the TC "move" trio stays off, TC004+ correctness stays on.
+    "TC001",
+    "TC002",
+    "TC003",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "PLR2004",
+    "TRY400",
+    "TRY003",
+    "TRY301",
+    "S101",
+    "S104",
+    "S105",
+    "S106",
+]
+
+[lint.per-file-ignores]
+# Standalone entry points invoked by path, not an importable package.
+"scripts/**/*.py" = ["INP001"]
+"tests/**/*.py" = ["ARG001", "ARG002", "INP001", "PLR2004", "S101", "PLC0415"]
+
+[lint.flake8-tidy-imports]
+# Imports inside the package are written as `mightymodels_evals.*`, never `from .x`.
+ban-relative-imports = "all"
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.flake8-type-checking]
+exempt-modules = ["typing", "typing_extensions"]
+quote-annotations = false
+strict = false
+
+runtime-evaluated-base-classes = [
+    "pydantic.BaseModel",
+    "sqlalchemy.orm.DeclarativeBase",
+    "msgspec.Struct",
+]
+
+runtime-evaluated-decorators = [
+    "pydantic.validate_call",
+    "pydantic.dataclasses.dataclass",
+]
+
+[format]
+docstring-code-format = true
+preview = true
+quote-style = "single"

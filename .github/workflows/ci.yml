@@ -1,0 +1,90 @@
+name: Continuous Integration (CI)
+
+on:
+  pull_request:
+  workflow_call:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  linter:
+    name: Lint (ruff, ty, shell, markdown)
+    runs-on: ${{ vars.DEFAULT_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bootstrap runner
+        uses: ./.github/actions/bootstrap
+        with:
+          python-version: "3.14"
+          groups: lint
+
+      - name: Install shellcheck
+        run: sudo apt-get update -q && sudo apt-get install -y -q shellcheck
+
+      - name: Run lint gate
+        run: ./scripts/lint.sh all
+        env:
+          UV_NO_SYNC: "1"
+
+      - name: Scan skills and agents
+        run: ./scripts/security.sh
+
+  tests:
+    name: Tests (Python 3.14)
+    runs-on: ${{ vars.DEFAULT_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bootstrap runner
+        uses: ./.github/actions/bootstrap
+        with:
+          python-version: "3.14"
+          groups: test
+
+      - name: Run tests
+        run: uv run --locked --no-default-groups --group test pytest
+
+  security:
+    name: Skills prompt-injection scan
+    runs-on: ${{ vars.DEFAULT_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+  ci-gate:
+    name: Continuous Integration Gate
+    needs: [linter, tests, security]
+    if: ${{ always() }}
+    runs-on: ${{ vars.DEFAULT_RUNNER || 'ubuntu-24.04' }}
+    steps:
+      - name: Require successful CI jobs
+        env:
+          LINT_RESULT: ${{ needs.linter.result }}
+          TEST_RESULT: ${{ needs.tests.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+        run: |
+          printf 'lint: %s\ntests: %s\nsecurity: %s\n' \
+            "$LINT_RESULT" "$TEST_RESULT" "$SECURITY_RESULT"
+          if [[ "$LINT_RESULT" != "success" || "$TEST_RESULT" != "success" || "$SECURITY_RESULT" != "success" ]]; then
+            exit 1
+          fi

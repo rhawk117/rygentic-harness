@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+dist/
+*.egg-info/
+evals/fixtures/
+evals/staging/
+.coverage
+node_modules/

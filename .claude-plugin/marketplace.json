@@ -1,0 +1,15 @@
+{
+  "name": "mightymodels-marketplace",
+  "owner": {
+    "name": "BUSYSRE"
+  },
+  "description": "mightymodels: the ticket-scoped agent dev loop and its review stack",
+  "plugins": [
+    {
+      "name": "mightymodels",
+      "source": "./",
+      "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
+      "version": "0.4.0"
+    }
+  ]
+}

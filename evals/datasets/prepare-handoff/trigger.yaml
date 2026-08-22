@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: prepare-handoff-trigger
+cases:
+- name: prepare-handoff-trigger-00
+  inputs:
+    query: ok triage is done on the dedup bug, cut a ticket for it and get everything
+      staged for the next session
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-01
+  inputs:
+    query: prepare the handoff for the queue overhaul we just scoped
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-02
+  inputs:
+    query: set this up for the next session — name it session-rotation, yes to issue
+      and branch, probably no compactions
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-03
+  inputs:
+    query: create the mightymodels ticket for the auth refactor we walked through
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-04
+  inputs:
+    query: we understand the problem now, get it ready to implement in a fresh session
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-05
+  inputs:
+    query: 'stage the retry-jitter work: issue, branch, the yaml, the works'
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-06
+  inputs:
+    query: wrap this triage into a unit of work i can start tomorrow
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prepare-handoff-trigger-07
+  inputs:
+    query: create a jira ticket for the outage follow-up in BUSYSRE
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prepare-handoff-trigger-08
+  inputs:
+    query: hand this PR off to a teammate for review
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prepare-handoff-trigger-09
+  inputs:
+    query: start on the ticket we prepared yesterday
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prepare-handoff-trigger-10
+  inputs:
+    query: open a github issue real quick for this typo
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prepare-handoff-trigger-11
+  inputs:
+    query: write me a handoff doc for the oncall rotation
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prepare-handoff-trigger-12
+  inputs:
+    query: prepare release notes for the next version
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prepare-handoff-trigger-13
+  inputs:
+    query: make a branch off main for a quick experiment
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

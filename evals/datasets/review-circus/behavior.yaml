@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-review-circus
+cases:
+- name: review-circus-aggregate-route
+  inputs:
+    case: review-circus-aggregate-route
+    skill: review-circus
+    fixture: fx-review
+    task: 'The review session for ticket .mightymodels/checkout-fix, single-branch
+      scope: both reviewers have already completed — their reports are under .mightymodels/checkout-fix/review/.
+      Continue the session from that point through to its conclusion.'
+    sim_notes: 'Environment constraints: worker subagents are unavailable — when the
+      process calls for dispatching a worker, write the exact dispatch prompt you
+      would send to the tickets dispatches/ directory instead, then continue per the
+      case instructions. gh and git push are unavailable: fall back gracefully and
+      surface the exact commands a user would run.'
+  metadata:
+    skill: review-circus
+  expected_output: null
+  evaluators:
+  - ReviewAggregationSound: 3 findings, dedup, Critical mapping
+  - FileExists:
+      check: PR comment written regardless of outcome
+      path: .mightymodels/checkout-fix/review/pr-comment.md
+  - GlobFileContainsAll:
+      check: dual-provenance Critical routed to engineer
+      pattern: .mightymodels/checkout-fix/dispatches/*
+      name_regex: engineer
+      needles:
+      - deploy.py
+  - GlobFileContainsAll:
+      check: Medium routed to budgetron
+      pattern: .mightymodels/checkout-fix/dispatches/*
+      name_regex: budgetron
+      needles:
+      - README
+  - NoGlobFileContains:
+      check: Low finding gets no remediation dispatch
+      pattern: .mightymodels/checkout-fix/dispatches/*
+      needle: deploy_target_host
+  - GitDiffEmpty:
+      check: no remediation applied directly
+      pathspec: scripts
+evaluators: []
+report_evaluators: []

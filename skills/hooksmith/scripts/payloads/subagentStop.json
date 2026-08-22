@@ -1,0 +1,11 @@
+{
+  "sessionId": "s-test-001",
+  "timestamp": 1754500000000,
+  "cwd": "/tmp/repo",
+  "transcriptPath": "/tmp/t.json",
+  "agentId": "a-1",
+  "agentType": "custom",
+  "agentName": "scout",
+  "response": "<report><findings/></report>",
+  "stopReason": "end_turn"
+}

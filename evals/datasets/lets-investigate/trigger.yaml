@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: lets-investigate-trigger
+cases:
+- name: lets-investigate-trigger-00
+  inputs:
+    query: lets investigate why the retry queue drains so slowly
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-01
+  inputs:
+    query: look into this claim that the cache never invalidates on write
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-02
+  inputs:
+    query: triage this bug report from support — users seeing stale prices
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-03
+  inputs:
+    query: why would the worker peg a core every night at 2am? dig in
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-04
+  inputs:
+    query: investigate whether the session tokens actually rotate
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-05
+  inputs:
+    query: something's off with the metrics counts, look into it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-06
+  inputs:
+    query: check out this weird stack trace before we do anything about it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-07
+  inputs:
+    query: review this branch before i merge it
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-08
+  inputs:
+    query: is this codebase well structured? review my repo
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-09
+  inputs:
+    query: CI is red and i know which test — debug it
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-10
+  inputs:
+    query: investigate the market for rust observability tools
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-11
+  inputs:
+    query: audit our dependencies for CVEs
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-12
+  inputs:
+    query: grade the code quality of the scheduler module
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-13
+  inputs:
+    query: run the review circus on the finished sprint
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

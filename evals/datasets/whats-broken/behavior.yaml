@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-whats-broken
+cases:
+- name: whats-broken-format-bug
+  inputs:
+    case: whats-broken-format-bug
+    skill: whats-broken
+    fixture: fx-debug
+    task: 'CI is red: tests/test_report.py::test_summary_count fails, and the team
+      has already gone two rounds of confused patches — figure out what is actually
+      broken and fix it properly. Do the work yourself under the same discipline the
+      process prescribes. Use python3 -m pytest. There is no .mightymodels ticket
+      for this repo.'
+    sim_notes: ''
+  metadata:
+    skill: whats-broken
+  expected_output: null
+  evaluators:
+  - FileContains:
+      check: fix lands at the cause
+      path: src/appconfig.py
+      needle: '{:d}'
+  - FileContains:
+      check: float coercion removed
+      path: src/appconfig.py
+      needle: float(n)
+      expect: false
+  - FileRegex:
+      check: no symptom-side hack in report.py
+      path: src/report.py
+      pattern: replace|int\(|rstrip
+      expect: false
+  - HypothesisLogged: falsifiable hypothesis logged
+  - RegressionEvidence:
+      check: regression test added
+      test_paths:
+      - tests/test_appconfig.py
+  - PytestGreen: suite green after fix
+evaluators: []
+report_evaluators: []

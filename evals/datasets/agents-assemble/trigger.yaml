@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: agents-assemble-trigger
+cases:
+- name: agents-assemble-trigger-00
+  inputs:
+    query: ticket's ramped, begin the sprint
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-01
+  inputs:
+    query: start working the rate-limit ticket through the loop
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-02
+  inputs:
+    query: run the loop on .mightymodels/session-rotation
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-03
+  inputs:
+    query: continue the sprint from task 3 — the ledger should have the state
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-04
+  inputs:
+    query: kick off the mightymodels work loop for this ticket
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-05
+  inputs:
+    query: resume the sprint we started this morning
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-06
+  inputs:
+    query: plan's approved, start executing the tasks
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: agents-assemble-trigger-07
+  inputs:
+    query: start the sprint in jira and move the tickets over
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: agents-assemble-trigger-08
+  inputs:
+    query: add this bug to the current sprint
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: agents-assemble-trigger-09
+  inputs:
+    query: what's in this sprint on the board?
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: agents-assemble-trigger-10
+  inputs:
+    query: begin sprint planning for next quarter
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: agents-assemble-trigger-11
+  inputs:
+    query: close out the sprint in jira and roll unfinished items
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: agents-assemble-trigger-12
+  inputs:
+    query: create a sprint board for the new project
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: agents-assemble-trigger-13
+  inputs:
+    query: open the PR and watch CI for the sprint branch
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

@@ -1,0 +1,12 @@
+<report agent="ci-watcher" pr="118">
+  <verdict>fail</verdict>
+  <confidence>high</confidence>
+  <findings>
+    <finding location="lint" bucket="fail" link="https://github.com/o/r/actions/runs/42">ruff exited non-zero</finding>
+    <finding location="test" bucket="pass">all suites green</finding>
+  </findings>
+  <logs><![CDATA[
+src/limiter.py:6:89: E501 line too long (97 > 88)
+Found 1 error.
+  ]]></logs>
+</report>

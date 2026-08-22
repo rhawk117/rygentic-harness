@@ -1,0 +1,47 @@
+[pytest]
+minversion = "9.0"
+strict = true
+
+testpaths = ["tests"]
+collect_imported_tests = false
+empty_parameter_set_mark = "fail_at_collect"
+
+faulthandler_timeout = "60"
+faulthandler_exit_on_timeout = true
+
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = "3"
+
+addopts = [
+    "-ra",
+    "--import-mode=importlib",
+    "--tb=short",
+    "--showlocals",
+    "--durations=10",
+    "--durations-min=1.0",
+
+    "--cov",
+    "--cov-config=.coveragerc.ini",
+    "--cov-report=term-missing",
+]
+
+required_plugins = [
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-randomly",
+    "pytest-xdist",
+]
+
+markers = [
+    "integration: tests involving multiple application components",
+    "slow: tests excluded from the fastest validation loop",
+    "network: tests requiring real network access",
+]
+
+filterwarnings = [
+    "error",
+    # pydantic-evals emits this when Dataset is built unparameterized for YAML
+    # round-trips; parameterizing with RunArtifacts (a plain dataclass output
+    # type) breaks serialization, so the warning is acknowledged, not fixed
+    "ignore:Could not determine the generic parameters:UserWarning",
+]

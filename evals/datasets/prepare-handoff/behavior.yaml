@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-prepare-handoff
+cases:
+- name: prepare-handoff-rate-limit
+  inputs:
+    case: prepare-handoff-rate-limit
+    skill: prepare-handoff
+    fixture: fx-webapp
+    task: 'Triage of a problem in this repo is complete: the upload endpoint in src/handler.py
+      accepts unlimited uploads per client and needs per-client rate limiting; the
+      retry queue in src/queue.py amplifies abuse under load. Prepare the handoff
+      so the next session can implement it. The ask-user dialog is unavailable here,
+      so take these as the user''s answers: unit of work named ''upload-rate-limit'';
+      yes, create a GitHub issue titled ''Rate-limit uploads to stop abuse''; yes,
+      create a branch named ''fix/upload-rate-limit''; a compaction is unlikely; each
+      anticipated task is small. After the ticket file exists, assume the user tweaked
+      nothing and answers yes to generating the next-session prompt.'
+    sim_notes: 'Environment constraints: worker subagents are unavailable — when the
+      process calls for dispatching a worker, write the exact dispatch prompt you
+      would send to the tickets dispatches/ directory instead, then continue per the
+      case instructions. gh and git push are unavailable: fall back gracefully and
+      surface the exact commands a user would run.'
+  metadata:
+    skill: prepare-handoff
+  expected_output: null
+  evaluators:
+  - FileContainsAll:
+      check: ticket.yml carries derived scope and models
+      path: .mightymodels/upload-rate-limit/ticket.yml
+      needles:
+      - 'scope: sm'
+      - gpt-5.6-luna
+      - claude-opus-5
+      - gpt-5.6-sol
+  - FileRegex:
+      check: plan-first derived false
+      path: .mightymodels/upload-rate-limit/ticket.yml
+      pattern: plan-first:\s*(false|no)
+  - FileContains:
+      check: ignore ritual ran
+      path: .git/info/exclude
+      needle: .mightymodels
+  - FileLineCap:
+      check: SPRINT.md within thin cap
+      path: .mightymodels/upload-rate-limit/handoffs/SPRINT.md
+      max_lines: 25
+  - FileRegex:
+      check: 'SPRINT.md thin: no models or scope copied'
+      path: .mightymodels/upload-rate-limit/handoffs/SPRINT.md
+      pattern: 'gpt-5\.6|opus|sonnet|scope:'
+      expect: false
+  - FileContains:
+      check: issue draft has security surface
+      path: .mightymodels/upload-rate-limit/issue-body.md
+      needle: ecurity
+  - FileRegex:
+      check: issue draft carries abuse-case criteria
+      path: .mightymodels/upload-rate-limit/issue-body.md
+      pattern: abuse|AC-
+  - BranchExists:
+      check: branch created
+      branch: fix/upload-rate-limit
+evaluators: []
+report_evaluators: []

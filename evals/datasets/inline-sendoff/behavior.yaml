@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-inline-sendoff
+cases:
+- name: inline-sendoff-stale-claim
+  inputs:
+    case: inline-sendoff-stale-claim
+    skill: inline-sendoff
+    fixture: fx-sendoff
+    task: 'Session start on the active mightymodels ticket at .mightymodels/rate-limit
+      — its scope is small. Pick up the ticket and proceed as the process dictates.
+      Scout simulation: perform their confirmations yourself with the same discipline.
+      gh is unavailable; the issue lives at .mightymodels/rate-limit/issue-body.md.
+      The user is present and will answer questions in their next message.'
+    sim_notes: ''
+  metadata:
+    skill: inline-sendoff
+  expected_output: null
+  evaluators:
+  - ResponseContains:
+      check: stale claim named
+      needle: routes.py
+  - ResponseContainsAny:
+      check: framed as a delta
+      needles:
+      - stale
+      - delta
+      - renamed
+      - rename
+  - ResponseTailAsksQuestion: stops and asks before proceeding
+  - FileContains:
+      check: checklist not written past the gate
+      path: .mightymodels/rate-limit/issue-body.md
+      needle: '[ ] T'
+      expect: false
+  - GitStatusClean:
+      check: no source modified in the ramp
+      pathspec: src tests
+evaluators: []
+report_evaluators: []

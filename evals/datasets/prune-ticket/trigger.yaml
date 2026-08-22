@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: prune-ticket-trigger
+cases:
+- name: prune-ticket-trigger-00
+  inputs:
+    query: /prune-ticket legacy-export-removal
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prune-ticket-trigger-01
+  inputs:
+    query: the PR merged last week — archive the ticket and clean up
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prune-ticket-trigger-02
+  inputs:
+    query: close out the mightymodels ticket, it shipped
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prune-ticket-trigger-03
+  inputs:
+    query: prune the finished tickets in .mightymodels
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prune-ticket-trigger-04
+  inputs:
+    query: compress the shipped ticket to an archive and remove the dir
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prune-ticket-trigger-05
+  inputs:
+    query: tidy the mightymodels workspace — that unit of work is done
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: prune-ticket-trigger-06
+  inputs:
+    query: delete the merged branches
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prune-ticket-trigger-07
+  inputs:
+    query: close the jira ticket and the github issue
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prune-ticket-trigger-08
+  inputs:
+    query: clean up the repo's stale TODOs
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prune-ticket-trigger-09
+  inputs:
+    query: archive last quarter's docs to the wiki
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prune-ticket-trigger-10
+  inputs:
+    query: prune old docker images on the runner
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: prune-ticket-trigger-11
+  inputs:
+    query: remove the feature flag now that it's fully rolled out
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

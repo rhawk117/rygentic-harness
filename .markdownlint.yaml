@@ -1,0 +1,24 @@
+# Lints the human-facing prose set (see .markdownlintignore for what is
+# excluded and why). Docs are hard-wrapped at 96 columns; tables and code
+# carry their own widths.
+default: true
+
+MD013:
+  line_length: 100
+  code_blocks: false
+  tables: false
+
+# duplicate headings are fine when they sit under different parents
+MD024:
+  siblings_only: true
+
+# bare URLs never appear in finished prose; autolinks are fine
+MD034: true
+
+# consistent emphasis/list markers
+MD004:
+  style: dash
+MD049:
+  style: asterisk
+MD050:
+  style: asterisk
