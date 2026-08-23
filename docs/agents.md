@@ -67,16 +67,16 @@ Every agent file carries a `model:` pin, and the pin is only the fallback for he
 where nobody answered a routing question. The real source of truth is the active ticket's
 `ticket.yml`, whose `subagent-models` block the primary reads at dispatch time:
 
-| Role              | Default            | Why                                                                   |
-| ----------------- | ------------------ | --------------------------------------------------------------------- |
-| scout             | `gpt-5.6-luna`     | Retrieval is cheap-tier work by design                                |
-| engineer          | derived from scope | `large` pulls `sonnet-5` or `gpt-5.6-terra`; otherwise `gpt-5.6-luna` |
-| budgetron | `gpt-5.6-luna`     | Bounded fixes do not need a frontier model                            |
-| grumpy          | `gpt-5.6-luna`     | Adversarial existence proofs are cheap to obtain                      |
-| sunny           | `claude-opus-5`    | Corroboration carries the universal-claim burden                      |
-| wingman         | `claude-opus-5`    | Tool-less judgment needs the strongest available reasoner              |
-| uncle-bob         | `claude-opus-5`    | Abstraction and structure judgment gets the frontier Claude           |
-| merge-vader       | `gpt-5.6-sol`      | Cross-vendor diversity on the adversarial pass                        |
+| Role        | Default            | Why                                                                   |
+| ----------- | ------------------ | --------------------------------------------------------------------- |
+| scout       | `gpt-5.6-luna`     | Retrieval is cheap-tier work by design                                |
+| engineer    | derived from scope | `large` pulls `sonnet-5` or `gpt-5.6-terra`; otherwise `gpt-5.6-luna` |
+| budgetron   | `gpt-5.6-luna`     | Bounded fixes do not need a frontier model                            |
+| grumpy      | `gpt-5.6-luna`     | Adversarial existence proofs are cheap to obtain                      |
+| sunny       | `claude-opus-5`    | Corroboration carries the universal-claim burden                      |
+| wingman     | `claude-opus-5`    | Tool-less judgment needs the strongest available reasoner             |
+| uncle-bob   | `claude-opus-5`    | Abstraction and structure judgment gets the frontier Claude           |
+| merge-vader | `gpt-5.6-sol`      | Cross-vendor diversity on the adversarial pass                        |
 
 The engineer value in the ticket is the default for every task; the primary may bump a single
 gnarly task one tier at dispatch, logging the reason in that task's ASKED stanza. The reviewer

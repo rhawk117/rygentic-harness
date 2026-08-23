@@ -150,7 +150,8 @@ stateDiagram-v2
 ## Where the rules live
 
 Prose in this directory explains; the contracts define. The severity table, verdict vocabularies
-(scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman, review), and the two-half brief schema are in
+(scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman, review), and the two-half brief
+schema are in
 `skills/agents-assemble/references/contracts.md`. The `ticket.yml` schema with its derivation rules
 is in `skills/prepare-handoff/references/ticket-schema.md`, and the directory layout with its
 writer/reader matrix is in `skills/prepare-handoff/references/mightymodels-dir.md`. When this page

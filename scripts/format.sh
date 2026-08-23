@@ -13,23 +13,23 @@ cd "$REPO_ROOT"
 source "$SCRIPT_DIR/log.sh"
 
 main() {
-    log_step "ruff format"
-    uv run ruff format .
-    log_step_end
+	log_step "ruff format"
+	uv run ruff format .
+	log_step_end
 
-    log_step "ruff check --fix"
-    uv run ruff check . --fix
-    log_step_end
+	log_step "ruff check --fix"
+	uv run ruff check . --fix
+	log_step_end
 
-    if command -v shfmt >/dev/null 2>&1; then
-        log_step "shfmt"
-        shfmt -w scripts/*.sh
-        log_step_end
-    else
-        log_warn "shfmt not installed; shell scripts left as-is"
-    fi
+	if command -v shfmt >/dev/null 2>&1; then
+		log_step "shfmt"
+		shfmt -w scripts/*.sh
+		log_step_end
+	else
+		log_warn "shfmt not installed; shell scripts left as-is"
+	fi
 
-    log_success "Formatting complete"
+	log_success "Formatting complete"
 }
 
 main "$@"
