@@ -34,12 +34,12 @@ Answers 4 and 5 are not trivia — they derive `plan-first`, the primary-tier hi
 
 **D — ticket.yml.** Emit per `references/ticket-schema.md`, deriving `engineer`, `plan-first`, and `scope` from the answers. Then tell the user the file exists and pause: they tweak it by hand before anything else happens. Their edit wins over your derivation — that is the point of the pause.
 
-**E - handoffs/SPRINT.md.** Invoke the `promptlint` skill and use that to create a thin prompt for the next session, pointing at the ticket.yml and the issue, naming the ramp (`inline-sendoff` when scope is sm and plan-first false, `plan-work` otherwise), and stopping. Any fact copied into it is a fact that can drift.
+**E - handoffs/SPRINT.md.** Invoke the `promptlint` skill and use that to create a thin prompt for the next session, pointing at the ticket.yml and the issue, naming the ramp per the routing table in `docs/workflow.md` (`inline-sendoff` only for sm with plan-first false), and stopping. Any fact copied into it is a fact that can drift.
 
 ```markdown
 # Handoff for <slug>
 
-<important>YOU MUST invoke `using-mightmodels`</important>
+<important>YOU MUST invoke `using-mightymodels`</important>
 
 ## Handoff Content
 
@@ -48,7 +48,7 @@ Answers 4 and 5 are not trivia — they derive `plan-first`, the primary-tier hi
 
 ## The handoff
 
-After the user is done tweaking, offer: "Generate a prompt to begin the next session?" On yes, write `handoffs/SPRINT.md` — reading the _tweaked_ yaml, never your original draft. Thinness rule from mightymodels-dir.md applies absolutely: the file points at ticket.yml and the issue, names the ramp (`inline-sendoff` when scope is sm and plan-first false, `plan-work` otherwise), and stops. Any fact copied into it is a fact that can drift.
+After the user is done tweaking, offer: "Generate a prompt to begin the next session?" On yes, write `handoffs/SPRINT.md` — reading the _tweaked_ yaml, never your original draft. Thinness rule from mightymodels-dir.md applies absolutely: the file points at ticket.yml and the issue, names the ramp per the routing table in `docs/workflow.md` (`inline-sendoff` only for sm with plan-first false), and stops. Any fact copied into it is a fact that can drift.
 
 Close with "the task is ready for handoff" — and when plan-first is true, add: "switch models in your next session" (the plan gets written by a low-tier primary; the yaml carries the hint).
 

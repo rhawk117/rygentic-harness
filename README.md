@@ -18,8 +18,8 @@ flowchart TD
     A["lets-investigate\nchat triage with scouts"] --> B["what-we-know\ncited knowns, SWOT"]
     B --> C["prepare-handoff\ninterview, ticket.yml, issue, branch"]
     C --> D{scope}
-    D -->|small| E["inline-sendoff"]
-    D -->|"large or plan-first"| F["plan-work"]
+    D -->|"sm, no plan"| E["inline-sendoff"]
+    D -->|"any other combination"| F["formulate-plan"]
     E --> G["agents-assemble\nper-task work loop"]
     F --> G
     G --> H["finish-assembly\nPR and CI via gitty-up"]

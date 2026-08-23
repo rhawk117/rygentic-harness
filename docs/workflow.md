@@ -15,7 +15,7 @@ flowchart TD
     B --> C["prepare-handoff"]
     C --> D{"scope in ticket.yml"}
     D -->|"sm, no plan"| E["inline-sendoff"]
-    D -->|"large or plan-first"| F["plan-work"]
+    D -->|"any other combination"| F["formulate-plan"]
     E --> G["agents-assemble"]
     F -->|"plan approved"| G
     G --> H["finish-assembly"]
@@ -60,9 +60,21 @@ sets `plan-first: true`.
 ## Ramp
 
 The next session starts fresh and cheap. Which ramp it takes is not a judgment call; it is read
-from `ticket.yml`. Small scope with no plan flag means `inline-sendoff`: reconfirm the ticket's
+from `ticket.yml`. This table is the canonical statement of the routing rule; every other
+document points here rather than restating it:
+
+| scope | plan-first | ramp             |
+| ----- | ---------- | ---------------- |
+| sm    | false      | `inline-sendoff` |
+| sm    | true       | `formulate-plan` |
+| med   | false      | `formulate-plan` |
+| med   | true       | `formulate-plan` |
+| large | false      | `formulate-plan` |
+| large | true       | `formulate-plan` |
+
+`inline-sendoff`: reconfirm the ticket's
 claims at HEAD with two or three scouts, write the task checklist into the issue body, and hand
-straight to `agents-assemble`. Large scope or `plan-first: true` means `plan-work`: verify claims,
+straight to `agents-assemble`. `formulate-plan`: verify claims,
 then write `plan.md` as high-level strategy with enumerated tasks and size hints, deliberately
 free of code citations because citations go stale while the plan survives compaction. The user
 approves the plan before any dispatch.

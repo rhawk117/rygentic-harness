@@ -34,10 +34,11 @@ the ticket's claims at HEAD with two or three scouts, writes the task checklist 
 body, and hands control to `agents-assemble`. It auto-invokes at session start when the active
 ticket says `scope: sm` and `plan-first: false`.
 
-`plan-work` is the large-scope ramp. Same verification first, then it writes
+`formulate-plan` is the large-scope ramp. Same verification first, then it writes
 `.mightymodels/<slug>/plan.md`, high-level strategy and enumerated tasks with size hints,
 deliberately free of code-level citations, and gets the user's approval before invoking
-`agents-assemble`. It auto-invokes when the ticket says `scope: large` or `plan-first: true`.
+`agents-assemble`. It auto-invokes for every scope/plan-first combination other than `sm` with
+`plan-first: false`; the routing table in [docs/workflow.md](workflow.md) is canonical.
 
 `agents-assemble` runs the per-task work loop: fresh citations, a promptlint-templated engineer
 dispatch carrying an ASKED stanza with checkable acceptance criteria, the two-half task brief,
