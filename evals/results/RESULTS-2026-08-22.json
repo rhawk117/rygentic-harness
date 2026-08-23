@@ -1,0 +1,598 @@
+{
+  "generated_at": "2026-08-22T16:06:59+00:00",
+  "runner": "claude-sonnet-5",
+  "mode": "cli:bash",
+  "variants": {
+    "with_skill": {
+      "cases": [
+        {
+          "name": "agents-assemble-two-tasks",
+          "skill": "agents-assemble",
+          "duration": 154.74,
+          "assertions": [
+            {
+              "name": "task-01 brief two-halved",
+              "passed": true,
+              "reason": "all 3 needles in .mightymodels/rate-limit/briefs/task-01.md"
+            },
+            {
+              "name": "task-02 brief two-halved",
+              "passed": true,
+              "reason": "all 3 needles in .mightymodels/rate-limit/briefs/task-02.md"
+            },
+            {
+              "name": "task-01 brief within cap",
+              "passed": true,
+              "reason": ".mightymodels/rate-limit/briefs/task-01.md: 22 lines (cap 80)"
+            },
+            {
+              "name": "task-02 brief within cap",
+              "passed": true,
+              "reason": ".mightymodels/rate-limit/briefs/task-02.md: 22 lines (cap 80)"
+            },
+            {
+              "name": "no placeholder criteria",
+              "passed": true,
+              "reason": "'works correctly' absent in .mightymodels/rate-limit/briefs/task-01.md"
+            },
+            {
+              "name": "engineer dispatches written first",
+              "passed": true,
+              "reason": "2 files match .mightymodels/rate-limit/dispatches/*: ['task-01-dispatch.md', 'task-02-dispatch.md']"
+            },
+            {
+              "name": "both tasks checked off",
+              "passed": true,
+              "reason": "2 checked boxes in .mightymodels/rate-limit/issue-body.md"
+            },
+            {
+              "name": "REPORT within cap",
+              "passed": true,
+              "reason": ".mightymodels/rate-limit/REPORT.md: 35 lines (cap 50)"
+            },
+            {
+              "name": "suite green at sprint end",
+              "passed": true,
+              "reason": "pytest green: 2 passed in 0.02s"
+            }
+          ]
+        },
+        {
+          "name": "formulate-plan-large-ticket",
+          "skill": "formulate-plan",
+          "duration": 88.43,
+          "assertions": [
+            {
+              "name": "tasks enumerated with size hints",
+              "passed": true,
+              "reason": "4x '\\\\((sm|med|large)\\\\)' in .mightymodels/queue-overhaul/plan.md"
+            },
+            {
+              "name": "non-goals section present",
+              "passed": true,
+              "reason": "'on-goals' found in .mightymodels/queue-overhaul/plan.md"
+            },
+            {
+              "name": "plan is citation-free",
+              "passed": true,
+              "reason": "'\\\\.py:\\\\d+' in .mightymodels/queue-overhaul/plan.md: no match"
+            },
+            {
+              "name": "loop not started before approval",
+              "passed": true,
+              "reason": "absent: .mightymodels/queue-overhaul/briefs"
+            },
+            {
+              "name": "waits on user approval",
+              "passed": true,
+              "reason": "response carries ['approv']"
+            }
+          ]
+        },
+        {
+          "name": "inline-sendoff-stale-claim",
+          "skill": "inline-sendoff",
+          "duration": 359.52,
+          "assertions": [
+            {
+              "name": "stale claim named",
+              "passed": true,
+              "reason": "response has 'routes.py'"
+            },
+            {
+              "name": "framed as a delta",
+              "passed": true,
+              "reason": "response carries ['stale', 'delta', 'rename']"
+            },
+            {
+              "name": "stops and asks before proceeding",
+              "passed": true,
+              "reason": "response tail asks the user"
+            },
+            {
+              "name": "checklist not written past the gate",
+              "passed": true,
+              "reason": "'[ ] T' absent in .mightymodels/rate-limit/issue-body.md"
+            },
+            {
+              "name": "no source modified in the ramp",
+              "passed": true,
+              "reason": "git status clean (src tests)"
+            }
+          ]
+        },
+        {
+          "name": "lets-investigate-slow-queue",
+          "skill": "lets-investigate",
+          "duration": 79.37,
+          "assertions": [
+            {
+              "name": "scout dispatches written and shaped",
+              "passed": true,
+              "reason": "2 files match scout-dispatches/*: ['01.md', '02.md']"
+            },
+            {
+              "name": "read-only outside scout-dispatches",
+              "passed": true,
+              "reason": "git status clean"
+            },
+            {
+              "name": "findings cite the drain facts",
+              "passed": true,
+              "reason": "response carries all of ['queue.py', 'DRAIN_BATCH']"
+            },
+            {
+              "name": "offers what-we-know at the boundary",
+              "passed": true,
+              "reason": "response has 'what-we-know'"
+            }
+          ]
+        },
+        {
+          "name": "prepare-handoff-rate-limit",
+          "skill": "prepare-handoff",
+          "duration": 130.96,
+          "assertions": [
+            {
+              "name": "ticket.yml carries derived scope and models",
+              "passed": true,
+              "reason": "all 4 needles in .mightymodels/upload-rate-limit/ticket.yml"
+            },
+            {
+              "name": "plan-first derived false",
+              "passed": true,
+              "reason": "'plan-first:\\\\s*(false|no)' in .mightymodels/upload-rate-limit/ticket.yml: plan-first: false"
+            },
+            {
+              "name": "ignore ritual ran",
+              "passed": true,
+              "reason": "'.mightymodels' found in .git/info/exclude"
+            },
+            {
+              "name": "SPRINT.md within thin cap",
+              "passed": true,
+              "reason": ".mightymodels/upload-rate-limit/handoffs/SPRINT.md: 11 lines (cap 25)"
+            },
+            {
+              "name": "SPRINT.md thin: no models or scope copied",
+              "passed": true,
+              "reason": "'gpt-5\\\\.6|opus|sonnet|scope:' in .mightymodels/upload-rate-limit/handoffs/SPRINT.md: no match"
+            },
+            {
+              "name": "issue draft has security surface",
+              "passed": true,
+              "reason": "'ecurity' found in .mightymodels/upload-rate-limit/issue-body.md"
+            },
+            {
+              "name": "issue draft carries abuse-case criteria",
+              "passed": true,
+              "reason": "'abuse|AC-' in .mightymodels/upload-rate-limit/issue-body.md: abuse"
+            },
+            {
+              "name": "branch created",
+              "passed": true,
+              "reason": "branch fix/upload-rate-limit exists"
+            }
+          ]
+        },
+        {
+          "name": "review-circus-aggregate-route",
+          "skill": "review-circus",
+          "duration": 225.66,
+          "assertions": [
+            {
+              "name": "3 findings, dedup, Critical mapping",
+              "passed": false,
+              "reason": "triple=False dedup=True critical_mapped=True"
+            },
+            {
+              "name": "PR comment written regardless of outcome",
+              "passed": true,
+              "reason": ".mightymodels/checkout-fix/review/pr-comment.md"
+            },
+            {
+              "name": "dual-provenance Critical routed to engineer",
+              "passed": true,
+              "reason": "engineer-rev1-shell-injection.md carries ['deploy.py']"
+            },
+            {
+              "name": "Medium routed to budgetron",
+              "passed": true,
+              "reason": "budgetron-rev2-readme-doc.md carries ['README']"
+            },
+            {
+              "name": "Low finding gets no remediation dispatch",
+              "passed": true,
+              "reason": "'deploy_target_host' in no file under .mightymodels/checkout-fix/dispatches/*"
+            },
+            {
+              "name": "no remediation applied directly",
+              "passed": true,
+              "reason": "no diff (scripts)"
+            }
+          ]
+        },
+        {
+          "name": "using-mightymodels-routing",
+          "skill": "using-mightymodels",
+          "duration": 103.05,
+          "assertions": [
+            {
+              "name": "knows the fleet roster by name",
+              "passed": true,
+              "reason": "response carries all of ['scout', 'budgetron']"
+            },
+            {
+              "name": "lint residual routed to budgetron, not a full engineer",
+              "passed": true,
+              "reason": "1x '(?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron' in response"
+            },
+            {
+              "name": "verification routed to a scout checking DONE against ASKED",
+              "passed": true,
+              "reason": "2x '(?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout' in response"
+            },
+            {
+              "name": "model answers sourced from the ticket, not agent pins",
+              "passed": true,
+              "reason": "response has 'ticket.yml'"
+            },
+            {
+              "name": "reads the actual routed model from the ticket",
+              "passed": true,
+              "reason": "response has 'gpt-5.6-luna'"
+            },
+            {
+              "name": "knows the fleet refusal vocabulary",
+              "passed": true,
+              "reason": "5x '(?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat' in response"
+            },
+            {
+              "name": "answered without touching the repo",
+              "passed": true,
+              "reason": "git status clean"
+            }
+          ]
+        }
+      ],
+      "passed": 43,
+      "total": 44,
+      "pass_rate": 0.9773,
+      "failures": []
+    },
+    "without_skill": {
+      "cases": [
+        {
+          "name": "agents-assemble-two-tasks",
+          "skill": "agents-assemble",
+          "duration": 92.35,
+          "assertions": [
+            {
+              "name": "task-01 brief two-halved",
+              "passed": false,
+              "reason": "missing: .mightymodels/rate-limit/briefs/task-01.md"
+            },
+            {
+              "name": "task-02 brief two-halved",
+              "passed": false,
+              "reason": "missing: .mightymodels/rate-limit/briefs/task-02.md"
+            },
+            {
+              "name": "task-01 brief within cap",
+              "passed": false,
+              "reason": "missing: .mightymodels/rate-limit/briefs/task-01.md"
+            },
+            {
+              "name": "task-02 brief within cap",
+              "passed": false,
+              "reason": "missing: .mightymodels/rate-limit/briefs/task-02.md"
+            },
+            {
+              "name": "no placeholder criteria",
+              "passed": false,
+              "reason": "missing: .mightymodels/rate-limit/briefs/task-01.md"
+            },
+            {
+              "name": "engineer dispatches written first",
+              "passed": true,
+              "reason": "2 files match .mightymodels/rate-limit/dispatches/*: ['task-01-dispatch.md', 'task-02-dispatch.md']"
+            },
+            {
+              "name": "both tasks checked off",
+              "passed": false,
+              "reason": "0 checked boxes in .mightymodels/rate-limit/issue-body.md (need 2)"
+            },
+            {
+              "name": "REPORT within cap",
+              "passed": false,
+              "reason": "missing: .mightymodels/rate-limit/REPORT.md"
+            },
+            {
+              "name": "suite green at sprint end",
+              "passed": true,
+              "reason": "pytest green: 2 passed in 0.01s"
+            }
+          ]
+        },
+        {
+          "name": "formulate-plan-large-ticket",
+          "skill": "formulate-plan",
+          "duration": 158.77,
+          "assertions": [
+            {
+              "name": "tasks enumerated with size hints",
+              "passed": false,
+              "reason": "missing: .mightymodels/queue-overhaul/plan.md"
+            },
+            {
+              "name": "non-goals section present",
+              "passed": false,
+              "reason": "missing: .mightymodels/queue-overhaul/plan.md"
+            },
+            {
+              "name": "plan is citation-free",
+              "passed": false,
+              "reason": "missing: .mightymodels/queue-overhaul/plan.md"
+            },
+            {
+              "name": "loop not started before approval",
+              "passed": true,
+              "reason": "absent: .mightymodels/queue-overhaul/briefs"
+            },
+            {
+              "name": "waits on user approval",
+              "passed": false,
+              "reason": "response carries none of ['approv', 'Approv']"
+            }
+          ]
+        },
+        {
+          "name": "inline-sendoff-stale-claim",
+          "skill": "inline-sendoff",
+          "duration": 65.91,
+          "assertions": [
+            {
+              "name": "stale claim named",
+              "passed": true,
+              "reason": "response has 'routes.py'"
+            },
+            {
+              "name": "framed as a delta",
+              "passed": true,
+              "reason": "response carries ['renamed', 'rename']"
+            },
+            {
+              "name": "stops and asks before proceeding",
+              "passed": false,
+              "reason": "no question in the response tail"
+            },
+            {
+              "name": "checklist not written past the gate",
+              "passed": true,
+              "reason": "'[ ] T' absent in .mightymodels/rate-limit/issue-body.md"
+            },
+            {
+              "name": "no source modified in the ramp",
+              "passed": false,
+              "reason": "dirty: [' M src/limiter.py', ' M src/routes.py']"
+            }
+          ]
+        },
+        {
+          "name": "lets-investigate-slow-queue",
+          "skill": "lets-investigate",
+          "duration": 55.91,
+          "assertions": [
+            {
+              "name": "scout dispatches written and shaped",
+              "passed": true,
+              "reason": "4 files match scout-dispatches/*: ['01.md', '02.md', '03.md', '04.md']"
+            },
+            {
+              "name": "read-only outside scout-dispatches",
+              "passed": true,
+              "reason": "git status clean"
+            },
+            {
+              "name": "findings cite the drain facts",
+              "passed": true,
+              "reason": "response carries all of ['queue.py', 'DRAIN_BATCH']"
+            },
+            {
+              "name": "offers what-we-know at the boundary",
+              "passed": false,
+              "reason": "response unexpectedly lacks 'what-we-know'"
+            }
+          ]
+        },
+        {
+          "name": "prepare-handoff-rate-limit",
+          "skill": "prepare-handoff",
+          "duration": 224.02,
+          "assertions": [
+            {
+              "name": "ticket.yml carries derived scope and models",
+              "passed": false,
+              "reason": "missing: .mightymodels/upload-rate-limit/ticket.yml"
+            },
+            {
+              "name": "plan-first derived false",
+              "passed": false,
+              "reason": "missing: .mightymodels/upload-rate-limit/ticket.yml"
+            },
+            {
+              "name": "ignore ritual ran",
+              "passed": false,
+              "reason": "'.mightymodels' unexpectedly absent in .git/info/exclude"
+            },
+            {
+              "name": "SPRINT.md within thin cap",
+              "passed": false,
+              "reason": "missing: .mightymodels/upload-rate-limit/handoffs/SPRINT.md"
+            },
+            {
+              "name": "SPRINT.md thin: no models or scope copied",
+              "passed": false,
+              "reason": "missing: .mightymodels/upload-rate-limit/handoffs/SPRINT.md"
+            },
+            {
+              "name": "issue draft has security surface",
+              "passed": false,
+              "reason": "missing: .mightymodels/upload-rate-limit/issue-body.md"
+            },
+            {
+              "name": "issue draft carries abuse-case criteria",
+              "passed": false,
+              "reason": "missing: .mightymodels/upload-rate-limit/issue-body.md"
+            },
+            {
+              "name": "branch created",
+              "passed": true,
+              "reason": "branch fix/upload-rate-limit exists"
+            }
+          ]
+        },
+        {
+          "name": "review-circus-aggregate-route",
+          "skill": "review-circus",
+          "duration": 159.48,
+          "assertions": [
+            {
+              "name": "3 findings, dedup, Critical mapping",
+              "passed": false,
+              "reason": "triple=False dedup=True critical_mapped=False"
+            },
+            {
+              "name": "PR comment written regardless of outcome",
+              "passed": false,
+              "reason": "missing: .mightymodels/checkout-fix/review/pr-comment.md"
+            },
+            {
+              "name": "dual-provenance Critical routed to engineer",
+              "passed": true,
+              "reason": "engineer-fix-mv1-g4.md carries ['deploy.py']"
+            },
+            {
+              "name": "Medium routed to budgetron",
+              "passed": false,
+              "reason": "no file under .mightymodels/checkout-fix/dispatches/* (name~'budgetron') carries ['README']"
+            },
+            {
+              "name": "Low finding gets no remediation dispatch",
+              "passed": false,
+              "reason": "'deploy_target_host' appears in ['engineer-fix-mv1-g4.md']"
+            },
+            {
+              "name": "no remediation applied directly",
+              "passed": true,
+              "reason": "no diff (scripts)"
+            }
+          ]
+        },
+        {
+          "name": "using-mightymodels-routing",
+          "skill": "using-mightymodels",
+          "duration": 429.15,
+          "assertions": [
+            {
+              "name": "knows the fleet roster by name",
+              "passed": true,
+              "reason": "response carries all of ['scout', 'budgetron']"
+            },
+            {
+              "name": "lint residual routed to budgetron, not a full engineer",
+              "passed": true,
+              "reason": "1x '(?is)budgetron[^.?!]{0,80}(E501|lint|wrap)|(E501|lint|wrap)[^.?!]{0,80}budgetron' in response"
+            },
+            {
+              "name": "verification routed to a scout checking DONE against ASKED",
+              "passed": true,
+              "reason": "1x '(?s)[Ss]cout[^.?!]{0,120}(DONE|ASKED)|(DONE|ASKED)[^.?!]{0,120}[Ss]cout' in response"
+            },
+            {
+              "name": "model answers sourced from the ticket, not agent pins",
+              "passed": true,
+              "reason": "response has 'ticket.yml'"
+            },
+            {
+              "name": "reads the actual routed model from the ticket",
+              "passed": true,
+              "reason": "response has 'gpt-5.6-luna'"
+            },
+            {
+              "name": "knows the fleet refusal vocabulary",
+              "passed": true,
+              "reason": "2x '(?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat' in response"
+            },
+            {
+              "name": "answered without touching the repo",
+              "passed": true,
+              "reason": "git status clean"
+            }
+          ]
+        }
+      ],
+      "passed": 19,
+      "total": 44,
+      "pass_rate": 0.4318,
+      "failures": []
+    }
+  },
+  "skills": [
+    {
+      "skill": "agents-assemble",
+      "with_skill": 1.0,
+      "without_skill": 0.2222
+    },
+    {
+      "skill": "formulate-plan",
+      "with_skill": 1.0,
+      "without_skill": 0.2
+    },
+    {
+      "skill": "inline-sendoff",
+      "with_skill": 1.0,
+      "without_skill": 0.6
+    },
+    {
+      "skill": "lets-investigate",
+      "with_skill": 1.0,
+      "without_skill": 0.75
+    },
+    {
+      "skill": "prepare-handoff",
+      "with_skill": 1.0,
+      "without_skill": 0.125
+    },
+    {
+      "skill": "review-circus",
+      "with_skill": 0.8333,
+      "without_skill": 0.3333
+    },
+    {
+      "skill": "using-mightymodels",
+      "with_skill": 1.0,
+      "without_skill": 1.0
+    }
+  ]
+}

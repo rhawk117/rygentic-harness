@@ -98,7 +98,7 @@ markdownlint, the skills prompt-injection scan, and the test suite on Python 3.1
 
 ## Status
 
-0.4.0. The hook layer (session covenant injection, verification gates at agentStop, preCompact
+0.5.0. The hook layer (session covenant injection, verification gates at agentStop, preCompact
 ticket snapshots) and the team/personal overlay split are designed but not yet shipped.
 CHANGELOG.md has the full trail.
 
