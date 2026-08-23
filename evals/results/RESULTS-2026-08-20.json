@@ -297,8 +297,8 @@
           ]
         },
         {
-          "name": "using-mightmodels-routing",
-          "skill": "using-mightmodels",
+          "name": "using-mightymodels-routing",
+          "skill": "using-mightymodels",
           "duration": 0.01,
           "assertions": [
             {
@@ -707,8 +707,8 @@
           ]
         },
         {
-          "name": "using-mightmodels-routing",
-          "skill": "using-mightmodels",
+          "name": "using-mightymodels-routing",
+          "skill": "using-mightymodels",
           "duration": 0.01,
           "assertions": [
             {
@@ -866,7 +866,7 @@
       "without_skill": 0.5
     },
     {
-      "skill": "using-mightmodels",
+      "skill": "using-mightymodels",
       "with_skill": 1.0,
       "without_skill": 0.5714
     },

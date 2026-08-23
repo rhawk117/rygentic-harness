@@ -105,6 +105,6 @@ answered. Scouts separate `VERIFIED` facts from `INFERRED` ones, and anything in
 what it rests on. If you extend the fleet, keep new agents inside this vocabulary; the
 coordinator skills parse it.
 
-In a session, the `using-mightmodels` skill is the compact form of this page for the primary
+In a session, the `using-mightymodels` skill is the compact form of this page for the primary
 itself: the routing rules, dispatch contents, and refusal boundaries, consultable at dispatch
 time without loading the agent files.

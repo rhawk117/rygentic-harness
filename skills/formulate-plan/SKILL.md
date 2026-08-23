@@ -1,16 +1,16 @@
 ---
 name: formulate-plan
 description: >-
-  Large-scope ramp for an mightymodels ticket: read ticket.yml and the issue, verify the ticket's task claims with scouts, then write .mightymodels/<slug>/plan.md — high-level strategy and enumerated tasks with size hints, deliberately free of code-level citations — and get the user's approval before invoking agents-assemble. Auto-invoke at session start when the active ticket says scope large or plan-first true; use for "plan this ticket", "write the plan for issue #N", "ramp the big one". Not for small tickets (inline-sendoff), not a design document or ADR (the plan sequences work on a settled design), and not for Jira sprint planning.
+  Large-scope ramp for an mightymodels ticket: read ticket.yml and the issue, verify the ticket's task claims with scouts, then write .mightymodels/<slug>/plan.md — high-level strategy and enumerated tasks with size hints, deliberately free of code-level citations — and get the user's approval before invoking agents-assemble. Auto-invoke at session start for any scope/plan-first combination other than scope sm with plan-first false (the routing table in docs/workflow.md is canonical); use for "plan this ticket", "write the plan for issue #N", "ramp the big one". Not for small tickets (inline-sendoff), not a design document or ADR (the plan sequences work on a settled design), and not for Jira sprint planning.
 ---
 
-# plan-work
+# formulate-plan
 
 The large ramp. Its one structural conviction: **the plan is high-level because citations rot.** A plan written at commit A gets executed across commits B through K; any file:line it carried would be stale by task three and trusted anyway. So the plan carries strategy, sequence, and intent — and the per-task briefs carry fresh citations, compiled at dispatch time by what-we-know inside the loop. Altitude is not vagueness: tasks are still enumerated, sized, and ordered.
 
 ## Sequence
 
-**0.** Invoke `using-mightmodels`
+**0.** Invoke `using-mightymodels`
 
 **1. Read ticket.yml and the issue first.** these are the ONLY things you are permitted to read without a scout. The plan implements the ticket; a plan written from conversation memory instead of the ticket is the drift you built this system to kill.
 

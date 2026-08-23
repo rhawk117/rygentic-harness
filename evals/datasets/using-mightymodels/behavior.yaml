@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=behavior.schema.json
-name: mightymodels-behavior-using-mightmodels
+name: mightymodels-behavior-using-mightymodels
 cases:
-- name: using-mightmodels-routing
+- name: using-mightymodels-routing
   inputs:
-    case: using-mightmodels-routing
-    skill: using-mightmodels
+    case: using-mightymodels-routing
+    skill: using-mightymodels
     fixture: fx-sprint
     task: 'You are the primary agent in this repo; the active ticket is .mightymodels/rate-limit
       (read its ticket.yml). The engineer just reported done on task-01 and appended
@@ -17,7 +17,7 @@ cases:
       in prose; do not dispatch anyone and do not edit any files.'
     sim_notes: ''
   metadata:
-    skill: using-mightmodels
+    skill: using-mightymodels
   expected_output: null
   evaluators:
   - ResponseContainsAll:

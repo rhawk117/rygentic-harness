@@ -139,7 +139,7 @@ stateDiagram-v2
     [*] --> investigating: lets-investigate
     investigating --> consolidated: what-we-know
     consolidated --> ramped: prepare-handoff
-    ramped --> sprinting: inline-sendoff or plan-work
+    ramped --> sprinting: inline-sendoff or formulate-plan
     sprinting --> finishing: all tasks done
     finishing --> in_review: CI green
     in_review --> sprinting: findings routed back

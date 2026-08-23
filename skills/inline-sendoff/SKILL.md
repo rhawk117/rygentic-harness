@@ -10,7 +10,7 @@ The small ramp. A sm-scope ticket earned the right to skip plan.md — but not t
 
 ## Sequence
 
-**0.** Invoke the `using-mightmodels` skill
+**0.** Invoke the `using-mightymodels` skill
 
 **1. Read first, dispatch second.** `ticket.yml`, then the issue (or `.mightymodels/<slug>/issue-body.md` when no forge issue exists). The ticket's `triaged-at` and the claims in the issue are the things to confirm — you are not re-triaging from scratch; the triage session already happened and re-doing it disrespects both its work and this session's budget.
 
