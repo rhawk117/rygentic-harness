@@ -112,6 +112,11 @@ budgeted cheap path. Repeated failures on the same ground invoke `whats-broken`,
 debugging protocol with a three-strike breaker that escalates to the human instead of attempting
 a fourth patch.
 
+The loop advances only after its evidence is externalized: the engineer appends the DONE half
+(with the commit hash) to the brief before reporting, the verification outcome is recorded
+before a task's box is checked, and recovery reads the brief, never anyone's conversation. The
+full ordering rule lives in `skills/agents-assemble/references/contracts.md`.
+
 The sprint ends with a `REPORT.md` of at most 50 lines: what shipped, what deviated, what
 remains.
 

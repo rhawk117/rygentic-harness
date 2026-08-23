@@ -24,7 +24,7 @@ The per-task loop. Its whole design bet is that verification has a persisted tar
 - Bounded, mechanical, one-concern residual → **budgetron** (dispatch via its promptlint template; Fix:/Verify: verbatim). Two rounds max; its contract escalates on budget or scope excess, and an escalation routes to a full engineer dispatch.
 - Scout verification fails **twice** on the same task → **whats-broken**. The third attempt is never another patch; repeated failure means the understanding is wrong, and patching a misunderstanding just relocates it.
 
-**6. Close the task.** All ACs verified → check the task's box (issue checklist or plan), delete nothing, move on. A task with unverified ACs does not close — it routes (step 5) or escalates to the user with the evidence.
+**6. Close the task.** Ordering is durable-before-advance (contracts.md): the verification outcome is recorded in the brief or checklist before the box is checked, so a session that dies mid-task recovers from artifacts, not memory. All ACs verified → check the task's box (issue checklist or plan), delete nothing, move on. A task with unverified ACs does not close — it routes (step 5) or escalates to the user with the evidence.
 
 ## Sprint end
 
