@@ -53,8 +53,9 @@ unclear causes to `whats-broken`), and on green it offers the thin `handoffs/REV
 triage the surface, `uncle-bob` and `merge-vader` run in parallel with models from `ticket.yml`,
 reports land under `.mightymodels/<slug>/review/`, findings are deduped and severity-unified
 through the shared table, and an abridged comment is always posted to the PR, pass or fail.
-Worth-fixing triage routes uncle-bob findings to an engineer and merge-vader findings to
-`budgetron`.
+Worth-fixing triage routes by risk first (Critical findings and High+ security findings go to
+an engineer regardless of source), then by source: remaining uncle-bob findings to an engineer,
+remaining merge-vader findings to `budgetron`.
 
 `ask-an-adult` escalates a genuinely undecidable judgment call to `wingman`, a tool-less
 reasoning advisor, and carries its questions to the user before work resumes. `dialectic` runs

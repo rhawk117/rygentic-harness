@@ -26,8 +26,9 @@ flowchart TD
     WB --> H
     I -->|"pass"| J["review-circus"]
     J --> K{"findings worth fixing"}
-    K -->|"uncle-bob findings"| EN["engineer"]
-    K -->|"merge-vader findings"| SK2["budgetron"]
+    K -->|"Critical, or security High+"| EN["engineer"]
+    K -->|"other uncle-bob findings"| EN
+    K -->|"other merge-vader findings"| SK2["budgetron"]
     EN --> J
     SK2 --> J
     K -->|"none left"| L["human review"]
@@ -131,8 +132,11 @@ severity-unified through the shared table in `contracts.md`, and an abridged, hu
 comment is always posted to the PR, pass or fail, so the review trail is documented where
 reviewers live.
 
-Remediation routes by source. uncle-bob findings concern structure and abstraction, so they go
-to a full engineer. merge-vader findings tend to be concrete and bounded, so they go to
+Remediation routes by risk first, then by source. A Critical finding, or a security finding at
+High severity or above, goes to a full engineer no matter which reviewer surfaced it: a
+severity that says "harm now" outranks any statement about who found the defect. Below that
+line, source decides: uncle-bob findings concern structure and abstraction, so they go
+to a full engineer; merge-vader findings tend to be concrete and bounded, so they go to
 `budgetron`, whose own contract escalates anything that turns out bigger than named.
 Pre-existing debt is triaged separately from regressions: the loop fixes what the branch broke
 and files the rest instead of scope-creeping the ticket.

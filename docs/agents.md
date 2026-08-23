@@ -33,8 +33,9 @@ residual issue with a known, bounded fix, a failing lint rule, a missed verifica
 review finding carrying explicit Fix and Verify lines, works within roughly ten tool calls, and
 never expands scope. When the fix turns out larger than named, it reports `escalated` instead of
 improvising, and the primary re-dispatches to a full engineer. That escalation path is why
-routing merge-vader findings here is safe: misjudged bounds cost one cheap bounce, not a bad
-fix.
+routing merge-vader findings below the risk line here is safe: misjudged bounds cost one cheap
+bounce, not a bad fix. Critical findings, and security findings at High or above, never land
+here; they go straight to a full engineer regardless of which reviewer found them.
 
 ## gitty-up
 

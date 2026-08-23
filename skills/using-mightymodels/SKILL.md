@@ -89,9 +89,11 @@ Route by what you need, not by what feels senior:
   parallel on one proposition, then adjudicate their evidence. Do not use it for a fact a scout
   can retrieve or a decision already made.
 
-Review findings route by source: uncle-bob findings go to an engineer (structure judgment needed
-to fix what a structure judge flagged), merge-vader findings go to budgetron (concrete
-and bounded, and its `escalated` verdict is the safety valve when a bound was misjudged).
+Review findings route by risk first, then source: a Critical finding, or a security finding at
+High severity or above, goes to a full engineer no matter which reviewer found it. Below that
+line, uncle-bob findings go to an engineer (structure judgment needed to fix what a structure
+judge flagged) and merge-vader findings go to budgetron (concrete and bounded, and its
+`escalated` verdict is the safety valve when a bound was misjudged).
 
 CI failures route by the log-tail test: cause obvious from the last screen of the log means
 budgetron; cause needing investigation means the whats-broken protocol, not a fixer.
