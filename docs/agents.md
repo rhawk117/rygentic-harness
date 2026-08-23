@@ -1,9 +1,12 @@
 # Agents and model routing
 
 Seven workers live in `agents/` as `.agent.md` files. All of them are delegation-only: the
-primary dispatches them with a self-contained task, they report in a structured format, and they
-hold no memory between dispatches. What keeps the fleet cheap is that each worker refuses the
-work of the tier above it.
+primary dispatches them with a self-contained task and they report in a structured format.
+Worker conversational state is never authoritative: a worker may retain task-local context for
+bounded follow-ups in the same conversation, but all state required for recovery is
+externalized to the ticket directory before the workflow advances, and verification that
+requires independence uses a fresh worker context. What keeps the fleet cheap is that each
+worker refuses the work of the tier above it.
 
 ## scout
 

@@ -16,8 +16,11 @@ description: >-
 # using-mightymodels
 
 Mightymodels is a worker fleet. You, the primary, spend your context on routing and judgment;
-workers spend theirs on one narrow job each and are discarded after reporting. Every
-worker is delegation-only, holds no memory between dispatches, and reports in a parseable shape.
+workers spend theirs on one narrow job each. Every worker is delegation-only and reports in a
+parseable shape. Worker conversational state is never authoritative: a worker may retain
+task-local context for bounded follow-ups, but all state required for recovery must be
+externalized before the workflow advances, and verification requiring independence must use a
+fresh worker context.
 The fleet stays cheap because each worker refuses the work of the tier above it, and your
 dispatches stay honest because every claim a worker makes is checkable by another worker.
 
