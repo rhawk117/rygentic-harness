@@ -50,7 +50,7 @@ them to your own oracle and assert the should-trigger queries rank the skill in 
 
 ## Agents
 
-The four workers are `.agent.md` files with Copilot frontmatter: `name`, `description`, `model`,
+The seven workers are `.agent.md` files with Copilot frontmatter: `name`, `description`, `model`,
 `tools` (Copilot tool names such as `view`, `edit`, `execute`), and `disable-model-invocation`
 where relevant. A plugin can carry agent directories, but harness versions differ in whether
 plugin agents surface automatically, and a `customAgents.defaultLocalOnly: true` setting will

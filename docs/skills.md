@@ -1,7 +1,7 @@
 # Skills
 
-Twenty skills ship with the plugin: ten loop stages, a three-skill review stack, the
-using-mightmodels fleet reference, and five standalone utilities. Each is a directory under
+Twenty skills ship with the plugin: ten loop stages, two escalation skills, a two-skill review
+stack, the using-mightymodels fleet reference, and five standalone utilities. Each is a directory under
 `skills/` with a `SKILL.md` whose frontmatter carries only `name` and `description` (plus
 `license` or harness-specific keys where needed), so the same files load in Copilot CLI and
 Claude Code.
@@ -86,13 +86,9 @@ conformance when a plan or issue is supplied. It coordinates scouts for facts be
 and ends in a gated verdict, `BLOCK`, `MERGE WITH CONDITIONS`, or `CLEAR`. `CLEAR` is impossible
 while any security-relevant question sits `UNKNOWN-BLOCKED`.
 
-`thermo-nuclear-code-quality-review` is the deliberately harsh maintainability audit for
-abstraction quality, giant files, and spaghetti-condition growth. Reach for it when a normal
-review keeps waving things through.
-
 ## The fleet reference
 
-`using-mightmodels` is the orientation skill for the mightymodels, mightymodels's worker fleet. It
+`using-mightymodels` is the orientation skill for the mightymodels, mightymodels's worker fleet. It
 answers the routing questions a primary faces at dispatch time: which worker for which job, what
 each one refuses to do, what a dispatch must contain, and how model selection resolves between
 `ticket.yml` and the agent-file pins. Consult it when asking "which agent should handle this",
@@ -109,9 +105,14 @@ templates, including the engineer template that emits the ASKED stanza.
 `humanizer` removes signs of AI-generated writing, based on Wikipedia's "Signs of AI writing"
 catalog. `prepare-handoff` runs issue prose through it; this documentation was written under it.
 
-`jira` manages Jira issues, epics, sprints, boards, and JQL queries through `jira-cli`. Its
-description is one half of the trigger collision pair the eval datasets guard: sprint words
-alone must not pull in `agents-assemble`.
+`crashout` is the pressure valve and flight recorder: on an explicit `/crashout`, it journals
+the user's rant verbatim, checks whether the failure has happened before, and turns repeated
+tilt into standing corrective actions. It fires only when invoked by name.
+
+Jira operations are deliberately outside the plugin. Several descriptions name "the jira skill"
+as the boundary owner (an external companion skill, not part of this repo), and its trigger
+phrasing is one half of the collision pair the eval datasets guard: sprint words alone must not
+pull in `agents-assemble`.
 
 `hooksmith` analyzes a repository and designs, plans, and implements GitHub Copilot hooks that
 pay off for that specific repo, driven by its CI workflows, lint and type configs, and
