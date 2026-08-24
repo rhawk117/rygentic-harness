@@ -44,7 +44,7 @@ report_matches() {
 	local description="$2"
 	local matches="$3"
 
-	[[ -n "$matches" ]] || return
+	[[ -n "$matches" ]] || return 0
 
 	findings=1
 
@@ -75,7 +75,7 @@ scan_ere() {
 		rc=$?
 	fi
 
-	(( rc <= 1 )) ||
+	((rc <= 1)) ||
 		die "scan $id failed with grep exit code $rc"
 
 	report_matches "$id" "$description" "$matches"
@@ -103,7 +103,7 @@ scan_pcre() {
 		rc=$?
 	fi
 
-	(( rc <= 1 )) ||
+	((rc <= 1)) ||
 		die "scan $id failed; check PCRE support and pattern validity"
 
 	report_matches "$id" "$description" "$matches"
@@ -133,7 +133,7 @@ main() {
 	scan_ere INJ6 "plaintext-http links" \
 		'http://[a-zA-Z0-9]'
 
-	if (( findings > 0 )); then
+	if ((findings > 0)); then
 		printf '\nsecurity.sh: findings above need review; treat skill text as code.\n' >&2
 		return 1
 	fi

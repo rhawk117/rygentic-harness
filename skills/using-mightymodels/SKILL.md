@@ -16,8 +16,11 @@ description: >-
 # using-mightymodels
 
 Mightymodels is a worker fleet. You, the primary, spend your context on routing and judgment;
-workers spend theirs on one narrow job each and are discarded after reporting. Every
-worker is delegation-only, holds no memory between dispatches, and reports in a parseable shape.
+workers spend theirs on one narrow job each. Every worker is delegation-only and reports in a
+parseable shape. Worker conversational state is never authoritative: a worker may retain
+task-local context for bounded follow-ups, but all state required for recovery must be
+externalized before the workflow advances, and verification requiring independence must use a
+fresh worker context.
 The fleet stays cheap because each worker refuses the work of the tier above it, and your
 dispatches stay honest because every claim a worker makes is checkable by another worker.
 
@@ -89,9 +92,11 @@ Route by what you need, not by what feels senior:
   parallel on one proposition, then adjudicate their evidence. Do not use it for a fact a scout
   can retrieve or a decision already made.
 
-Review findings route by source: uncle-bob findings go to an engineer (structure judgment needed
-to fix what a structure judge flagged), merge-vader findings go to budgetron (concrete
-and bounded, and its `escalated` verdict is the safety valve when a bound was misjudged).
+Review findings route by risk first, then source: a Critical finding, or a security finding at
+High severity or above, goes to a full engineer no matter which reviewer found it. Below that
+line, uncle-bob findings go to an engineer (structure judgment needed to fix what a structure
+judge flagged) and merge-vader findings go to budgetron (concrete and bounded, and its
+`escalated` verdict is the safety valve when a bound was misjudged).
 
 CI failures route by the log-tail test: cause obvious from the last screen of the log means
 budgetron; cause needing investigation means the whats-broken protocol, not a fixer.

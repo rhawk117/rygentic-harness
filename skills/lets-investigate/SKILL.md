@@ -8,7 +8,7 @@ description: >-
 
 The opening move: understand before anything gets named, ticketed, or built. This session's output is understanding — cited facts accumulated in chat plus the scout reports in context. No files, no `.mightymodels/`, no edits; artifacts come later, from prepare-handoff, once there is something worth persisting.
 
-<important>YOU MUST invoke `using-mightmodels`</important>
+<important>YOU MUST invoke `using-mightymodels`</important>
 
 ## How it runs
 

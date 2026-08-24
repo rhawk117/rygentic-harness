@@ -1,7 +1,7 @@
 # Skills
 
-Twenty skills ship with the plugin: ten loop stages, a three-skill review stack, the
-using-mightmodels fleet reference, and five standalone utilities. Each is a directory under
+Twenty skills ship with the plugin: ten loop stages, two escalation skills, a two-skill review
+stack, the using-mightymodels fleet reference, and five standalone utilities. Each is a directory under
 `skills/` with a `SKILL.md` whose frontmatter carries only `name` and `description` (plus
 `license` or harness-specific keys where needed), so the same files load in Copilot CLI and
 Claude Code.
@@ -34,10 +34,11 @@ the ticket's claims at HEAD with two or three scouts, writes the task checklist 
 body, and hands control to `agents-assemble`. It auto-invokes at session start when the active
 ticket says `scope: sm` and `plan-first: false`.
 
-`plan-work` is the large-scope ramp. Same verification first, then it writes
+`formulate-plan` is the large-scope ramp. Same verification first, then it writes
 `.mightymodels/<slug>/plan.md`, high-level strategy and enumerated tasks with size hints,
 deliberately free of code-level citations, and gets the user's approval before invoking
-`agents-assemble`. It auto-invokes when the ticket says `scope: large` or `plan-first: true`.
+`agents-assemble`. It auto-invokes for every scope/plan-first combination other than `sm` with
+`plan-first: false`; the routing table in [docs/workflow.md](workflow.md) is canonical.
 
 `agents-assemble` runs the per-task work loop: fresh citations, a promptlint-templated engineer
 dispatch carrying an ASKED stanza with checkable acceptance criteria, the two-half task brief,
@@ -52,8 +53,9 @@ unclear causes to `whats-broken`), and on green it offers the thin `handoffs/REV
 triage the surface, `uncle-bob` and `merge-vader` run in parallel with models from `ticket.yml`,
 reports land under `.mightymodels/<slug>/review/`, findings are deduped and severity-unified
 through the shared table, and an abridged comment is always posted to the PR, pass or fail.
-Worth-fixing triage routes uncle-bob findings to an engineer and merge-vader findings to
-`budgetron`.
+Worth-fixing triage routes by risk first (Critical findings and High+ security findings go to
+an engineer regardless of source), then by source: remaining uncle-bob findings to an engineer,
+remaining merge-vader findings to `budgetron`.
 
 `ask-an-adult` escalates a genuinely undecidable judgment call to `wingman`, a tool-less
 reasoning advisor, and carries its questions to the user before work resumes. `dialectic` runs
@@ -84,13 +86,9 @@ conformance when a plan or issue is supplied. It coordinates scouts for facts be
 and ends in a gated verdict, `BLOCK`, `MERGE WITH CONDITIONS`, or `CLEAR`. `CLEAR` is impossible
 while any security-relevant question sits `UNKNOWN-BLOCKED`.
 
-`thermo-nuclear-code-quality-review` is the deliberately harsh maintainability audit for
-abstraction quality, giant files, and spaghetti-condition growth. Reach for it when a normal
-review keeps waving things through.
-
 ## The fleet reference
 
-`using-mightmodels` is the orientation skill for the mightymodels, mightymodels's worker fleet. It
+`using-mightymodels` is the orientation skill for the mightymodels, mightymodels's worker fleet. It
 answers the routing questions a primary faces at dispatch time: which worker for which job, what
 each one refuses to do, what a dispatch must contain, and how model selection resolves between
 `ticket.yml` and the agent-file pins. Consult it when asking "which agent should handle this",
@@ -107,9 +105,14 @@ templates, including the engineer template that emits the ASKED stanza.
 `humanizer` removes signs of AI-generated writing, based on Wikipedia's "Signs of AI writing"
 catalog. `prepare-handoff` runs issue prose through it; this documentation was written under it.
 
-`jira` manages Jira issues, epics, sprints, boards, and JQL queries through `jira-cli`. Its
-description is one half of the trigger collision pair the eval datasets guard: sprint words
-alone must not pull in `agents-assemble`.
+`crashout` is the pressure valve and flight recorder: on an explicit `/crashout`, it journals
+the user's rant verbatim, checks whether the failure has happened before, and turns repeated
+tilt into standing corrective actions. It fires only when invoked by name.
+
+Jira operations are deliberately outside the plugin. Several descriptions name "the jira skill"
+as the boundary owner (an external companion skill, not part of this repo), and its trigger
+phrasing is one half of the collision pair the eval datasets guard: sprint words alone must not
+pull in `agents-assemble`.
 
 `hooksmith` analyzes a repository and designs, plans, and implements GitHub Copilot hooks that
 pay off for that specific repo, driven by its CI workflows, lint and type configs, and

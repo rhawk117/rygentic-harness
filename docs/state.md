@@ -11,7 +11,7 @@ unit of work, which is what stops working state from turning into a landfill of 
 .mightymodels/
 ├── <task-slug>/
 │   ├── ticket.yml                source of truth: scope, routing, companion docs
-│   ├── plan.md                   plan-work ramp only; high-level, citation-free
+│   ├── plan.md                   formulate-plan ramp only; high-level, citation-free
 │   ├── issue-body.md             local draft, or the issue when no forge issue exists
 │   ├── handoffs/SPRINT.md        thin session bootstrap
 │   ├── handoffs/REVIEW.md        thin review-session bootstrap

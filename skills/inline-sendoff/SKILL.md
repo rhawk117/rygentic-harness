@@ -1,7 +1,7 @@
 ---
 name: inline-sendoff
 description: >-
-  Small-scope ramp for an mightymodels ticket: read ticket.yml and the GitHub issue FIRST, confirm the ticket's claims still hold at HEAD with two or three scouts, write the task checklist into the issue body, then hand control to agents-assemble. Auto-invoke at session start when the active ticket says scope sm and plan-first false; use when picking up a small ticket — "pick up the ticket", "start on issue #N", "kick off the small one". Not the large ramp (scope large or plan-first true goes to plan-work), not for Jira operations, and not for tickets that don't exist yet (prepare-handoff creates them).
+  Small-scope ramp for an mightymodels ticket: read ticket.yml and the GitHub issue FIRST, confirm the ticket's claims still hold at HEAD with two or three scouts, write the task checklist into the issue body, then hand control to agents-assemble. Auto-invoke at session start when the active ticket says scope sm and plan-first false; use when picking up a small ticket — "pick up the ticket", "start on issue #N", "kick off the small one". Not the large ramp (every other scope/plan-first combination goes to formulate-plan), not for Jira operations, and not for tickets that don't exist yet (prepare-handoff creates them).
 ---
 
 # inline-sendoff
@@ -10,7 +10,7 @@ The small ramp. A sm-scope ticket earned the right to skip plan.md — but not t
 
 ## Sequence
 
-**0.** Invoke the `using-mightmodels` skill
+**0.** Invoke the `using-mightymodels` skill
 
 **1. Read first, dispatch second.** `ticket.yml`, then the issue (or `.mightymodels/<slug>/issue-body.md` when no forge issue exists). The ticket's `triaged-at` and the claims in the issue are the things to confirm — you are not re-triaging from scratch; the triage session already happened and re-doing it disrespects both its work and this session's budget.
 

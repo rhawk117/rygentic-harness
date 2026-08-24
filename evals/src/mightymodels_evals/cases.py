@@ -310,7 +310,7 @@ def _inline_sendoff() -> CaseSpec:
     )
 
 
-def _plan_work() -> CaseSpec:
+def _formulate_plan() -> CaseSpec:
     task = (
         'Session start on the active mightymodels ticket at .mightymodels/queue-overhaul '
         '(scope '
@@ -323,8 +323,8 @@ def _plan_work() -> CaseSpec:
     )
     plan = '.mightymodels/queue-overhaul/plan.md'
     return CaseSpec(
-        name='plan-work-large-ticket',
-        skill='plan-work',
+        name='formulate-plan-large-ticket',
+        skill='formulate-plan',
         fixture='fx-plan',
         task=task,
         sim_notes='',
@@ -535,8 +535,8 @@ def _using_mightymodels() -> CaseSpec:
         'dispatch anyone and do not edit any files.'
     )
     return CaseSpec(
-        name='using-mightmodels-routing',
-        skill='using-mightmodels',
+        name='using-mightymodels-routing',
+        skill='using-mightymodels',
         fixture='fx-sprint',
         task=task,
         sim_notes='',
@@ -584,7 +584,7 @@ SPECS: tuple[CaseSpec, ...] = (
     _begin_sprint(),
     _lets_investigate(),
     _inline_sendoff(),
-    _plan_work(),
+    _formulate_plan(),
     _finish_sprint(),
     _review_circus(),
     _whats_broken(),

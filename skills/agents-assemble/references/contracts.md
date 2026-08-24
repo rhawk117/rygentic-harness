@@ -44,7 +44,7 @@ diff-summary: <one paragraph>
 commands-run: <verification commands + observed results>
 ```
 
-"Works correctly" is not an acceptance criterion — every AC is a command someone can run or an assertion someone can check at a named location. A brief with a placeholder AC is refused at compile time, because an uncheckable criterion makes the verification step theater.
+"Works correctly" is not an acceptance criterion — every AC is a command someone can run or an assertion someone can check at a named location. A brief with a placeholder AC is refused at write time, because an uncheckable criterion makes the verification step theater.
 
 ## Finding format (reviews and remediation)
 
@@ -55,6 +55,15 @@ IDs are stable within their report (MV-n, UB-n) and aggregation preserves proven
 ## Caps are contracts
 
 Brief 80 lines · REPORT.md 50 · archive 30 · plan.md ~200 · whats-broken.md current-state only, regenerated per attempt. Hitting a cap means the content belongs in a different layer, not that the file grows.
+
+## Durable-before-advance
+
+Workflow state advances only after the evidence for it is externalized; recovery reads
+artifacts, never conversation. The per-task order is fixed: the engineer commits, appends the
+DONE half (with the commit hash) to the brief, then reports; the verifying scout runs; the
+verification outcome is recorded in the brief or the issue checklist; only then is the task's
+box checked. On recovery, a commit with no DONE half is an incomplete task and an unrecorded
+verification is an unverified task — worker conversational state is never authoritative.
 
 ## Rot rules
 

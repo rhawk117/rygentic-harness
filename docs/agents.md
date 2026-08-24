@@ -1,9 +1,12 @@
 # Agents and model routing
 
 Seven workers live in `agents/` as `.agent.md` files. All of them are delegation-only: the
-primary dispatches them with a self-contained task, they report in a structured format, and they
-hold no memory between dispatches. What keeps the fleet cheap is that each worker refuses the
-work of the tier above it.
+primary dispatches them with a self-contained task and they report in a structured format.
+Worker conversational state is never authoritative: a worker may retain task-local context for
+bounded follow-ups in the same conversation, but all state required for recovery is
+externalized to the ticket directory before the workflow advances, and verification that
+requires independence uses a fresh worker context. What keeps the fleet cheap is that each
+worker refuses the work of the tier above it.
 
 ## scout
 
@@ -33,8 +36,9 @@ residual issue with a known, bounded fix, a failing lint rule, a missed verifica
 review finding carrying explicit Fix and Verify lines, works within roughly ten tool calls, and
 never expands scope. When the fix turns out larger than named, it reports `escalated` instead of
 improvising, and the primary re-dispatches to a full engineer. That escalation path is why
-routing merge-vader findings here is safe: misjudged bounds cost one cheap bounce, not a bad
-fix.
+routing merge-vader findings below the risk line here is safe: misjudged bounds cost one cheap
+bounce, not a bad fix. Critical findings, and security findings at High or above, never land
+here; they go straight to a full engineer regardless of which reviewer found them.
 
 ## gitty-up
 
@@ -67,16 +71,16 @@ Every agent file carries a `model:` pin, and the pin is only the fallback for he
 where nobody answered a routing question. The real source of truth is the active ticket's
 `ticket.yml`, whose `subagent-models` block the primary reads at dispatch time:
 
-| Role              | Default            | Why                                                                   |
-| ----------------- | ------------------ | --------------------------------------------------------------------- |
-| scout             | `gpt-5.6-luna`     | Retrieval is cheap-tier work by design                                |
-| engineer          | derived from scope | `large` pulls `sonnet-5` or `gpt-5.6-terra`; otherwise `gpt-5.6-luna` |
-| budgetron | `gpt-5.6-luna`     | Bounded fixes do not need a frontier model                            |
-| grumpy          | `gpt-5.6-luna`     | Adversarial existence proofs are cheap to obtain                      |
-| sunny           | `claude-opus-5`    | Corroboration carries the universal-claim burden                      |
-| wingman         | `claude-opus-5`    | Tool-less judgment needs the strongest available reasoner              |
-| uncle-bob         | `claude-opus-5`    | Abstraction and structure judgment gets the frontier Claude           |
-| merge-vader       | `gpt-5.6-sol`      | Cross-vendor diversity on the adversarial pass                        |
+| Role        | Default            | Why                                                                   |
+| ----------- | ------------------ | --------------------------------------------------------------------- |
+| scout       | `gpt-5.6-luna`     | Retrieval is cheap-tier work by design                                |
+| engineer    | derived from scope | `large` pulls `sonnet-5` or `gpt-5.6-terra`; otherwise `gpt-5.6-luna` |
+| budgetron   | `gpt-5.6-luna`     | Bounded fixes do not need a frontier model                            |
+| grumpy      | `gpt-5.6-luna`     | Adversarial existence proofs are cheap to obtain                      |
+| sunny       | `claude-opus-5`    | Corroboration carries the universal-claim burden                      |
+| wingman     | `claude-opus-5`    | Tool-less judgment needs the strongest available reasoner             |
+| uncle-bob   | `claude-opus-5`    | Abstraction and structure judgment gets the frontier Claude           |
+| merge-vader | `gpt-5.6-sol`      | Cross-vendor diversity on the adversarial pass                        |
 
 The engineer value in the ticket is the default for every task; the primary may bump a single
 gnarly task one tier at dispatch, logging the reason in that task's ASKED stanza. The reviewer
@@ -105,6 +109,6 @@ answered. Scouts separate `VERIFIED` facts from `INFERRED` ones, and anything in
 what it rests on. If you extend the fleet, keep new agents inside this vocabulary; the
 coordinator skills parse it.
 
-In a session, the `using-mightmodels` skill is the compact form of this page for the primary
+In a session, the `using-mightymodels` skill is the compact form of this page for the primary
 itself: the routing rules, dispatch contents, and refusal boundaries, consultable at dispatch
 time without loading the agent files.

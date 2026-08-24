@@ -9,7 +9,7 @@
       "name": "mightymodels",
       "source": "./",
       "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
-      "version": "0.4.0"
+      "version": "0.5.0"
     }
   ]
 }

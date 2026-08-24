@@ -9,7 +9,7 @@ from mightymodels_evals.cases import (
 )
 from mightymodels_evals.errors import NoCasesError
 
-EXPECTED_SPECS = 11  # ten loop skills + the using-mightmodels fleet reference
+EXPECTED_SPECS = 11  # ten loop skills + the using-mightymodels fleet reference
 
 
 def test_specs_cover_the_roster_with_unique_names() -> None:

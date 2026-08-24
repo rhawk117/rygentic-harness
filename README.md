@@ -18,8 +18,8 @@ flowchart TD
     A["lets-investigate\nchat triage with scouts"] --> B["what-we-know\ncited knowns, SWOT"]
     B --> C["prepare-handoff\ninterview, ticket.yml, issue, branch"]
     C --> D{scope}
-    D -->|small| E["inline-sendoff"]
-    D -->|"large or plan-first"| F["plan-work"]
+    D -->|"sm, no plan"| E["inline-sendoff"]
+    D -->|"any other combination"| F["formulate-plan"]
     E --> G["agents-assemble\nper-task work loop"]
     F --> G
     G --> H["finish-assembly\nPR and CI via gitty-up"]
@@ -41,7 +41,7 @@ copilot plugin install <owner>/mightymodels
 ```
 
 The CLI reads this repo's `.claude-plugin/` manifests directly. Skills load with the plugin; if
-the four custom agents do not appear in your session afterwards, run
+the seven custom agents do not appear in your session afterwards, run
 `scripts/install-copilot.sh` to place them under `~/.copilot/agents`. Caveats, model ids, and
 the no-plugin path are in [docs/copilot.md](docs/copilot.md).
 
@@ -79,14 +79,14 @@ and the skill gets fixed.
 
 ## Documentation
 
-| Page                                 | What it covers                               |
-| ------------------------------------ | -------------------------------------------- |
-| [docs/workflow.md](docs/workflow.md) | The full loop, stage by stage, with diagrams |
-| [docs/skills.md](docs/skills.md)     | Every skill: what it does and when it fires  |
-| [docs/agents.md](docs/agents.md)     | The four workers and how models get routed   |
-| [docs/state.md](docs/state.md)       | The `.mightymodels/` directory and `ticket.yml`  |
-| [docs/copilot.md](docs/copilot.md)   | Running under GitHub Copilot CLI             |
-| [evals/README.md](evals/README.md)   | The eval harness and how results are read    |
+| Page                                 | What it covers                                  |
+| ------------------------------------ | ----------------------------------------------- |
+| [docs/workflow.md](docs/workflow.md) | The full loop, stage by stage, with diagrams    |
+| [docs/skills.md](docs/skills.md)     | Every skill: what it does and when it fires     |
+| [docs/agents.md](docs/agents.md)     | The seven workers and how models get routed     |
+| [docs/state.md](docs/state.md)       | The `.mightymodels/` directory and `ticket.yml` |
+| [docs/copilot.md](docs/copilot.md)   | Running under GitHub Copilot CLI                |
+| [evals/README.md](evals/README.md)   | The eval harness and how results are read       |
 
 ## Evals
 
@@ -98,7 +98,7 @@ markdownlint, the skills prompt-injection scan, and the test suite on Python 3.1
 
 ## Status
 
-0.4.0. The hook layer (session covenant injection, verification gates at agentStop, preCompact
+0.5.0. The hook layer (session covenant injection, verification gates at agentStop, preCompact
 ticket snapshots) and the team/personal overlay split are designed but not yet shipped.
 CHANGELOG.md has the full trail.
 

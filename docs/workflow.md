@@ -15,7 +15,7 @@ flowchart TD
     B --> C["prepare-handoff"]
     C --> D{"scope in ticket.yml"}
     D -->|"sm, no plan"| E["inline-sendoff"]
-    D -->|"large or plan-first"| F["plan-work"]
+    D -->|"any other combination"| F["formulate-plan"]
     E --> G["agents-assemble"]
     F -->|"plan approved"| G
     G --> H["finish-assembly"]
@@ -26,8 +26,9 @@ flowchart TD
     WB --> H
     I -->|"pass"| J["review-circus"]
     J --> K{"findings worth fixing"}
-    K -->|"uncle-bob findings"| EN["engineer"]
-    K -->|"merge-vader findings"| SK2["budgetron"]
+    K -->|"Critical, or security High+"| EN["engineer"]
+    K -->|"other uncle-bob findings"| EN
+    K -->|"other merge-vader findings"| SK2["budgetron"]
     EN --> J
     SK2 --> J
     K -->|"none left"| L["human review"]
@@ -60,9 +61,21 @@ sets `plan-first: true`.
 ## Ramp
 
 The next session starts fresh and cheap. Which ramp it takes is not a judgment call; it is read
-from `ticket.yml`. Small scope with no plan flag means `inline-sendoff`: reconfirm the ticket's
+from `ticket.yml`. This table is the canonical statement of the routing rule; every other
+document points here rather than restating it:
+
+| scope | plan-first | ramp             |
+| ----- | ---------- | ---------------- |
+| sm    | false      | `inline-sendoff` |
+| sm    | true       | `formulate-plan` |
+| med   | false      | `formulate-plan` |
+| med   | true       | `formulate-plan` |
+| large | false      | `formulate-plan` |
+| large | true       | `formulate-plan` |
+
+`inline-sendoff`: reconfirm the ticket's
 claims at HEAD with two or three scouts, write the task checklist into the issue body, and hand
-straight to `agents-assemble`. Large scope or `plan-first: true` means `plan-work`: verify claims,
+straight to `agents-assemble`. `formulate-plan`: verify claims,
 then write `plan.md` as high-level strategy with enumerated tasks and size hints, deliberately
 free of code citations because citations go stale while the plan survives compaction. The user
 approves the plan before any dispatch.
@@ -99,6 +112,11 @@ budgeted cheap path. Repeated failures on the same ground invoke `whats-broken`,
 debugging protocol with a three-strike breaker that escalates to the human instead of attempting
 a fourth patch.
 
+The loop advances only after its evidence is externalized: the engineer appends the DONE half
+(with the commit hash) to the brief before reporting, the verification outcome is recorded
+before a task's box is checked, and recovery reads the brief, never anyone's conversation. The
+full ordering rule lives in `skills/agents-assemble/references/contracts.md`.
+
 The sprint ends with a `REPORT.md` of at most 50 lines: what shipped, what deviated, what
 remains.
 
@@ -119,8 +137,11 @@ severity-unified through the shared table in `contracts.md`, and an abridged, hu
 comment is always posted to the PR, pass or fail, so the review trail is documented where
 reviewers live.
 
-Remediation routes by source. uncle-bob findings concern structure and abstraction, so they go
-to a full engineer. merge-vader findings tend to be concrete and bounded, so they go to
+Remediation routes by risk first, then by source. A Critical finding, or a security finding at
+High severity or above, goes to a full engineer no matter which reviewer surfaced it: a
+severity that says "harm now" outranks any statement about who found the defect. Below that
+line, source decides: uncle-bob findings concern structure and abstraction, so they go
+to a full engineer; merge-vader findings tend to be concrete and bounded, so they go to
 `budgetron`, whose own contract escalates anything that turns out bigger than named.
 Pre-existing debt is triaged separately from regressions: the loop fixes what the branch broke
 and files the rest instead of scope-creeping the ticket.
@@ -139,7 +160,7 @@ stateDiagram-v2
     [*] --> investigating: lets-investigate
     investigating --> consolidated: what-we-know
     consolidated --> ramped: prepare-handoff
-    ramped --> sprinting: inline-sendoff or plan-work
+    ramped --> sprinting: inline-sendoff or formulate-plan
     sprinting --> finishing: all tasks done
     finishing --> in_review: CI green
     in_review --> sprinting: findings routed back
@@ -150,7 +171,8 @@ stateDiagram-v2
 ## Where the rules live
 
 Prose in this directory explains; the contracts define. The severity table, verdict vocabularies
-(scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman, review), and the two-half brief schema are in
+(scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman, review), and the two-half brief
+schema are in
 `skills/agents-assemble/references/contracts.md`. The `ticket.yml` schema with its derivation rules
 is in `skills/prepare-handoff/references/ticket-schema.md`, and the directory layout with its
 writer/reader matrix is in `skills/prepare-handoff/references/mightymodels-dir.md`. When this page

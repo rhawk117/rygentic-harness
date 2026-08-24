@@ -6,7 +6,7 @@ Per-ticket, sparse, organized by unit of work. The unit of deletion is the unit 
 .mightymodels/
 ├── <task-slug>/
 │   ├── ticket.yml                     source of truth (see ticket-schema.md)
-│   ├── plan.md                        plan-work ramp only; high-level, citation-free
+│   ├── plan.md                        formulate-plan ramp only; high-level, citation-free
 │   ├── issue-body.md                  when no forge issue was created, or as the local draft
 │   ├── handoffs/SPRINT.md             thin session bootstrap
 │   ├── handoffs/REVIEW.md             thin review-session bootstrap
@@ -23,7 +23,7 @@ Per-ticket, sparse, organized by unit of work. The unit of deletion is the unit 
 | Path | Writer | Readers |
 |---|---|---|
 | ticket.yml | prepare-handoff (then the user's hand) | every session |
-| plan.md | plan-work primary, after user approval | primary, dispatch compilation |
+| plan.md | formulate-plan primary, after user approval | primary, dispatch compilation |
 | briefs/ ASKED half | primary at dispatch | engineer, verifying scout |
 | briefs/ DONE half | engineer | primary, verifying scout |
 | review/ | review skills | review-circus primary, the user |

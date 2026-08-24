@@ -31,8 +31,10 @@ If you prefer a personal install, or your plugin surface is restricted:
 
 Copilot CLI loads personal skills from `~/.copilot/skills` and `~/.agents/skills`, and project
 skills from `.github/skills`, `.claude/skills`, or `.agents/skills` inside a repo. The script
-uses `~/.copilot` for both skills and agents and touches only names that exist in this repo, so
-it will not clobber unrelated skills you keep there.
+uses `~/.copilot` for both skills and agents and records what it installs in a manifest
+(`~/.copilot/.mightymodels-manifest`); it refuses to overwrite or remove anything it does not
+own, so a personal skill that happens to share a name with a mightymodels one survives: the
+install aborts with a message instead of clobbering it.
 
 ## How skills fire
 
@@ -48,7 +50,7 @@ them to your own oracle and assert the should-trigger queries rank the skill in 
 
 ## Agents
 
-The four workers are `.agent.md` files with Copilot frontmatter: `name`, `description`, `model`,
+The seven workers are `.agent.md` files with Copilot frontmatter: `name`, `description`, `model`,
 `tools` (Copilot tool names such as `view`, `edit`, `execute`), and `disable-model-invocation`
 where relevant. A plugin can carry agent directories, but harness versions differ in whether
 plugin agents surface automatically, and a `customAgents.defaultLocalOnly: true` setting will
