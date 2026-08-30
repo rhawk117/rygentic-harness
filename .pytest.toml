@@ -2,7 +2,11 @@
 minversion = "9.0"
 strict = true
 
-testpaths = ["tests"]
+testpaths = ["tests", "plugins"]
+norecursedirs = [
+    "fixtures",
+    "staging",
+]
 collect_imported_tests = false
 empty_parameter_set_mark = "fail_at_collect"
 
@@ -21,6 +25,9 @@ addopts = [
     "--showlocals",
     "--durations=10",
     "--durations-min=1.0",
+
+    "--ignore=plugins/mightymodels/skills/hooksmith/scripts/test_hook.py",
+    "--ignore-glob=evals/src/mightymodels_evals/templates/*/tests",
 
     "--cov",
     "--cov-config=.coveragerc.ini",
