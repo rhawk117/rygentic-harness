@@ -1,13 +1,13 @@
 from collections.abc import Sequence
 from types import ModuleType
 
-from plugin_evals.case_modules import mightymodels
+from plugin_evals.case_modules import ai_engineer, mightymodels
 from plugin_evals.cases import CaseSpec
 from plugin_evals.errors import HarnessError, NoCasesError
 
 # every plugin that ships behavior cases registers its module here; a module is a
 # plugin's whole contribution to the harness and exposes its specs as SPECS
-CASE_MODULES: tuple[ModuleType, ...] = (mightymodels,)
+CASE_MODULES: tuple[ModuleType, ...] = (mightymodels, ai_engineer)
 
 
 class DuplicateSkillError(HarnessError):

@@ -16,19 +16,20 @@ from plugin_evals.registry import (
     select_specs,
 )
 
-EXPECTED_SPECS = 11  # ten loop skills + the using-mightymodels fleet reference
+TOTAL_SPECS = 12  # eleven mightymodels loop-skill cases + one ai-engineer case
+MIGHTYMODELS_SPECS = 11  # ten loop skills + the using-mightymodels fleet reference
 
 
 def test_specs_cover_the_roster_with_unique_names() -> None:
     specs = all_specs()
-    assert len(specs) == EXPECTED_SPECS
-    assert len({s.name for s in specs}) == EXPECTED_SPECS
+    assert len(specs) == TOTAL_SPECS
+    assert len({s.name for s in specs}) == TOTAL_SPECS
     assert all(s.checks for s in specs)
     assert all(s.plugin for s in specs)
 
 
 def test_registry_filters_by_plugin_and_skill() -> None:
-    assert len(select_specs(plugin='mightymodels')) == EXPECTED_SPECS
+    assert len(select_specs(plugin='mightymodels')) == MIGHTYMODELS_SPECS
     assert len(select_specs(skill='agents-assemble')) == 1
 
     with pytest.raises(NoCasesError):
@@ -45,7 +46,7 @@ def test_registry_rejects_duplicate_skill_names() -> None:
 
 
 def test_behavior_dataset_names_the_skill_it_covers() -> None:
-    assert len(behavior_dataset(all_specs()).cases) == EXPECTED_SPECS
+    assert len(behavior_dataset(all_specs()).cases) == TOTAL_SPECS
 
     single = behavior_dataset(select_specs(skill='agents-assemble'), 'agents-assemble')
     assert len(single.cases) == 1
@@ -57,14 +58,14 @@ def test_behavior_dataset_names_the_skill_it_covers() -> None:
 
 def test_write_then_load_round_trips_per_skill_layout(tmp_path: Path) -> None:
     written = write_behavior_datasets(tmp_path, all_specs())
-    assert len(written) == EXPECTED_SPECS
+    assert len(written) == TOTAL_SPECS
     assert tmp_path.joinpath('mightymodels', 'agents-assemble', 'behavior.yaml').is_file()
     assert tmp_path.joinpath(
         'mightymodels', 'agents-assemble', 'behavior.schema.json'
     ).is_file()
 
     combined = load_behavior_dataset(tmp_path)
-    assert len(combined.cases) == EXPECTED_SPECS
+    assert len(combined.cases) == TOTAL_SPECS
 
     single = load_behavior_dataset(tmp_path, ['whats-broken'])
     assert single.cases[0].evaluators

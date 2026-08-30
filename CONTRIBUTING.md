@@ -65,6 +65,23 @@ plugin, checks its manifest against its marketplace entry, and holds its skills 
 the frontmatter contracts; `scripts/security.sh` scans every plugin's skill and agent text
 without configuration. Nothing in the gate is hardcoded to one plugin.
 
+## Adding a plugin's evals
+
+A plugin registers its behavior cases through the same registry every other plugin uses, in
+`evals/src/plugin_evals/`. Follow these steps in order:
+
+1. Create `evals/src/plugin_evals/case_modules/<plugin>.py`. Give it a `PLUGIN` constant holding
+   the plugin's name and a `SPECS` tuple of `CaseSpec` values, one per case, built with checks
+   from `plugin_evals.evaluators`. Use `case_modules/mightymodels.py` as the shape to follow: a
+   small builder function per case, a real task prompt, and a modest set of checks.
+2. Add the module to `CASE_MODULES` in `evals/src/plugin_evals/registry.py`. This is the only
+   registry edit; skill names must stay unique across every registered plugin.
+3. Generate the dataset: `uv run plugin-evals datasets --plugin <plugin>`. This writes
+   `evals/datasets/<plugin>/<skill>/behavior.yaml` and its `behavior.schema.json` for each spec.
+4. Commit the generated `evals/datasets/<plugin>/<skill>/` files alongside the case module and
+   registry edit. Hand-written trigger datasets are optional and separate; add
+   `evals/datasets/<plugin>/<skill>/trigger.yaml` yourself if you want one.
+
 ## Adding or editing a skill
 
 A skill is a directory under its plugin's `skills/` tree (`plugins/<plugin>/skills/<name>`)
@@ -74,8 +91,9 @@ the retrieval surface in Claude Code's skill selection, so write it as trigger p
 boundaries, and add a
 near-miss to the trigger dataset when the name or description is anywhere close to an existing
 skill.
-`tests/test_plugin.py` enforces the frontmatter contract; a new behavior case belongs in
-`cases.py` with checks from the evaluator library. Skill text is code: `scripts/security.sh`
+`tests/test_plugin.py` enforces the frontmatter contract; a new behavior case belongs in the
+skill's plugin case module under `evals/src/plugin_evals/case_modules/` (see "Adding a plugin's
+evals" above) with checks from the evaluator library. Skill text is code: `scripts/security.sh`
 scans it for injection indicators on every commit, and a finding blocks the commit.
 
 Skills that participate in the loop cite the shared contracts instead of restating them. If your
