@@ -1,7 +1,7 @@
 # Skills
 
-Twenty skills ship with the plugin: ten loop stages, two escalation skills, a two-skill review
-stack, the using-mightymodels fleet reference, and five standalone utilities. Each is a directory
+Eighteen skills ship with the plugin: ten loop stages, two escalation skills, a two-skill review
+stack, the using-mightymodels fleet reference, and three standalone utilities. Each is a directory
 under `plugins/mightymodels/skills/` with a `SKILL.md` whose frontmatter carries only `name` and
 `description` (plus `license` or `metadata` where needed), the keys Claude Code's skill loader
 reads.
@@ -112,14 +112,6 @@ tilt into standing corrective actions. It fires only when invoked by name.
 Issue-tracker sprint and board operations are deliberately outside the plugin, and their
 phrasing is one half of the collision pair the eval datasets guard: sprint words alone must not
 pull in `agents-assemble`.
-
-`hooksmith` analyzes a repository and designs, plans, and implements Claude Code hooks that
-pay off for that specific repo, driven by its CI workflows, lint and type configs, and
-fresh-session context needs.
-
-`agents-md-init` generates an evidence-based AGENTS.md by dispatching two explorer subagents,
-then wires the per-platform router files: `CLAUDE.md` as an `@AGENTS.md` import and
-`.github/copilot-instructions.md` as a pointer.
 
 ## Editing a skill
 

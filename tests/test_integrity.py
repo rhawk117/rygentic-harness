@@ -41,7 +41,15 @@ ALLOWED_TOKENS = {
 # Mermaid flowchart node labels that are prose, not inventory names.
 ALLOWED_NODE_LABELS = {'human review'}
 
-NUMBER_WORDS = {'two': 2, 'four': 4, 'five': 5, 'seven': 7, 'ten': 10, 'twenty': 20}
+NUMBER_WORDS = {
+    'two': 2,
+    'four': 4,
+    'five': 5,
+    'seven': 7,
+    'ten': 10,
+    'eighteen': 18,
+    'twenty': 20,
+}
 
 BACKTICK_KEBAB = re.compile(r'`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`')
 KEBAB = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)+')

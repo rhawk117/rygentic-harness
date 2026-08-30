@@ -9,13 +9,13 @@
       "name": "mightymodels",
       "source": "./plugins/mightymodels",
       "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
-      "version": "0.6.0"
+      "version": "0.7.0"
     },
     {
       "name": "ai-engineer",
       "source": "./plugins/ai-engineer",
       "description": "Skills and agents for building, reviewing, and hardening Claude Code agents, skills, and dev loops",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }

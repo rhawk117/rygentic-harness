@@ -10,7 +10,7 @@ description: >-
   budgetron, gitty-up, grumpy, sunny, wingman, and the reviewer roles (uncle-bob, merge-vader).
   Not the sprint
   loop itself (that is agents-assemble), not for creating or editing agent files, and not for
-  generating AGENTS.md instruction files (that is agents-md-init).
+  generating AGENTS.md instruction files (that is create-agents-md).
 ---
 
 # using-mightymodels

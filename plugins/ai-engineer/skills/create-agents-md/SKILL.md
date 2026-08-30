@@ -1,10 +1,11 @@
 ---
-name: agents-md-init
+name: create-agents-md
+license: Apache-2.0
 description: >-
   Generate an evidence-based AGENTS.md for the current repository by dispatching two explorer subagents (toolchain/verification and conventions/structure), then wire per-platform router files — CLAUDE.md as an @AGENTS.md import for Claude Code, .github/copilot-instructions.md as a pointer for Copilot surfaces that don't read AGENTS.md. Use this whenever the user wants to create, regenerate, audit, port, or merge repository instruction files — AGENTS.md, CLAUDE.md, copilot-instructions.md, cursor/windsurf/cline rules — or says anything like "set up agent instructions", "init this repo for Claude/Copilot", "write an AGENTS.md", "make a CLAUDE.md", even if they name only one platform's file.
 ---
 
-# agents-md-init
+# create-agents-md
 
 Produce a small AGENTS.md of verified facts — not a comprehensive document. The rules here come from vendor docs and three 2026 controlled studies: instruction files do not generally raise agent task success; the content that pays is exact commands and explicit conventions; repo-overview prose adds cost with no measured benefit; adherence drops as files grow. When you need the why behind any rule, or the user challenges one, read `references/evidence.md`.
 

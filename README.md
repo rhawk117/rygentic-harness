@@ -61,15 +61,16 @@ and a contract disagree, the contract wins and the skill gets fixed.
 Skills for building and hardening the agents, skills, and loops that other plugins are made of:
 `build-a-loop` designs a reliable agent loop and its stop condition, `build-an-agent` creates,
 reviews, or ports a subagent definition file, `skill-engineering` drafts and evals a `SKILL.md`
-against a calibrated harness, and `writing-agent-rules` places and audits instruction files like
-`CLAUDE.md` and `AGENTS.md`. All four are standard `SKILL.md` directories under
-`plugins/ai-engineer/`.
+against a calibrated harness, `writing-agent-rules` places and audits instruction files like
+`CLAUDE.md` and `AGENTS.md`, `create-hooks` designs and implements repo-specific Claude Code
+hooks, and `create-agents-md` generates an evidence-based AGENTS.md and its per-platform router
+files. All six are standard `SKILL.md` directories under `plugins/ai-engineer/`.
 
 ## Layout
 
 ```text
 plugins/         one directory per plugin; each carries its own manifest, skills, and agents
-  mightymodels/  the dev loop: twenty skills, seven worker agents
+  mightymodels/  the dev loop: eighteen skills, seven worker agents
 evals/           pydantic-evals harness: package source, per-skill datasets, dated results
 tests/           marketplace-wide contracts: plugin layout, manifest agreement, integrity
 docs/            human documentation for the harness and the mightymodels plugin
@@ -109,7 +110,7 @@ the test suite on Python 3.14.
 
 ## Status
 
-mightymodels is at 0.6.0 and is the marketplace's first plugin. Its hook layer (session
+mightymodels is at 0.7.0 and is the marketplace's first plugin. Its hook layer (session
 covenant injection, verification gates at Stop, PreCompact ticket snapshots) and the
 team/personal overlay split are designed but not yet shipped. CHANGELOG.md has the full trail.
 
