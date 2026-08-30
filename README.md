@@ -70,7 +70,7 @@ files. All six are standard `SKILL.md` directories under `plugins/ai-engineer/`.
 
 ```text
 plugins/         one directory per plugin; each carries its own manifest, skills, and agents
-  mightymodels/  the dev loop: twenty skills, seven worker agents
+  mightymodels/  the dev loop: eighteen skills, seven worker agents
 evals/           pydantic-evals harness: package source, per-skill datasets, dated results
 tests/           marketplace-wide contracts: plugin layout, manifest agreement, integrity
 docs/            human documentation for the harness and the mightymodels plugin
@@ -110,7 +110,7 @@ the test suite on Python 3.14.
 
 ## Status
 
-mightymodels is at 0.6.0 and is the marketplace's first plugin. Its hook layer (session
+mightymodels is at 0.7.0 and is the marketplace's first plugin. Its hook layer (session
 covenant injection, verification gates at Stop, PreCompact ticket snapshots) and the
 team/personal overlay split are designed but not yet shipped. CHANGELOG.md has the full trail.
 
