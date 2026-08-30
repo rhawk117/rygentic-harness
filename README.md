@@ -23,7 +23,7 @@ discovery, and validation.
 | Plugin       | What it does                                                                |
 | ------------ | --------------------------------------------------------------------------- |
 | mightymodels | Ticket-scoped agent dev loop: per-ticket state, model routing, review stack |
-| ai-engineer  | Skills for building and hardening Claude Code agents, skills, and loops    |
+| ai-engineer  | Skills for building and hardening Claude Code agents, skills, and loops     |
 
 ### mightymodels
 
@@ -102,9 +102,10 @@ new skill and agent text for injection indicators without any configuration.
 The eval harness covers registered plugins, currently mightymodels and ai-engineer: every
 measured skill ships with a baseline delta, and edits re-run the harness before they land.
 Replaying the iteration-1 mightymodels sessions grades 65 of 65 assertions with the skills on,
-against 31 of 65 without them. `evals/README.md` covers the harness; [CONTRIBUTING.md](CONTRIBUTING.md) covers the gate
-a change has to pass, and `make ci` runs the whole thing: ruff, ty, shellcheck, markdownlint,
-the prompt-injection scan over every plugin, and the test suite on Python 3.14.
+against 31 of 65 without them. `evals/README.md` covers the harness;
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the gate a change has to pass, and `make ci` runs the
+whole thing: ruff, ty, shellcheck, markdownlint, the prompt-injection scan over every plugin, and
+the test suite on Python 3.14.
 
 ## Status
 
