@@ -23,9 +23,9 @@ commits its stale-claims issue body).
 ## Layout
 
 `datasets/<skill>/` holds everything eval-related for one skill: `behavior.yaml` +
-`behavior.schema.json` (regenerated from the registered case modules, the source of truth) and `trigger.yaml` +
-`trigger.schema.json` (hand-editable data, the YAML is the source of truth). Schema files use
-the `.schema.json` suffix and are committed so editors validate without running the tool.
+`behavior.schema.json` (regenerated from the registered case modules, the source of truth) and
+`trigger.yaml` + `trigger.schema.json` (hand-editable data, the YAML is the source of truth). Schema
+files use the `.schema.json` suffix and are committed so editors validate without running the tool.
 Fixture file bodies live as real files under `src/plugin_evals/templates/` (bases plus
 per-fixture overlays); builders in `fixtures.py` compose them and run git steps through
 `repo.Repo`, the one place repository operations are defined, shared by builders and evaluators

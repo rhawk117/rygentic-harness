@@ -80,8 +80,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     fixtures_root = Path(args.fixtures)
     if not fixtures_root.is_dir():
         print(
-            f'fixtures missing at {fixtures_root}; '
-            'run `plugin-evals fixtures` first',
+            f'fixtures missing at {fixtures_root}; run `plugin-evals fixtures` first',
             file=sys.stderr,
         )
         return 2
