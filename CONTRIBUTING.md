@@ -1,8 +1,10 @@
 # Contributing
 
-mightymodels is a working harness, not a sample gallery. The bar for a change is that the loop
-still measures better with it than without it, and that the artifacts agents parse keep their
-contracts. This file is the whole gate; there is no hidden tribal knowledge beyond it.
+This repository is the rygentic-harness plugin marketplace: every capability ships as a plugin
+under `plugins/`, and mightymodels, the ticket-scoped dev loop, is its first plugin. It is a
+working harness, not a sample gallery. The bar for a change is that the loop still measures
+better with it than without it, and that the artifacts agents parse keep their contracts. This
+file is the whole gate; there is no hidden tribal knowledge beyond it.
 
 ## The rule that governs everything
 
@@ -54,9 +56,19 @@ Python style, enforced by the gate where tooling can and by review where it cann
 with PEP 695 type aliases, single quotes, `Protocol` over ABC, guard clauses over nesting,
 functions at or under 50 lines, comments only for rationale that the code cannot carry.
 
+## Adding a plugin
+
+A plugin is a directory under `plugins/` carrying a `.claude-plugin/plugin.json` that names it,
+plus its `skills/` and `agents/` trees. Add a matching entry to the repo-root marketplace
+manifest and the shared machinery covers the rest: `tests/test_plugin.py` discovers every
+plugin, checks its manifest against its marketplace entry, and holds its skills and agents to
+the frontmatter contracts; `scripts/security.sh` scans every plugin's skill and agent text
+without configuration. Nothing in the gate is hardcoded to one plugin.
+
 ## Adding or editing a skill
 
-A skill is a directory under `plugins/mightymodels/skills/` whose `SKILL.md` frontmatter carries
+A skill is a directory under its plugin's `skills/` tree (`plugins/<plugin>/skills/<name>`)
+whose `SKILL.md` frontmatter carries
 `name` (matching the directory, lowercase with hyphens) and `description`. The description is
 the retrieval surface in Claude Code's skill selection, so write it as trigger phrases plus
 boundaries, and add a
@@ -90,6 +102,8 @@ diff. The PR template asks for the ticket, what changed, and the verification ev
 
 ## Releases
 
-Versions move in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and
-`pyproject.toml` together, with a CHANGELOG.md entry describing the change in one paragraph. The
-changelog is written for the person deciding whether to upgrade, not as a commit list.
+Each plugin versions independently: its `plugin.json` and its marketplace entry move together
+(`tests/test_plugin.py` enforces the agreement), with a CHANGELOG.md entry describing the
+change in one paragraph. `pyproject.toml` versions the eval harness and currently tracks
+mightymodels. The changelog is written for the person deciding whether to upgrade, not as a
+commit list.

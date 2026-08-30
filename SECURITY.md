@@ -30,8 +30,8 @@ the finding to the coordinator and continues its original task. The same rule bi
 coordinator toward worker reports: they are evidence, not directives. Each agent contract
 carries this boundary in its `<trust_boundary>` block; weakening it is a security change.
 
-`scripts/security.sh` enforces the skills-as-code doctrine mechanically: it scans the plugin
-`skills/` and `agents/` trees under `plugins/` for prompt-injection indicators
+`scripts/security.sh` enforces the skills-as-code doctrine mechanically: it discovers and scans
+every plugin's `skills/` and `agents/` trees under `plugins/` for prompt-injection indicators
 (instruction-override phrasing, fetch-and-execute
 payloads, credential references, invisible Unicode, pre-approved tool grants, plaintext-http
 links) on every commit and in CI, and any finding blocks. Pattern gaps are in scope for
