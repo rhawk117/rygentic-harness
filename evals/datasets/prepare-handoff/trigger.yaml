@@ -54,7 +54,7 @@ cases:
   evaluators: []
 - name: prepare-handoff-trigger-07
   inputs:
-    query: create a jira ticket for the outage follow-up in BUSYSRE
+    query: create a tracker ticket for the outage follow-up in BUSYSRE
   metadata: null
   expected_output:
     should_trigger: false

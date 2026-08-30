@@ -119,8 +119,11 @@ Follow `references/report.md` exactly: severity model, category grades,
 weighted overall grade, the no-tests cap, and the report template. Write
 `UNCLE-BOB-REPORT.md` to `.mightymodels/<task-slug>/review/` when an active
 ticket directory exists (the one the user names, else the newest
-`.mightymodels/*/ticket.yml` on this branch); otherwise at the repo root
-unless told otherwise.
+`.mightymodels/*/ticket.yml` on this branch). When no ticket directory
+exists, fall back to the repository root: write `UNCLE-BOB-REPORT.md`, run
+`git check-ignore UNCLE-BOB-REPORT.md`, and if the file is not ignored, put
+a "Do not commit this file" line at the top of the report and mention it in
+your reply.
 
 ### 6. Verify before delivering
 

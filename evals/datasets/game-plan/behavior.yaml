@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=behavior.schema.json
-name: mightymodels-behavior-formulate-plan
+name: mightymodels-behavior-game-plan
 cases:
-- name: formulate-plan-large-ticket
+- name: game-plan-large-ticket
   inputs:
-    case: formulate-plan-large-ticket
-    skill: formulate-plan
+    case: game-plan-large-ticket
+    skill: game-plan
     fixture: fx-plan
     task: 'Session start on the active mightymodels ticket at .mightymodels/queue-overhaul
       (scope large, plan-first true). Ramp it as the process dictates. Scout simulation:
@@ -12,7 +12,7 @@ cases:
       a user decision — the user is away; state clearly what you are waiting for.'
     sim_notes: ''
   metadata:
-    skill: formulate-plan
+    skill: game-plan
   expected_output: null
   evaluators:
   - FileRegexCount:

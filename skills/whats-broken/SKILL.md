@@ -8,7 +8,7 @@ description: >-
 
 The protocol exists because of one failure mode: a plausible quick fix that skips evidence. It looks efficient, it usually patches the symptom, and each round of it pollutes the diff your reviewers later have to litigate. So the phases gate each other, and the one rule with no exceptions is that **no fix is proposed before the evidence phase completes.**
 
-**Entry paths:** finish-assembly routes a CI failure here when the fix isn't obvious from the log tail; agents-assemble routes here after scout verification fails twice on one task; and bare invocation — "CI is red", "this won't stop failing" — works with or without an active ticket (no ticket → the hypothesis log lives at repo root and you say so).
+**Entry paths:** stick-the-landing routes a CI failure here when the fix isn't obvious from the log tail; agents-assemble routes here after scout verification fails twice on one task; and bare invocation — "CI is red", "this won't stop failing" — works with or without an active ticket (no ticket → the hypothesis log lives at repo root and you say so).
 
 ## Phases
 

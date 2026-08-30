@@ -1,7 +1,7 @@
 ---
 name: prepare-handoff
 description: >-
-  Bridge from an understood problem to a ready-to-start unit of work: a five-question interview (name it, GitHub issue?, branch?, compaction likely?, per-task scope), then create the .mightymodels/<slug>/ ticket directory, ticket.yml with derived model routing, the optional issue using the repo's own template with humanizer-cleaned prose, the branch, and a thin handoffs/SPRINT.md prompt for the next session. Use whenever triage is done and the user wants to stage the next work session — "prepare the handoff", "cut a ticket for this", "set this up for the next session", "create the mightymodels ticket", "get this ready to implement". Not for starting the implementation itself (that is the next session's ramp), and not for Jira ticket operations (the jira skill owns those).
+  Bridge from an understood problem to a ready-to-start unit of work: a five-question interview (name it, GitHub issue?, branch?, compaction likely?, per-task scope), then create the .mightymodels/<slug>/ ticket directory, ticket.yml with derived model routing, the optional issue using the repo's own template with humanizer-cleaned prose, the branch, and a thin handoffs/SPRINT.md prompt for the next session. Use whenever triage is done and the user wants to stage the next work session — "prepare the handoff", "cut a ticket for this", "set this up for the next session", "create the mightymodels ticket", "get this ready to implement". Not for starting the implementation itself (that is the next session's ramp).
 ---
 
 
@@ -17,7 +17,6 @@ Ask exactly these five, via the ask-user dialog when available (in chat otherwis
 
 1. Name this unit of work (becomes the slug).
 2. Create a GitHub issue? If yes, a name for it.
-   2a. Have the jira cli? If yes ask the user if they'd like to create a Jira issue too, and if yes, a name for it.
 3. Create a branch? If yes, a name for it and the base branch (default: HEAD).
 4. Would implementing this likely cause at least one compaction?
 5. How large is the scope of each anticipated task? (sm / med / large)
@@ -34,7 +33,11 @@ Answers 4 and 5 are not trivia — they derive `plan-first`, the primary-tier hi
 
 **D — ticket.yml.** Emit per `references/ticket-schema.md`, deriving `engineer`, `plan-first`, and `scope` from the answers. Then tell the user the file exists and pause: they tweak it by hand before anything else happens. Their edit wins over your derivation — that is the point of the pause.
 
-**E - handoffs/SPRINT.md.** Invoke the `promptlint` skill and use that to create a thin prompt for the next session, pointing at the ticket.yml and the issue, naming the ramp per the routing table in `docs/workflow.md` (`inline-sendoff` only for sm with plan-first false), and stopping. Any fact copied into it is a fact that can drift.
+**E - handoffs/SPRINT.md.** Written last, after the user's tweak pass — see "The handoff" below for the spec.
+
+## The handoff
+
+After the user is done tweaking, offer: "Generate a prompt to begin the next session?" On yes, invoke the `promptlint` skill and write `handoffs/SPRINT.md` — reading the _tweaked_ yaml, never your original draft. Thinness rule from mightymodels-dir.md applies absolutely: the file points at ticket.yml and the issue, names the ramp per the routing table in `docs/workflow.md` (`inline-sendoff` only for sm with plan-first false), and stops. Any fact copied into it is a fact that can drift.
 
 ```markdown
 # Handoff for <slug>
@@ -45,10 +48,6 @@ Answers 4 and 5 are not trivia — they derive `plan-first`, the primary-tier hi
 
 <!-- The next session reads these first, so they must be correct. -->
 ```
-
-## The handoff
-
-After the user is done tweaking, offer: "Generate a prompt to begin the next session?" On yes, write `handoffs/SPRINT.md` — reading the _tweaked_ yaml, never your original draft. Thinness rule from mightymodels-dir.md applies absolutely: the file points at ticket.yml and the issue, names the ramp per the routing table in `docs/workflow.md` (`inline-sendoff` only for sm with plan-first false), and stops. Any fact copied into it is a fact that can drift.
 
 Close with "the task is ready for handoff" — and when plan-first is true, add: "switch models in your next session" (the plan gets written by a low-tier primary; the yaml carries the hint).
 

@@ -1,8 +1,7 @@
 ---
 name: gitty-up
-tools: ['execute']
-model: gpt-5.6-luna
-disable-model-invocation: false
+tools: [Bash]
+model: claude-haiku-4-5
 description: >-
   Waits for GitHub PR checks to finish and reports a verdict. Delegate after opening or updating a PR when the dispatching agent needs to know whether CI passed. Returns pass, fail with logs, or error. Never modifies code.
 ---
@@ -166,7 +165,7 @@ Twelve polls, still no checks reported.
 
 ## Hard rules
 
-- Never run `git`. Never edit, write, or push. `execute` is for `gh`.
+- Never run `git`. Never edit, write, or push. `Bash` is for `gh`.
 - Never merge. Never comment on the PR.
 - Never diagnose a failure or propose a fix. Report logs verbatim and
   stop. The dispatching agent fixes.

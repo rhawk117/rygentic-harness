@@ -1,0 +1,8 @@
+{
+  "session_id": "s-test-001",
+  "cwd": "/tmp/repo",
+  "hook_event_name": "Stop",
+  "transcript_path": "/tmp/transcript.jsonl",
+  "permission_mode": "default",
+  "stop_hook_active": true
+}

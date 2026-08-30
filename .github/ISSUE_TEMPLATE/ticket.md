@@ -18,7 +18,7 @@ labels: []
 
 ## Tasks
 
-<!-- Filled during the ramp (inline-sendoff writes this checklist; formulate-plan enumerates in plan.md first). -->
+<!-- Filled during the ramp (inline-sendoff writes this checklist; game-plan enumerates in plan.md first). -->
 
 - [ ]
 

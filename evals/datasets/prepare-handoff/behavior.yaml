@@ -29,9 +29,9 @@ cases:
       path: .mightymodels/upload-rate-limit/ticket.yml
       needles:
       - 'scope: sm'
-      - gpt-5.6-luna
+      - claude-haiku-4-5
+      - claude-sonnet-5
       - claude-opus-5
-      - gpt-5.6-sol
   - FileRegex:
       check: plan-first derived false
       path: .mightymodels/upload-rate-limit/ticket.yml
@@ -47,7 +47,7 @@ cases:
   - FileRegex:
       check: 'SPRINT.md thin: no models or scope copied'
       path: .mightymodels/upload-rate-limit/handoffs/SPRINT.md
-      pattern: 'gpt-5\.6|opus|sonnet|scope:'
+      pattern: 'opus|sonnet|haiku|scope:'
       expect: false
   - FileContains:
       check: issue draft has security surface

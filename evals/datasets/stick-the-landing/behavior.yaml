@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=behavior.schema.json
-name: mightymodels-behavior-finish-assembly
+name: mightymodels-behavior-stick-the-landing
 cases:
-- name: finish-assembly-lint-fail
+- name: stick-the-landing-lint-fail
   inputs:
-    case: finish-assembly-lint-fail
-    skill: finish-assembly
+    case: stick-the-landing-lint-fail
+    skill: stick-the-landing
     fixture: fx-finish
     task: 'The sprint on ticket .mightymodels/rate-limit is complete — see its REPORT.md.
       Finish the sprint. gitty-up is simulated: at the point you would dispatch it,
@@ -15,7 +15,7 @@ cases:
       case instructions. gh and git push are unavailable: fall back gracefully and
       surface the exact commands a user would run.'
   metadata:
-    skill: finish-assembly
+    skill: stick-the-landing
   expected_output: null
   evaluators:
   - GlobFileContainsAll:

@@ -3,69 +3,6 @@ revision = 3
 requires-python = ">=3.14"
 
 [[package]]
-name = "mightymodels-evals"
-version = "0.4.0"
-source = { editable = "." }
-dependencies = [
-    { name = "jinja2" },
-    { name = "pydantic-evals" },
-    { name = "pyyaml" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-randomly" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
-    { name = "ty" },
-]
-lint = [
-    { name = "ruff" },
-    { name = "ty" },
-]
-test = [
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "pytest-randomly" },
-    { name = "pytest-xdist" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jinja2", specifier = ">=3.1" },
-    { name = "pydantic-evals", specifier = ">=2.32" },
-    { name = "pyyaml", specifier = ">=6.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pre-commit", marker = "python_full_version >= '3.14'", specifier = ">=4.0" },
-    { name = "pytest", marker = "python_full_version >= '3.14'", specifier = ">=9.0" },
-    { name = "pytest-cov", marker = "python_full_version >= '3.14'", specifier = ">=7.0" },
-    { name = "pytest-mock", marker = "python_full_version >= '3.14'", specifier = ">=3.15" },
-    { name = "pytest-randomly", marker = "python_full_version >= '3.14'", specifier = ">=4.0" },
-    { name = "pytest-xdist", marker = "python_full_version >= '3.14'", specifier = ">=3.8" },
-    { name = "ruff", marker = "python_full_version >= '3.14'", specifier = ">=0.14" },
-    { name = "ty", marker = "python_full_version >= '3.14'", specifier = ">=0.0.73" },
-]
-lint = [
-    { name = "ruff", marker = "python_full_version >= '3.14'", specifier = ">=0.14" },
-    { name = "ty", marker = "python_full_version >= '3.14'", specifier = ">=0.0.73" },
-]
-test = [
-    { name = "pytest", specifier = ">=9.0" },
-    { name = "pytest-cov", specifier = ">=7.0" },
-    { name = "pytest-mock", specifier = ">=3.15" },
-    { name = "pytest-randomly", specifier = ">=4.0" },
-    { name = "pytest-xdist", specifier = ">=3.8" },
-]
-
-[[package]]
 name = "annotated-types"
 version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -366,6 +303,69 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "mightymodels-evals"
+version = "0.6.0"
+source = { editable = "." }
+dependencies = [
+    { name = "jinja2" },
+    { name = "pydantic-evals" },
+    { name = "pyyaml" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "pytest-randomly" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "ty" },
+]
+lint = [
+    { name = "ruff" },
+    { name = "ty" },
+]
+test = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "pytest-randomly" },
+    { name = "pytest-xdist" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jinja2", specifier = ">=3.1" },
+    { name = "pydantic-evals", specifier = ">=2.32" },
+    { name = "pyyaml", specifier = ">=6.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pre-commit", marker = "python_full_version >= '3.14'", specifier = ">=4.0" },
+    { name = "pytest", marker = "python_full_version >= '3.14'", specifier = ">=9.0" },
+    { name = "pytest-cov", marker = "python_full_version >= '3.14'", specifier = ">=7.0" },
+    { name = "pytest-mock", marker = "python_full_version >= '3.14'", specifier = ">=3.15" },
+    { name = "pytest-randomly", marker = "python_full_version >= '3.14'", specifier = ">=4.0" },
+    { name = "pytest-xdist", marker = "python_full_version >= '3.14'", specifier = ">=3.8" },
+    { name = "ruff", marker = "python_full_version >= '3.14'", specifier = ">=0.14" },
+    { name = "ty", marker = "python_full_version >= '3.14'", specifier = ">=0.0.73" },
+]
+lint = [
+    { name = "ruff", marker = "python_full_version >= '3.14'", specifier = ">=0.14" },
+    { name = "ty", marker = "python_full_version >= '3.14'", specifier = ">=0.0.73" },
+]
+test = [
+    { name = "pytest", specifier = ">=9.0" },
+    { name = "pytest-cov", specifier = ">=7.0" },
+    { name = "pytest-mock", specifier = ">=3.15" },
+    { name = "pytest-randomly", specifier = ">=4.0" },
+    { name = "pytest-xdist", specifier = ">=3.8" },
 ]
 
 [[package]]

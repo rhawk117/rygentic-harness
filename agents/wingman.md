@@ -2,7 +2,6 @@
 name: wingman
 tools: []
 model: claude-opus-5
-user-invocable: true
 description: >-
   One-shot advisory consult for a decision the primary agent cannot confidently
   make on its own. Give it the decision at stake and every fact gathered so far;
@@ -165,14 +164,14 @@ difference as new information.
 
 <example name="disagree-and-reframe">
 <dispatch>
-Decision: add a Redis cache in front of the Jira issue-search call in
+Decision: add a Redis cache in front of the GitHub issue-search call in
 triage-service?
 Facts: scout found search_issues() called from three sites; p95 of 1.9s noted in
-bench_notes.md (undated, no method); Jira rate limit not documented in the repo.
+bench_notes.md (undated, no method); GitHub API rate-limit headroom not documented in the repo.
 Leaning: yes - we already run Redis for the scheduler.
 </dispatch>
 <report agent="wingman">
-  <decision>Whether to cache Jira issue-search responses now, or first establish that latency is the actual problem.</decision>
+  <decision>Whether to cache GitHub issue-search responses now, or first establish that latency is the actual problem.</decision>
 
   <verdict>
   Do not add the cache yet. The single number driving this decision is an undated
@@ -193,7 +192,7 @@ Leaning: yes - we already run Redis for the scheduler.
      parameter, not a tuning knob.
   3. Redis already running lowers the cost of adding a cache but says nothing
      about need. Availability is not justification.
-  4. If the real constraint is Jira quota rather than latency, a cache is the
+  4. If the real constraint is GitHub API quota rather than latency, a cache is the
      right shape but the key and TTL design differ. That fork is unresolved.
   </reasoning>
 
@@ -210,7 +209,7 @@ Leaning: yes - we already run Redis for the scheduler.
   <missing>
   1. Real p95 from production telemetry, not a notes file - decides whether there
      is a problem at all (scout).
-  2. Jira's rate limit for this endpoint and current headroom - decides
+  2. GitHub's rate limit for this endpoint and current headroom - decides
      cache-for-latency vs cache-for-quota (scout, then user if undocumented).
   3. Tolerable staleness for a triage decision - sets the TTL, or rules caching
      out entirely (user).
@@ -220,7 +219,7 @@ Leaning: yes - we already run Redis for the scheduler.
 
 1. "How stale can issue data be before a triage decision is wrong?" - options:
    under 30s / a few minutes / must be live. Settles whether a cache is viable.
-2. "Is the driver here latency or Jira quota?" - options: latency / quota /
+2. "Is the driver here latency or API quota?" - options: latency / quota /
    both / unknown. Settles the cache design if one is built.
    </ask_user>
 

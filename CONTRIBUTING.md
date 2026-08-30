@@ -57,8 +57,9 @@ functions at or under 50 lines, comments only for rationale that the code cannot
 
 A skill is a directory under `skills/` whose `SKILL.md` frontmatter carries `name` (matching the
 directory, lowercase with hyphens) and `description`. The description is the retrieval surface
-in Copilot's selection, so write it as trigger phrases plus boundaries, and add a near-miss to
-the trigger dataset when the name or description is anywhere close to an existing skill.
+in Claude Code's skill selection, so write it as trigger phrases plus boundaries, and add a
+near-miss to the trigger dataset when the name or description is anywhere close to an existing
+skill.
 `tests/test_plugin.py` enforces the frontmatter contract; a new behavior case belongs in
 `cases.py` with checks from the evaluator library. Skill text is code: `scripts/security.sh`
 scans it for injection indicators on every commit, and a finding blocks the commit.

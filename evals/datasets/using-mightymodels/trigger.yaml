@@ -66,7 +66,7 @@ cases:
   evaluators: []
 - name: using-mightymodels-trigger-09
   inputs:
-    query: set up copilot hooks so agents get repo context injected at session start
+    query: set up claude code hooks so agents get repo context injected at session start
   metadata: null
   expected_output:
     should_trigger: false
@@ -80,7 +80,7 @@ cases:
   evaluators: []
 - name: using-mightymodels-trigger-11
   inputs:
-    query: my jira board shows 4 agents assigned to this sprint, move OPS-231 to in progress
+    query: my sprint board shows 4 agents assigned to this sprint, move OPS-231 to in progress
   metadata: null
   expected_output:
     should_trigger: false

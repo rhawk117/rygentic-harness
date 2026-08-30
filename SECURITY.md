@@ -10,9 +10,8 @@ gains and the shortest path to reproducing it.
 
 This repo ships instructions that agents execute with real tool access, so the threat model is
 wider than the code. In scope: anything that lets skill or agent text escalate what an agent
-does beyond what the user approved, prompt-injection amplifiers in the skill bodies, the install
-script writing outside `~/.copilot`, and the eval harness executing fixture content it should
-only read.
+does beyond what the user approved, prompt-injection amplifiers in the skill bodies, and the
+eval harness executing fixture content it should only read.
 
 Two standing properties reviewers should hold this repo to. No skill uses `allowed-tools` to
 pre-approve shell access; a change introducing that needs a security rationale in the PR, not

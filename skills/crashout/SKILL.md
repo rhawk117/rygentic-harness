@@ -133,7 +133,7 @@ Schema, one YAML list item per crashout:
 
 ```yaml
 - at: 2026-08-21T17:42:03Z
-  ticket: jira-1234          # .mightymodels ticket slug if working under one, else null
+  ticket: rate-limit            # .mightymodels ticket slug if working under one, else null
   branch: feat/auth-retry    # current git branch, else null
   severity: crashout         # mild-tilt | heated | crashout | full-meltdown
   verdict: deserved          # deserved | split | unreasonable

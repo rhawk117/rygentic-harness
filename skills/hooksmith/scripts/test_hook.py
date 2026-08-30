@@ -35,7 +35,11 @@ def check_field(obj, spec):
 
 def main():
     ap = argparse.ArgumentParser(
-        description='Pipe a sample payload into a Copilot hook script and check the output contract'
+        description=(
+            'Pipe a sample payload into a Claude Code hook script and check the '
+            'output contract: exit 0 with at most one JSON object on stdout, or '
+            'exit 2 to block with the reason on stderr'
+        )
     )
     ap.add_argument('script')
     ap.add_argument('payload')
@@ -63,7 +67,8 @@ def main():
         )
     except subprocess.TimeoutExpired:
         print(
-            f'FAIL {script.name}: timed out after {args.timeout}s (remember: real hook timeouts fail OPEN)'
+            f'FAIL {script.name}: timed out after {args.timeout}s '
+            '(a real hook this slow stalls every matching call)'
         )
         return 1
 

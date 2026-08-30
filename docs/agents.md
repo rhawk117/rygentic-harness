@@ -1,6 +1,6 @@
 # Agents and model routing
 
-Seven workers live in `agents/` as `.agent.md` files. All of them are delegation-only: the
+Seven workers live in `agents/` as plain markdown files. All of them are delegation-only: the
 primary dispatches them with a self-contained task and they report in a structured format.
 Worker conversational state is never authoritative: a worker may retain task-local context for
 bounded follow-ups in the same conversation, but all state required for recovery is
@@ -71,25 +71,27 @@ Every agent file carries a `model:` pin, and the pin is only the fallback for he
 where nobody answered a routing question. The real source of truth is the active ticket's
 `ticket.yml`, whose `subagent-models` block the primary reads at dispatch time:
 
-| Role        | Default            | Why                                                                   |
-| ----------- | ------------------ | --------------------------------------------------------------------- |
-| scout       | `gpt-5.6-luna`     | Retrieval is cheap-tier work by design                                |
-| engineer    | derived from scope | `large` pulls `sonnet-5` or `gpt-5.6-terra`; otherwise `gpt-5.6-luna` |
-| budgetron   | `gpt-5.6-luna`     | Bounded fixes do not need a frontier model                            |
-| grumpy      | `gpt-5.6-luna`     | Adversarial existence proofs are cheap to obtain                      |
-| sunny       | `claude-opus-5`    | Corroboration carries the universal-claim burden                      |
-| wingman     | `claude-opus-5`    | Tool-less judgment needs the strongest available reasoner             |
-| uncle-bob   | `claude-opus-5`    | Abstraction and structure judgment gets the frontier Claude           |
-| merge-vader | `gpt-5.6-sol`      | Cross-vendor diversity on the adversarial pass                        |
+| Role        | Default            | Why                                                        |
+| ----------- | ------------------ | ---------------------------------------------------------- |
+| scout       | `claude-haiku-4-5` | Retrieval is cheap-tier work by design                     |
+| engineer    | derived from scope | `large` pulls `claude-opus-5`; otherwise `claude-sonnet-5` |
+| budgetron   | `claude-sonnet-5`  | Bounded fixes do not need a frontier model                 |
+| gitty-up    | `claude-haiku-4-5` | Watching CI is polling, the cheapest job in the fleet      |
+| grumpy      | `claude-sonnet-5`  | Adversarial existence proofs are cheap to obtain           |
+| sunny       | `claude-opus-5`    | Corroboration carries the universal-claim burden           |
+| wingman     | `claude-opus-5`    | Tool-less judgment needs the strongest available reasoner  |
+| uncle-bob   | `claude-opus-5`    | Abstraction and structure judgment gets the frontier tier  |
+| merge-vader | `claude-opus-5`    | The adversarial pre-merge pass carries merge risk          |
 
 The engineer value in the ticket is the default for every task; the primary may bump a single
 gnarly task one tier at dispatch, logging the reason in that task's ASKED stanza. The reviewer
 split is a decision of record and user-overridable per ticket, like everything else in the
 block.
 
-The model ids above are GitHub Copilot CLI ids, since that is the harness this plugin targets
-first. Under Claude Code, either edit the pins or let dispatches name models your installation
-resolves; [docs/copilot.md](copilot.md) covers where each id is read.
+The model ids above are Claude model ids, resolved by Claude Code at dispatch time. To change
+the routing for one ticket, edit that ticket's `subagent-models` block; to change the headless
+fallback, edit the agent-file pins. [docs/claude-code.md](claude-code.md) covers where each id
+is read.
 
 ## The two-half brief
 

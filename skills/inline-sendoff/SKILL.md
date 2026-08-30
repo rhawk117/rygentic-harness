@@ -1,7 +1,7 @@
 ---
 name: inline-sendoff
 description: >-
-  Small-scope ramp for an mightymodels ticket: read ticket.yml and the GitHub issue FIRST, confirm the ticket's claims still hold at HEAD with two or three scouts, write the task checklist into the issue body, then hand control to agents-assemble. Auto-invoke at session start when the active ticket says scope sm and plan-first false; use when picking up a small ticket — "pick up the ticket", "start on issue #N", "kick off the small one". Not the large ramp (every other scope/plan-first combination goes to formulate-plan), not for Jira operations, and not for tickets that don't exist yet (prepare-handoff creates them).
+  Small-scope ramp for an mightymodels ticket: read ticket.yml and the GitHub issue FIRST, confirm the ticket's claims still hold at HEAD with two or three scouts, write the task checklist into the issue body, then hand control to agents-assemble. Auto-invoke at session start when the active ticket says scope sm and plan-first false; use when picking up a small ticket — "pick up the ticket", "start on issue #N", "kick off the small one". Not the large ramp (every other scope/plan-first combination goes to game-plan), and not for tickets that don't exist yet (prepare-handoff creates them).
 ---
 
 # inline-sendoff

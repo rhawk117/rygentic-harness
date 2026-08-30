@@ -1,10 +1,10 @@
 ---
-name: formulate-plan
+name: game-plan
 description: >-
-  Large-scope ramp for an mightymodels ticket: read ticket.yml and the issue, verify the ticket's task claims with scouts, then write .mightymodels/<slug>/plan.md — high-level strategy and enumerated tasks with size hints, deliberately free of code-level citations — and get the user's approval before invoking agents-assemble. Auto-invoke at session start for any scope/plan-first combination other than scope sm with plan-first false (the routing table in docs/workflow.md is canonical); use for "plan this ticket", "write the plan for issue #N", "ramp the big one". Not for small tickets (inline-sendoff), not a design document or ADR (the plan sequences work on a settled design), and not for Jira sprint planning.
+  Large-scope ramp for an mightymodels ticket: read ticket.yml and the issue, verify the ticket's task claims with scouts, then write .mightymodels/<slug>/plan.md — high-level strategy and enumerated tasks with size hints, deliberately free of code-level citations — and get the user's approval before invoking agents-assemble. Auto-invoke at session start for any scope/plan-first combination other than scope sm with plan-first false (the routing table in docs/workflow.md is canonical); use for "plan this ticket", "run the game plan", "write the plan for issue #N", "ramp the big one". Not for small tickets (inline-sendoff), not a design document or ADR (the plan sequences work on a settled design).
 ---
 
-# formulate-plan
+# game-plan
 
 The large ramp. Its one structural conviction: **the plan is high-level because citations rot.** A plan written at commit A gets executed across commits B through K; any file:line it carried would be stale by task three and trusted anyway. So the plan carries strategy, sequence, and intent — and the per-task briefs carry fresh citations, compiled at dispatch time by what-we-know inside the loop. Altitude is not vagueness: tasks are still enumerated, sized, and ordered.
 

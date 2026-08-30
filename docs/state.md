@@ -11,7 +11,7 @@ unit of work, which is what stops working state from turning into a landfill of 
 .mightymodels/
 ├── <task-slug>/
 │   ├── ticket.yml                source of truth: scope, routing, companion docs
-│   ├── plan.md                   formulate-plan ramp only; high-level, citation-free
+│   ├── plan.md                   game-plan ramp only; high-level, citation-free
 │   ├── issue-body.md             local draft, or the issue when no forge issue exists
 │   ├── handoffs/SPRINT.md        thin session bootstrap
 │   ├── handoffs/REVIEW.md        thin review-session bootstrap
@@ -38,14 +38,14 @@ companion-docs:
     - docs.example.com/rate-limiting # external docs from triage only
 subagent-models:
   primary-agent: null
-  scout: gpt-5.6-luna
-  budgetron: gpt-5.6-luna
-  engineer: gpt-5.6-luna # derived: large scope would pull sonnet-5 or gpt-5.6-terra
-  gitty-up: gpt-5.6-luna
-  grumpy: gpt-5.6-luna
+  scout: claude-haiku-4-5
+  budgetron: claude-sonnet-5
+  engineer: claude-sonnet-5 # derived: large scope would pull claude-opus-5
+  gitty-up: claude-haiku-4-5
+  grumpy: claude-sonnet-5
   sunny: claude-opus-5
   wingman: claude-opus-5
-  merge-vader: gpt-5.6-sol
+  merge-vader: claude-opus-5
   uncle-bob: claude-opus-5
 handoff-context:
   scope: sm # sm | med | large

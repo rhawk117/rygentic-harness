@@ -1,86 +1,116 @@
-# Hook catalog — repo signal → candidate hook
+# Claude Code hooks — events, payloads, and output contract
 
-Map Phase 1 evidence onto these patterns. Every proposal must quote its signal. If a pattern's signal is absent from the repo, the pattern is off the table — do not propose it "just in case".
+This file is hooksmith's ground truth. Propose nothing that is not on this page, and when the installed Claude Code version's own docs disagree with it, trust the installed docs and update this file.
 
-## CI mirror gates (highest value density — they prevent red CI)
+## Where hook config lives
 
-### Done-gate: run CI's checks before the agent declares done
-- Signal: CI workflow runs lint/tests/typecheck (e.g. `npm test`, `uv run pytest`, `ruff check`, `tox`, `cargo clippy`).
-- Hook: agentStop. Run the same commands CI runs (fast subset if the full suite is slow — prefer lint + typecheck + affected tests). On failure: {"decision":"block","reason":"<failing output + 'fix these before finishing'>"}. On pass or when stop_hook_active is true: {"decision":"allow"} — block once then advisory, so the turn can never loop.
-- Cost: seconds per turn end. Keep the command set fast; a 5-minute gate will get disabled by annoyed humans.
-- Placement: repo.
+Hooks are entries under the `hooks` key of a settings file. Sources merge; when several levels define hooks for the same event, all of them run:
 
-### Format/lint after edit
-- Signal: CI or pre-commit runs a formatter (ruff format, prettier, gofmt, xo --fix-capable linter).
-- Hook: postToolUse. If toolName is an edit/create tool and the file matches, run the formatter on the touched file; optionally return additionalContext noting what was reformatted. Never rewrite file content via modifiedResult (that field rewrites the tool RESULT shown to the model, not the file).
-- Cost: milliseconds–low seconds per edit. Very low false-block risk (it can't block).
-- Placement: repo.
+1. `~/.claude/settings.json` — user level, every repo.
+2. `.claude/settings.json` — project level, versioned, every contributor.
+3. `.claude/settings.local.json` — project level, personal, gitignored.
+4. Managed policy settings — organization level, outside user control.
+5. Plugins — a `hooks/hooks.json` at the plugin root (or a `hooks` key in the plugin manifest), same shape, merged in.
 
-### Command rewrite to project runner
-- Signal: repo runs tools through a wrapper (uv, poetry, pnpm, make targets) but agents habitually run bare `pytest`/`ruff`/`tsc`.
-- Hook: preToolUse, matcher on the shell tool. If toolArgs.command starts with a bare tool name and the project marker exists (pyproject.toml etc.), return {"modifiedArgs": {"command": "uv run <original>"}}. Rewrite, don't deny — the agent keeps moving and learns nothing wrong.
-- Cost: sub-ms string check on every shell call.
-- Placement: repo.
+`{"disableAllHooks": true}` in settings disables every hook source the user controls. Hook config is snapshotted at session start; mid-session edits need a restart or a `/hooks` review before they fire.
 
-## Guardrails (justify with risk surface found in THIS repo, and dedupe first)
+## Config shape
 
-Before proposing anything here, check what already runs at user and policy level — security-conscious users often carry global protected-path and dangerous-command hooks, and a repo-level duplicate executes twice per tool call. Propose only what the repo's own evidence demands and nothing existing coverage already handles.
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
-### Protected paths
-- Signal: publish/release workflows, lockfiles, migrations dirs, IaC dirs, .env patterns, CODEOWNERS-guarded paths.
-- Hook: preToolUse, matcher on edit/create/shell tools. Deny or ask on writes to the protected set, with a reason that names the escalation path ("release workflow — change it via PR review, not an agent session").
-- Cost: sub-ms. False-block risk if the path set is too broad — start narrow.
-- Placement: repo.
+- `matcher` filters which tool (or source) the event group applies to: an exact tool name (`Bash`), pipe alternation (`Edit|Write`), a regex, or an MCP tool id (`mcp__server__tool`). Events without a tool (e.g. `SessionStart`) match on their source instead (`startup`, `resume`, `clear`, `compact`).
+- Each hook entry is `{"type": "command", "command": "...", "timeout": N}`.
+- Env vars available to hook commands: `CLAUDE_PROJECT_DIR` (project root), `CLAUDE_PLUGIN_ROOT` (for plugin-shipped hooks), `CLAUDE_ENV_FILE`.
 
-### Dangerous command classes
-- Signal: any repo (baseline), stronger with deploy scripts or db access in-repo.
-- Hook: preToolUse on shell. Deny: sudo/su, rm -rf /, mkfs/dd, curl|sh / wget|sh, force-push to default branch, package publish (npm publish, uv publish, cargo publish), destructive db verbs against non-local hosts. Ask: env dumps piped anywhere, chmod 777.
-- Cost: sub-ms regex set. Keep the deny list short and incremental — broad matches erode trust in the whole hook layer.
-- Placement: repo for team baseline, user for personal extras.
+## Events
 
-## Fresh-session context and recovery
+The core set hooksmith proposes against:
 
-### Dynamic session orientation
-- Signal: things an agent starting cold needs but can't know from static files — is the working tree dirty and with what, ahead/behind upstream, what repo-specific skills/commands exist, non-obvious build/test invocations, top-level layout.
-- Hook: sessionStart script that COMPUTES state at fire time and returns it as additionalContext: `git status --porcelain` summary + ahead/behind, a two-level directory sketch, the canonical build/test/lint commands, available repo skills. A hook earns its place here precisely because the content is live — static prose belongs in the instructions file, not a hook. Keep the output to ~10 lines; it's paid from the context budget every session.
-- Cost: one git invocation + a dir walk per session start. Near-zero risk (can't block).
-- Placement: repo.
+| Event                | Fires                                            | Matcher on            |
+| -------------------- | ------------------------------------------------ | --------------------- |
+| `SessionStart`       | Session begins                                   | startup/resume/clear/compact |
+| `UserPromptSubmit`   | User submits a prompt, before the model sees it  | (none)                |
+| `PreToolUse`         | Before a tool call executes                      | tool name             |
+| `PostToolUse`        | After a tool call succeeds                       | tool name             |
+| `PostToolUseFailure` | After a tool call fails                          | tool name             |
+| `Notification`       | Claude Code emits a notification                 | notification type     |
+| `SubagentStart`      | A subagent is dispatched                         | agent type            |
+| `SubagentStop`       | A subagent finishes                              | agent type            |
+| `Stop`               | The main agent is about to end its turn          | (none)                |
+| `PreCompact`         | Before context compaction                        | manual/auto           |
+| `SessionEnd`         | Session ends                                     | (none)                |
 
-### Failure playbook
-- Signal: predictable failure modes (missing venv → `uv sync`, stale deps → `npm install`, migrations out of date).
-- Hook: postToolUseFailure mapping recognizable error text to the fix command via additionalContext.
-- Cost: ms per failed call, zero on success path.
-- Placement: repo.
+More events exist (a long tail including `PermissionRequest`, `PostCompact`, and setup/config events); consult the installed version's docs before proposing outside this table, and never invent names — a misspelled event silently never fires.
 
-## Hygiene and telemetry
+## Stdin payload
 
-### Audit log
-- Signal: compliance need, or user asks for visibility.
-- Hook: userPromptSubmitted + preToolUse (+ sessionStart/sessionEnd) appending redacted JSONL to a gitignored path. Redact token-shaped strings before writing. Add the log dir to .gitignore in the same change.
-- Placement: user for personal telemetry, repo only if the team wants shared audit policy.
+Every hook receives one JSON object on stdin, snake_case fields. Common fields:
 
-### Output truncation for noisy commands
-- Signal: repo has chatty tooling (verbose test runners, big build logs) and long sessions.
-- Hook: postToolUse on shell; if toolResult.textResultForLlm exceeds a threshold, return modifiedResult with head+tail and a note. Saves context budget; risk: truncating the line the model needed — keep generous thresholds.
-- Placement: user (taste-dependent).
+```json
+{
+  "session_id": "...",
+  "cwd": "/path/to/project",
+  "hook_event_name": "PreToolUse",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "permission_mode": "default"
+}
+```
 
-## Subagent patterns (only when the repo/user actually uses custom agents)
+Per-event additions:
 
-### Per-agent context injection
-- Signal: .github/agents/ or ~/.copilot/agents/ profiles exist.
-- Hook: subagentStart, matcher on agent names, additionalContext with the per-agent charter (scope, report format).
+- Tool events add `tool_name` and `tool_input` (the tool's own argument object: `Bash` has `tool_input.command`, `Edit` has `tool_input.file_path`/`old_string`/`new_string`, and so on). `PostToolUse` adds `tool_response`; `PostToolUseFailure` carries the error.
+- `Stop` adds `stop_hook_active`: true when the turn is already continuing because a Stop hook blocked it. Every Stop gate must allow when this is true, or the turn loops forever.
+- `SessionStart` adds `source`; `PreCompact` distinguishes manual from auto.
+- `UserPromptSubmit` adds the prompt text; `SubagentStart`/`SubagentStop` add the agent type.
 
-### Subagent report gate
-- Signal: custom agents expected to return structured reports.
-- Hook: subagentStop validating response shape; block once with the schema as reason (track one-shot state yourself — no stop_hook_active here), or modifiedResponse to trim/redact before the parent ingests it.
-- Caveat: pair with the #2392 note from hooks-reference.md if anyone expects preToolUse to constrain subagents.
+## Output contract
 
-## Anti-patterns — do not propose
+Exit codes first, JSON second:
 
-- Hooks for events that don't exist (preCommit, onFileSave). Check the reference table.
-- prompt-type hooks for automation (new interactive sessions only; dead in -p and resumes).
-- A deny-everything security posture via hooks alone — timeouts fail open and subagent enforcement is unproven; hooks complement permissions and agent profiles, they don't replace them.
-- Slow enforcement hooks (see fail-open timeout note).
-- Injecting large context blobs at sessionStart — context budget is a real cost every session.
-- sessionStart hooks that inject STATIC text an instructions file could carry — hooks are for state computed at fire time.
-- Repo-level duplicates of guards the user/policy level already runs — both fire, doubling latency for zero coverage.
+- **Exit 0** — success. Stdout may be empty, may carry plain text (added as context on context-accepting events like `UserPromptSubmit` and `SessionStart`), or may carry one JSON object using the fields below.
+- **Exit 2** — block. Stderr is the reason, and the model reads it, so write it as an actionable instruction.
+- **Any other exit** — non-blocking error; the tool call proceeds and the failure is surfaced to the user.
+
+Structured output goes in a `hookSpecificOutput` wrapper (plus optional top-level `"systemMessage"` shown to the user):
+
+- `PreToolUse`:
+
+  ```json
+  {
+    "hookSpecificOutput": {
+      "hookEventName": "PreToolUse",
+      "permissionDecision": "allow",
+      "permissionDecisionReason": "why",
+      "updatedInput": { "command": "uv run pytest" }
+    }
+  }
+  ```
+
+  `permissionDecision` is `allow`, `deny`, `ask`, or `defer`. `updatedInput` rewrites the tool's arguments before execution — the rewrite pattern (`allow` + `updatedInput`) replaces denying and hoping the model retries correctly.
+
+- `PostToolUse` and `Stop`: `{"decision": "block", "reason": "..."}` blocks (for Stop, the turn continues with the reason as guidance — guard with `stop_hook_active`).
+- `UserPromptSubmit`: `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "..."}}` injects context; a `decision: "block"` rejects the prompt.
+- `SessionStart` and `SubagentStart`: `additionalContext` injects live context at the boundary.
+
+Scripts should emit at most one JSON object on stdout and keep diagnostics on stderr; interleaved prose on stdout corrupts parsing.
+
+## Non-interactive sessions
+
+Under `claude -p` hooks run normally, but there is no human to answer a permission prompt: a `PreToolUse` decision of `ask` cannot be resolved interactively, so automated policy must land on `allow` or `deny`. Anything that genuinely needs a human belongs in interactive sessions only.

@@ -13,7 +13,7 @@ Produce a small AGENTS.md of verified facts — not a comprehensive document. Th
 Ask two things up front, in one dialog where the platform supports it:
 
 1. **Platform**: Claude Code, GitHub Copilot, or both. This decides which router files you write in step 5.
-2. **Explorer model**: a free-text input field — the user types the model the two explorer subagents run on (examples to show them: `haiku 4.5`, `gpt-5.6-luna`). Normalize what they type to a real model identifier available on this platform. If it doesn't match anything cleanly, confirm your best match before dispatching — never silently substitute. One model applies to both explorers.
+2. **Explorer model**: a free-text input field — the user types the model the two explorer subagents run on (examples to show them: `claude-haiku-4-5`, `claude-sonnet-5`). Normalize what they type to a real model identifier available on this platform. If it doesn't match anything cleanly, confirm your best match before dispatching — never silently substitute. One model applies to both explorers.
 
 In Claude Code, use AskUserQuestion (its Other option gives the free-text field). In Copilot CLI, use the ask-user mechanism your harness provides. If the user already answered either question in their request ("use haiku for the explorers", "I'm on both"), don't re-ask it. Headless or no ask mechanism available: state your assumptions at the top of your output (platform: both; model: this platform's fast tier) and proceed.
 

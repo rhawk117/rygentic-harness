@@ -1,7 +1,7 @@
 ---
 name: what-we-know
 description: >-
-  Consolidate the current understanding of a problem: a table of knowns with file:line citations, enumerated uncertainties, and — in interactive mode — each uncertainty resolved through the ask-user dialog, closing with a SWOT-level analysis in chat. In sprint mode (inside an active mightymodels loop) it gathers citations for the current task only and never asks the user anything. Use at the end of a triage or investigation session — "what do we know", "summarize what we've learned", "where are the unknowns", "consolidate the findings" — before prepare-handoff, and automatically per-task inside agents-assemble. Not for summarizing a repo or writing documentation, and not for Jira status rollups.
+  Consolidate the current understanding of a problem: a table of knowns with file:line citations, enumerated uncertainties, and — in interactive mode — each uncertainty resolved through the ask-user dialog, closing with a SWOT-level analysis in chat. In sprint mode (inside an active mightymodels loop) it gathers citations for the current task only and never asks the user anything. Use at the end of a triage or investigation session — "what do we know", "summarize what we've learned", "where are the unknowns", "consolidate the findings" — before prepare-handoff, and automatically per-task inside agents-assemble. Not for summarizing a repo or writing documentation.
 ---
 
 # what-we-know

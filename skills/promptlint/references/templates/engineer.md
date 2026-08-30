@@ -1,6 +1,6 @@
 # Template: engineer dispatch (emits the ASKED stanza)
 
-For one task dispatch inside an active mightymodels sprint. This template's first output block IS the brief's `## ASKED` half — write it once, paste it to the top of `.mightymodels/<slug>/briefs/task-NN.md`, and include it in the dispatch. The engineer's standing contract (report format, scope rules, blast-radius doctrine) lives in engineer.agent.md — do not restate it.
+For one task dispatch inside an active mightymodels sprint. This template's first output block IS the brief's `## ASKED` half — write it once, paste it to the top of `.mightymodels/<slug>/briefs/task-NN.md`, and include it in the dispatch. The engineer's standing contract (report format, scope rules, blast-radius doctrine) lives in agents/engineer.md — do not restate it.
 
 **Ten-second checklist:** every AC is checkable — a runnable command or an assertion with a location; "works correctly" is a placeholder, reject it · files-in-scope is disjoint from any other open group's set · the verification commands actually exist in this repo (check the runner config before promising them) · tier bump, if any, has its reason logged.
 

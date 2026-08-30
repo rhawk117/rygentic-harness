@@ -14,8 +14,9 @@ description: >-
 
 # ask-an-adult
 
-`wingman` is a one-shot advisor on `claude-opus-5` with **no tools**. It sees
-nothing except what this dispatch contains. The quality of its answer is capped
+`wingman` is a one-shot advisor with **no tools**, running on the model the
+active ticket's `subagent-models` block names (agent-file pin as the headless
+fallback). It sees nothing except what this dispatch contains. The quality of its answer is capped
 by the quality of the packet you send it, and a thin packet wastes a frontier
 turn.
 

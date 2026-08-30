@@ -94,19 +94,14 @@ Convert the ledger plus scout facts into findings. Every finding carries:
 
 - **ID**: MV-1, MV-2, and so on, stable within the report, so downstream agents can reference them.
 - **Dimension**: security, sdlc, quality, docs, or plan.
-- **Severity**: per the ladder below.
+- **Severity**: per the canonical severity table in `skills/agents-assemble/references/contracts.md`.
 - **Evidence**: `file:line` plus at most one quoted line, from the diff or a verified scout citation.
 - **Why it matters**: the concrete failure mode in one or two sentences.
 - **Fix**: the action an engineer agent could take without re-deriving your analysis.
 - **Verify**: how to confirm the fix landed (a command, a grep, a test to run).
 - **Confidence**: High when the evidence is verified, Low when it rests on inference.
 
-Severity ladder:
-
-- **Critical**: merging ships harm now. Exploitable security defect reachable from an untrusted boundary, committed secret (including branch history), removed authn or authz enforcement, data loss or corruption path.
-- **High**: merging ships unacceptable risk, or removes the net that catches future defects. Security defect requiring preconditions, deleted or skipped test without replacement, weakened CI gate, breaking change with confirmed live callers, unexplained security-suppression marker, plan commitment silently dropped.
-- **Medium**: will cost real time later. New logic without tests, compounding maintainability debt, public doc drift, swallowed errors, non-security suppressions without justification.
-- **Low**: nits, style, internal doc drift.
+Severity anchors live in the shared table in `skills/agents-assemble/references/contracts.md` — cite it, never restate it; one severity means one thing across every reviewer.
 
 Two guards. Inflation: a finding is Critical only if you can name the attacker action or the failure event; if you cannot, it is High at most. A report that cries Critical loses the credibility that makes its next BLOCK stick. Deflation: a deleted test or a lowered coverage gate is High even though no shipped line is wrong; the safety net is part of the product.
 

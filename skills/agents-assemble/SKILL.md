@@ -1,7 +1,7 @@
 ---
 name: agents-assemble
 description: >-
-  Run the mightymodels per-task work loop for an active ticket: for each task — what-we-know citations, a promptlint-templated engineer dispatch carrying an ASKED stanza with checkable acceptance criteria, the two-half task brief, scout verification of DONE against ASKED, budgetron for residuals, whats-broken after repeated failures — ending in a ≤50-line REPORT.md. Use when a ticket is ramped and the user says to start, begin, run, resume, or continue the mightymodels work loop on a ticket — "begin the sprint", "start working the ticket", "run the loop", "continue the sprint". Not for Jira sprint or board operations (the jira skill owns those), not for opening PRs or watching CI (finish-assembly), and not for ramping a fresh session (inline-sendoff / formulate-plan run first).
+  Run the mightymodels per-task work loop for an active ticket: for each task — what-we-know citations, a promptlint-templated engineer dispatch carrying an ASKED stanza with checkable acceptance criteria, the two-half task brief, scout verification of DONE against ASKED, budgetron for residuals, whats-broken after repeated failures — ending in a ≤50-line REPORT.md. Use when a ticket is ramped and the user says to start, begin, run, resume, or continue the mightymodels work loop on a ticket — "begin the sprint", "start working the ticket", "run the loop", "continue the sprint". Not for opening PRs or watching CI (stick-the-landing), and not for ramping a fresh session (inline-sendoff / game-plan run first).
 ---
 
 # agents-assemble
@@ -28,7 +28,7 @@ The per-task loop. Its whole design bet is that verification has a persisted tar
 
 ## Sprint end
 
-Report the count: tasks completed, residuals fixed, anything escalated. Write `REPORT.md` (≤50 lines): what shipped per task, commits, open threads. Then **stop** — pushing and PR-opening belong to finish-assembly, so the user gets a look between "work done" and "work public".
+Report the count: tasks completed, residuals fixed, anything escalated. Write `REPORT.md` (≤50 lines): what shipped per task, commits, open threads. Then **stop** — pushing and PR-opening belong to stick-the-landing, so the user gets a look between "work done" and "work public".
 
 ## Rules that keep the loop honest
 

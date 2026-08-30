@@ -1,10 +1,10 @@
 ---
-name: finish-assembly
+name: stick-the-landing
 description: >-
-  Close an mightymodels sprint: push the branch, dispatch gitty-up to open the PR with the repo's template and watch CI, route failures — mechanical fixes obvious from the log tail to budgetron, non-obvious causes to whats-broken — and on green offer to generate the thin handoffs/REVIEW.md for the review session. Use when all sprint tasks are done and the user says finish, wrap up, ship it up, push and open the PR — "finish the sprint", "wrap up the ticket", "get the PR open". Not for Jira sprint operations (the jira skill), not the deep review itself (review-circus), and not for mid-sprint work (agents-assemble owns the loop).
+  Close an mightymodels sprint: push the branch, dispatch gitty-up to open the PR with the repo's template and watch CI, route failures — mechanical fixes obvious from the log tail to budgetron, non-obvious causes to whats-broken — and on green offer to generate the thin handoffs/REVIEW.md for the review session. Use when all sprint tasks are done and the user says finish, wrap up, ship it up, push and open the PR — "finish the sprint", "stick the landing", "wrap up the ticket", "get the PR open". Not the deep review itself (review-circus), and not for mid-sprint work (agents-assemble owns the loop).
 ---
 
-# finish-assembly
+# stick-the-landing
 
 The bridge from "work done" to "work reviewable". It exists as its own stage so the user gets a look between the sprint's last commit and anything public — and so CI failures get routed by *cause type*, not handled by whoever happens to be cheapest.
 

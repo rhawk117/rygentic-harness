@@ -52,7 +52,7 @@ cases:
   evaluators: []
 - name: agents-assemble-trigger-07
   inputs:
-    query: start the sprint in jira and move the tickets over
+    query: start the sprint on the board and move the tickets over
   metadata: null
   expected_output:
     should_trigger: false
@@ -80,7 +80,7 @@ cases:
   evaluators: []
 - name: agents-assemble-trigger-11
   inputs:
-    query: close out the sprint in jira and roll unfinished items
+    query: close out the sprint on the board and roll unfinished items
   metadata: null
   expected_output:
     should_trigger: false

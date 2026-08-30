@@ -57,7 +57,7 @@ rough task directly. This applies especially to grumpy, sunny, and wingman.
 | sunny     | reasoning | Independently corroborate load-bearing claims | report only       | Criticize or fix the work         |
 | wingman   | reasoning | Decide a genuinely stuck judgment call        | one-shot          | Read files, run commands, or act  |
 
-Two reviewer roles complete the fleet but are not `.agent.md` workers: `uncle-bob` (structure and
+Two reviewer roles complete the fleet but are not agent-file workers: `uncle-bob` (structure and
 abstraction grading) and `merge-vader` (adversarial pre-merge review) are skills you run on a
 frontier subagent during review-circus. Dispatch them by invoking the skill with the model named
 in `ticket.yml`, not by agent name.
@@ -124,10 +124,11 @@ active `.mightymodels/<task-slug>/` directory; neither reviewer modifies the rev
 ## How models resolve
 
 Read the active ticket's `subagent-models` block in `.mightymodels/<slug>/ticket.yml` at every
-dispatch; the `model:` pins inside the `.agent.md` files are only the fallback for headless runs
-where no ticket answers. Defaults: scout, budgetron, and grumpy on `gpt-5.6-luna`; sunny and wingman on `claude-opus-5`; engineer
-derived from ticket scope (`large` pulls `sonnet-5` or `gpt-5.6-terra`, otherwise
-`gpt-5.6-luna`); uncle-bob on `claude-opus-5`; merge-vader on `gpt-5.6-sol`. You may bump a
+dispatch; the `model:` pins inside the agent files are only the fallback for headless runs
+where no ticket answers. Defaults: scout and gitty-up on `claude-haiku-4-5`; budgetron and
+grumpy on `claude-sonnet-5`; sunny, wingman, uncle-bob, and merge-vader on `claude-opus-5`;
+engineer derived from ticket scope (`large` pulls `claude-opus-5`, otherwise
+`claude-sonnet-5`). You may bump a
 single gnarly task's engineer one tier at dispatch; log the reason in that task's ASKED stanza.
 
 ## Reading reports

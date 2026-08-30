@@ -14,7 +14,7 @@ The opening move: understand before anything gets named, ticketed, or built. Thi
 
 **State the target in one line** — the claim to check, the behavior to explain, the question to answer. If the user's framing is vague, sharpen it with them before dispatching anything; scouts pointed at a vague target return precise answers to the wrong question.
 
-**Delegate retrieval, keep judgment.** Scouts take one narrow retrieval question each, with exact paths, symbols, and search terms — they have not seen this conversation. Shape questions as locate/list/extract/run, never should/why/sound (those bounce back NEEDS-ANALYSIS and waste the dispatch). Models from the ticket... there is no ticket yet — scouts run on their default. Two or three scouts per wave; let wave one's answers write wave two's questions.
+**Delegate retrieval, keep judgment.** Scouts take one narrow retrieval question each, with exact paths, symbols, and search terms — they have not seen this conversation. Shape questions as locate/list/extract/run, never should/why/sound (those bounce back NEEDS-ANALYSIS and waste the dispatch). No ticket exists yet, so no `subagent-models` routing applies: scouts run on their agent-file default. Two or three scouts per wave; let wave one's answers write wave two's questions.
 
 **Accumulate with citations.** Every fact carries its `file:line` or command output. Contradictions between scout findings are findings themselves — surface them, don't reconcile them silently.
 

@@ -6,10 +6,9 @@ lifecycle ends with `/prune-ticket` compressing the whole directory into a 30-li
 unit of deletion is the unit of work, so working state never outlives the ticket that produced
 it.
 
-mightymodels is built for GitHub Copilot CLI first and runs unchanged as a Claude Code plugin. The
-skills and agents are plain markdown in a layout both harnesses read.
-[docs/copilot.md](docs/copilot.md) covers the Copilot specifics and has been checked against the
-current CLI behavior.
+mightymodels is a Claude Code plugin: the skills are standard `SKILL.md` directories, the seven
+workers are Claude Code subagent files, and the manifests under `.claude-plugin/` are what the
+plugin loader reads. [docs/claude-code.md](docs/claude-code.md) covers the harness specifics.
 
 ## The loop at a glance
 
@@ -19,10 +18,10 @@ flowchart TD
     B --> C["prepare-handoff\ninterview, ticket.yml, issue, branch"]
     C --> D{scope}
     D -->|"sm, no plan"| E["inline-sendoff"]
-    D -->|"any other combination"| F["formulate-plan"]
+    D -->|"any other combination"| F["game-plan"]
     E --> G["agents-assemble\nper-task work loop"]
     F --> G
-    G --> H["finish-assembly\nPR and CI via gitty-up"]
+    G --> H["stick-the-landing\nPR and CI via gitty-up"]
     H --> I["review-circus\nuncle-bob and merge-vader"]
     I --> J["human review"]
     J --> K["prune-ticket\narchive and delete"]
@@ -34,40 +33,24 @@ the ticket lifecycle.
 
 ## Install
 
-GitHub Copilot CLI:
-
-```text
-copilot plugin install <owner>/mightymodels
-```
-
-The CLI reads this repo's `.claude-plugin/` manifests directly. Skills load with the plugin; if
-the seven custom agents do not appear in your session afterwards, run
-`scripts/install-copilot.sh` to place them under `~/.copilot/agents`. Caveats, model ids, and
-the no-plugin path are in [docs/copilot.md](docs/copilot.md).
-
-Claude Code:
-
 ```text
 /plugin marketplace add <owner>/mightymodels
-/plugin install mightymodels@mightymodels-marketplace
+/plugin install mightymodels@rygentic-harness
 ```
 
-Personal install from a clone, no plugin mechanism involved:
-
-```sh
-./scripts/install-copilot.sh          # copies skills and agents into ~/.copilot
-./scripts/install-copilot.sh --link   # symlinks instead, so a git pull updates in place
-```
+The marketplace add step reads this repo's `.claude-plugin/marketplace.json` (the marketplace is
+named rygentic-harness; mightymodels is one of its plugins). Model ids, agent discovery, and
+validation are in [docs/claude-code.md](docs/claude-code.md).
 
 ## Layout
 
 ```text
 skills/          twenty skills: the loop stages, the review stack, the fleet reference, utilities
-agents/          scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman (.agent.md)
+agents/          scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman (one .md each)
 evals/           pydantic-evals harness: package source, per-skill datasets, dated results
 tests/           the harness test suite, including the plugin portability contract
 docs/            human documentation
-scripts/         quality gate, security scan, git hooks, Copilot install helper
+scripts/         quality gate, security scan, git hooks
 .claude-plugin/  plugin and marketplace manifests
 ```
 
@@ -79,14 +62,14 @@ and the skill gets fixed.
 
 ## Documentation
 
-| Page                                 | What it covers                                  |
-| ------------------------------------ | ----------------------------------------------- |
-| [docs/workflow.md](docs/workflow.md) | The full loop, stage by stage, with diagrams    |
-| [docs/skills.md](docs/skills.md)     | Every skill: what it does and when it fires     |
-| [docs/agents.md](docs/agents.md)     | The seven workers and how models get routed     |
-| [docs/state.md](docs/state.md)       | The `.mightymodels/` directory and `ticket.yml` |
-| [docs/copilot.md](docs/copilot.md)   | Running under GitHub Copilot CLI                |
-| [evals/README.md](evals/README.md)   | The eval harness and how results are read       |
+| Page                                       | What it covers                                  |
+| ------------------------------------------ | ----------------------------------------------- |
+| [docs/workflow.md](docs/workflow.md)       | The full loop, stage by stage, with diagrams    |
+| [docs/skills.md](docs/skills.md)           | Every skill: what it does and when it fires     |
+| [docs/agents.md](docs/agents.md)           | The seven workers and how models get routed     |
+| [docs/state.md](docs/state.md)             | The `.mightymodels/` directory and `ticket.yml` |
+| [docs/claude-code.md](docs/claude-code.md) | Running under Claude Code                       |
+| [evals/README.md](evals/README.md)         | The eval harness and how results are read       |
 
 ## Evals
 
@@ -98,7 +81,7 @@ markdownlint, the skills prompt-injection scan, and the test suite on Python 3.1
 
 ## Status
 
-0.5.0. The hook layer (session covenant injection, verification gates at agentStop, preCompact
+0.6.0. The hook layer (session covenant injection, verification gates at Stop, PreCompact
 ticket snapshots) and the team/personal overlay split are designed but not yet shipped.
 CHANGELOG.md has the full trail.
 

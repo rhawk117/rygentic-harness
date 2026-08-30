@@ -1,6 +1,6 @@
 # Template: scout dispatch
 
-For one retrieval question inside an active mightymodels loop. The scout's own contract (report format, verdicts, budget) lives in scout.agent.md — carry only what varies per dispatch, never restate the contract.
+For one retrieval question inside an active mightymodels loop. The scout's own contract (report format, verdicts, budget) lives in agents/scout.md — carry only what varies per dispatch, never restate the contract.
 
 **Ten-second checklist:** the question is retrieval, not judgment (a "should/why/is it sound" question bounces back NEEDS-ANALYSIS and wastes the dispatch) · exact paths, symbols, and search terms are in the task — the scout has not seen your diff, ticket, or ledger · scope is the narrowest that answers it.
 

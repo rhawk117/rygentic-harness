@@ -59,7 +59,7 @@ cases:
   evaluators: []
 - name: inline-sendoff-trigger-08
   inputs:
-    query: pick up the jira ticket from the backlog
+    query: pick up the tracker ticket from the backlog
   metadata: null
   expected_output:
     should_trigger: false

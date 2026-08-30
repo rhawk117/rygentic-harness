@@ -19,16 +19,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Grows only through review — a typo'd skill name must not end up here.
 ALLOWED_TOKENS = {
     'allowed-tools',
+    'claude-haiku-4-5',
     'claude-opus-5',
+    'claude-sonnet-5',
     'continue-on-error',
     'disable-model-invocation',
     'files-in-scope',
     'full-meltdown',  # crashout journal severity, not a skill
-    'jira-cli',
     'mild-tilt',  # crashout journal severity, not a skill
     'plan-first',
     'review-weight',
-    'sonnet-5',
     'subagent-models',
     'triaged-at',
 }
@@ -47,10 +47,7 @@ def skill_names() -> set[str]:
 
 
 def agent_names() -> set[str]:
-    return {
-        p.name.removesuffix('.agent.md')
-        for p in REPO_ROOT.joinpath('agents').glob('*.agent.md')
-    }
+    return {p.name.removesuffix('.md') for p in REPO_ROOT.joinpath('agents').glob('*.md')}
 
 
 def _reference_surface() -> list[Path]:

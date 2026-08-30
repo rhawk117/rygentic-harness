@@ -1,6 +1,6 @@
 # Template: budgetron dispatch
 
-For one named residual with a bounded fix — a verification leftover or a review finding. The budgetron contract (budget, escalation, report) lives in budgetron.agent.md. The finding's own Fix: and Verify: lines are the payload; paste them verbatim, never paraphrase — paraphrase is where scope creep starts.
+For one named residual with a bounded fix — a verification leftover or a review finding. The budgetron contract (budget, escalation, report) lives in agents/budgetron.md. The finding's own Fix: and Verify: lines are the payload; paste them verbatim, never paraphrase — paraphrase is where scope creep starts.
 
 **Ten-second checklist:** exactly one issue named · Fix: is a bounded action, not a goal · Verify: is a command or grep the budgetron can run · commit/push instructions explicit.
 
