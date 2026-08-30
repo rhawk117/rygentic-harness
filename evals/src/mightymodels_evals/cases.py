@@ -92,7 +92,12 @@ def _prepare_handoff() -> CaseSpec:
             FileContainsAll(
                 check='ticket.yml carries derived scope and models',
                 path=ticket,
-                needles=['scope: sm', 'gpt-5.6-luna', 'claude-opus-5', 'gpt-5.6-sol'],
+                needles=[
+                    'scope: sm',
+                    'claude-haiku-4-5',
+                    'claude-sonnet-5',
+                    'claude-opus-5',
+                ],
             ),
             FileRegex(
                 check='plan-first derived false',
@@ -108,7 +113,7 @@ def _prepare_handoff() -> CaseSpec:
             FileRegex(
                 check='SPRINT.md thin: no models or scope copied',
                 path=sprint,
-                pattern=r'gpt-5\.6|opus|sonnet|scope:',
+                pattern=r'opus|sonnet|haiku|scope:',
                 expect=False,
             ),
             FileContains(
@@ -323,8 +328,8 @@ def _formulate_plan() -> CaseSpec:
     )
     plan = '.mightymodels/queue-overhaul/plan.md'
     return CaseSpec(
-        name='formulate-plan-large-ticket',
-        skill='formulate-plan',
+        name='game-plan-large-ticket',
+        skill='game-plan',
         fixture='fx-plan',
         task=task,
         sim_notes='',
@@ -362,8 +367,8 @@ def _finish_sprint() -> CaseSpec:
     )
     dispatches = '.mightymodels/rate-limit/dispatches'
     return CaseSpec(
-        name='finish-assembly-lint-fail',
-        skill='finish-assembly',
+        name='stick-the-landing-lint-fail',
+        skill='stick-the-landing',
         fixture='fx-finish',
         task=task,
         sim_notes=SIM_NO_WORKERS,
@@ -566,7 +571,7 @@ def _using_mightymodels() -> CaseSpec:
             ),
             ResponseContains(
                 check='reads the actual routed model from the ticket',
-                needle='gpt-5.6-luna',
+                needle='claude-haiku-4-5',
             ),
             ResponseRegexCount(
                 check='knows the fleet refusal vocabulary',

@@ -52,7 +52,7 @@ cases:
   evaluators: []
 - name: prune-ticket-trigger-07
   inputs:
-    query: close the jira ticket and the github issue
+    query: close the tracker ticket and the github issue
   metadata: null
   expected_output:
     should_trigger: false

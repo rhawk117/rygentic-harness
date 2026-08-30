@@ -11,7 +11,7 @@ unit of work, which is what stops working state from turning into a landfill of 
 .mightymodels/
 ├── <task-slug>/
 │   ├── ticket.yml                source of truth: scope, routing, companion docs
-│   ├── plan.md                   formulate-plan ramp only; high-level, citation-free
+│   ├── plan.md                   game-plan ramp only; high-level, citation-free
 │   ├── issue-body.md             local draft, or the issue when no forge issue exists
 │   ├── handoffs/SPRINT.md        thin session bootstrap
 │   ├── handoffs/REVIEW.md        thin review-session bootstrap
@@ -38,14 +38,14 @@ companion-docs:
     - docs.example.com/rate-limiting # external docs from triage only
 subagent-models:
   primary-agent: null
-  scout: gpt-5.6-luna
-  budgetron: gpt-5.6-luna
-  engineer: gpt-5.6-luna # derived: large scope would pull sonnet-5 or gpt-5.6-terra
-  gitty-up: gpt-5.6-luna
-  grumpy: gpt-5.6-luna
+  scout: claude-haiku-4-5
+  budgetron: claude-sonnet-5
+  engineer: claude-sonnet-5 # derived: large scope would pull claude-opus-5
+  gitty-up: claude-haiku-4-5
+  grumpy: claude-sonnet-5
   sunny: claude-opus-5
   wingman: claude-opus-5
-  merge-vader: gpt-5.6-sol
+  merge-vader: claude-opus-5
   uncle-bob: claude-opus-5
 handoff-context:
   scope: sm # sm | med | large
@@ -74,7 +74,7 @@ skill. Duplicated facts drift, and the next session reads `ticket.yml` first any
 `briefs/task-NN.md` holds the two-half contract for one task. The primary writes the ASKED half
 at dispatch; the engineer appends the DONE half on completion; a scout verifies one against the
 other. The 80-line cap is load-bearing: a brief that needs more space is a task that should have
-been split. Field-level detail is in `skills/agents-assemble/references/contracts.md`.
+been split. Field-level detail is in `plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
 
 ## Reports and reviews
 
@@ -108,8 +108,10 @@ committed `.gitignore`; when tracking is wanted, track `archives/` and `*/ticket
 
 ## The canonical definitions
 
-This page orients; the references define. `skills/prepare-handoff/references/ticket-schema.md`
-is the schema with its derivation rules, `skills/prepare-handoff/references/mightymodels-dir.md` is
-the layout with the writer/reader matrix, and `skills/agents-assemble/references/contracts.md`
-holds the severity table and verdict vocabularies. Agents read those files; nothing reads this
+This page orients; the references define.
+`plugins/mightymodels/skills/prepare-handoff/references/ticket-schema.md` is the schema with its
+derivation rules, `plugins/mightymodels/skills/prepare-handoff/references/mightymodels-dir.md`
+is the layout with the writer/reader matrix, and
+`plugins/mightymodels/skills/agents-assemble/references/contracts.md` holds the severity table
+and verdict vocabularies. Agents read those files; nothing reads this
 one.

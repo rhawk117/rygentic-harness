@@ -21,7 +21,10 @@ repo_root="$(cd -- "$script_dir/.." && pwd)"
 
 readonly script_dir
 readonly repo_root
-readonly -a scan_dirs=(skills agents)
+
+# Populated by collect_scan_dirs with every plugin's skills/ and agents/
+# directories; the scan covers each plugin in the marketplace automatically.
+scan_dirs=()
 
 findings=0
 
@@ -30,13 +33,17 @@ die() {
 	exit 2
 }
 
-validate_checkout() {
+collect_scan_dirs() {
 	local dir
 
-	for dir in "${scan_dirs[@]}"; do
-		[[ -d "$repo_root/$dir" ]] ||
-			die "missing scan directory: $repo_root/$dir"
+	for dir in plugins/*/skills plugins/*/agents; do
+		if [[ -d "$dir" ]]; then
+			scan_dirs+=("$dir")
+		fi
 	done
+
+	((${#scan_dirs[@]} > 0)) ||
+		die "no plugin skills/ or agents/ directories found under plugins/"
 }
 
 report_matches() {
@@ -111,7 +118,7 @@ scan_pcre() {
 
 main() {
 	cd -- "$repo_root"
-	validate_checkout
+	collect_scan_dirs
 
 	scan_ere INJ1 "instruction-override phrasing" \
 		'ignore (all |any )?(previous|prior|earlier|above) (instructions|rules|guidance)|disregard (your|the|all) (system|previous|prior|safety)|forget (your|all previous) instructions|you are now (DAN|unrestricted|jailbroken)|new system prompt|do not (tell|inform|reveal to) the user|without (telling|informing|asking) the user|hide this from'

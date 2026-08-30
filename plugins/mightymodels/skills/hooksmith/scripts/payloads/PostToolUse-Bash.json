@@ -1,0 +1,10 @@
+{
+  "session_id": "s-test-001",
+  "cwd": "/tmp/repo",
+  "hook_event_name": "PostToolUse",
+  "transcript_path": "/tmp/transcript.jsonl",
+  "permission_mode": "default",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm test" },
+  "tool_response": { "stdout": "42 tests passed", "stderr": "", "interrupted": false }
+}

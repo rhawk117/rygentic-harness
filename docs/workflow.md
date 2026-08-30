@@ -15,10 +15,10 @@ flowchart TD
     B --> C["prepare-handoff"]
     C --> D{"scope in ticket.yml"}
     D -->|"sm, no plan"| E["inline-sendoff"]
-    D -->|"any other combination"| F["formulate-plan"]
+    D -->|"any other combination"| F["game-plan"]
     E --> G["agents-assemble"]
     F -->|"plan approved"| G
-    G --> H["finish-assembly"]
+    G --> H["stick-the-landing"]
     H --> I{"CI"}
     I -->|"fail, cause in log tail"| SK["budgetron"]
     I -->|"fail, cause unclear"| WB["whats-broken"]
@@ -67,15 +67,15 @@ document points here rather than restating it:
 | scope | plan-first | ramp             |
 | ----- | ---------- | ---------------- |
 | sm    | false      | `inline-sendoff` |
-| sm    | true       | `formulate-plan` |
-| med   | false      | `formulate-plan` |
-| med   | true       | `formulate-plan` |
-| large | false      | `formulate-plan` |
-| large | true       | `formulate-plan` |
+| sm    | true       | `game-plan`      |
+| med   | false      | `game-plan`      |
+| med   | true       | `game-plan`      |
+| large | false      | `game-plan`      |
+| large | true       | `game-plan`      |
 
 `inline-sendoff`: reconfirm the ticket's
 claims at HEAD with two or three scouts, write the task checklist into the issue body, and hand
-straight to `agents-assemble`. `formulate-plan`: verify claims,
+straight to `agents-assemble`. `game-plan`: verify claims,
 then write `plan.md` as high-level strategy with enumerated tasks and size hints, deliberately
 free of code citations because citations go stale while the plan survives compaction. The user
 approves the plan before any dispatch.
@@ -115,14 +115,14 @@ a fourth patch.
 The loop advances only after its evidence is externalized: the engineer appends the DONE half
 (with the commit hash) to the brief before reporting, the verification outcome is recorded
 before a task's box is checked, and recovery reads the brief, never anyone's conversation. The
-full ordering rule lives in `skills/agents-assemble/references/contracts.md`.
+full ordering rule lives in `plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
 
 The sprint ends with a `REPORT.md` of at most 50 lines: what shipped, what deviated, what
 remains.
 
 ## Finish
 
-`finish-assembly` pushes the branch and dispatches `gitty-up` to open the PR from the repo's
+`stick-the-landing` pushes the branch and dispatches `gitty-up` to open the PR from the repo's
 template and watch CI. Failures are routed by the log-tail test: if the fix is obvious from the
 last screen of the log, it is a `budgetron` dispatch; if the cause needs actual
 investigation, it is `whats-broken`. On green, the skill offers to write `handoffs/REVIEW.md` so
@@ -160,7 +160,7 @@ stateDiagram-v2
     [*] --> investigating: lets-investigate
     investigating --> consolidated: what-we-know
     consolidated --> ramped: prepare-handoff
-    ramped --> sprinting: inline-sendoff or formulate-plan
+    ramped --> sprinting: inline-sendoff or game-plan
     sprinting --> finishing: all tasks done
     finishing --> in_review: CI green
     in_review --> sprinting: findings routed back
@@ -173,7 +173,9 @@ stateDiagram-v2
 Prose in this directory explains; the contracts define. The severity table, verdict vocabularies
 (scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman, review), and the two-half brief
 schema are in
-`skills/agents-assemble/references/contracts.md`. The `ticket.yml` schema with its derivation rules
-is in `skills/prepare-handoff/references/ticket-schema.md`, and the directory layout with its
-writer/reader matrix is in `skills/prepare-handoff/references/mightymodels-dir.md`. When this page
+`plugins/mightymodels/skills/agents-assemble/references/contracts.md`. The `ticket.yml` schema
+with its derivation rules is in
+`plugins/mightymodels/skills/prepare-handoff/references/ticket-schema.md`, and the directory
+layout with its writer/reader matrix is in
+`plugins/mightymodels/skills/prepare-handoff/references/mightymodels-dir.md`. When this page
 and a contract disagree, the contract wins.

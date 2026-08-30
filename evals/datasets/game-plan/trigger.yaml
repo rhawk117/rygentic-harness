@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: game-plan-trigger
+cases:
+- name: game-plan-trigger-00
+  inputs:
+    query: ramp the queue-overhaul ticket, it's large and plan-first
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: game-plan-trigger-01
+  inputs:
+    query: write the plan for .mightymodels/schema-migration before any code
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: game-plan-trigger-02
+  inputs:
+    query: plan this ticket out — i expect at least one compaction
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: game-plan-trigger-03
+  inputs:
+    query: session start on the big refactor ticket, plan first
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: game-plan-trigger-04
+  inputs:
+    query: 'generate the high-level plan for issue #212 per the ticket'
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: game-plan-trigger-05
+  inputs:
+    query: 'large scope: verify the claims and draft the plan for my approval'
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: game-plan-trigger-06
+  inputs:
+    query: design the architecture for the new event system
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: game-plan-trigger-07
+  inputs:
+    query: write an ADR comparing kafka and sqs for this
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: game-plan-trigger-08
+  inputs:
+    query: plan next quarter's roadmap
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: game-plan-trigger-09
+  inputs:
+    query: make a project plan with dates and owners
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: game-plan-trigger-10
+  inputs:
+    query: start the small ticket, no plan needed
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: game-plan-trigger-11
+  inputs:
+    query: 'sprint planning: what fits in two weeks?'
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

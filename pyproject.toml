@@ -1,6 +1,6 @@
 [project]
 name = "mightymodels-evals"
-version = "0.4.0"
+version = "0.6.0"
 description = "Eval harness for the mightymodels plugin: pydantic-evals datasets, deterministic fixtures, executor-pluggable runs, consolidated HTML reports"
 requires-python = ">=3.14"
 authors = [{ name = "BUSYSRE" }]
@@ -53,7 +53,7 @@ root = ["evals/src", "tests"]
 [tool.ty.src]
 # fixture template bodies are eval material with intentional violations, not package
 # code; skills/ scripts ship to foreign harnesses and follow their own conventions
-exclude = ["evals/src/mightymodels_evals/templates", "skills"]
+exclude = ["evals/src/mightymodels_evals/templates", "plugins"]
 
 [tool.ty.terminal]
 error-on-warning = true

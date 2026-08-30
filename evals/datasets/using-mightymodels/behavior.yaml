@@ -36,7 +36,7 @@ cases:
       needle: ticket.yml
   - ResponseContains:
       check: reads the actual routed model from the ticket
-      needle: gpt-5.6-luna
+      needle: claude-haiku-4-5
   - ResponseRegexCount:
       check: knows the fleet refusal vocabulary
       pattern: (?i)UNKNOWN-BLOCKED|NEEDS-ANALYSIS|escalat

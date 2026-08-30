@@ -2,14 +2,14 @@ task: checkout-fix
 summary: Fix checkout deploy path
 triaged-at: 2026-08-20T15:00:00Z
 subagent-models:
-  scout: gpt-5.6-luna
-  budgetron: gpt-5.6-luna
-  engineer: gpt-5.6-luna
-  gitty-up: gpt-5.6-luna
-  grumpy: gpt-5.6-luna
+  scout: claude-haiku-4-5
+  budgetron: claude-sonnet-5
+  engineer: claude-sonnet-5
+  gitty-up: claude-haiku-4-5
+  grumpy: claude-sonnet-5
   sunny: claude-opus-5
   wingman: claude-opus-5
-  merge-vader: gpt-5.6-sol
+  merge-vader: claude-opus-5
   uncle-bob: claude-opus-5
 handoff-context:
   scope: sm

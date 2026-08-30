@@ -16,7 +16,7 @@ baseline is a vibe, not a measurement.
 
 Two lessons from the first iteration are structural here. `GitDiffEmpty` alone misses work that
 was *committed* to look clean: `GitCommitsTouchingAtMost` exists because the baseline
-finish-assembly run did exactly that. And fixture state must be committed state: an uncommitted
+stick-the-landing run did exactly that. And fixture state must be committed state: an uncommitted
 edit inside a fixture reads as agent activity to any git-based check (the sendoff fixture now
 commits its stale-claims issue body).
 
@@ -44,19 +44,19 @@ uv run mightymodels-evals report --results <json> --html <out>                 #
 
 Executors: `replay` is the tested path (it reproduced this repo's iteration-1 verdict:
 with-skill 58/58, baseline 27/58). `run`'s CliExecutor is design-verified but not exercised
-against a real Copilot/Claude CLI in this environment; treat the command template as the
+against a real agent CLI in this environment; treat the command template as the
 integration point and expect one round of fitting. Pass `--sim-notes` only for CLIs without
 subagents; harnesses with real workers should run the cases without simulation constraints.
 
-Trigger datasets (`datasets/<skill>/trigger.yaml`, sprint/jira collision pairs included) ship
-without an executor on purpose: triggering is harness-specific. Wire them to your retrieval
-oracle: for Copilot's embedding cache, embed `"{name}: {description}"` and assert
-should-trigger queries rank the skill top-k.
+Trigger datasets (`datasets/<skill>/trigger.yaml`, sprint collision pairs included) ship
+without an executor on purpose: triggering is retrieval-specific. Wire them to your retrieval
+oracle: embed `"{name}: {description}"` and assert should-trigger queries rank the skill top-k.
 
 ## Results retention
 
 Each run writes `results/RESULTS-<date>.json` and `.html`; commit both. The per-skill
-`RESULTS-*.md` files inside `skills/*/evals/` are the historical evidence trail from the
+`RESULTS-*.md` files inside `plugins/mightymodels/skills/*/evals/` are the historical evidence
+trail from the
 original build sessions and stay where they are. The rule stands: a skill edit ships with a
 re-run and a new dated result, or it doesn't ship.
 
@@ -77,5 +77,5 @@ ty 0.0.73 at error-on-warning with the pyproject escalations, shellcheck and mar
 skills prompt-injection scan, compileall, and pytest 9 (coverage, random order,
 warnings-as-errors) on Python 3.14; all legs ran clean at commit time with 42 tests. Every
 remaining suppression is a targeted noqa carrying its reason. `tests/test_plugin.py` doubles as
-the portability contract: skill frontmatter stays on the keys both Copilot CLI and Claude Code
-accept, agent files stay complete, and the two plugin manifests keep matching versions.
+the plugin layout contract: skill frontmatter stays on the keys Claude Code accepts, agent
+files stay complete, and the two plugin manifests keep matching versions.

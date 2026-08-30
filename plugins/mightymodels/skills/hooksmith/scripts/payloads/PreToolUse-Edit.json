@@ -1,0 +1,13 @@
+{
+  "session_id": "s-test-001",
+  "cwd": "/tmp/repo",
+  "hook_event_name": "PreToolUse",
+  "transcript_path": "/tmp/transcript.jsonl",
+  "permission_mode": "default",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": ".github/workflows/publish.yaml",
+    "old_string": "a",
+    "new_string": "b"
+  }
+}

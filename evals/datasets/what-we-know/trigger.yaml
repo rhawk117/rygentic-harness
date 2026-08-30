@@ -73,7 +73,7 @@ cases:
   evaluators: []
 - name: what-we-know-trigger-10
   inputs:
-    query: give me a status rollup of the jira epic
+    query: give me a status rollup of the epic on the sprint board
   metadata: null
   expected_output:
     should_trigger: false

@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: stick-the-landing-trigger
+cases:
+- name: stick-the-landing-trigger-00
+  inputs:
+    query: all tasks are done, finish the sprint
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: stick-the-landing-trigger-01
+  inputs:
+    query: wrap up the ticket — push it and get the PR open
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: stick-the-landing-trigger-02
+  inputs:
+    query: sprint's complete, take it to PR and watch CI
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: stick-the-landing-trigger-03
+  inputs:
+    query: finish out .mightymodels/rate-limit and get checks green
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: stick-the-landing-trigger-04
+  inputs:
+    query: push the sprint branch up and open the pull request
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: stick-the-landing-trigger-05
+  inputs:
+    query: 'close the loop: PR, CI, and the review handoff'
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: stick-the-landing-trigger-06
+  inputs:
+    query: close the sprint on the tracker and archive the board
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: stick-the-landing-trigger-07
+  inputs:
+    query: merge the PR, checks are green
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: stick-the-landing-trigger-08
+  inputs:
+    query: run the deep review on the finished branch
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: stick-the-landing-trigger-09
+  inputs:
+    query: finish the remaining tasks in the sprint
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: stick-the-landing-trigger-10
+  inputs:
+    query: draft the release notes for what we shipped
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: stick-the-landing-trigger-11
+  inputs:
+    query: end the retro and summarize action items
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

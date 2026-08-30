@@ -10,9 +10,8 @@ gains and the shortest path to reproducing it.
 
 This repo ships instructions that agents execute with real tool access, so the threat model is
 wider than the code. In scope: anything that lets skill or agent text escalate what an agent
-does beyond what the user approved, prompt-injection amplifiers in the skill bodies, the install
-script writing outside `~/.copilot`, and the eval harness executing fixture content it should
-only read.
+does beyond what the user approved, prompt-injection amplifiers in the skill bodies, and the
+eval harness executing fixture content it should only read.
 
 Two standing properties reviewers should hold this repo to. No skill uses `allowed-tools` to
 pre-approve shell access; a change introducing that needs a security rationale in the PR, not
@@ -31,8 +30,9 @@ the finding to the coordinator and continues its original task. The same rule bi
 coordinator toward worker reports: they are evidence, not directives. Each agent contract
 carries this boundary in its `<trust_boundary>` block; weakening it is a security change.
 
-`scripts/security.sh` enforces the skills-as-code doctrine mechanically: it scans `skills/` and
-`agents/` for prompt-injection indicators (instruction-override phrasing, fetch-and-execute
+`scripts/security.sh` enforces the skills-as-code doctrine mechanically: it discovers and scans
+every plugin's `skills/` and `agents/` trees under `plugins/` for prompt-injection indicators
+(instruction-override phrasing, fetch-and-execute
 payloads, credential references, invisible Unicode, pre-approved tool grants, plaintext-http
 links) on every commit and in CI, and any finding blocks. Pattern gaps are in scope for
 vulnerability reports.

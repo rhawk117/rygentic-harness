@@ -1,15 +1,15 @@
 {
-  "name": "mightymodels-marketplace",
+  "name": "rygentic-harness",
   "owner": {
     "name": "BUSYSRE"
   },
-  "description": "mightymodels: the ticket-scoped agent dev loop and its review stack",
+  "description": "rygentic-harness: a marketplace of Claude Code plugins. mightymodels is the ticket-scoped agent dev loop and its review stack; more plugins land alongside it.",
   "plugins": [
     {
       "name": "mightymodels",
-      "source": "./",
+      "source": "./plugins/mightymodels",
       "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
-      "version": "0.5.0"
+      "version": "0.6.0"
     }
   ]
 }
