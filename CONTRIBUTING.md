@@ -36,7 +36,7 @@ uv run plugin-evals report --results evals/results/RESULTS-<date>.json --html <o
 
 Behavior datasets are generated from the specs registered in `evals/src/plugin_evals/case_modules/`,
 which is their source of truth; edit the cases, not the YAML. Trigger datasets are the opposite: the
-YAML under `evals/datasets/<skill>/` is hand-editable data. Both carry committed `.schema.json`
+YAML under `evals/datasets/<plugin>/<skill>/` is hand-editable data. Both carry committed `.schema.json`
 files so your editor validates them offline.
 
 ## The gate

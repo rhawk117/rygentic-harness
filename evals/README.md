@@ -22,7 +22,7 @@ commits its stale-claims issue body).
 
 ## Layout
 
-`datasets/<skill>/` holds everything eval-related for one skill: `behavior.yaml` +
+`datasets/<plugin>/<skill>/` holds everything eval-related for one skill: `behavior.yaml` +
 `behavior.schema.json` (regenerated from the registered case modules, the source of truth) and
 `trigger.yaml` + `trigger.schema.json` (hand-editable data, the YAML is the source of truth). Schema
 files use the `.schema.json` suffix and are committed so editors validate without running the tool.
@@ -48,7 +48,7 @@ against a real agent CLI in this environment; treat the command template as the
 integration point and expect one round of fitting. Pass `--sim-notes` only for CLIs without
 subagents; harnesses with real workers should run the cases without simulation constraints.
 
-Trigger datasets (`datasets/<skill>/trigger.yaml`, sprint collision pairs included) ship
+Trigger datasets (`datasets/<plugin>/<skill>/trigger.yaml`, sprint collision pairs included) ship
 without an executor on purpose: triggering is retrieval-specific. Wire them to your retrieval
 oracle: embed `"{name}: {description}"` and assert should-trigger queries rank the skill top-k.
 

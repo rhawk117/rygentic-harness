@@ -44,7 +44,7 @@ the negative space ("not for X"). You can always bypass selection by naming the 
 slash. Plugin skills surface as `/mightymodels:agents-assemble`, and the short form
 `/agents-assemble` works whenever the name is unambiguous in your session.
 
-The trigger datasets under `evals/datasets/<skill>/trigger.yaml` exist for this selection layer.
+The trigger datasets under `evals/datasets/<plugin>/<skill>/trigger.yaml` exist for this selection layer.
 They pair should-trigger prompts with near-misses, and they ship without an executor because
 triggering is retrieval-specific; wire them to your own oracle and assert the should-trigger
 queries rank the skill in the top k.
