@@ -10,7 +10,7 @@ and the directories stay in step.
 ## Install
 
 ```text
-/plugin marketplace add <owner>/mightymodels
+/plugin marketplace add <owner>/rygentic-harness
 /plugin install <plugin>@rygentic-harness
 ```
 

@@ -9,7 +9,7 @@ so you can tell a packaging problem from a harness problem.
 ## Install as a plugin
 
 ```text
-/plugin marketplace add <owner>/mightymodels
+/plugin marketplace add <owner>/rygentic-harness
 /plugin install mightymodels@rygentic-harness
 ```
 
