@@ -1,7 +1,7 @@
 {
   "name": "rygentic-harness",
   "owner": {
-    "name": "BUSYSRE"
+    "name": "rhawk117"
   },
   "description": "rygentic-harness: a marketplace of Claude Code plugins. mightymodels is the ticket-scoped agent dev loop and its review stack; more plugins land alongside it.",
   "plugins": [

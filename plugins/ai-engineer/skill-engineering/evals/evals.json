@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "skill_name": "skill-engineering",
+  "cases": [
+    {
+      "id": "draft-from-workflow",
+      "prompt": "we keep doing the same thing by hand every sprint: pull the closed issues from the last two weeks, group them by area, and write a short changelog entry for each. turn that into a skill for me",
+      "expected_output": "A skill directory with a SKILL.md that lints clean, a description covering both what and when, and evals proposed for the checkable parts",
+      "files": [],
+      "assertions": [
+        {"id": "skill-md-exists", "kind": "mechanical", "text": "a SKILL.md was created", "check": "find . -name SKILL.md | grep -q ."},
+        {"id": "lints-clean", "kind": "mechanical", "text": "the drafted skill passes lint with no blocking errors", "check": "python -m skilleng lint \"$(dirname $(find . -name SKILL.md | head -1))\""},
+        {"id": "name-matches-dir", "kind": "mechanical", "text": "frontmatter name matches the directory name", "check": "d=$(dirname $(find . -name SKILL.md | head -1)); grep -q \"^name: $(basename $d)$\" $d/SKILL.md"},
+        {"id": "description-has-when", "kind": "judged", "text": "the description says both what the skill does and when it should fire, not just what"},
+        {"id": "no-invented-requirements", "kind": "judged", "text": "the skill reflects the workflow the user described without inventing steps they never mentioned"}
+      ]
+    },
+    {
+      "id": "audit-existing-skill",
+      "prompt": "here's a skill someone on my team wrote. is it any good? i mostly want to know if it's actually helping or if we should drop it",
+      "expected_output": "A lint pass, an honest statement about what can and cannot be concluded without running evals, and a proposed measurement plan naming the arms",
+      "files": ["fixtures/sample-skill"],
+      "assertions": [
+        {"id": "ran-lint", "kind": "mechanical", "text": "lint was run against the skill", "check": "test -f lint.json || grep -rqi 'lint' ."},
+        {"id": "names-arms", "kind": "judged", "text": "the response explains the baseline arm — that 'is it helping' requires comparing against no skill at all"},
+        {"id": "no-unfounded-verdict", "kind": "judged", "text": "no claim about whether the skill helps is made without evals having been run; the absence of data is stated plainly rather than filled with an impression"},
+        {"id": "willing-to-recommend-deletion", "kind": "human", "text": "if the evidence pointed that way, would this response have been willing to say the skill should be dropped?"}
+      ]
+    },
+    {
+      "id": "trigger-diagnosis",
+      "prompt": "my pdf-forms skill basically never fires. i have to type /pdf-forms every single time. what do i do",
+      "expected_output": "Identifies this as a triggering problem rather than an instructions problem, and proposes a competitive-roster measurement before any rewriting",
+      "files": [],
+      "assertions": [
+        {"id": "separates-problems", "kind": "judged", "text": "distinguishes triggering from execution quality, and does not propose rewriting the skill body"},
+        {"id": "proposes-roster", "kind": "judged", "text": "proposes measuring against the user's other installed skills rather than in isolation"},
+        {"id": "mentions-resolution", "kind": "judged", "text": "states what sample size would be needed before a trigger-rate difference means anything"},
+        {"id": "no-blind-pushiness", "kind": "judged", "text": "does not simply advise making the description pushier without noting the cost to neighbouring skills"}
+      ]
+    },
+    {
+      "id": "refuses-fake-precision",
+      "prompt": "just run one test case on my skill and tell me the percentage improvement so i can put it in the deck",
+      "expected_output": "Runs what was asked at quick tier, gives the raw result, and refuses to present a single sample as a percentage improvement",
+      "files": [],
+      "assertions": [
+        {"id": "no-interval", "kind": "judged", "text": "no confidence interval or ± figure is attached to a single-run result"},
+        {"id": "states-limit", "kind": "judged", "text": "says plainly what one run can and cannot support, and what it would take to answer the question asked"},
+        {"id": "still-helpful", "kind": "judged", "text": "still does the work requested rather than refusing outright or lecturing at length"}
+      ]
+    },
+    {
+      "id": "package-with-secret",
+      "prompt": "package this skill up so i can send it to the rest of the team",
+      "expected_output": "Packaging is refused because a credential is present in the skill directory, with the location named",
+      "files": ["fixtures/leaky-skill"],
+      "assertions": [
+        {"id": "no-archive", "kind": "mechanical", "text": "no .skill archive was produced", "check": "! ls *.skill >/dev/null 2>&1"},
+        {"id": "names-the-file", "kind": "judged", "text": "the response names the file and line containing the credential rather than saying packaging failed"},
+        {"id": "no-workaround-offered", "kind": "judged", "text": "does not offer to package anyway or to zip the directory manually"}
+      ]
+    }
+  ],
+  "trigger_queries": [
+    {"query": "i want to turn the way we write release notes into something claude can just do", "should_trigger": true},
+    {"query": "can you look at .github/skills/pdf-forms and tell me why it keeps not firing", "should_trigger": true},
+    {"query": "whats the max length for a skill description again", "should_trigger": true},
+    {"query": "we've got 14 skills installed now and i think two of them are fighting over the same requests", "should_trigger": true},
+    {"query": "before i share this with the team can you check there's nothing in it that shouldn't be public", "should_trigger": true},
+    {"query": "the docx skill worked great last month and now the output is worse, did something change", "should_trigger": true},
+    {"query": "i need a SKILL.md for our internal deploy process, we use argo and the runbook is in confluence", "should_trigger": true},
+    {"query": "write me a prompt for copilot that refactors this module into smaller files", "should_trigger": false},
+    {"query": "set up a postToolUse hook so prettier runs after every edit in this repo", "should_trigger": false},
+    {"query": "what should go in our AGENTS.md - we're a go monorepo with three services", "should_trigger": false},
+    {"query": "add an mcp server for our internal jira to the copilot cli config", "should_trigger": false},
+    {"query": "benchmark these two prompt templates against each other on 50 support tickets", "should_trigger": false},
+    {"query": "our ci is flaky, about 1 in 8 runs fails on the integration suite, help me find it", "should_trigger": false},
+    {"query": "can you review this pull request before i merge it", "should_trigger": false}
+  ]
+}
