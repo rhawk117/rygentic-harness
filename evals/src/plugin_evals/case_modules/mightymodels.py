@@ -1,5 +1,5 @@
-from mightymodels_evals.cases import CaseSpec
-from mightymodels_evals.evaluators import (
+from plugin_evals.cases import CaseSpec
+from plugin_evals.evaluators import (
     BranchExists,
     CheckboxCount,
     FileContains,

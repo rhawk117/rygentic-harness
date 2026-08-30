@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from mightymodels_evals.paths import EVALS_ROOT
+from plugin_evals.paths import EVALS_ROOT
 
 REPO_ROOT = EVALS_ROOT.parent
 PLUGINS_ROOT = REPO_ROOT.joinpath('plugins')

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from pydantic_evals.evaluators import EvaluationReason
 
-from mightymodels_evals.evaluators.base import (
+from plugin_evals.evaluators.base import (
     Check,
     CheckContext,
     TypedEvaluator,

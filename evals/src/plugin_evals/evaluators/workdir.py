@@ -2,15 +2,15 @@ from dataclasses import dataclass, field
 
 from pydantic_evals.evaluators import EvaluationReason
 
-from mightymodels_evals.artifacts import run_cmd
-from mightymodels_evals.evaluators.base import (
+from plugin_evals.artifacts import run_cmd
+from plugin_evals.evaluators.base import (
     Check,
     CheckContext,
     TypedEvaluator,
     failed,
     passed,
 )
-from mightymodels_evals.repo import Repo
+from plugin_evals.repo import Repo
 
 _ALWAYS_ALLOWED_UNTRACKED = ('__pycache__',)
 

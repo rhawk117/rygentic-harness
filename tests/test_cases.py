@@ -1,14 +1,14 @@
 from pathlib import Path
 
 import pytest
-from mightymodels_evals.case_modules import mightymodels
-from mightymodels_evals.cases import (
+from plugin_evals.case_modules import mightymodels
+from plugin_evals.cases import (
     behavior_dataset,
     load_behavior_dataset,
     write_behavior_datasets,
 )
-from mightymodels_evals.errors import NoCasesError
-from mightymodels_evals.registry import (
+from plugin_evals.errors import NoCasesError
+from plugin_evals.registry import (
     DuplicateSkillError,
     UnknownPluginError,
     all_specs,

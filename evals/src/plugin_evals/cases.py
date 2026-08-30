@@ -5,8 +5,8 @@ from pathlib import Path
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import Evaluator
 
-from mightymodels_evals.errors import NoCasesError
-from mightymodels_evals.evaluators import ALL_CHECKS
+from plugin_evals.errors import NoCasesError
+from plugin_evals.evaluators import ALL_CHECKS
 
 type CheckTuple = tuple[Evaluator, ...]
 

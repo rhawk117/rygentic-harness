@@ -7,18 +7,18 @@ from pathlib import Path
 from pydantic_evals import Dataset
 from pydantic_evals.reporting import EvaluationReport
 
-from mightymodels_evals.cases import load_behavior_dataset, write_behavior_datasets
-from mightymodels_evals.executors import (
+from plugin_evals.cases import load_behavior_dataset, write_behavior_datasets
+from plugin_evals.executors import (
     CliExecutor,
     Executor,
     ReplayExecutor,
     Variant,
     as_task,
 )
-from mightymodels_evals.fixtures import build_all
-from mightymodels_evals.paths import EVALS_ROOT
-from mightymodels_evals.registry import select_specs
-from mightymodels_evals.report import (
+from plugin_evals.fixtures import build_all
+from plugin_evals.paths import EVALS_ROOT
+from plugin_evals.registry import select_specs
+from plugin_evals.report import (
     Payload,
     build_payload,
     load_payload,
@@ -81,7 +81,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not fixtures_root.is_dir():
         print(
             f'fixtures missing at {fixtures_root}; '
-            'run `mightymodels-evals fixtures` first',
+            'run `plugin-evals fixtures` first',
             file=sys.stderr,
         )
         return 2
@@ -136,7 +136,7 @@ def _add_common_run_args(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog='mightymodels-evals')
+    parser = argparse.ArgumentParser(prog='plugin-evals')
     sub = parser.add_subparsers(dest='command_name', required=True)
 
     fixtures = sub.add_parser('fixtures', help='build the deterministic fixture repos')

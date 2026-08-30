@@ -4,7 +4,7 @@ unsafe-fixes = false
 # Fixture template bodies are eval material with intentional style violations, not
 # package code. docs/ is published prose. skills/ is agent execution material whose
 # bundled scripts ship to foreign harnesses and follow their own conventions.
-extend-exclude = ["evals/src/mightymodels_evals/templates", "docs", "plugins"]
+extend-exclude = ["evals/src/plugin_evals/templates", "docs", "plugins"]
 
 [lint]
 select = [
@@ -96,7 +96,7 @@ ignore = [
 "tests/**/*.py" = ["ARG001", "ARG002", "INP001", "PLR2004", "S101", "PLC0415"]
 
 [lint.flake8-tidy-imports]
-# Imports inside the package are written as `mightymodels_evals.*`, never `from .x`.
+# Imports inside the package are written as `plugin_evals.*`, never `from .x`.
 ban-relative-imports = "all"
 
 [lint.mccabe]

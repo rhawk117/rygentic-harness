@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from pydantic_evals.evaluators import EvaluationReason, Evaluator, EvaluatorContext
 
-from mightymodels_evals.artifacts import RunArtifacts
+from plugin_evals.artifacts import RunArtifacts
 
 type CheckContext = EvaluatorContext[dict, RunArtifacts, dict]
 

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from mightymodels_evals.artifacts import run_cmd
-from mightymodels_evals.errors import RepoCommandError
+from plugin_evals.artifacts import run_cmd
+from plugin_evals.errors import RepoCommandError
 
 
 def _with_pathspec(args: list[str], pathspec: str) -> list[str]:
@@ -28,7 +28,7 @@ class Repo:
         self.run('init', '-q')
         # runners without a global git identity cannot commit otherwise
         self.run('config', 'user.email', 'evals@mightymodels.invalid')
-        self.run('config', 'user.name', 'mightymodels-evals')
+        self.run('config', 'user.name', 'plugin-evals')
         self.commit_all(message)
 
     def commit_all(self, message: str) -> None:

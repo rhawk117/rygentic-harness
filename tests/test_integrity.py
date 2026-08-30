@@ -120,7 +120,7 @@ def test_workflow_diagram_nodes_are_real_skills_or_agents(doc: str) -> None:
 
 
 def test_eval_dataset_dirs_name_existing_skills() -> None:
-    from mightymodels_evals.registry import plugin_names, select_specs
+    from plugin_evals.registry import plugin_names, select_specs
 
     datasets_root = REPO_ROOT.joinpath('evals/datasets')
     plugin_dirs = {p.name for p in datasets_root.iterdir() if p.is_dir()}
@@ -142,7 +142,7 @@ def test_eval_dataset_dirs_name_existing_skills() -> None:
 
 
 def test_eval_case_specs_name_existing_skills() -> None:
-    from mightymodels_evals.registry import all_specs
+    from plugin_evals.registry import all_specs
 
     specs = all_specs()
     unknown = {spec.skill for spec in specs} - skill_names()

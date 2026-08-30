@@ -1,12 +1,12 @@
 from pydantic_evals.evaluators import Evaluator
 
-from mightymodels_evals.evaluators.base import Check, CheckContext
-from mightymodels_evals.evaluators.domain import (
+from plugin_evals.evaluators.base import Check, CheckContext
+from plugin_evals.evaluators.domain import (
     HypothesisLogged,
     RegressionEvidence,
     ReviewAggregationSound,
 )
-from mightymodels_evals.evaluators.files import (
+from plugin_evals.evaluators.files import (
     CheckboxCount,
     FileContains,
     FileContainsAll,
@@ -19,7 +19,7 @@ from mightymodels_evals.evaluators.files import (
     NoGlobFileContains,
     PathAbsent,
 )
-from mightymodels_evals.evaluators.response import (
+from plugin_evals.evaluators.response import (
     ResponseContains,
     ResponseContainsAll,
     ResponseContainsAny,
@@ -27,7 +27,7 @@ from mightymodels_evals.evaluators.response import (
     ResponseRegexCount,
     ResponseTailAsksQuestion,
 )
-from mightymodels_evals.evaluators.workdir import (
+from plugin_evals.evaluators.workdir import (
     BranchExists,
     GitCommitsTouchingAtMost,
     GitDiffEmpty,

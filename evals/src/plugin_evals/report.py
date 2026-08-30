@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 from jinja2 import Environment, FileSystemLoader
 
-from mightymodels_evals.paths import REPORT_TEMPLATE
+from plugin_evals.paths import REPORT_TEMPLATE
 
 if TYPE_CHECKING:
     from pydantic_evals.reporting import EvaluationReport

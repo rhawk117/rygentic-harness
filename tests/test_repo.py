@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from mightymodels_evals.errors import RepoCommandError
-from mightymodels_evals.repo import Repo
+from plugin_evals.errors import RepoCommandError
+from plugin_evals.repo import Repo
 
 
 @pytest.fixture

@@ -2,9 +2,9 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from mightymodels_evals.errors import TemplateDriftError
-from mightymodels_evals.paths import overlay_dir, template_dir
-from mightymodels_evals.repo import Repo
+from plugin_evals.errors import TemplateDriftError
+from plugin_evals.paths import overlay_dir, template_dir
+from plugin_evals.repo import Repo
 
 
 def _lay(root: Path, source: Path) -> None:

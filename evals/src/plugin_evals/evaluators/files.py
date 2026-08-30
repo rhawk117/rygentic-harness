@@ -4,8 +4,8 @@ from pathlib import Path
 
 from pydantic_evals.evaluators import EvaluationReason
 
-from mightymodels_evals.artifacts import read_rel
-from mightymodels_evals.evaluators.base import (
+from plugin_evals.artifacts import read_rel
+from plugin_evals.evaluators.base import (
     Check,
     CheckContext,
     TypedEvaluator,

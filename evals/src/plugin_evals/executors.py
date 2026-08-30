@@ -6,14 +6,14 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
-from mightymodels_evals.artifacts import RunArtifacts, read_rel, run_cmd
-from mightymodels_evals.errors import (
+from plugin_evals.artifacts import RunArtifacts, read_rel, run_cmd
+from plugin_evals.errors import (
     HarnessError,
     ReplayRunMissingError,
     UnknownFixtureError,
 )
-from mightymodels_evals.fixtures import BUILDERS
-from mightymodels_evals.registry import plugin_for_skill
+from plugin_evals.fixtures import BUILDERS
+from plugin_evals.registry import plugin_for_skill
 
 
 class MissingSkillDirError(HarnessError):
