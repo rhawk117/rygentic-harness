@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def parse_stdout(raw):
+def parse_stdout(raw: str) -> list[tuple[str, object]]:
     lines = [ln for ln in raw.strip().splitlines() if ln.strip()]
     payload_lines = []
     for ln in lines:
@@ -21,7 +21,7 @@ def parse_stdout(raw):
     return payload_lines
 
 
-def check_field(obj, spec):
+def check_field(obj: object, spec: str) -> tuple[bool, str]:
     key, _, expected = spec.partition('=')
     cur = obj
     for part in key.split('.'):
@@ -33,7 +33,7 @@ def check_field(obj, spec):
     return True, f'{key}={cur!r}'
 
 
-def main():
+def main() -> int:
     ap = argparse.ArgumentParser(
         description=(
             'Pipe a sample payload into a Claude Code hook script and check the '
@@ -59,11 +59,16 @@ def main():
         '.mjs': ['node'],
         '.js': ['node'],
     }
-    cmd = interpreters.get(script.suffix, ['bash']) + [str(script)]
+    cmd = [*interpreters.get(script.suffix, ['bash']), str(script)]
 
     try:
-        proc = subprocess.run(
-            cmd, input=payload, capture_output=True, text=True, timeout=args.timeout
+        proc = subprocess.run(  # noqa: S603
+            cmd,
+            input=payload,
+            capture_output=True,
+            text=True,
+            timeout=args.timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         print(
@@ -75,7 +80,8 @@ def main():
     failures = []
     if proc.returncode != args.expect_exit:
         failures.append(
-            f'exit={proc.returncode}, expected {args.expect_exit}; stderr: {proc.stderr.strip()[:300]}'
+            f'exit={proc.returncode}, expected {args.expect_exit}; '
+            f'stderr: {proc.stderr.strip()[:300]}'
         )
 
     outputs = parse_stdout(proc.stdout)
@@ -102,7 +108,8 @@ def main():
         return 1
     shown = outputs[0][0][:200] if outputs else '(empty stdout)'
     print(
-        f'PASS {script.name} < {Path(args.payload).name} -> exit {proc.returncode}, {shown}'
+        f'PASS {script.name} < {Path(args.payload).name} -> '
+        f'exit {proc.returncode}, {shown}'
     )
     return 0
 

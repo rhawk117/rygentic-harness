@@ -1,6 +1,6 @@
 # Claude Code hooks — events, payloads, and output contract
 
-This file is hooksmith's ground truth. Propose nothing that is not on this page, and when the installed Claude Code version's own docs disagree with it, trust the installed docs and update this file.
+This file is create-hooks's ground truth. Propose nothing that is not on this page, and when the installed Claude Code version's own docs disagree with it, trust the installed docs and update this file.
 
 ## Where hook config lives
 
@@ -41,7 +41,7 @@ Hooks are entries under the `hooks` key of a settings file. Sources merge; when 
 
 ## Events
 
-The core set hooksmith proposes against:
+The core set create-hooks proposes against:
 
 | Event                | Fires                                            | Matcher on            |
 | -------------------- | ------------------------------------------------ | --------------------- |

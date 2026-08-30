@@ -26,7 +26,7 @@ addopts = [
     "--durations=10",
     "--durations-min=1.0",
 
-    "--ignore=plugins/mightymodels/skills/hooksmith/scripts/test_hook.py",
+    "--ignore=plugins/ai-engineer/skills/create-hooks/scripts/test_hook.py",
     "--ignore-glob=evals/src/plugin_evals/templates/*/tests",
 
     "--cov",

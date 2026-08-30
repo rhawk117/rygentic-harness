@@ -1,9 +1,10 @@
 ---
-name: hooksmith
+name: create-hooks
+license: Apache-2.0
 description: Analyze a repository and design, select, plan, and implement Claude Code hooks that pay off for that specific repo — driven by its CI workflows, lint/format/type configs, existing agent config, and fresh-session context needs. Use this whenever the user wants Claude Code hooks set up, audited, extended, or recommended for a repository; asks "what hooks would help here" or "set up hooks for this repo"; wants CI conventions enforced during agent sessions (format-on-edit, test gates before done, command rewriting); wants session context injection (working-tree state, repo layout, available skills) for agents starting cold; or wants automation for Claude Code sessions — even if they never say the word "hook".
 ---
 
-# Hooksmith
+# Create hooks
 
 Design and install Claude Code hooks for a repository, end to end: recon → evidence-ranked candidates → user selection → approved plan → implementation → verification.
 
@@ -64,7 +65,7 @@ An untested hook is a liability installed at the exact point of maximum blast ra
 
 1. Config validity: parse every settings file you touched; check every event name against `references/hooks-reference.md`; check every referenced script path resolves.
 2. Contract tests: run every script through `${CLAUDE_SKILL_DIR}/scripts/test_hook.py` with the bundled sample payloads in `${CLAUDE_SKILL_DIR}/scripts/payloads/` (add a repo-specific payload when the hook matches on arguments — e.g. a `tool_input.command` that should be denied and one that should pass). Show the test output to the user; a claim of "tested" without shown output doesn't count.
-3. Live canary where practical: Claude Code snapshots hook config at session start, so note that a restart (or `/hooks` review) is required before new hooks fire; for a PreToolUse deny rule, include a removable demo trigger (a magic string like `HOOKSMITH_DENY_DEMO`) the user can fire once to see the deny path work, then delete.
+3. Live canary where practical: Claude Code snapshots hook config at session start, so note that a restart (or `/hooks` review) is required before new hooks fire; for a PreToolUse deny rule, include a removable demo trigger (a magic string like `CREATE_HOOKS_DENY_DEMO`) the user can fire once to see the deny path work, then delete.
 4. Hand-off summary: what was installed where, expected behavior, how to disable (remove the entry, or set `{"disableAllHooks": true}` in settings — noting managed-policy hooks are outside user control), and any open caveats.
 
 ## Non-interactive mode

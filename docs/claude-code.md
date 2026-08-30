@@ -92,7 +92,7 @@ pattern in anyone else's code. Approve tools per session like you would for any 
 Not shipped yet. The designed hook layer (session covenant injection, verification gates at
 Stop, PreCompact ticket snapshots) will land as a `hooks/hooks.json` at the plugin root plus
 scripts; Claude Code merges plugin hooks with the ones in your settings files. Until then, the
-loop runs on skills and agents alone, and `hooksmith` can build repo-specific Claude Code hooks
+loop runs on skills and agents alone, and `create-hooks` can build repo-specific Claude Code hooks
 independently.
 
 ## Known limits

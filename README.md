@@ -61,9 +61,10 @@ and a contract disagree, the contract wins and the skill gets fixed.
 Skills for building and hardening the agents, skills, and loops that other plugins are made of:
 `build-a-loop` designs a reliable agent loop and its stop condition, `build-an-agent` creates,
 reviews, or ports a subagent definition file, `skill-engineering` drafts and evals a `SKILL.md`
-against a calibrated harness, and `writing-agent-rules` places and audits instruction files like
-`CLAUDE.md` and `AGENTS.md`. All four are standard `SKILL.md` directories under
-`plugins/ai-engineer/`.
+against a calibrated harness, `writing-agent-rules` places and audits instruction files like
+`CLAUDE.md` and `AGENTS.md`, `create-hooks` designs and implements repo-specific Claude Code
+hooks, and `create-agents-md` generates an evidence-based AGENTS.md and its per-platform router
+files. All six are standard `SKILL.md` directories under `plugins/ai-engineer/`.
 
 ## Layout
 
