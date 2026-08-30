@@ -2,7 +2,7 @@
 name: build-a-loop
 license: MIT
 description: >-
-    Design a reliable agent loop from a plain description of the work. Picks the loop shape, defines what one iteration may touch, sets the evidence each success criterion needs, writes a stop condition that measures progress instead of counting turns, and emits a LOOP.md contract plus the Claude Code or GitHub Copilot CLI configuration and verification hook that enforce it. Use this whenever someone wants an agent to keep working on its own - a loop, a harness, an autonomous or long-running or overnight run, a self-verifying build, a fan-out of subagents, a scheduled or recurring agent task - and also when an existing loop misbehaves: runs away, stalls, burns turns repairing the wrong thing, claims success it cannot prove, or loses its rules after compaction. Trigger even when the user never says the word "loop".
+  Design a reliable agent loop from a plain description of the work. Picks the loop shape, defines what one iteration may touch, sets the evidence each success criterion needs, writes a stop condition that measures progress instead of counting turns, and emits a LOOP.md contract plus the Claude Code or GitHub Copilot CLI configuration and verification hook that enforce it. Use this whenever someone wants an agent to keep working on its own - a loop, a harness, an autonomous or long-running or overnight run, a self-verifying build, a fan-out of subagents, a scheduled or recurring agent task - and also when an existing loop misbehaves: runs away, stalls, burns turns repairing the wrong thing, claims success it cannot prove, or loses its rules after compaction. Trigger even when the user never says the word "loop".
 ---
 
 # Design an agent loop
@@ -41,12 +41,12 @@ Every good loop is these five answers. Fill each one from what the user said; wh
 
 ### 1. Trigger - what starts the next iteration
 
-| Shape | Starts on | Fits |
-|---|---|---|
-| Turn-based | the user's next message | short work, a human watching |
-| Goal-based | the previous turn finishing, while a condition is unmet | anything with a verifiable exit criterion |
-| Time-based | a schedule or a wait | queues, CI watching, PR shepherding |
-| Event-driven | an external event, nobody present | recurring streams: issue triage, dependency bumps, migrations |
+| Shape        | Starts on                                               | Fits                                                          |
+| ------------ | ------------------------------------------------------- | ------------------------------------------------------------- |
+| Turn-based   | the user's next message                                 | short work, a human watching                                  |
+| Goal-based   | the previous turn finishing, while a condition is unmet | anything with a verifiable exit criterion                     |
+| Time-based   | a schedule or a wait                                    | queues, CI watching, PR shepherding                           |
+| Event-driven | an external event, nobody present                       | recurring streams: issue triage, dependency bumps, migrations |
 
 Default to goal-based. It is the only shape that carries its own stop condition.
 
@@ -82,13 +82,13 @@ Add stall detection where the platform offers it: several turns of talking witho
 
 Sort failures by whether waiting could fix them. A workable default:
 
-| Failure | Action |
-|---|---|
-| Auth failure, exhausted credit, unrecoverable context overflow, model unavailable | end the loop, return to the human |
-| Rate limit, overloaded server, transient network | keep the loop alive, back off |
-| Check fails | remediate and iterate, this is the loop working |
-| Same check fails the same way twice | stop and escalate, the loop is stuck |
-| Criterion judged impossible | end with the reason |
+| Failure                                                                           | Action                                          |
+| --------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Auth failure, exhausted credit, unrecoverable context overflow, model unavailable | end the loop, return to the human               |
+| Rate limit, overloaded server, transient network                                  | keep the loop alive, back off                   |
+| Check fails                                                                       | remediate and iterate, this is the loop working |
+| Same check fails the same way twice                                               | stop and escalate, the loop is stuck            |
+| Criterion judged impossible                                                       | end with the reason                             |
 
 ## Step 3: write the contract
 
