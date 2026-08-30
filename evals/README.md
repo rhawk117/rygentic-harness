@@ -1,14 +1,14 @@
-# mightymodels-evals
+# plugin-evals
 
-The eval harness for the mightymodels plugin, built on pydantic-evals (API verified against the
-installed 2.32.1 source, not training priors). It replaces the ad-hoc scripts from the original
+The eval harness for the marketplace's registered plugins, built on pydantic-evals (API verified
+against the installed 2.32.1 source, not training priors). It replaces the ad-hoc scripts from the original
 build with one package: typed evaluators, serialized datasets, pluggable executors, and a
 self-contained HTML report.
 
 ## Method
 
 A behavior case is a fixture repo plus a task prompt plus a tuple of typed checks. Checks are
-pydantic-evals `Evaluator` dataclasses (`src/mightymodels_evals/evaluators.py`) with labeled
+pydantic-evals `Evaluator` dataclasses (`src/plugin_evals/evaluators.py`) with labeled
 evaluation names, so a report row reads "no source commits by the finish session", not
 "GitCommitsTouchingAtMost_3". Every check returns an `EvaluationReason` carrying evidence, and
 the same dataset always runs twice, with-skill and baseline, because a pass rate without its
@@ -22,11 +22,11 @@ commits its stale-claims issue body).
 
 ## Layout
 
-`datasets/<skill>/` holds everything eval-related for one skill: `behavior.yaml` +
-`behavior.schema.json` (regenerated from `cases.py`, the source of truth) and `trigger.yaml` +
-`trigger.schema.json` (hand-editable data, the YAML is the source of truth). Schema files use
-the `.schema.json` suffix and are committed so editors validate without running the tool.
-Fixture file bodies live as real files under `src/mightymodels_evals/templates/` (bases plus
+`datasets/<plugin>/<skill>/` holds everything eval-related for one skill: `behavior.yaml` +
+`behavior.schema.json` (regenerated from the registered case modules, the source of truth) and
+`trigger.yaml` + `trigger.schema.json` (hand-editable data, the YAML is the source of truth). Schema
+files use the `.schema.json` suffix and are committed so editors validate without running the tool.
+Fixture file bodies live as real files under `src/plugin_evals/templates/` (bases plus
 per-fixture overlays); builders in `fixtures.py` compose them and run git steps through
 `repo.Repo`, the one place repository operations are defined, shared by builders and evaluators
 alike. A builder editing a template string that no longer exists raises `TemplateDriftError`
@@ -35,11 +35,11 @@ instead of silently no-opping; it caught its first real bug during its own commi
 ## Commands
 
 ```sh
-uv run mightymodels-evals fixtures                  # deterministic fixture repos -> evals/fixtures/
-uv run mightymodels-evals datasets                  # (re)write datasets/ from cases.py
-uv run mightymodels-evals replay --runs <root>      # grade existing run dirs (<root>/<case>/<variant>/work + response.md)
-uv run mightymodels-evals run --command '<cli> -p {prompt_file}' --sim-notes   # execute through an agent CLI, then grade
-uv run mightymodels-evals report --results <json> --html <out>                 # re-render
+uv run plugin-evals fixtures                  # deterministic fixture repos -> evals/fixtures/
+uv run plugin-evals datasets                  # (re)write datasets/ from the registered case modules
+uv run plugin-evals replay --runs <root>      # grade existing run dirs (<root>/<case>/<variant>/work + response.md)
+uv run plugin-evals run --command '<cli> -p {prompt_file}' --sim-notes   # execute through an agent CLI, then grade
+uv run plugin-evals report --results <json> --html <out>                 # re-render
 ```
 
 Executors: `replay` is the tested path (it reproduced this repo's iteration-1 verdict:
@@ -48,7 +48,7 @@ against a real agent CLI in this environment; treat the command template as the
 integration point and expect one round of fitting. Pass `--sim-notes` only for CLIs without
 subagents; harnesses with real workers should run the cases without simulation constraints.
 
-Trigger datasets (`datasets/<skill>/trigger.yaml`, sprint collision pairs included) ship
+Trigger datasets (`datasets/<plugin>/<skill>/trigger.yaml`, sprint collision pairs included) ship
 without an executor on purpose: triggering is retrieval-specific. Wire them to your retrieval
 oracle: embed `"{name}: {description}"` and assert should-trigger queries rank the skill top-k.
 

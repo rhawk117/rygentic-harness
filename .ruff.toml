@@ -2,9 +2,9 @@ line-length = 90
 preview = false
 unsafe-fixes = false
 # Fixture template bodies are eval material with intentional style violations, not
-# package code. docs/ is published prose. skills/ is agent execution material whose
-# bundled scripts ship to foreign harnesses and follow their own conventions.
-extend-exclude = ["evals/src/mightymodels_evals/templates", "docs", "plugins"]
+# package code. docs/ is published prose. plugins/mightymodels ships to foreign
+# harnesses and follows its own conventions; plugins/ai-engineer is first-party code.
+extend-exclude = ["evals/src/plugin_evals/templates", "docs", "plugins/mightymodels"]
 
 [lint]
 select = [
@@ -94,9 +94,106 @@ ignore = [
 # Standalone entry points invoked by path, not an importable package.
 "scripts/**/*.py" = ["INP001"]
 "tests/**/*.py" = ["ARG001", "ARG002", "INP001", "PLR2004", "S101", "PLC0415"]
+# Same conventions as above, mirrored for the ai-engineer plugin's nested scripts/
+# and tests/ directories (the unprefixed globs above only match the repo-root trees).
+"plugins/ai-engineer/**/scripts/**/*.py" = ["INP001"]
+"plugins/ai-engineer/**/tests/**/*.py" = [
+    "ARG001",
+    "ARG002",
+    "ARG005",
+    "INP001",
+    "PLR2004",
+    "S101",
+    "PLC0415",
+]
+# Standalone entry point invoked by path, not under a scripts/ directory; boolean
+# flags are finding UB-15, ticketed for a later branch.
+"plugins/ai-engineer/skills/build-a-loop/assets/verify_gate.py" = [
+    "INP001",
+    "FBT001",
+    "FBT002",
+]
+# cli.py/doctor.py import heavy submodules lazily inside each command function so
+# that invoking one subcommand does not pay the import cost of every other one.
+# C901/PLR0912/PLR0915/PLR0911 on cli.py's 100-line command functions and FBT001/
+# FBT002 on doctor.py's boolean flags are finding UB-2/3/4/UB-15, ticketed for a
+# later branch.
+"plugins/ai-engineer/bin/skilleng/cli.py" = [
+    "PLC0415",
+    "C901",
+    "PLR0912",
+    "PLR0915",
+    "PLR0911",
+]
+"plugins/ai-engineer/bin/skilleng/doctor.py" = [
+    "PLC0415",
+    "FBT001",
+    "FBT002",
+]
+# Boolean positional params — finding UB-15, ticketed for a later branch.
+"plugins/ai-engineer/bin/skilleng/workspace.py" = [
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/bin/skilleng/hooks.py" = ["FBT001", "FBT002"]
+"plugins/ai-engineer/bin/skilleng/runners/base.py" = [
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/bin/skilleng/runners/claude_code.py" = [
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/bin/skilleng/runners/copilot_cli.py" = [
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/bin/skilleng/stats.py" = ["FBT001", "FBT002"]
+# Complexity / too-many-args on the existing 100-line functions (UB-2/3/4) and
+# boolean flag params (UB-15) — both ticketed for a later branch.
+"plugins/ai-engineer/bin/skilleng/aggregate.py" = [
+    "C901",
+    "PLR0912",
+]
+"plugins/ai-engineer/bin/skilleng/package.py" = [
+    "C901",
+    "PLR0912",
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/bin/skilleng/skillmd.py" = [
+    "C901",
+    "PLR0912",
+]
+"plugins/ai-engineer/bin/skilleng/report.py" = [
+    "PLR0915",
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/bin/skilleng/trigger.py" = [
+    "C901",
+    "PLR0912",
+    "PLR0915",
+    "PLR0913",
+]
+"plugins/ai-engineer/skills/writing-agent-rules/scripts/audit_rules.py" = ["PLR0911"]
+# Test doubles pass boolean flags positionally to mirror the adapter call sites
+# under test — finding UB-15, ticketed for a later branch.
+"plugins/ai-engineer/skills/skill-engineering/tests/test_run_loop.py" = [
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/skills/skill-engineering/tests/test_runners.py" = [
+    "FBT001",
+    "FBT002",
+]
+"plugins/ai-engineer/skills/skill-engineering/tests/test_trigger.py" = [
+    "FBT001",
+    "FBT002",
+]
 
 [lint.flake8-tidy-imports]
-# Imports inside the package are written as `mightymodels_evals.*`, never `from .x`.
+# Imports inside the package are written as `plugin_evals.*`, never `from .x`.
 ban-relative-imports = "all"
 
 [lint.mccabe]

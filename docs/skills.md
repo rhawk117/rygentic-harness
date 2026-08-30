@@ -124,5 +124,5 @@ then wires the per-platform router files: `CLAUDE.md` as an `@AGENTS.md` import 
 ## Editing a skill
 
 Every skill edit ships with a re-run of its evals and a new dated result, or it does not ship.
-The per-skill datasets live in `evals/datasets/<skill>/`; [CONTRIBUTING.md](../CONTRIBUTING.md)
+The per-skill datasets live in `evals/datasets/<plugin>/<skill>/`; [CONTRIBUTING.md](../CONTRIBUTING.md)
 walks through the gate.

@@ -23,6 +23,7 @@ discovery, and validation.
 | Plugin       | What it does                                                                |
 | ------------ | --------------------------------------------------------------------------- |
 | mightymodels | Ticket-scoped agent dev loop: per-ticket state, model routing, review stack |
+| ai-engineer  | Skills for building and hardening Claude Code agents, skills, and loops     |
 
 ### mightymodels
 
@@ -54,6 +55,15 @@ vocabularies, and the two-half brief schema are in
 `plugins/mightymodels/skills/agents-assemble/references/contracts.md`; the ticket schema and
 directory layout are in `plugins/mightymodels/skills/prepare-handoff/references/`. When a skill
 and a contract disagree, the contract wins and the skill gets fixed.
+
+### ai-engineer
+
+Skills for building and hardening the agents, skills, and loops that other plugins are made of:
+`build-a-loop` designs a reliable agent loop and its stop condition, `build-an-agent` creates,
+reviews, or ports a subagent definition file, `skill-engineering` drafts and evals a `SKILL.md`
+against a calibrated harness, and `writing-agent-rules` places and audits instruction files like
+`CLAUDE.md` and `AGENTS.md`. All four are standard `SKILL.md` directories under
+`plugins/ai-engineer/`.
 
 ## Layout
 
@@ -89,12 +99,13 @@ new skill and agent text for injection indicators without any configuration.
 
 ## Evals
 
-The eval harness currently covers the mightymodels plugin: every one of its measured skills
-shipped with a baseline delta, and edits re-run the harness before they land. Replaying the
-iteration-1 sessions grades 65 of 65 assertions with the skills on, against 31 of 65 without
-them. `evals/README.md` covers the harness; [CONTRIBUTING.md](CONTRIBUTING.md) covers the gate
-a change has to pass, and `make ci` runs the whole thing: ruff, ty, shellcheck, markdownlint,
-the prompt-injection scan over every plugin, and the test suite on Python 3.14.
+The eval harness covers registered plugins, currently mightymodels and ai-engineer: every
+measured skill ships with a baseline delta, and edits re-run the harness before they land.
+Replaying the iteration-1 mightymodels sessions grades 65 of 65 assertions with the skills on,
+against 31 of 65 without them. `evals/README.md` covers the harness;
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the gate a change has to pass, and `make ci` runs the
+whole thing: ruff, ty, shellcheck, markdownlint, the prompt-injection scan over every plugin, and
+the test suite on Python 3.14.
 
 ## Status
 

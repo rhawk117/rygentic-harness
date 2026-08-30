@@ -7,8 +7,8 @@ from pydantic_evals.evaluators import EvaluatorContext
 if TYPE_CHECKING:
     from pydantic_evals.otel.span_tree import SpanTree
 
-from mightymodels_evals.artifacts import RunArtifacts
-from mightymodels_evals.evaluators import (
+from plugin_evals.artifacts import RunArtifacts
+from plugin_evals.evaluators import (
     FileContains,
     FileLineCap,
     GitCommitsTouchingAtMost,
@@ -16,8 +16,8 @@ from mightymodels_evals.evaluators import (
     GlobFileContainsAll,
     ResponseTailAsksQuestion,
 )
-from mightymodels_evals.evaluators.base import CheckContext
-from mightymodels_evals.repo import Repo
+from plugin_evals.evaluators.base import CheckContext
+from plugin_evals.repo import Repo
 
 
 def _repo(tmp_path: Path) -> Path:

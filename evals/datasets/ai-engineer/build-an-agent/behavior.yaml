@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: ai-engineer-behavior-build-an-agent
+cases:
+- name: build-an-agent-migration-reviewer
+  inputs:
+    case: build-an-agent-migration-reviewer
+    skill: build-an-agent
+    fixture: fx-webapp
+    task: 'Add a Claude Code subagent that reviews database migration files before
+      they merge: it should flag missing rollback scripts and destructive schema changes.
+      Create the agent definition file so it is ready to dispatch.'
+    sim_notes: ''
+  metadata:
+    skill: build-an-agent
+  expected_output: null
+  evaluators:
+  - FileExists:
+      check: agent definition file created
+      path: .claude/agents/migration-reviewer.md
+  - FileContainsAll:
+      check: frontmatter carries name and description
+      path: .claude/agents/migration-reviewer.md
+      needles:
+      - 'name:'
+      - 'description:'
+  - FileContains:
+      check: scoped to migration review
+      path: .claude/agents/migration-reviewer.md
+      needle: migration
+evaluators: []
+report_evaluators: []

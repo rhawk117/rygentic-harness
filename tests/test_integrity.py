@@ -120,18 +120,40 @@ def test_workflow_diagram_nodes_are_real_skills_or_agents(doc: str) -> None:
 
 
 def test_eval_dataset_dirs_name_existing_skills() -> None:
-    datasets = {
-        p.name for p in REPO_ROOT.joinpath('evals/datasets').iterdir() if p.is_dir()
-    }
-    unknown = datasets - skill_names()
-    assert not unknown, f'eval dataset dirs for absent skills: {sorted(unknown)}'
+    from plugin_evals.registry import plugin_names, select_specs
+
+    datasets_root = REPO_ROOT.joinpath('evals/datasets')
+    plugin_dirs = {p.name for p in datasets_root.iterdir() if p.is_dir()}
+    unknown_plugins = plugin_dirs - set(plugin_names())
+    assert not unknown_plugins, (
+        f'eval dataset dirs for unregistered plugins: {sorted(unknown_plugins)}'
+    )
+
+    for plugin_dir in datasets_root.iterdir():
+        if not plugin_dir.is_dir():
+            continue
+        skill_dirs = {p.name for p in plugin_dir.iterdir() if p.is_dir()}
+        expected_skills = {spec.skill for spec in select_specs(plugin=plugin_dir.name)}
+        unknown = skill_dirs - expected_skills
+        assert not unknown, (
+            f'eval dataset dirs for absent skills under {plugin_dir.name}: '
+            f'{sorted(unknown)}'
+        )
 
 
 def test_eval_case_specs_name_existing_skills() -> None:
-    from mightymodels_evals.cases import SPECS
+    from plugin_evals.registry import all_specs
 
-    unknown = {spec.skill for spec in SPECS} - skill_names()
+    specs = all_specs()
+    unknown = {spec.skill for spec in specs} - skill_names()
     assert not unknown, f'eval case specs target absent skills: {sorted(unknown)}'
+
+    absent_plugins = {
+        spec.plugin for spec in specs if not PLUGINS_ROOT.joinpath(spec.plugin).is_dir()
+    }
+    assert not absent_plugins, (
+        f'eval case specs name absent plugins: {sorted(absent_plugins)}'
+    )
 
 
 def test_documented_skill_inventory_matches_disk() -> None:

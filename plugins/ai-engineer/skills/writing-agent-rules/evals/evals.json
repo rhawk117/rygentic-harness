@@ -1,0 +1,33 @@
+{
+  "skill_name": "writing-agent-rules",
+  "evals": [
+    {
+      "id": 1,
+      "name": "routes-a-lint-rule-away-from-the-file",
+      "prompt": "Copilot keeps writing default exports in our React components. Add a rule so it stops.",
+      "expected_output": "Recognizes this is enforceable by an ESLint rule (import/no-default-export), recommends the lint rule over an instruction line, and only writes a path-scoped instruction if the user insists or lint cannot cover it. Does not silently add a line to copilot-instructions.md.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "generates-a-matched-scoped-pair",
+      "prompt": "We use both Claude Code and Copilot. I want a rule that anything under src/api/ must return our shared error envelope from src/api/errors.ts. Set that up.",
+      "expected_output": "Detects the existing layout first, then writes both .claude/rules/<topic>.md with paths: and .github/instructions/<topic>.instructions.md with applyTo:, notes in each that the pair exists, and states the verification commands (/context and /instructions).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "declines-scan-and-generate",
+      "prompt": "Scan this repo and generate a good CLAUDE.md for it.",
+      "expected_output": "Pushes back with the reason (LLM-generated context files measurably underperform; init fossilization), offers the audit path and an interview-driven alternative instead. Does not just run /init-style generation.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "diagnoses-an-ignored-rule",
+      "prompt": "I put 'always run migrations before starting the server' in CLAUDE.md and Claude ignores it about half the time. Why?",
+      "expected_output": "Identifies that must-happen-every-time rules belong in a hook rather than advisory context, mentions within-session compliance decay, and tells the user to confirm the file actually loaded with /context before assuming the rule is at fault.",
+      "files": []
+    }
+  ]
+}

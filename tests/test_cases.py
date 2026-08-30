@@ -1,39 +1,76 @@
 from pathlib import Path
 
 import pytest
-from mightymodels_evals.cases import (
-    SPECS,
+from plugin_evals.case_modules import mightymodels
+from plugin_evals.cases import (
     behavior_dataset,
     load_behavior_dataset,
     write_behavior_datasets,
 )
-from mightymodels_evals.errors import NoCasesError
+from plugin_evals.errors import NoCasesError
+from plugin_evals.registry import (
+    DuplicateSkillError,
+    UnknownPluginError,
+    all_specs,
+    collect_specs,
+    select_specs,
+)
 
-EXPECTED_SPECS = 11  # ten loop skills + the using-mightymodels fleet reference
+TOTAL_SPECS = 12  # eleven mightymodels loop-skill cases + one ai-engineer case
+MIGHTYMODELS_SPECS = 11  # ten loop skills + the using-mightymodels fleet reference
 
 
 def test_specs_cover_the_roster_with_unique_names() -> None:
-    assert len(SPECS) == EXPECTED_SPECS
-    assert len({s.name for s in SPECS}) == EXPECTED_SPECS
-    assert all(s.checks for s in SPECS)
+    specs = all_specs()
+    assert len(specs) == TOTAL_SPECS
+    assert len({s.name for s in specs}) == TOTAL_SPECS
+    assert all(s.checks for s in specs)
+    assert all(s.plugin for s in specs)
 
 
-def test_behavior_dataset_filters_by_skill() -> None:
-    assert len(behavior_dataset().cases) == EXPECTED_SPECS
-    assert len(behavior_dataset('agents-assemble').cases) == 1
+def test_registry_filters_by_plugin_and_skill() -> None:
+    assert len(select_specs(plugin='mightymodels')) == MIGHTYMODELS_SPECS
+    assert len(select_specs(skill='agents-assemble')) == 1
 
     with pytest.raises(NoCasesError):
-        behavior_dataset('nonexistent-skill')
+        select_specs(skill='nonexistent-skill')
+
+    with pytest.raises(UnknownPluginError):
+        select_specs(plugin='nonexistent-plugin')
+
+
+def test_registry_rejects_duplicate_skill_names() -> None:
+    # the same module registered twice stands in for two plugins claiming a skill
+    with pytest.raises(DuplicateSkillError, match='must be unique'):
+        collect_specs((mightymodels, mightymodels))
+
+
+def test_behavior_dataset_names_the_skill_it_covers() -> None:
+    assert len(behavior_dataset(all_specs()).cases) == TOTAL_SPECS
+
+    single = behavior_dataset(select_specs(skill='agents-assemble'), 'agents-assemble')
+    assert len(single.cases) == 1
+    assert single.name == 'mightymodels-behavior-agents-assemble'
+
+    other_plugin = behavior_dataset(
+        select_specs(skill='build-an-agent'), 'build-an-agent'
+    )
+    assert other_plugin.name == 'ai-engineer-behavior-build-an-agent'
+
+    with pytest.raises(NoCasesError):
+        behavior_dataset([], 'nonexistent-skill')
 
 
 def test_write_then_load_round_trips_per_skill_layout(tmp_path: Path) -> None:
-    written = write_behavior_datasets(tmp_path)
-    assert len(written) == EXPECTED_SPECS
-    assert tmp_path.joinpath('agents-assemble', 'behavior.yaml').is_file()
-    assert tmp_path.joinpath('agents-assemble', 'behavior.schema.json').is_file()
+    written = write_behavior_datasets(tmp_path, all_specs())
+    assert len(written) == TOTAL_SPECS
+    assert tmp_path.joinpath('mightymodels', 'agents-assemble', 'behavior.yaml').is_file()
+    assert tmp_path.joinpath(
+        'mightymodels', 'agents-assemble', 'behavior.schema.json'
+    ).is_file()
 
     combined = load_behavior_dataset(tmp_path)
-    assert len(combined.cases) == EXPECTED_SPECS
+    assert len(combined.cases) == TOTAL_SPECS
 
-    single = load_behavior_dataset(tmp_path, 'whats-broken')
+    single = load_behavior_dataset(tmp_path, ['whats-broken'])
     assert single.cases[0].evaluators

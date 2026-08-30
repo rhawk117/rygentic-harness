@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from mightymodels_evals.report import (
+from plugin_evals.report import (
     AssertionRow,
     CaseRow,
     Payload,
@@ -46,7 +46,7 @@ def _payload() -> Payload:
 
 def test_render_html_carries_tiles_rows_and_failures() -> None:
     page = render_html(_payload())
-    assert 'mightymodels eval report' in page
+    assert 'plugin eval report' in page
     assert '100%' in page
     assert 'brief within cap' in page
     assert 'pass' in page

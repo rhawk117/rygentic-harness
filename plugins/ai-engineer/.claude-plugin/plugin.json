@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "ai-engineer",
+  "displayName": "ai-engineer",
+  "version": "0.1.0",
+  "description": "Skills and agents for building, reviewing, and hardening Claude Code agents, skills, and dev loops: subagent definitions, skill engineering, and multi-agent orchestration.",
+  "author": {
+    "name": "rhawk117"
+  },
+  "keywords": [
+    "agents",
+    "skills",
+    "skill-engineering",
+    "orchestration",
+    "workflow"
+  ]
+}
