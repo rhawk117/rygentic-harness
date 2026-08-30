@@ -1,6 +1,6 @@
 ---
 name: build-a-loop
-license: MIT
+license: Apache-2.0
 description: >-
   Design a reliable agent loop from a plain description of the work. Picks the loop shape, defines what one iteration may touch, sets the evidence each success criterion needs, writes a stop condition that measures progress instead of counting turns, and emits a LOOP.md contract plus the Claude Code or GitHub Copilot CLI configuration and verification hook that enforce it. Use this whenever someone wants an agent to keep working on its own - a loop, a harness, an autonomous or long-running or overnight run, a self-verifying build, a fan-out of subagents, a scheduled or recurring agent task - and also when an existing loop misbehaves: runs away, stalls, burns turns repairing the wrong thing, claims success it cannot prove, or loses its rules after compaction. Trigger even when the user never says the word "loop".
 ---

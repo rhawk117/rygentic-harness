@@ -1,5 +1,6 @@
 ---
 name: build-an-agent
+license: Apache-2.0
 description: >-
   Create, review, port, or debug a subagent definition file - a Claude Code agent (.claude/agents/*.md) or a GitHub Copilot CLI custom agent (*.agent.md). Use this whenever the user wants a new subagent, agent, worker, reviewer, scout, or specialist agent; wants an existing definition improved, hardened, or moved between Claude Code and Copilot CLI; or asks why an agent is not triggering, not loading, or behaving wrong. Use it even when they only describe the agent they want ("I need something that audits my migrations before I open a PR") without ever saying "subagent" or "frontmatter". Not for writing a one-off task prompt to hand to an agent that already exists.
 ---

@@ -1,5 +1,6 @@
 ---
 name: writing-agent-rules
+license: Apache-2.0
 description: Create, place, and audit coding-agent instruction and rule files across Claude Code and GitHub Copilot - CLAUDE.md, AGENTS.md, .claude/rules/, .github/copilot-instructions.md, and .github/instructions/*.instructions.md. Use this skill whenever the user wants to add a rule or convention for a coding agent, set up or clean up agent instructions in a repo, share rules between Claude Code and Copilot, split an oversized instructions file, or asks why an agent keeps ignoring a rule. Use it even when the user only describes the behavior they want ("make Copilot stop using default exports", "Claude keeps forgetting to run migrations") without naming any file.
 ---
 

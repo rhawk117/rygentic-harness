@@ -11,9 +11,10 @@ description: >-
   "turn this workflow into a skill", "make a skill for X", "why isn't my skill firing", and
   "is this skill worth keeping" — even when the word "skill" is the only signal in the request.
 license: Apache-2.0
-compatibility: >-
-  Python 3.11+, PyYAML. Measurement additionally needs a host CLI on PATH (`copilot` or
-  `claude`). Linting, packaging and the security report work with no host installed.
+metadata:
+  compatibility: >-
+    Python 3.11+, PyYAML. Measurement additionally needs a host CLI on PATH (`copilot` or
+    `claude`). Linting, packaging and the security report work with no host installed.
 ---
 
 # Skill Engineering
