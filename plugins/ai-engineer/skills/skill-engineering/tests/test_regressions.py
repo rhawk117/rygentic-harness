@@ -15,7 +15,14 @@ from pathlib import Path
 import pytest
 
 from skilleng.aggregate import NoDataError, build
-from skilleng.events import normalize, prompt_mentions_skill, skill_invoked
+from skilleng.events import (
+    Event,
+    append,
+    normalize,
+    prompt_mentions_skill,
+    read,
+    skill_invoked,
+)
 from skilleng.package import package, scan
 from skilleng.report import safe_json_for_script, to_html, to_markdown
 from skilleng.schema import (
@@ -413,6 +420,23 @@ class TestPortability:
         assert not prompt_mentions_skill('merge these csv files', 'demo')
 
 
+class TestEventLogIntegrity:
+    """UB-13 / UB-25. A lost or unparseable event must read as "unknown", not as
+    proof the skill never fired."""
+
+    def test_a_corrupted_log_line_makes_a_non_hit_unknown_not_false(self, tmp_path):
+        log = tmp_path / 'events.ndjson'
+        run_id = 'r1'
+        append(log, Event(ts='t', event='pre_tool_use', run_id=run_id))
+        with log.open('a', encoding='utf-8') as fh:
+            fh.write('{not valid json\n')
+        assert skill_invoked(read(log), run_id, 'demo') is None
+
+    def test_an_unnamed_skill_invocation_does_not_count_as_a_hit(self):
+        events = [Event(ts='t', event='pre_tool_use', run_id='r1', skill='<unnamed>')]
+        assert skill_invoked(events, 'r1', 'demo') is None
+
+
 class TestSupplyChain:
     """F-14. skill-creator packages .git, packages .env, scans for nothing, and
     strips the evals the recipient would need to re-verify the skill."""
@@ -466,6 +490,19 @@ class TestSupplyChain:
         assert archive is not None, 'a suppressed match must not block packaging'
         assert rep.suppressed, 'a suppression must still be listed in the report'
         assert 'Suppressed secret matches' in rep.to_markdown()
+
+    def test_a_suppressed_first_match_does_not_hide_a_later_real_one(self):
+        # UB-5: the scanner used to `break` after the first match of each pattern
+        # per file, so a suppressed token on line 1 hid every later real token of
+        # that class.
+        lines = ['x'] * 5
+        lines[0] = 'ghp_' + 'c' * 36 + '  # skilleng:allow-secret'
+        lines[4] = 'ghp_' + 'd' * 36
+        (self.d / 'docs.md').write_text('\n'.join(lines) + '\n')
+        archive, rep, _ = package(self.d, self.tmp / 'out')
+        assert archive is None
+        assert rep.blocking
+        assert rep.secrets
 
     def test_script_behaviour_and_endpoints_are_inventoried(self):
         rep = scan(self.d)

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CLAUDE_CODE = "claude-code"
-COPILOT_CLI = "copilot-cli"
+CLAUDE_CODE = 'claude-code'
+COPILOT_CLI = 'copilot-cli'
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,15 +23,15 @@ class GateConfig:
     @classmethod
     def load(cls, path: Path) -> GateConfig:
         raw = json.loads(path.read_text())
-        platform = raw["platform"]
+        platform = raw['platform']
         if platform not in (CLAUDE_CODE, COPILOT_CLI):
-            raise ValueError(f"unsupported platform: {platform}")
+            raise ValueError(f'unsupported platform: {platform}')
         return cls(
             platform=platform,
-            check=list(raw["check"]),
-            cwd=Path(raw.get("cwd", ".")).expanduser(),
-            state_path=Path(raw.get("state_path", ".loop-gate.state")).expanduser(),
-            max_blocks=int(raw.get("max_blocks", 1)),
+            check=list(raw['check']),
+            cwd=Path(raw.get('cwd', '.')).expanduser(),
+            state_path=Path(raw.get('state_path', '.loop-gate.state')).expanduser(),
+            max_blocks=int(raw.get('max_blocks', 1)),
         )
 
 
@@ -42,7 +42,7 @@ class CheckResult:
 
 
 def read_payload() -> dict[str, Any]:
-    raw = sys.stdin.read().strip() if not sys.stdin.isatty() else ""
+    raw = sys.stdin.read().strip() if not sys.stdin.isatty() else ''
     if not raw:
         return {}
     try:
@@ -51,22 +51,32 @@ def read_payload() -> dict[str, Any]:
         return {}
 
 
+def _gate_timeout() -> int:
+    try:
+        return int(os.environ.get('LOOP_GATE_TIMEOUT', '300'))
+    except ValueError:
+        return 300
+
+
 def run_check(config: GateConfig) -> CheckResult:
-    completed = subprocess.run(
-        config.check,
-        cwd=config.cwd,
-        capture_output=True,
-        text=True,
-        timeout=int(os.environ.get("LOOP_GATE_TIMEOUT", "300")),
-    )
+    try:
+        completed = subprocess.run(
+            config.check,
+            cwd=config.cwd,
+            capture_output=True,
+            text=True,
+            timeout=_gate_timeout(),
+        )
+    except (subprocess.TimeoutExpired, OSError) as error:
+        return CheckResult(passed=False, detail=f'verification could not run: {error}')
     tail = (completed.stdout + completed.stderr).strip().splitlines()[-20:]
-    return CheckResult(passed=completed.returncode == 0, detail="\n".join(tail))
+    return CheckResult(passed=completed.returncode == 0, detail='\n'.join(tail))
 
 
 def blocks_recorded(config: GateConfig) -> int:
     if not config.state_path.exists():
         return 0
-        
+
     try:
         return int(config.state_path.read_text().strip() or 0)
     except ValueError:
@@ -84,15 +94,15 @@ def clear_blocks(config: GateConfig) -> None:
 
 def emit_claude_code(blocking: bool, message: str) -> None:
     if blocking:
-        print(json.dumps({"decision": "block", "reason": message}))
+        print(json.dumps({'decision': 'block', 'reason': message}))
     else:
-        print(json.dumps({"systemMessage": message}) if message else "", end="")
+        print(json.dumps({'systemMessage': message}) if message else '', end='')
 
 
 def emit_copilot_cli(blocking: bool, message: str) -> None:
-    payload: dict[str, Any] = {"decision": "block" if blocking else "continue"}
+    payload: dict[str, Any] = {'decision': 'block' if blocking else 'continue'}
     if message:
-        payload["additionalContext"] = message
+        payload['additionalContext'] = message
     print(json.dumps(payload))
 
 
@@ -104,15 +114,15 @@ def emit(config: GateConfig, blocking: bool, message: str) -> None:
 
 
 def main() -> int:
-    config_path = Path(os.environ.get("LOOP_GATE_CONFIG", ".loop-gate.json"))
+    config_path = Path(os.environ.get('LOOP_GATE_CONFIG', '.loop-gate.json'))
     if not config_path.exists():
-        print(f"loop gate config not found at {config_path}", file=sys.stderr)
+        print(f'loop gate config not found at {config_path}', file=sys.stderr)
         return 1
 
     try:
         config = GateConfig.load(config_path)
     except (KeyError, ValueError, json.JSONDecodeError) as error:
-        print(f"loop gate config is invalid: {error}", file=sys.stderr)
+        print(f'loop gate config is invalid: {error}', file=sys.stderr)
         return 1
 
     payload = read_payload()
@@ -120,18 +130,18 @@ def main() -> int:
 
     if result.passed:
         clear_blocks(config)
-        emit(config, blocking=False, message="")
+        emit(config, blocking=False, message='')
         return 0
 
-    prior = max(blocks_recorded(config), 1 if payload.get("stop_hook_active") else 0)
+    prior = max(blocks_recorded(config), 1 if payload.get('stop_hook_active') else 0)
     if prior >= config.max_blocks:
         clear_blocks(config)
         emit(
             config,
             blocking=False,
             message=(
-                f"Verification still failing after {prior} blocked attempt(s). "
-                f"Releasing the turn and reporting unresolved failure:\n{result.detail}"
+                f'Verification still failing after {prior} blocked attempt(s). '
+                f'Releasing the turn and reporting unresolved failure:\n{result.detail}'
             ),
         )
         return 0
@@ -142,11 +152,11 @@ def main() -> int:
         blocking=True,
         message=(
             "The loop's verification check is failing, so the work is not done. "
-            f"Fix the cause rather than the symptom, then finish again:\n{result.detail}"
+            f'Fix the cause rather than the symptom, then finish again:\n{result.detail}'
         ),
     )
     return 0
 
 
-if __name__ == "__main__":
-   raise SystemExit(main())
+if __name__ == '__main__':
+    raise SystemExit(main())
