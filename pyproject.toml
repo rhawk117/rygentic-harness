@@ -1,7 +1,7 @@
 [project]
 name = "plugin-evals"
 version = "0.6.0"
-description = "Eval harness for the mightymodels plugin: pydantic-evals datasets, deterministic fixtures, executor-pluggable runs, consolidated HTML reports"
+description = "Eval harness for the marketplace's registered plugins: pydantic-evals datasets, deterministic fixtures, executor-pluggable runs, consolidated HTML reports"
 requires-python = ">=3.14"
 authors = [{ name = "BUSYSRE" }]
 dependencies = [

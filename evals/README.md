@@ -1,6 +1,6 @@
 # plugin-evals
 
-The eval harness for the mightymodels plugin, built on pydantic-evals (API verified against the
+The eval harness for the marketplace's registered plugins, built on pydantic-evals (API verified against the
 installed 2.32.1 source, not training priors). It replaces the ad-hoc scripts from the original
 build with one package: typed evaluators, serialized datasets, pluggable executors, and a
 self-contained HTML report.
