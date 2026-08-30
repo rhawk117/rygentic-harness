@@ -108,19 +108,24 @@ the problem. Collapsing these into one "with skill" arm makes that diagnosis imp
 
 ## Commands
 
-Run from the skill-engineering directory, or with it on `PYTHONPATH`. Every command takes
-`--help`, and the help is the reference — do not re-describe flags here.
+The `skilleng` CLI launcher is on `PATH` while the ai-engineer plugin is enabled (it
+lives in the plugin's `bin/`). Every command takes `--help`, and the help is the
+reference — do not re-describe flags here.
 
 ```bash
-python -m skilleng lint      <skill-dir>
-python -m skilleng doctor    [--probe-hooks] [--host copilot-cli|claude-code]
-python -m skilleng calibrate --host H --queries q.json --workspace W
-python -m skilleng run       --skill S --evals e.json --workspace W --host H [--tier standard]
-python -m skilleng bench     --workspace W [--compare-to N]
-python -m skilleng trigger   --skill S --queries q.json --host H [--roster other-skill-dirs...]
-python -m skilleng package   <skill-dir> [--out DIR]
-python -m skilleng gate      --workspace W --phase improve
+skilleng-cli lint      <skill-dir>
+skilleng-cli doctor    [--probe-hooks] [--host copilot-cli|claude-code]
+skilleng-cli calibrate --host H --queries q.json --workspace W
+skilleng-cli run       --skill S --evals e.json --workspace W --host H [--tier standard]
+skilleng-cli bench     --workspace W [--compare-to N]
+skilleng-cli trigger   --skill S --queries q.json --host H [--roster other-skill-dirs...]
+skilleng-cli package   <skill-dir> [--out DIR]
+skilleng-cli gate      --workspace W --phase improve
 ```
+
+Outside the plugin (e.g. running the harness's own test suite), use
+`python -m skilleng ...` instead, with `PYTHONPATH=<plugin>/bin` set or the cwd at
+`<plugin>/bin`.
 
 `skilleng run` refuses to start on a skill with load-blocking lint errors, and refuses to
 run without a passing controls gate unless explicitly overridden. Those refusals are the

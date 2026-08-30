@@ -16,12 +16,16 @@ import sys
 from pathlib import Path
 
 SHIM = [sys.executable, '-m', 'skilleng.hookshim']
+# Hooks fire as subprocesses of the host CLI, so the command embeds skilleng's own
+# parent directory rather than trusting the invoker's cwd to have it on PYTHONPATH.
+PACKAGE_PARENT = Path(__file__).resolve().parent.parent
 EVENTS_CLAUDE = ['PreToolUse', 'PostToolUse', 'SessionStart', 'Stop']
 EVENTS_COPILOT = ['preToolUse', 'postToolUse', 'sessionStart', 'agentStop']
 
 
 def shim_command(probe: bool = False) -> str:
-    return ' '.join(SHIM) + (' --probe' if probe else '')
+    cmd = f'PYTHONPATH={PACKAGE_PARENT} ' + ' '.join(SHIM)
+    return cmd + (' --probe' if probe else '')
 
 
 def claude_code_settings(probe: bool = False) -> dict:

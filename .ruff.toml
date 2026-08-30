@@ -118,59 +118,59 @@ ignore = [
 # C901/PLR0912/PLR0915/PLR0911 on cli.py's 100-line command functions and FBT001/
 # FBT002 on doctor.py's boolean flags are finding UB-2/3/4/UB-15, ticketed for a
 # later branch.
-"plugins/ai-engineer/skills/skill-engineering/skilleng/cli.py" = [
+"plugins/ai-engineer/bin/skilleng/cli.py" = [
     "PLC0415",
     "C901",
     "PLR0912",
     "PLR0915",
     "PLR0911",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/doctor.py" = [
+"plugins/ai-engineer/bin/skilleng/doctor.py" = [
     "PLC0415",
     "FBT001",
     "FBT002",
 ]
 # Boolean positional params — finding UB-15, ticketed for a later branch.
-"plugins/ai-engineer/skills/skill-engineering/skilleng/workspace.py" = [
+"plugins/ai-engineer/bin/skilleng/workspace.py" = [
     "FBT001",
     "FBT002",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/hooks.py" = ["FBT001", "FBT002"]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/runners/base.py" = [
+"plugins/ai-engineer/bin/skilleng/hooks.py" = ["FBT001", "FBT002"]
+"plugins/ai-engineer/bin/skilleng/runners/base.py" = [
     "FBT001",
     "FBT002",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/runners/claude_code.py" = [
+"plugins/ai-engineer/bin/skilleng/runners/claude_code.py" = [
     "FBT001",
     "FBT002",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/runners/copilot_cli.py" = [
+"plugins/ai-engineer/bin/skilleng/runners/copilot_cli.py" = [
     "FBT001",
     "FBT002",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/stats.py" = ["FBT001", "FBT002"]
+"plugins/ai-engineer/bin/skilleng/stats.py" = ["FBT001", "FBT002"]
 # Complexity / too-many-args on the existing 100-line functions (UB-2/3/4) and
 # boolean flag params (UB-15) — both ticketed for a later branch.
-"plugins/ai-engineer/skills/skill-engineering/skilleng/aggregate.py" = [
+"plugins/ai-engineer/bin/skilleng/aggregate.py" = [
     "C901",
     "PLR0912",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/package.py" = [
+"plugins/ai-engineer/bin/skilleng/package.py" = [
     "C901",
     "PLR0912",
     "FBT001",
     "FBT002",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/skillmd.py" = [
+"plugins/ai-engineer/bin/skilleng/skillmd.py" = [
     "C901",
     "PLR0912",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/report.py" = [
+"plugins/ai-engineer/bin/skilleng/report.py" = [
     "PLR0915",
     "FBT001",
     "FBT002",
 ]
-"plugins/ai-engineer/skills/skill-engineering/skilleng/trigger.py" = [
+"plugins/ai-engineer/bin/skilleng/trigger.py" = [
     "C901",
     "PLR0912",
     "PLR0915",
