@@ -7,8 +7,21 @@ from pathlib import Path
 from typing import Protocol
 
 from mightymodels_evals.artifacts import RunArtifacts, read_rel, run_cmd
-from mightymodels_evals.errors import ReplayRunMissingError, UnknownFixtureError
+from mightymodels_evals.errors import (
+    HarnessError,
+    ReplayRunMissingError,
+    UnknownFixtureError,
+)
 from mightymodels_evals.fixtures import BUILDERS
+from mightymodels_evals.registry import plugin_for_skill
+
+
+class MissingSkillDirError(HarnessError):
+    def __init__(self, skill_dir: str) -> None:
+        super().__init__(
+            f'no skill directory at {skill_dir}; the with-skill arm cannot run without it'
+        )
+        self.skill_dir = skill_dir
 
 
 class Variant(StrEnum):
@@ -40,7 +53,7 @@ class CliExecutor:
     command: str
     fixtures_root: Path
     staging_root: Path
-    skills_root: Path
+    plugins_root: Path
     variant: Variant
     include_sim_notes: bool = False
     timeout: int = 2400
@@ -72,14 +85,21 @@ class CliExecutor:
         shutil.copytree(source, workdir, symlinks=True)
         return workdir
 
+    def _skill_dir(self, skill: str) -> Path:
+        plugin = plugin_for_skill(skill)
+        skill_dir = self.plugins_root.joinpath(plugin, 'skills', skill)
+        if not skill_dir.is_dir():
+            raise MissingSkillDirError(str(skill_dir))
+        return skill_dir
+
     def _compose(self, inputs: dict) -> str:
         parts = []
         if self.variant is Variant.WITH_SKILL:
-            skill_dir = self.skills_root.joinpath(inputs['skill'])
+            skill_dir = self._skill_dir(inputs['skill'])
             parts.append(
                 f'First read {skill_dir}/SKILL.md and every reference file it points '
                 f'to, then follow it for this task. Related skills live under '
-                f'{self.skills_root} and '
+                f'{skill_dir.parent} and '
                 f'agent contracts beside them.'
             )
 

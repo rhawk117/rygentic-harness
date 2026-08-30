@@ -128,10 +128,18 @@ def test_eval_dataset_dirs_name_existing_skills() -> None:
 
 
 def test_eval_case_specs_name_existing_skills() -> None:
-    from mightymodels_evals.cases import SPECS
+    from mightymodels_evals.registry import all_specs
 
-    unknown = {spec.skill for spec in SPECS} - skill_names()
+    specs = all_specs()
+    unknown = {spec.skill for spec in specs} - skill_names()
     assert not unknown, f'eval case specs target absent skills: {sorted(unknown)}'
+
+    absent_plugins = {
+        spec.plugin for spec in specs if not PLUGINS_ROOT.joinpath(spec.plugin).is_dir()
+    }
+    assert not absent_plugins, (
+        f'eval case specs name absent plugins: {sorted(absent_plugins)}'
+    )
 
 
 def test_documented_skill_inventory_matches_disk() -> None:

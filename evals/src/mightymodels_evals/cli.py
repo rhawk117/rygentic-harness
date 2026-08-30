@@ -17,6 +17,7 @@ from mightymodels_evals.executors import (
 )
 from mightymodels_evals.fixtures import build_all
 from mightymodels_evals.paths import EVALS_ROOT
+from mightymodels_evals.registry import select_specs
 from mightymodels_evals.report import (
     Payload,
     build_payload,
@@ -37,10 +38,11 @@ def cmd_fixtures(args: argparse.Namespace) -> int:
 
 
 def cmd_datasets(args: argparse.Namespace) -> int:
-    # behavior datasets regenerate from cases.py; trigger YAMLs are hand-edited data
+    # behavior datasets regenerate from the registered case modules; trigger YAMLs
+    # are hand-edited data
     datasets_dir = Path(args.dir)
     datasets_dir.mkdir(parents=True, exist_ok=True)
-    written = write_behavior_datasets(datasets_dir)
+    written = write_behavior_datasets(datasets_dir, select_specs(plugin=args.plugin))
     print(f'wrote {len(written)} behavior datasets under {datasets_dir}')
     return 0
 
@@ -57,8 +59,15 @@ def _evaluate_variants(
     return reports
 
 
+def _selected_skills(args: argparse.Namespace) -> list[str] | None:
+    # no filter means grade whatever the datasets directory holds
+    if args.plugin is None and args.skill is None:
+        return None
+    return [spec.skill for spec in select_specs(plugin=args.plugin, skill=args.skill)]
+
+
 def cmd_replay(args: argparse.Namespace) -> int:
-    dataset = load_behavior_dataset(Path(args.datasets), args.skill)
+    dataset = load_behavior_dataset(Path(args.datasets), _selected_skills(args))
     reports = _evaluate_variants(
         dataset,
         lambda variant: ReplayExecutor(runs_root=Path(args.runs), variant=variant),
@@ -67,7 +76,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    dataset = load_behavior_dataset(Path(args.datasets), args.skill)
+    dataset = load_behavior_dataset(Path(args.datasets), _selected_skills(args))
     fixtures_root = Path(args.fixtures)
     if not fixtures_root.is_dir():
         print(
@@ -83,7 +92,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             command=args.command,
             fixtures_root=fixtures_root,
             staging_root=Path(args.staging),
-            skills_root=Path(args.skills_root),
+            plugins_root=Path(args.plugins_root),
             variant=variant,
             include_sim_notes=args.sim_notes,
             timeout=args.timeout,
@@ -120,6 +129,7 @@ def cmd_report(args: argparse.Namespace) -> int:
 
 def _add_common_run_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--datasets', default=str(EVALS_ROOT.joinpath('datasets')))
+    parser.add_argument('--plugin', default=None)
     parser.add_argument('--skill', default=None)
     parser.add_argument('--out-dir', default=str(EVALS_ROOT.joinpath('results')))
     parser.add_argument('--runner', default='unspecified')
@@ -135,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     datasets = sub.add_parser('datasets', help='regenerate per-skill behavior datasets')
     datasets.add_argument('--dir', default=str(EVALS_ROOT.joinpath('datasets')))
+    datasets.add_argument('--plugin', default=None)
     datasets.set_defaults(func=cmd_datasets)
 
     replay = sub.add_parser('replay', help='grade existing run directories')
@@ -149,8 +160,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument('--fixtures', default=str(EVALS_ROOT.joinpath('fixtures')))
     run.add_argument('--staging', default=str(EVALS_ROOT.joinpath('staging')))
     run.add_argument(
-        '--skills-root',
-        default=str(EVALS_ROOT.parent.joinpath('plugins/mightymodels/skills')),
+        '--plugins-root',
+        default=str(EVALS_ROOT.parent.joinpath('plugins')),
+        help="marketplace root; each case's skill resolves under <plugin>/skills/",
     )
     run.add_argument(
         '--sim-notes',
