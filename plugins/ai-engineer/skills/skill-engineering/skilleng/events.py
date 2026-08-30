@@ -15,10 +15,11 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 ENV_LOG = 'SKILLENG_EVENT_LOG'
 ENV_RUN = 'SKILLENG_RUN_ID'
@@ -111,7 +112,7 @@ def normalize(payload: dict, run_id: str | None = None, arm: str | None = None) 
             skill = m.group(1)
 
     ev = Event(
-        ts=datetime.now(timezone.utc).isoformat(timespec='milliseconds'),
+        ts=datetime.now(UTC).isoformat(timespec='milliseconds'),
         event=_norm_event(raw_event) if raw_event else 'unknown',
         run_id=run_id or payload.get('run_id') or os.environ.get(ENV_RUN),
         arm=arm or payload.get('arm') or os.environ.get(ENV_ARM),
@@ -140,7 +141,7 @@ def append(path: Path, ev: Event) -> None:
             fh.write(json.dumps(asdict(ev), separators=(',', ':')) + '\n')
     except OSError as error:
         sentinel = Event(
-            ts=datetime.now(timezone.utc).isoformat(timespec='milliseconds'),
+            ts=datetime.now(UTC).isoformat(timespec='milliseconds'),
             event=EVENT_INSTRUMENTATION_ERROR,
             run_id=ev.run_id,
             arm=ev.arm,
@@ -172,7 +173,7 @@ def read(path: Path) -> list[Event]:
     if undecodable:
         out.append(
             Event(
-                ts=datetime.now(timezone.utc).isoformat(timespec='milliseconds'),
+                ts=datetime.now(UTC).isoformat(timespec='milliseconds'),
                 event=EVENT_INSTRUMENTATION_ERROR,
                 detail=f'{undecodable} log line(s) could not be decoded',
             )

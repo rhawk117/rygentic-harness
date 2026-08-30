@@ -74,8 +74,17 @@ class FakeAdapter(HostAdapter):
                     ),
                 )
         if not step.ok:
-            return RunResult(False, 1, '', '', 0.01, error=step.error or 'boom')
-        return RunResult(True, 0, '', '', 0.01)
+            return RunResult(
+                ok=False,
+                exit_code=1,
+                stdout='',
+                stderr='',
+                duration_seconds=0.01,
+                error=step.error or 'boom',
+            )
+        return RunResult(
+            ok=True, exit_code=0, stdout='', stderr='', duration_seconds=0.01
+        )
 
 
 def _queries(*pairs: tuple[str, bool]) -> list[dict]:
@@ -85,7 +94,7 @@ def _queries(*pairs: tuple[str, bool]) -> list[dict]:
 class TestConfusionMatrix:
     """One run per query cell (tier=quick), exercising tp/fn/fp/tn arithmetic."""
 
-    def test_counts_land_in_the_right_cell(self, tmp_path):
+    def test_counts_land_in_the_right_cell(self, tmp_path: Path) -> None:
         skill_dir = tmp_path / 'demo-skill'
         skill_dir.mkdir()
         adapter = FakeAdapter([
@@ -111,9 +120,12 @@ class TestConfusionMatrix:
 
 
 class TestPromptMentionsSkillExclusion:
-    """trigger.py:~75 — a query naming the skill is a forced invocation, not a trigger test."""
+    """trigger.py:~75 — a query naming the skill is a forced invocation, not a trigger
+    test."""
 
-    def test_a_query_that_names_the_skill_is_excluded_not_run(self, tmp_path):
+    def test_a_query_that_names_the_skill_is_excluded_not_run(
+        self, tmp_path: Path
+    ) -> None:
         skill_dir = tmp_path / 'demo-skill'
         skill_dir.mkdir()
         adapter = FakeAdapter([
@@ -135,9 +147,10 @@ class TestPromptMentionsSkillExclusion:
 
 
 class TestFiredIsNoneErrorPath:
-    """trigger.py:~98 — no hook events at all is "unknown", scored as an error, never a non-trigger."""
+    """trigger.py:~98 — no hook events at all is "unknown", scored as an error, never
+    a non-trigger."""
 
-    def test_an_uninstrumented_run_is_an_error_not_a_miss(self, tmp_path):
+    def test_an_uninstrumented_run_is_an_error_not_a_miss(self, tmp_path: Path) -> None:
         skill_dir = tmp_path / 'demo-skill'
         skill_dir.mkdir()
         adapter = FakeAdapter([ScriptedRun(fired=None)])
@@ -151,7 +164,9 @@ class TestFiredIsNoneErrorPath:
         assert report.confusion == {'tp': 0, 'fp': 0, 'tn': 0, 'fn': 0, 'errors': 1}
         assert any('no hook events for a completed run' in d for d in report.diagnostics)
 
-    def test_a_failed_run_is_also_excluded_from_the_confusion_matrix(self, tmp_path):
+    def test_a_failed_run_is_also_excluded_from_the_confusion_matrix(
+        self, tmp_path: Path
+    ) -> None:
         skill_dir = tmp_path / 'demo-skill'
         skill_dir.mkdir()
         adapter = FakeAdapter([ScriptedRun(ok=False, error='claude exited 1')])

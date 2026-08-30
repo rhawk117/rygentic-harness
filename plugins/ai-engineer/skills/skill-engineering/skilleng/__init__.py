@@ -8,5 +8,5 @@ Design rules, enforced by tests in tests/:
   5. A report may only make claims its rigor tier permits.
 """
 
-__version__ = "1.0.0"
+__version__ = '1.0.0'
 SCHEMA_VERSION = 1

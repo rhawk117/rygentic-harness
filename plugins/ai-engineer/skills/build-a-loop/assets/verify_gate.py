@@ -60,12 +60,13 @@ def _gate_timeout() -> int:
 
 def run_check(config: GateConfig) -> CheckResult:
     try:
-        completed = subprocess.run(
+        completed = subprocess.run(  # noqa: S603 -- argv list built by this harness, never a shell string
             config.check,
             cwd=config.cwd,
             capture_output=True,
             text=True,
             timeout=_gate_timeout(),
+            check=False,
         )
     except (subprocess.TimeoutExpired, OSError) as error:
         return CheckResult(passed=False, detail=f'verification could not run: {error}')

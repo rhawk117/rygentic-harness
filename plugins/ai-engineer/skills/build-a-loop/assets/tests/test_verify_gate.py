@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from verify_gate import GateConfig
 
 
-def test_load_rejects_an_unsupported_platform(tmp_path):
+def test_load_rejects_an_unsupported_platform(tmp_path: Path) -> None:
     config_path = tmp_path / 'gate.json'
     config_path.write_text(json.dumps({'platform': 'vscode', 'check': ['true']}))
 

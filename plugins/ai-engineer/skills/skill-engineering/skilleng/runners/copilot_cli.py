@@ -14,25 +14,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .. import hooks
-from .base import HostAdapter, RunRequest, register
+from skilleng import hooks
+from skilleng.runners.base import HostAdapter, RunRequest, register
 
 
 @register
 class CopilotCLI(HostAdapter):
-    name = "copilot-cli"
-    cli = "copilot"
-    config_env = "COPILOT_HOME"
-    skill_install_subdir = "skills"
+    name = 'copilot-cli'
+    cli = 'copilot'
+    config_env = 'COPILOT_HOME'
+    skill_install_subdir = 'skills'
 
     def prepare_sandbox(self, sandbox: Path, probe: bool = False) -> Path:
         sandbox = Path(sandbox)
-        (sandbox / "skills").mkdir(parents=True, exist_ok=True)
+        (sandbox / 'skills').mkdir(parents=True, exist_ok=True)
         hooks.write_copilot(sandbox, probe=probe)
         return sandbox
 
     def command(self, req: RunRequest) -> list[str]:
-        cmd = [self.cli, "-p", req.prompt, "--allow-all-tools"]
+        cmd = [self.cli, '-p', req.prompt, '--allow-all-tools']
         if req.model:
-            cmd += ["--model", req.model]
+            cmd += ['--model', req.model]
         return cmd

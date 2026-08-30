@@ -17,7 +17,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .skillmd import Finding, errors, lint, load
+from skilleng.skillmd import Finding, errors, lint, load
 
 # Never packaged. Absence of a rule here is how a .env ends up inside a shared zip.
 DENY_DIRS = {
@@ -159,11 +159,13 @@ class SecurityReport:
         return bool(self.secrets)
 
     def to_markdown(self) -> str:
-        L = [
+        lines = [
             f'# Security report — {self.skill}',
             '',
-            'What an installer is agreeing to run. Generated at package time; review before '
-            'granting this skill shell access.',
+            (
+                'What an installer is agreeing to run. Generated at package time; '
+                'review before granting this skill shell access.'
+            ),
             '',
             f'- Files packaged: **{self.files_included}**',
             f'- Files excluded by policy: **{len(self.files_excluded)}**',
@@ -172,55 +174,63 @@ class SecurityReport:
             '',
         ]
         if self.secrets:
-            L += ['## Possible secrets — packaging blocked', '']
-            L += [f'- **{s}**' for s in self.secrets]
-            L += ['', 'Remove or redact these, then package again.', '']
+            lines += ['## Possible secrets — packaging blocked', '']
+            lines += [f'- **{s}**' for s in self.secrets]
+            lines += ['', 'Remove or redact these, then package again.', '']
         if self.suppressed:
-            L += [
+            lines += [
                 '## Suppressed secret matches',
                 '',
-                'Marked `skilleng:allow-secret` by the author. Listed here so a suppression is never '
-                'invisible — confirm each one is genuinely an example or a fixture.',
+                (
+                    'Marked `skilleng:allow-secret` by the author. Listed here so a '
+                    'suppression is never invisible — confirm each one is genuinely an '
+                    'example or a fixture.'
+                ),
                 '',
             ]
-            L += [f'- {s}' for s in self.suppressed]
-            L.append('')
+            lines += [f'- {s}' for s in self.suppressed]
+            lines.append('')
         if self.scripts:
-            L += [
+            lines += [
                 '## Bundled scripts',
                 '',
                 '| Script | Lines | Behaviour |',
                 '|---|---|---|',
             ]
             for s in self.scripts:
-                L.append(
-                    f'| `{s["path"]}` | {s["lines"]} | {", ".join(s["behaviours"]) or "no flagged behaviour"} |'
-                )
-            L.append('')
+                behaviours = ', '.join(s['behaviours']) or 'no flagged behaviour'
+                lines.append(f'| `{s["path"]}` | {s["lines"]} | {behaviours} |')
+            lines.append('')
         if self.endpoints:
-            L += [
+            lines += [
                 '## Network endpoints',
                 '',
-                "On Copilot's cloud agent these must be on the firewall allowlist or the request is "
-                'blocked and reported as a PR warning rather than a hard failure.',
+                (
+                    "On Copilot's cloud agent these must be on the firewall allowlist "
+                    'or the request is blocked and reported as a PR warning rather '
+                    'than a hard failure.'
+                ),
                 '',
             ]
-            L += [f'- `{e}`' for e in sorted(self.endpoints)]
-            L.append('')
-        L += [
+            lines += [f'- `{e}`' for e in sorted(self.endpoints)]
+            lines.append('')
+        lines += [
             '## Permissions',
             '',
             f'- Declared `allowed-tools`: `{self.declared_allowed_tools or "(none)"}`',
-            f'- Minimum implied by the bundled scripts: `{" ".join(self.proposed_allowed_tools) or "(none)"}`',
+            (
+                f'- Minimum implied by the bundled scripts: '
+                f'`{" ".join(self.proposed_allowed_tools) or "(none)"}`'
+            ),
             '',
         ]
         if self.files_excluded:
-            L += (
+            lines += (
                 ['## Excluded by policy', '']
                 + [f'- `{f}`' for f in sorted(self.files_excluded)[:40]]
                 + ['']
             )
-        return '\n'.join(L)
+        return '\n'.join(lines)
 
 
 def _excluded(rel: Path) -> bool:

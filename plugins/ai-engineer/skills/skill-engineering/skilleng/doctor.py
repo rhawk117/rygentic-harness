@@ -23,17 +23,22 @@ import tempfile
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from .events import ENV_ARM, ENV_LOG, ENV_RUN, normalize, read
-from .runners import RunRequest, get_adapter, list_adapters
-from .schema import Arm, Tier
+from skilleng.events import ENV_ARM, ENV_LOG, ENV_RUN, normalize, read
+from skilleng.runners import RunRequest, get_adapter, list_adapters
+from skilleng.schema import Arm, Tier
+
+if TYPE_CHECKING:
+    from skilleng.trigger import TriggerReport
 
 POSITIVE_CONTROL = """---
 name: {name}
 description: >-
-  Diagnostic control skill for harness calibration. Use this skill for absolutely every
-  request without exception, whatever the topic, whatever the wording, including greetings,
-  questions, coding tasks and small talk. There is no request this skill does not apply to.
+  Diagnostic control skill for harness calibration. Use this skill for absolutely
+  every request without exception, whatever the topic, whatever the wording,
+  including greetings, questions, coding tasks and small talk. There is no request
+  this skill does not apply to.
 ---
 
 # Calibration control (positive)
@@ -45,9 +50,10 @@ Say "control acknowledged" and stop.
 NEGATIVE_CONTROL = """---
 name: {name}
 description: >-
-  Diagnostic control skill for harness calibration. Use this skill only when the user asks
-  to recalibrate the buoyancy trim on a Mark IV submersible ballast manifold. It applies to
-  no other subject and to no software, writing, or data task of any kind.
+  Diagnostic control skill for harness calibration. Use this skill only when the
+  user asks to recalibrate the buoyancy trim on a Mark IV submersible ballast
+  manifold. It applies to no other subject and to no software, writing, or data
+  task of any kind.
 ---
 
 # Calibration control (negative)
@@ -60,10 +66,10 @@ Nothing in ordinary use should reach this skill.
 class Check:
     name: str
     ok: bool
-    detail: str = ""
+    detail: str = ''
 
     def __str__(self) -> str:
-        return f"[{'PASS' if self.ok else 'FAIL'}] {self.name}: {self.detail}"
+        return f'[{"PASS" if self.ok else "FAIL"}] {self.name}: {self.detail}'
 
 
 @dataclass
@@ -74,11 +80,11 @@ class DoctorReport:
     def ok(self) -> bool:
         return all(c.ok for c in self.checks)
 
-    def add(self, name: str, ok: bool, detail: str = "") -> None:
+    def add(self, name: str, ok: bool, detail: str = '') -> None:
         self.checks.append(Check(name, ok, detail))
 
     def to_dict(self) -> dict:
-        return {"ok": self.ok, "checks": [asdict(c) for c in self.checks]}
+        return {'ok': self.ok, 'checks': [asdict(c) for c in self.checks]}
 
 
 def check(hosts: list[str] | None = None) -> DoctorReport:
@@ -88,34 +94,55 @@ def check(hosts: list[str] | None = None) -> DoctorReport:
     for name in hosts:
         a = get_adapter(name)
         avail = a.available()
-        rep.add(f"host:{name}", True,
-                f"{'available, ' + (a.version() or 'version unknown') if avail else 'not on PATH (adapter still loadable)'}")
-        sandbox = Path(tempfile.mkdtemp(prefix=f"skilleng-{name}-"))
+        detail = (
+            f'available, {a.version() or "version unknown"}'
+            if avail
+            else 'not on PATH (adapter still loadable)'
+        )
+        rep.add(f'host:{name}', ok=True, detail=detail)
+        sandbox = Path(tempfile.mkdtemp(prefix=f'skilleng-{name}-'))
         try:
             a.prepare_sandbox(sandbox)
-            files = [p for p in sandbox.rglob("*") if p.is_file()]
-            rep.add(f"adapter:{name}:sandbox", bool(files),
-                    f"emitted {', '.join(str(p.relative_to(sandbox)) for p in files) or 'nothing'}")
-            src = Path(tempfile.mkdtemp()) / "probe-skill"
+            files = [p for p in sandbox.rglob('*') if p.is_file()]
+            emitted = ', '.join(str(p.relative_to(sandbox)) for p in files) or 'nothing'
+            rep.add(f'adapter:{name}:sandbox', bool(files), f'emitted {emitted}')
+            src = Path(tempfile.mkdtemp()) / 'probe-skill'
             (src).mkdir(parents=True)
-            (src / "SKILL.md").write_text("---\nname: probe-skill\ndescription: probe. Use when probing.\n---\n\nx\n")
+            (src / 'SKILL.md').write_text(
+                '---\nname: probe-skill\n'
+                'description: probe. Use when probing.\n---\n\nx\n'
+            )
             dest = a.install_skill(sandbox, src)
-            rep.add(f"adapter:{name}:install", (dest / "SKILL.md").exists(),
-                    f"installed at {dest.relative_to(sandbox)}")
+            rep.add(
+                f'adapter:{name}:install',
+                (dest / 'SKILL.md').exists(),
+                f'installed at {dest.relative_to(sandbox)}',
+            )
         finally:
             shutil.rmtree(sandbox, ignore_errors=True)
 
     # Event round trip: the shim must survive both hosts' payload spellings.
     shapes = {
-        "claude-code": {"hook_event_name": "PreToolUse", "tool_name": "Skill",
-                        "tool_input": {"skill": "x-skill"}, "session_id": "s"},
-        "copilot-cli": {"event": "preToolUse", "toolName": "skill",
-                        "toolArgs": {"name": "x-skill"}, "sessionId": "s"},
+        'claude-code': {
+            'hook_event_name': 'PreToolUse',
+            'tool_name': 'Skill',
+            'tool_input': {'skill': 'x-skill'},
+            'session_id': 's',
+        },
+        'copilot-cli': {
+            'event': 'preToolUse',
+            'toolName': 'skill',
+            'toolArgs': {'name': 'x-skill'},
+            'sessionId': 's',
+        },
     }
     for host, payload in shapes.items():
-        ev = normalize(payload, "r", "available")
-        rep.add(f"events:{host}", ev.event == "pre_tool_use" and ev.skill == "x-skill",
-                f"event={ev.event} skill={ev.skill} unmapped={ev.unmapped}")
+        ev = normalize(payload, 'r', 'available')
+        rep.add(
+            f'events:{host}',
+            ev.event == 'pre_tool_use' and ev.skill == 'x-skill',
+            f'event={ev.event} skill={ev.skill} unmapped={ev.unmapped}',
+        )
     return rep
 
 
@@ -130,104 +157,147 @@ def probe_hooks(host: str, model: str | None = None, timeout: int = 120) -> Doct
     rep = DoctorReport()
     a = get_adapter(host)
     if not a.available():
-        rep.add(f"probe:{host}", False, f"{a.cli!r} is not on PATH; cannot probe")
+        rep.add(
+            f'probe:{host}', ok=False, detail=f'{a.cli!r} is not on PATH; cannot probe'
+        )
         return rep
 
-    sandbox = Path(tempfile.mkdtemp(prefix=f"skilleng-probe-{host}-"))
+    sandbox = Path(tempfile.mkdtemp(prefix=f'skilleng-probe-{host}-'))
     a.prepare_sandbox(sandbox, probe=True)
-    src = Path(tempfile.mkdtemp()) / "skilleng-probe"
+    src = Path(tempfile.mkdtemp()) / 'skilleng-probe'
     src.mkdir(parents=True)
-    (src / "SKILL.md").write_text(POSITIVE_CONTROL.format(name="skilleng-probe"))
+    (src / 'SKILL.md').write_text(POSITIVE_CONTROL.format(name='skilleng-probe'))
     a.install_skill(sandbox, src)
 
-    log = sandbox / "events.ndjson"
+    log = sandbox / 'events.ndjson'
     run_id = uuid.uuid4().hex[:12]
-    req = RunRequest(prompt=a.forced_prompt("say hello", "skilleng-probe"), arm=Arm.FORCED,
-                     run_id=run_id, cwd=sandbox, event_log=log, skill_dir=src,
-                     skill_name="skilleng-probe", model=model, timeout=timeout,
-                     extra_env={ENV_LOG: str(log), ENV_RUN: run_id, ENV_ARM: Arm.FORCED.value})
+    req = RunRequest(
+        prompt=a.forced_prompt('say hello', 'skilleng-probe'),
+        arm=Arm.FORCED,
+        run_id=run_id,
+        cwd=sandbox,
+        event_log=log,
+        skill_dir=src,
+        skill_name='skilleng-probe',
+        model=model,
+        timeout=timeout,
+        extra_env={ENV_LOG: str(log), ENV_RUN: run_id, ENV_ARM: Arm.FORCED.value},
+    )
     res = a.run(req, sandbox)
-    rep.add(f"probe:{host}:invoke", res.ok, res.error or f"exit 0 in {res.duration_seconds:.1f}s")
+    rep.add(
+        f'probe:{host}:invoke',
+        res.ok,
+        res.error or f'exit 0 in {res.duration_seconds:.1f}s',
+    )
 
     events = read(log)
-    rep.add(f"probe:{host}:events", bool(events),
-            f"{len(events)} events captured" if events else
-            "no events — hooks are not firing for this host in headless mode, or the config path is wrong")
+    events_detail = (
+        f'{len(events)} events captured'
+        if events
+        else (
+            'no events — hooks are not firing for this host in headless mode, '
+            'or the config path is wrong'
+        )
+    )
+    rep.add(f'probe:{host}:events', bool(events), events_detail)
     unmapped = [e for e in events if e.unmapped]
     if unmapped:
         keys = sorted({k for e in unmapped for k in e.raw_keys})
-        rep.add(f"probe:{host}:mapping", False,
-                f"{len(unmapped)} payloads had no recognised event key; observed keys: {keys}. "
-                f"Add these to skilleng/events.py:_EVENT_KEYS.")
+        rep.add(
+            f'probe:{host}:mapping',
+            ok=False,
+            detail=f'{len(unmapped)} payloads had no recognised event key; '
+            f'observed keys: {keys}. Add these to skilleng/events.py:_EVENT_KEYS.',
+        )
     else:
-        rep.add(f"probe:{host}:mapping", True, "all payloads mapped")
-    probe_file = log.with_suffix(".probe.ndjson")
+        rep.add(f'probe:{host}:mapping', ok=True, detail='all payloads mapped')
+    probe_file = log.with_suffix('.probe.ndjson')
     if probe_file.exists():
-        rep.add(f"probe:{host}:raw", True, f"raw payloads at {probe_file}")
+        rep.add(f'probe:{host}:raw', ok=True, detail=f'raw payloads at {probe_file}')
     return rep
 
 
-def calibrate(host: str, queries: list[dict], *, model: str | None = None,
-              tier: Tier = Tier.QUICK, min_separation: float = 0.5) -> dict:
+def calibrate(
+    host: str,
+    queries: list[dict],
+    *,
+    model: str | None = None,
+    tier: Tier = Tier.QUICK,
+    min_separation: float = 0.5,
+) -> dict:
     """Positive/negative control run. Returns separation and a go/no-go verdict."""
-    from .trigger import evaluate  # local import: trigger imports doctor's controls in tests
+    from skilleng.trigger import evaluate
 
     a = get_adapter(host)
     if not a.available():
-        return {"ok": False, "reason": f"{a.cli!r} not on PATH", "separation": None}
+        return {'ok': False, 'reason': f'{a.cli!r} not on PATH', 'separation': None}
 
-    tmp = Path(tempfile.mkdtemp(prefix="skilleng-calib-"))
+    tmp = Path(tempfile.mkdtemp(prefix='skilleng-calib-'))
     made = {}
-    for kind, template in (("positive", POSITIVE_CONTROL), ("negative", NEGATIVE_CONTROL)):
-        name = f"skilleng-control-{kind}"
+    for kind, template in (
+        ('positive', POSITIVE_CONTROL),
+        ('negative', NEGATIVE_CONTROL),
+    ):
+        name = f'skilleng-control-{kind}'
         d = tmp / name
         d.mkdir(parents=True)
-        (d / "SKILL.md").write_text(template.format(name=name))
+        (d / 'SKILL.md').write_text(template.format(name=name))
         made[kind] = d
 
-    pos = evaluate(a, made["positive"], queries, tier=tier, model=model)
-    neg = evaluate(a, made["negative"], queries, tier=tier, model=model)
+    pos = evaluate(a, made['positive'], queries, tier=tier, model=model)
+    neg = evaluate(a, made['negative'], queries, tier=tier, model=model)
 
-    def fire_rate(r) -> float | None:
+    def fire_rate(r: TriggerReport) -> float | None:
         c = r.confusion
-        seen = c["tp"] + c["fp"] + c["tn"] + c["fn"]
-        return ((c["tp"] + c["fp"]) / seen) if seen else None
+        seen = c['tp'] + c['fp'] + c['tn'] + c['fn']
+        return ((c['tp'] + c['fp']) / seen) if seen else None
 
     pr, nr = fire_rate(pos), fire_rate(neg)
     if pr is None or nr is None:
-        return {"ok": False, "reason": "every control run errored; the harness is not measuring anything",
-                "separation": None, "positive": asdict(pos), "negative": asdict(neg)}
+        return {
+            'ok': False,
+            'reason': 'every control run errored; the harness is not measuring anything',
+            'separation': None,
+            'positive': asdict(pos),
+            'negative': asdict(neg),
+        }
 
     sep = pr - nr
     ok = sep >= min_separation
     return {
-        "ok": ok,
-        "positive_fire_rate": pr,
-        "negative_fire_rate": nr,
-        "separation": sep,
-        "min_separation": min_separation,
-        "resolving_power_note": (
-            f"controls separate by {sep:.0%}. Differences much smaller than this are below the "
-            "instrument's resolution and should not be acted on."),
-        "reason": None if ok else (
-            f"controls separated by only {sep:.0%} (need {min_separation:.0%}). The harness cannot currently "
-            "distinguish a skill that always fires from one that never should. Fix instrumentation before "
-            "optimizing anything — otherwise you are tuning against noise."),
+        'ok': ok,
+        'positive_fire_rate': pr,
+        'negative_fire_rate': nr,
+        'separation': sep,
+        'min_separation': min_separation,
+        'resolving_power_note': (
+            f'controls separate by {sep:.0%}. Differences much smaller than this are '
+            "below the instrument's resolution and should not be acted on."
+        ),
+        'reason': None
+        if ok
+        else (
+            f'controls separated by only {sep:.0%} (need {min_separation:.0%}). The '
+            'harness cannot currently distinguish a skill that always fires from one '
+            'that never should. Fix instrumentation before optimizing anything — '
+            'otherwise you are tuning against noise.'
+        ),
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse
-    p = argparse.ArgumentParser(prog="skilleng doctor")
-    p.add_argument("--host", action="append", dest="hosts")
-    p.add_argument("--probe-hooks", action="store_true")
-    p.add_argument("--model")
-    p.add_argument("--json", action="store_true")
+
+    p = argparse.ArgumentParser(prog='skilleng doctor')
+    p.add_argument('--host', action='append', dest='hosts')
+    p.add_argument('--probe-hooks', action='store_true')
+    p.add_argument('--model')
+    p.add_argument('--json', action='store_true')
     args = p.parse_args(argv)
 
     rep = check(args.hosts)
     if args.probe_hooks:
-        for h in (args.hosts or list_adapters()):
+        for h in args.hosts or list_adapters():
             for c in probe_hooks(h, args.model).checks:
                 rep.checks.append(c)
     if args.json:
@@ -235,9 +305,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         for c in rep.checks:
             print(c)
-        print(f"\n{'all checks passed' if rep.ok else 'FAILURES ABOVE — fix before measuring anything'}")
+        verdict = (
+            'all checks passed'
+            if rep.ok
+            else 'FAILURES ABOVE — fix before measuring anything'
+        )
+        print(f'\n{verdict}')
     return 0 if rep.ok else 1
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

@@ -16,8 +16,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..events import ENV_ARM, ENV_LOG, ENV_RUN
-from ..schema import Arm
+from skilleng.events import ENV_ARM, ENV_LOG, ENV_RUN
+from skilleng.schema import Arm
 
 
 @dataclass
@@ -43,14 +43,14 @@ class RunResult:
     duration_seconds: float
     timed_out: bool = False
     error: str | None = None
-    tokens: int | None = None   # None means "the host did not tell us", never 0
+    tokens: int | None = None  # None means "the host did not tell us", never 0
 
 
 class HostAdapter:
-    name = "abstract"
-    cli = ""
-    config_env = ""          # env var that redirects the host's config dir
-    skill_install_subdir = ""  # relative to the sandbox
+    name = 'abstract'
+    cli = ''
+    config_env = ''  # env var that redirects the host's config dir
+    skill_install_subdir = ''  # relative to the sandbox
 
     # -- capability --------------------------------------------------------
 
@@ -61,9 +61,20 @@ class HostAdapter:
         if not self.available():
             return None
         try:
-            r = subprocess.run([self.cli, "--version"], capture_output=True, text=True, timeout=20)
-            return (r.stdout or r.stderr).strip().splitlines()[0] if r.returncode == 0 else None
-        except (OSError, subprocess.SubprocessError, IndexError):
+            # argv is built by this adapter, never a shell string.
+            r = subprocess.run(  # noqa: S603
+                [self.cli, '--version'],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+            return (
+                (r.stdout or r.stderr).strip().splitlines()[0]
+                if r.returncode == 0
+                else None
+            )
+        except OSError, subprocess.SubprocessError, IndexError:
             return None
 
     # -- sandbox -----------------------------------------------------------
@@ -82,7 +93,9 @@ class HostAdapter:
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists():
             shutil.rmtree(dest)
-        shutil.copytree(skill_dir, dest, ignore=shutil.ignore_patterns("__pycache__", ".git", "evals"))
+        shutil.copytree(
+            skill_dir, dest, ignore=shutil.ignore_patterns('__pycache__', '.git', 'evals')
+        )
         return dest
 
     # -- invocation --------------------------------------------------------
@@ -92,19 +105,21 @@ class HostAdapter:
 
     def forced_prompt(self, prompt: str, skill_name: str) -> str:
         """Explicit invocation. Both hosts expose skills as /<skill-name>."""
-        return f"/{skill_name} {prompt}"
+        return f'/{skill_name} {prompt}'
 
     def env(self, req: RunRequest, sandbox: Path) -> dict[str, str]:
         e = dict(os.environ)
-        e.pop("CLAUDECODE", None)   # allow nesting a headless run inside a session
-        e.pop("CLAUDE_CODE_ENTRYPOINT", None)
+        e.pop('CLAUDECODE', None)  # allow nesting a headless run inside a session
+        e.pop('CLAUDE_CODE_ENTRYPOINT', None)
         if self.config_env:
             e[self.config_env] = str(sandbox)
         e[ENV_LOG] = str(req.event_log)
         e[ENV_RUN] = req.run_id
         e[ENV_ARM] = req.arm.value
-        e["PYTHONPATH"] = os.pathsep.join(
-            filter(None, [str(Path(__file__).resolve().parents[2]), e.get("PYTHONPATH", "")])
+        e['PYTHONPATH'] = os.pathsep.join(
+            filter(
+                None, [str(Path(__file__).resolve().parents[2]), e.get('PYTHONPATH', '')]
+            )
         )
         e.update(req.extra_env)
         return e
@@ -116,24 +131,63 @@ class HostAdapter:
         a genuine non-trigger are indistinguishable — all three become `False`.
         """
         if not self.available():
-            return RunResult(False, None, "", "", 0.0, error=f"{self.cli!r} is not on PATH")
+            return RunResult(
+                ok=False,
+                exit_code=None,
+                stdout='',
+                stderr='',
+                duration_seconds=0.0,
+                error=f'{self.cli!r} is not on PATH',
+            )
         cmd = self.command(req)
         t0 = time.monotonic()
         try:
-            proc = subprocess.run(
-                cmd, cwd=str(req.cwd), env=self.env(req, sandbox),
-                capture_output=True, text=True, timeout=req.timeout,
+            # argv is built by this adapter's command(), never a shell string.
+            proc = subprocess.run(  # noqa: S603
+                cmd,
+                cwd=str(req.cwd),
+                env=self.env(req, sandbox),
+                capture_output=True,
+                text=True,
+                timeout=req.timeout,
+                check=False,
             )
         except subprocess.TimeoutExpired:
-            return RunResult(False, None, "", "", time.monotonic() - t0, timed_out=True,
-                             error=f"timed out after {req.timeout}s")
+            return RunResult(
+                ok=False,
+                exit_code=None,
+                stdout='',
+                stderr='',
+                duration_seconds=time.monotonic() - t0,
+                timed_out=True,
+                error=f'timed out after {req.timeout}s',
+            )
         except OSError as e:
-            return RunResult(False, None, "", "", time.monotonic() - t0, error=f"failed to launch: {e}")
+            return RunResult(
+                ok=False,
+                exit_code=None,
+                stdout='',
+                stderr='',
+                duration_seconds=time.monotonic() - t0,
+                error=f'failed to launch: {e}',
+            )
         dt = time.monotonic() - t0
         if proc.returncode != 0:
-            return RunResult(False, proc.returncode, proc.stdout, proc.stderr, dt,
-                             error=f"{self.cli} exited {proc.returncode}: {proc.stderr.strip()[:400]}")
-        return RunResult(True, 0, proc.stdout, proc.stderr, dt)
+            return RunResult(
+                ok=False,
+                exit_code=proc.returncode,
+                stdout=proc.stdout,
+                stderr=proc.stderr,
+                duration_seconds=dt,
+                error=f'{self.cli} exited {proc.returncode}: {proc.stderr.strip()[:400]}',
+            )
+        return RunResult(
+            ok=True,
+            exit_code=0,
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+            duration_seconds=dt,
+        )
 
 
 _REGISTRY: dict[str, type[HostAdapter]] = {}
@@ -146,7 +200,9 @@ def register(cls: type[HostAdapter]) -> type[HostAdapter]:
 
 def get_adapter(name: str) -> HostAdapter:
     if name not in _REGISTRY:
-        raise KeyError(f"unknown host {name!r}; known hosts: {', '.join(sorted(_REGISTRY))}")
+        raise KeyError(
+            f'unknown host {name!r}; known hosts: {", ".join(sorted(_REGISTRY))}'
+        )
     return _REGISTRY[name]()
 
 

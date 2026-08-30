@@ -15,20 +15,25 @@ import json
 import sys
 from pathlib import Path
 
-SHIM = [sys.executable, "-m", "skilleng.hookshim"]
-EVENTS_CLAUDE = ["PreToolUse", "PostToolUse", "SessionStart", "Stop"]
-EVENTS_COPILOT = ["preToolUse", "postToolUse", "sessionStart", "agentStop"]
+SHIM = [sys.executable, '-m', 'skilleng.hookshim']
+EVENTS_CLAUDE = ['PreToolUse', 'PostToolUse', 'SessionStart', 'Stop']
+EVENTS_COPILOT = ['preToolUse', 'postToolUse', 'sessionStart', 'agentStop']
 
 
 def shim_command(probe: bool = False) -> str:
-    return " ".join(SHIM) + (" --probe" if probe else "")
+    return ' '.join(SHIM) + (' --probe' if probe else '')
 
 
 def claude_code_settings(probe: bool = False) -> dict:
     cmd = shim_command(probe)
     return {
-        "hooks": {
-            ev: [{"matcher": "*", "hooks": [{"type": "command", "command": cmd, "timeout": 5}]}]
+        'hooks': {
+            ev: [
+                {
+                    'matcher': '*',
+                    'hooks': [{'type': 'command', 'command': cmd, 'timeout': 5}],
+                }
+            ]
             for ev in EVENTS_CLAUDE
         }
     }
@@ -37,15 +42,18 @@ def claude_code_settings(probe: bool = False) -> dict:
 def copilot_hooks(probe: bool = False) -> dict:
     cmd = shim_command(probe)
     return {
-        "version": 1,
-        "hooks": {ev: [{"type": "command", "bash": cmd, "timeoutSec": 5}] for ev in EVENTS_COPILOT},
+        'version': 1,
+        'hooks': {
+            ev: [{'type': 'command', 'bash': cmd, 'timeoutSec': 5}]
+            for ev in EVENTS_COPILOT
+        },
     }
 
 
 def write_claude_code(config_dir: Path, probe: bool = False) -> Path:
     config_dir = Path(config_dir)
     config_dir.mkdir(parents=True, exist_ok=True)
-    p = config_dir / "settings.json"
+    p = config_dir / 'settings.json'
     existing = {}
     if p.exists():
         try:
@@ -53,14 +61,14 @@ def write_claude_code(config_dir: Path, probe: bool = False) -> Path:
         except json.JSONDecodeError:
             existing = {}
     existing.update(claude_code_settings(probe))
-    p.write_text(json.dumps(existing, indent=2) + "\n")
+    p.write_text(json.dumps(existing, indent=2) + '\n')
     return p
 
 
 def write_copilot(config_dir: Path, probe: bool = False) -> Path:
     config_dir = Path(config_dir)
-    hooks_dir = config_dir / "hooks"
+    hooks_dir = config_dir / 'hooks'
     hooks_dir.mkdir(parents=True, exist_ok=True)
-    p = hooks_dir / "skilleng.json"
-    p.write_text(json.dumps(copilot_hooks(probe), indent=2) + "\n")
+    p = hooks_dir / 'skilleng.json'
+    p.write_text(json.dumps(copilot_hooks(probe), indent=2) + '\n')
     return p

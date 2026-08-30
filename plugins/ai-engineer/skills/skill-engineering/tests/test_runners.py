@@ -25,7 +25,7 @@ class _MissingCLIAdapter(HostAdapter):
         return [self.cli]
 
 
-def test_run_reports_a_missing_cli_as_a_failure_not_a_crash(tmp_path):
+def test_run_reports_a_missing_cli_as_a_failure_not_a_crash(tmp_path: Path) -> None:
     adapter = _MissingCLIAdapter()
     req = RunRequest(
         prompt='p',

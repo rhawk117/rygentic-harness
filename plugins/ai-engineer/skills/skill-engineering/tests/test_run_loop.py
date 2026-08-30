@@ -11,16 +11,19 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 import pytest
-
 from skilleng.cli import cmd_run
 from skilleng.events import Event, append
 from skilleng.runners import HostAdapter, RunRequest, RunResult
 from skilleng.schema import Arm
 from skilleng.workspace import Workspace
 
-SKILL_MD = '---\nname: demo-skill\ndescription: Does a thing. Use when a thing is needed.\n---\n\n# demo-skill\n'
+SKILL_MD = (
+    '---\nname: demo-skill\ndescription: Does a thing. Use when a thing is needed.\n'
+    '---\n\n# demo-skill\n'
+)
 
 
 class FakeAdapter(HostAdapter):
@@ -54,7 +57,14 @@ class FakeAdapter(HostAdapter):
     def run(self, req: RunRequest, sandbox: Path) -> RunResult:
         self.calls.append(req)
         if not self._ok:
-            return RunResult(False, 1, '', '', 0.01, error='fake run failed')
+            return RunResult(
+                ok=False,
+                exit_code=1,
+                stdout='',
+                stderr='',
+                duration_seconds=0.01,
+                error='fake run failed',
+            )
         if req.arm is not Arm.BASELINE:
             append(
                 req.event_log,
@@ -66,11 +76,13 @@ class FakeAdapter(HostAdapter):
                     skill=req.skill_name,
                 ),
             )
-        return RunResult(True, 0, 'ok', '', 0.01)
+        return RunResult(
+            ok=True, exit_code=0, stdout='ok', stderr='', duration_seconds=0.01
+        )
 
 
 @pytest.fixture
-def skill_dir(tmp_path) -> Path:
+def skill_dir(tmp_path: Path) -> Path:
     d = tmp_path / 'demo-skill'
     d.mkdir()
     (d / 'SKILL.md').write_text(SKILL_MD)
@@ -78,38 +90,43 @@ def skill_dir(tmp_path) -> Path:
 
 
 @pytest.fixture
-def evals_path(tmp_path) -> Path:
+def evals_path(tmp_path: Path) -> Path:
     p = tmp_path / 'evals.json'
     p.write_text(
         '{"skill_name": "demo-skill", "cases": [{"id": "e1", "prompt": "do a thing", '
-        '"assertions": [{"id": "a1", "text": "runs clean", "kind": "mechanical", "check": "true"}]}]}'
+        '"assertions": [{"id": "a1", "text": "runs clean", "kind": "mechanical", '
+        '"check": "true"}]}]}'
     )
     return p
 
 
-def _args(**overrides) -> argparse.Namespace:
-    base = dict(
-        skill=None,
-        evals=None,
-        workspace=None,
-        host='fake-run-loop',
-        model=None,
-        surface='cli',
-        tier='quick',
-        iteration=None,
-        arms=None,
-        timeout=30,
-        force=False,
-        require_controls=False,
-    )
+def _args(**overrides: Any) -> argparse.Namespace:
+    base = {
+        'skill': None,
+        'evals': None,
+        'workspace': None,
+        'host': 'fake-run-loop',
+        'model': None,
+        'surface': 'cli',
+        'tier': 'quick',
+        'iteration': None,
+        'arms': None,
+        'timeout': 30,
+        'force': False,
+        'require_controls': False,
+    }
     base.update(overrides)
     return argparse.Namespace(**base)
 
 
 class TestPerArmLoop:
     def test_writes_one_run_record_per_arm_and_classifies_skill_invoked(
-        self, tmp_path, skill_dir, evals_path, monkeypatch
-    ):
+        self,
+        tmp_path: Path,
+        skill_dir: Path,
+        evals_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         adapter = FakeAdapter()
         monkeypatch.setattr('skilleng.runners.get_adapter', lambda name: adapter)
         ws_root = tmp_path / 'ws'
@@ -134,8 +151,12 @@ class TestPerArmLoop:
         )
 
     def test_a_failed_run_is_recorded_as_an_error_not_skipped(
-        self, tmp_path, skill_dir, evals_path, monkeypatch
-    ):
+        self,
+        tmp_path: Path,
+        skill_dir: Path,
+        evals_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         adapter = FakeAdapter(ok=False)
         monkeypatch.setattr('skilleng.runners.get_adapter', lambda name: adapter)
         ws_root = tmp_path / 'ws'
@@ -157,8 +178,12 @@ class TestPerArmLoop:
 
 class TestEarlyExits:
     def test_refuses_to_run_when_the_host_is_unavailable(
-        self, tmp_path, skill_dir, evals_path, monkeypatch
-    ):
+        self,
+        tmp_path: Path,
+        skill_dir: Path,
+        evals_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         adapter = FakeAdapter(available=False)
         monkeypatch.setattr('skilleng.runners.get_adapter', lambda name: adapter)
         args = _args(
@@ -171,8 +196,12 @@ class TestEarlyExits:
         )
 
     def test_refuses_to_run_without_the_controls_gate(
-        self, tmp_path, skill_dir, evals_path, monkeypatch
-    ):
+        self,
+        tmp_path: Path,
+        skill_dir: Path,
+        evals_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         adapter = FakeAdapter()
         monkeypatch.setattr('skilleng.runners.get_adapter', lambda name: adapter)
         args = _args(
