@@ -46,18 +46,18 @@ def behavior_dataset(specs: Sequence[CaseSpec], skill: str | None = None) -> Dat
     return Dataset(name=name, cases=[_to_case(s) for s in specs])
 
 
-def behavior_path(datasets_dir: Path, skill: str) -> Path:
-    return datasets_dir.joinpath(skill, 'behavior.yaml')
+def behavior_path(datasets_dir: Path, plugin: str, skill: str) -> Path:
+    return datasets_dir.joinpath(plugin, skill, 'behavior.yaml')
 
 
-def trigger_path(datasets_dir: Path, skill: str) -> Path:
-    return datasets_dir.joinpath(skill, 'trigger.yaml')
+def trigger_path(datasets_dir: Path, plugin: str, skill: str) -> Path:
+    return datasets_dir.joinpath(plugin, skill, 'trigger.yaml')
 
 
 def write_behavior_datasets(datasets_dir: Path, specs: Sequence[CaseSpec]) -> list[Path]:
     written = []
     for spec in specs:
-        path = behavior_path(datasets_dir, spec.skill)
+        path = behavior_path(datasets_dir, spec.plugin, spec.skill)
         path.parent.mkdir(parents=True, exist_ok=True)
         behavior_dataset([spec], spec.skill).to_file(
             path,
@@ -72,11 +72,10 @@ def write_behavior_datasets(datasets_dir: Path, specs: Sequence[CaseSpec]) -> li
 def load_behavior_dataset(
     datasets_dir: Path, skills: Sequence[str] | None = None
 ) -> Dataset:
-    paths = (
-        sorted(datasets_dir.glob('*/behavior.yaml'))
-        if skills is None
-        else [behavior_path(datasets_dir, skill) for skill in sorted(skills)]
-    )
+    paths = sorted(datasets_dir.glob('*/*/behavior.yaml'))
+    if skills is not None:
+        wanted = set(skills)
+        paths = [path for path in paths if path.parent.name in wanted]
     loaded = [
         Dataset.from_file(path, custom_evaluator_types=ALL_CHECKS) for path in paths
     ]
@@ -90,7 +89,7 @@ def load_behavior_dataset(
     return Dataset(name='mightymodels-behavior', cases=cases)
 
 
-def load_trigger_dataset(datasets_dir: Path, skill: str) -> Dataset:
+def load_trigger_dataset(datasets_dir: Path, plugin: str, skill: str) -> Dataset:
     # trigger sets are hand-editable data, so the YAML is their source of truth;
     # execution needs a harness-specific retrieval oracle and lives outside this package
-    return Dataset.from_file(trigger_path(datasets_dir, skill))
+    return Dataset.from_file(trigger_path(datasets_dir, plugin, skill))

@@ -58,8 +58,10 @@ def test_behavior_dataset_names_the_skill_it_covers() -> None:
 def test_write_then_load_round_trips_per_skill_layout(tmp_path: Path) -> None:
     written = write_behavior_datasets(tmp_path, all_specs())
     assert len(written) == EXPECTED_SPECS
-    assert tmp_path.joinpath('agents-assemble', 'behavior.yaml').is_file()
-    assert tmp_path.joinpath('agents-assemble', 'behavior.schema.json').is_file()
+    assert tmp_path.joinpath('mightymodels', 'agents-assemble', 'behavior.yaml').is_file()
+    assert tmp_path.joinpath(
+        'mightymodels', 'agents-assemble', 'behavior.schema.json'
+    ).is_file()
 
     combined = load_behavior_dataset(tmp_path)
     assert len(combined.cases) == EXPECTED_SPECS
