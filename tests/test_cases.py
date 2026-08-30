@@ -52,6 +52,11 @@ def test_behavior_dataset_names_the_skill_it_covers() -> None:
     assert len(single.cases) == 1
     assert single.name == 'mightymodels-behavior-agents-assemble'
 
+    other_plugin = behavior_dataset(
+        select_specs(skill='build-an-agent'), 'build-an-agent'
+    )
+    assert other_plugin.name == 'ai-engineer-behavior-build-an-agent'
+
     with pytest.raises(NoCasesError):
         behavior_dataset([], 'nonexistent-skill')
 

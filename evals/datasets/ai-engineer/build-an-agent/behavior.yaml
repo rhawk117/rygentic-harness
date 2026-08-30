@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=behavior.schema.json
-name: mightymodels-behavior-build-an-agent
+name: ai-engineer-behavior-build-an-agent
 cases:
 - name: build-an-agent-migration-reviewer
   inputs:

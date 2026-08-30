@@ -42,7 +42,9 @@ def behavior_dataset(specs: Sequence[CaseSpec], skill: str | None = None) -> Dat
     if not specs:
         raise NoCasesError(skill)
 
-    name = f'mightymodels-behavior-{skill}' if skill else 'mightymodels-behavior'
+    plugins = {s.plugin for s in specs}
+    plugin = plugins.pop() if len(plugins) == 1 else 'plugin'
+    name = f'{plugin}-behavior-{skill}' if skill else f'{plugin}-behavior'
     return Dataset(name=name, cases=[_to_case(s) for s in specs])
 
 
@@ -86,7 +88,9 @@ def load_behavior_dataset(
     cases = [case for dataset in loaded for case in dataset.cases]
     if not cases:
         raise NoCasesError(None)
-    return Dataset(name='mightymodels-behavior', cases=cases)
+    plugins = {path.parent.parent.name for path in paths}
+    plugin = plugins.pop() if len(plugins) == 1 else 'plugin'
+    return Dataset(name=f'{plugin}-behavior', cases=cases)
 
 
 def load_trigger_dataset(datasets_dir: Path, plugin: str, skill: str) -> Dataset:
