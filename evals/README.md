@@ -55,7 +55,8 @@ oracle: embed `"{name}: {description}"` and assert should-trigger queries rank t
 ## Results retention
 
 Each run writes `results/RESULTS-<date>.json` and `.html`; commit both. The per-skill
-`RESULTS-*.md` files inside `skills/*/evals/` are the historical evidence trail from the
+`RESULTS-*.md` files inside `plugins/mightymodels/skills/*/evals/` are the historical evidence
+trail from the
 original build sessions and stay where they are. The rule stands: a skill edit ships with a
 re-run and a new dated result, or it doesn't ship.
 

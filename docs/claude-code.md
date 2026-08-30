@@ -1,8 +1,9 @@
 # Running under Claude Code
 
-mightymodels is a Claude Code plugin. The skills are standard `SKILL.md` directories, the seven
-workers are Claude Code subagent files under `agents/`, and the `.claude-plugin/` manifests are
-what the plugin loader reads. This page records what Claude Code actually does with each piece,
+mightymodels is a Claude Code plugin living under `plugins/mightymodels/`. The skills are
+standard `SKILL.md` directories, the seven workers are Claude Code subagent files under
+`plugins/mightymodels/agents/`, and the plugin manifest plus the repo-root marketplace manifest
+are what the plugin loader reads. This page records what Claude Code actually does with each piece,
 so you can tell a packaging problem from a harness problem.
 
 ## Install as a plugin
@@ -50,7 +51,8 @@ queries rank the skill in the top k.
 
 ## Agents
 
-The seven workers are markdown files under `agents/` with Claude Code subagent frontmatter:
+The seven workers are markdown files under `plugins/mightymodels/agents/` with Claude Code
+subagent frontmatter:
 `name`, `description`, `model`, and `tools`. Claude Code discovers plugin agents by convention,
 so no manifest key names them; check with `/agents` in a session after installing.
 
@@ -71,7 +73,8 @@ The pins in this repo are Claude model ids: `claude-haiku-4-5`, `claude-sonnet-5
    time. This wins whenever a ticket is active.
 2. The `model` pins in the agent files, which are only the fallback for headless runs where no
    ticket answers.
-3. The defaults recorded in `skills/prepare-handoff/references/ticket-schema.md`, which are what
+3. The defaults recorded in
+   `plugins/mightymodels/skills/prepare-handoff/references/ticket-schema.md`, which are what
    `prepare-handoff` writes into new tickets.
 
 If your organization exposes different ids, adjust the schema defaults once and new tickets

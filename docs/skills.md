@@ -1,9 +1,10 @@
 # Skills
 
 Twenty skills ship with the plugin: ten loop stages, two escalation skills, a two-skill review
-stack, the using-mightymodels fleet reference, and five standalone utilities. Each is a directory under
-`skills/` with a `SKILL.md` whose frontmatter carries only `name` and `description` (plus
-`license` or `metadata` where needed), the keys Claude Code's skill loader reads.
+stack, the using-mightymodels fleet reference, and five standalone utilities. Each is a directory
+under `plugins/mightymodels/skills/` with a `SKILL.md` whose frontmatter carries only `name` and
+`description` (plus `license` or `metadata` where needed), the keys Claude Code's skill loader
+reads.
 
 Two things decide when a skill fires. You can always invoke one explicitly with a slash,
 `/agents-assemble` or `/prune-ticket`, in either harness. Otherwise the harness selects from your

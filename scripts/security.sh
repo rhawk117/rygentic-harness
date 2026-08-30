@@ -21,7 +21,7 @@ repo_root="$(cd -- "$script_dir/.." && pwd)"
 
 readonly script_dir
 readonly repo_root
-readonly -a scan_dirs=(skills agents)
+readonly -a scan_dirs=(plugins/mightymodels/skills plugins/mightymodels/agents)
 
 findings=0
 

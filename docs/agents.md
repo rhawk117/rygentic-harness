@@ -1,7 +1,8 @@
 # Agents and model routing
 
-Seven workers live in `agents/` as plain markdown files. All of them are delegation-only: the
-primary dispatches them with a self-contained task and they report in a structured format.
+Seven workers live in `plugins/mightymodels/agents/` as plain markdown files. All of them are
+delegation-only: the primary dispatches them with a self-contained task and they report in a
+structured format.
 Worker conversational state is never authoritative: a worker may retain task-local context for
 bounded follow-ups in the same conversation, but all state required for recovery is
 externalized to the ticket directory before the workflow advances, and verification that
@@ -101,7 +102,7 @@ checkable acceptance criteria, verification commands in order, the files the tas
 engineer tier with any bump reason. The engineer appends the DONE half on completion, up to 65
 lines. The verifying scout then checks DONE against ASKED criterion by criterion, which means
 neither side's claims are taken on faith. The full schema, with the severity table and every
-verdict vocabulary, is in `skills/agents-assemble/references/contracts.md`.
+verdict vocabulary, is in `plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
 
 ## Report formats
 

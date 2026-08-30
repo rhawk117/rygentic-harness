@@ -148,7 +148,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument('--fixtures', default=str(EVALS_ROOT.joinpath('fixtures')))
     run.add_argument('--staging', default=str(EVALS_ROOT.joinpath('staging')))
-    run.add_argument('--skills-root', default=str(EVALS_ROOT.parent.joinpath('skills')))
+    run.add_argument(
+        '--skills-root',
+        default=str(EVALS_ROOT.parent.joinpath('plugins/mightymodels/skills')),
+    )
     run.add_argument(
         '--sim-notes',
         action='store_true',

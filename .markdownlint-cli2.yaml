@@ -5,8 +5,8 @@ globs:
   - "**/*.md"
 
 ignores:
-  - "skills/**"
-  - "agents/**"
+  - "plugins/*/skills/**"
+  - "plugins/*/agents/**"
   - ".github/**"
   - "evals/datasets/**"
   - "evals/results/**"

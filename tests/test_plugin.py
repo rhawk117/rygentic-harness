@@ -9,6 +9,7 @@ import yaml
 from mightymodels_evals.paths import EVALS_ROOT
 
 REPO_ROOT = EVALS_ROOT.parent
+PLUGIN_ROOT = REPO_ROOT.joinpath('plugins/mightymodels')
 SKILL_NAME_PATTERN = re.compile(r'[a-z0-9]+(-[a-z0-9]+)*')
 PORTABLE_SKILL_KEYS = frozenset({
     'name',
@@ -67,11 +68,11 @@ def _frontmatter(path: Path) -> dict[str, object]:
 
 
 def _skill_dirs() -> list[Path]:
-    return sorted(p for p in REPO_ROOT.joinpath('skills').iterdir() if p.is_dir())
+    return sorted(p for p in PLUGIN_ROOT.joinpath('skills').iterdir() if p.is_dir())
 
 
 def _agent_files() -> list[Path]:
-    return sorted(REPO_ROOT.joinpath('agents').glob('*.md'))
+    return sorted(PLUGIN_ROOT.joinpath('agents').glob('*.md'))
 
 
 def test_repo_has_the_expected_surface() -> None:
@@ -138,7 +139,7 @@ def test_agent_frontmatter_is_complete(agent_file: Path) -> None:
 
 def test_manifests_agree() -> None:
     plugin = json.loads(
-        REPO_ROOT.joinpath('.claude-plugin/plugin.json').read_text('utf-8')
+        PLUGIN_ROOT.joinpath('.claude-plugin/plugin.json').read_text('utf-8')
     )
     market = json.loads(
         REPO_ROOT.joinpath('.claude-plugin/marketplace.json').read_text('utf-8')
@@ -148,5 +149,5 @@ def test_manifests_agree() -> None:
     assert market['name'] == 'rygentic-harness'
     entry = market['plugins'][0]
     assert entry['name'] == plugin['name']
-    assert entry['source'] == './'
+    assert entry['source'] == './plugins/mightymodels'
     assert entry['version'] == plugin['version'], 'bump both manifests together'

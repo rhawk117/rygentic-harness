@@ -45,20 +45,22 @@ validation are in [docs/claude-code.md](docs/claude-code.md).
 ## Layout
 
 ```text
-skills/          twenty skills: the loop stages, the review stack, the fleet reference, utilities
-agents/          scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman (one .md each)
+plugins/         one directory per plugin; mightymodels/ carries its manifest, skills, agents
+  mightymodels/
+    skills/      twenty skills: the loop stages, the review stack, the fleet reference, utilities
+    agents/      scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman (one .md each)
 evals/           pydantic-evals harness: package source, per-skill datasets, dated results
-tests/           the harness test suite, including the plugin portability contract
+tests/           the harness test suite, including the plugin layout contract
 docs/            human documentation
 scripts/         quality gate, security scan, git hooks
-.claude-plugin/  plugin and marketplace manifests
+.claude-plugin/  the rygentic-harness marketplace manifest
 ```
 
 Contracts shared by every stage live with the skills that own them. The severity table, verdict
 vocabularies, and the two-half brief schema are in
-`skills/agents-assemble/references/contracts.md`; the ticket schema and directory layout are in
-`skills/prepare-handoff/references/`. When a skill and a contract disagree, the contract wins
-and the skill gets fixed.
+`plugins/mightymodels/skills/agents-assemble/references/contracts.md`; the ticket schema and
+directory layout are in `plugins/mightymodels/skills/prepare-handoff/references/`. When a skill
+and a contract disagree, the contract wins and the skill gets fixed.
 
 ## Documentation
 

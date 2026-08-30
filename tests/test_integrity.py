@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+PLUGIN_ROOT = REPO_ROOT.joinpath('plugins/mightymodels')
 
 # Backticked kebab-case tokens that are neither skills nor agents but are
 # legitimately referenced in prose: config keys, model ids, external tools.
@@ -43,11 +44,13 @@ KEBAB = re.compile(r'[a-z][a-z0-9]*(?:-[a-z0-9]+)+')
 
 
 def skill_names() -> set[str]:
-    return {p.name for p in REPO_ROOT.joinpath('skills').iterdir() if p.is_dir()}
+    return {p.name for p in PLUGIN_ROOT.joinpath('skills').iterdir() if p.is_dir()}
 
 
 def agent_names() -> set[str]:
-    return {p.name.removesuffix('.md') for p in REPO_ROOT.joinpath('agents').glob('*.md')}
+    return {
+        p.name.removesuffix('.md') for p in PLUGIN_ROOT.joinpath('agents').glob('*.md')
+    }
 
 
 def _reference_surface() -> list[Path]:
@@ -55,7 +58,7 @@ def _reference_surface() -> list[Path]:
         REPO_ROOT.joinpath('README.md'),
         *sorted(REPO_ROOT.glob('docs/*.md')),
         *sorted(REPO_ROOT.glob('.github/ISSUE_TEMPLATE/*.md')),
-        *sorted(REPO_ROOT.glob('skills/*/SKILL.md')),
+        *sorted(PLUGIN_ROOT.glob('skills/*/SKILL.md')),
     ]
 
 

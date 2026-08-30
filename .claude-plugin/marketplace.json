@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "mightymodels",
-      "source": "./",
+      "source": "./plugins/mightymodels",
       "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
       "version": "0.6.0"
     }

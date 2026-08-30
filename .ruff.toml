@@ -4,7 +4,7 @@ unsafe-fixes = false
 # Fixture template bodies are eval material with intentional style violations, not
 # package code. docs/ is published prose. skills/ is agent execution material whose
 # bundled scripts ship to foreign harnesses and follow their own conventions.
-extend-exclude = ["evals/src/mightymodels_evals/templates", "docs", "skills"]
+extend-exclude = ["evals/src/mightymodels_evals/templates", "docs", "plugins"]
 
 [lint]
 select = [

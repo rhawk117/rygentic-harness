@@ -115,7 +115,7 @@ a fourth patch.
 The loop advances only after its evidence is externalized: the engineer appends the DONE half
 (with the commit hash) to the brief before reporting, the verification outcome is recorded
 before a task's box is checked, and recovery reads the brief, never anyone's conversation. The
-full ordering rule lives in `skills/agents-assemble/references/contracts.md`.
+full ordering rule lives in `plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
 
 The sprint ends with a `REPORT.md` of at most 50 lines: what shipped, what deviated, what
 remains.
@@ -173,7 +173,9 @@ stateDiagram-v2
 Prose in this directory explains; the contracts define. The severity table, verdict vocabularies
 (scout, engineer, budgetron, gitty-up, grumpy, sunny, wingman, review), and the two-half brief
 schema are in
-`skills/agents-assemble/references/contracts.md`. The `ticket.yml` schema with its derivation rules
-is in `skills/prepare-handoff/references/ticket-schema.md`, and the directory layout with its
-writer/reader matrix is in `skills/prepare-handoff/references/mightymodels-dir.md`. When this page
+`plugins/mightymodels/skills/agents-assemble/references/contracts.md`. The `ticket.yml` schema
+with its derivation rules is in
+`plugins/mightymodels/skills/prepare-handoff/references/ticket-schema.md`, and the directory
+layout with its writer/reader matrix is in
+`plugins/mightymodels/skills/prepare-handoff/references/mightymodels-dir.md`. When this page
 and a contract disagree, the contract wins.

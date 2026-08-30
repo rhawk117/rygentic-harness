@@ -9,7 +9,8 @@ contracts. This file is the whole gate; there is no hidden tribal knowledge beyo
 A skill edit ships with a re-run of its evals and a new dated result, or it does not ship. This
 repo exists partly because earlier versions of these skills had good evals whose results were
 lost along the way. `evals/results/` holds the dated JSON and HTML per run; the per-skill
-`RESULTS-*.md` files inside `skills/*/evals/` are the historical trail and stay where they are.
+`RESULTS-*.md` files inside `plugins/mightymodels/skills/*/evals/` are the historical trail and
+stay where they are.
 
 ## Setup
 
@@ -55,9 +56,10 @@ functions at or under 50 lines, comments only for rationale that the code cannot
 
 ## Adding or editing a skill
 
-A skill is a directory under `skills/` whose `SKILL.md` frontmatter carries `name` (matching the
-directory, lowercase with hyphens) and `description`. The description is the retrieval surface
-in Claude Code's skill selection, so write it as trigger phrases plus boundaries, and add a
+A skill is a directory under `plugins/mightymodels/skills/` whose `SKILL.md` frontmatter carries
+`name` (matching the directory, lowercase with hyphens) and `description`. The description is
+the retrieval surface in Claude Code's skill selection, so write it as trigger phrases plus
+boundaries, and add a
 near-miss to the trigger dataset when the name or description is anywhere close to an existing
 skill.
 `tests/test_plugin.py` enforces the frontmatter contract; a new behavior case belongs in
@@ -66,15 +68,17 @@ scans it for injection indicators on every commit, and a finding blocks the comm
 
 Skills that participate in the loop cite the shared contracts instead of restating them. If your
 change needs a new severity, verdict, or brief field, it goes in
-`skills/agents-assemble/references/contracts.md` first, and the consuming skills reference it.
+`plugins/mightymodels/skills/agents-assemble/references/contracts.md` first, and the consuming
+skills reference it.
 
 ## Documentation
 
 Prose in `README.md` and `docs/` is written under the humanizer rules: no em or en dashes,
 sentence-case headings, plain copulas, concrete claims over ceremony. markdownlint enforces the
 mechanical half (see `.markdownlint.yaml`); keep doc files roughly 100 to 200 lines and split by
-subject rather than growing one page. Reference files under `skills/*/references/` are contracts
-consumed by agents; change their meaning only with a version note in the changelog.
+subject rather than growing one page. Reference files under
+`plugins/mightymodels/skills/*/references/` are contracts consumed by agents; change their
+meaning only with a version note in the changelog.
 
 ## Commits and PRs
 
