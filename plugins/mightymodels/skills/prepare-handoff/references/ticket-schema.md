@@ -6,9 +6,11 @@ The per-ticket source of truth, written once by prepare-handoff from the intervi
 task: <slug>                    # directory name under .mightymodels/
 summary:                        # one sentence
 triaged-at: <ISO datetime>
-context:                        # optional free-text lines from triage worth carrying
+context:                        # triage rollup: 3-6 lines, the knowns and decisions the
+                                # next session cannot afford to lose; no file:line
 companion-docs:
-  issue-number:                 # optional
+  issue-number:                 # optional; GitHub issue
+  jira-key:                     # optional; Jira ticket key, e.g. PROJ-123
   reference-urls:               # external documentation used during triage ONLY —
     - example.com               # never issues
 subagent-models:
@@ -25,7 +27,8 @@ subagent-models:
 handoff-context:
   scope: <sm|med|large>         # from the per-task scope answer
   plan-first: <bool>            # from the compaction answer
-  branch-name:
+  branch-name:                  # the branch the sprint runs on: created by prepare-handoff,
+                                # or the current checkout recorded as-is
   worktrees-okay: false         # default; dormant until engineers run in parallel
 ```
 
@@ -39,4 +42,4 @@ handoff-context:
 
 ## Field discipline
 
-No `review-weight` block — nothing consumes it (cut 2026-08-20). No key enters this schema without a named consumer in the flow; unused yaml is landfill with indentation.
+No `review-weight` block — nothing consumes it (cut 2026-08-20). No key enters this schema without a named consumer in the flow; unused yaml is landfill with indentation. Consumers of record: `context` is read by every ramp before dispatch; `jira-key` is read by stick-the-landing (PR description link) and prune-ticket (archive header), alongside `issue-number`.
