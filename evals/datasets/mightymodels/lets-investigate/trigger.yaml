@@ -99,5 +99,61 @@ cases:
   expected_output:
     should_trigger: false
   evaluators: []
+- name: lets-investigate-trigger-14
+  inputs:
+    query: how does httpx actually handle connection pooling? check the docs and how we use it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-15
+  inputs:
+    query: gather context on how the auth middleware works before we plan the rewrite
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-16
+  inputs:
+    query: does the postgres driver retry on serialization failures? research it against the docs and our config
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-17
+  inputs:
+    query: what does the redis protocol do with a MULTI that fails midway — check the spec and our client
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: lets-investigate-trigger-18
+  inputs:
+    query: compare vendors for a hosted feature-flag service
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-19
+  inputs:
+    query: we know it's the null check in routes.py, just fix it
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-20
+  inputs:
+    query: write up what we found in the investigation as a ticket for next session
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: lets-investigate-trigger-21
+  inputs:
+    query: what do we know so far about the leak — knowns and unknowns
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
 evaluators: []
 report_evaluators: []

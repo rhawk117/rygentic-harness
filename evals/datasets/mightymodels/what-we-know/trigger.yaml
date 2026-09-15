@@ -99,5 +99,68 @@ cases:
   expected_output:
     should_trigger: false
   evaluators: []
+- name: what-we-know-trigger-14
+  inputs:
+    query: before we decide on the queue library, what's actually verified about it vs guesswork
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-15
+  inputs:
+    query: is the claim that the cache never invalidates true or not — give me the verdict from what we gathered
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-16
+  inputs:
+    query: does this dependency fit our needs based on what we found? knowns and gaps
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-17
+  inputs:
+    query: pull the facts packet together before we escalate this to ask-an-adult
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-18
+  inputs:
+    query: roll up the ledger from the investigation into knowns and open questions
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: what-we-know-trigger-19
+  inputs:
+    query: let's investigate why the cache never invalidates
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-20
+  inputs:
+    query: grill me on the plan before we build it
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-21
+  inputs:
+    query: pick between the two queue libraries, both seem fine to me
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: what-we-know-trigger-22
+  inputs:
+    query: explain how the auth module works for the onboarding doc
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
 evaluators: []
 report_evaluators: []
