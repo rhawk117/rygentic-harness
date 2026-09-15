@@ -280,9 +280,9 @@ def _inline_sendoff() -> CaseSpec:
         'answer questions in their next message.'
     )
     return CaseSpec(
-        name='inline-sendoff-stale-claim',
+        name='yolo-stale-claim',
         plugin=PLUGIN,
-        skill='inline-sendoff',
+        skill='yolo',
         fixture='fx-sendoff',
         task=task,
         sim_notes='',
