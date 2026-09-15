@@ -1,106 +1,118 @@
 ---
 name: dialectic
 description: >-
-  Stage a two-sided independent examination of a proposition you cannot settle by reading — dispatch grumpy to break it and sunny to confirm it, in parallel and blind to each other, then adjudicate from where their reports collide. Reach for this whenever you are stuck between two viable approaches, holding a root-cause hypothesis you have not proven, weighing whether a design or security decision is actually sound, or facing a review finding the engineer disputes. Also use it the moment you notice yourself arguing both sides of a question in your own head, which is the signal that one reasoner has run out of independent evidence — even if nobody used the words "review", "critique", or "second opinion". Not for questions a single file read settles.
+  Break a tie between two or three viable options when the primary cannot separate them and
+  the user does not know either. Frames the fork and its reversal cost, dispatches grumpy and
+  sunny blind and in parallel per option, scores each option by the damage of what was found
+  rather than the count, then walks a fixed tie-break ladder (found defects, reversal cost,
+  conformance with the repository, surface touched, a bounded spike, then a recorded coin
+  flip) until one rung decides. Writes a compact decision record with the rung that decided
+  and the signal that would reopen it, and puts the decision to the user as a single
+  accept-or-override dialog. Use when ask-an-adult came back with questions the user could
+  not answer, when you are holding two options you rate equal, or when the user says "you
+  pick", "I don't know, decide", "both seem fine". Not for a fact a scout can retrieve, a
+  decision the user already made, a judgment call the user can answer (ask-an-adult), or a
+  plan to be blessed.
 ---
 
-# Dialectic
+# dialectic
 
-A proposition you generated is a proposition you are anchored on. Thinking harder about it runs the same priors through the same context and hands you back a more confident version of what you already believed.
+Some forks have no answer in the code and no answer in the user's head. The agent rates the
+options equal, ask-an-adult produced questions the user could not answer, and the sprint is
+stalled on a choice that a coin could make. This skill exists so that the choice gets made by
+a procedure rather than by whichever option was written first, and so the record says which
+rung of the procedure made it. Two things it never does: keep arguing after the ladder has
+decided, and hand the fork back to a user who already said they do not know.
 
-This replaces that with evidence you did not produce. Two workers get the same proposition and no knowledge of each other: `grumpy` is paid to break it, `sunny` is paid to confirm it. Neither hedges, because neither is allowed to do the other's job. What you reason from afterward is not their opinions — it is the shape of their disagreement, which is checkable in a way introspection is not.
+<important>Invoke `using-mightymodels` before the first dispatch.</important>
 
-## When this is worth its cost
+## 1. Frame the fork
 
-Reach for it when the question is genuinely undecidable from where you are standing:
+Write the fork as options, each in one line with what it costs, and one more line per option
+stating how expensive it is to reverse: a schema, a public interface, a dependency, or a
+deletion is expensive; a private module boundary is cheap. Two or three options; a fork with
+five branches is a design problem for cross-examine.
 
-- Two viable approaches, and the wrong one costs a rewrite.
-- A root-cause hypothesis that explains the symptom but has not been shown to be _the_ cause.
-- A safety, data-integrity, or security claim where being wrong is expensive and being right is invisible.
-- A review finding the engineer disputes, where you have two competing readings of the same code.
-- Any time you catch yourself writing "on the other hand."
+Then look at the reversal costs before dispatching anything. When every option is cheap to
+reverse, skip to the ladder at rung 2 without dispatching reviewers: a cheap decision that
+costs four reasoning dispatches has been made expensive by the process meant to help. The
+reviewers earn their cost only when picking wrong is hard to undo.
 
-Skip it when:
+## 2. Examine each option
 
-- A read, a grep, or a test settles it. Dispatch a `scout` instead — a fraction of the cost, and it returns fact rather than argument.
-- You have already decided and want the decision blessed. Both cops will oblige in their own direction, you will keep the one you wanted, and you will have paid for the privilege. This is the most common way this skill gets wasted.
-- The proposition is a matter of taste. Neither worker can confirm or refute a preference, and both will produce filler trying.
+Each option becomes one claim that could be false: "Option A satisfies requirement R without
+introducing X." For each claim, dispatch `grumpy` to break it and `sunny` to confirm it, blind
+to each other and in the same turn, the shared dispatch linted through `promptlint` with the
+full prompt architecture. The dispatch carries the claim, the files or plan it concerns, the
+requirement, and the repository root, and nothing about which option you or the user lean
+toward. Sequential dispatch lets the second worker inherit the first one's framing through
+you; a leaked lean comes back from both sides looking like corroboration.
 
-Pick a different tool when one fits better. `wingman` is the move when you want one stronger reasoner's judgment on a decision and there is nothing to verify in the code — it takes no tools and recommends. `review-circus` is the move when the work is finished and you want it graded. This skill sits between them: the work is not done, the question is not a matter of judgment, and there is code or a plan that can actually settle it.
+`sunny` gets the stronger model by default. `grumpy` wins by finding one hole, which a
+mid-tier model can do; `sunny` wins only if the claim survives every attack it can construct,
+and weaker models confirm after two attacks instead of six. Invert when the option is a
+surface `grumpy` must sweep rather than a claim it must puncture. Set both in `ticket.yml`
+per dispatch.
 
-## 1. Sharpen the proposition
+Both are read-only. A worker that starts fixing has stopped examining.
 
-Both workers get one proposition, stated as a claim that could be false. The exercise succeeds or fails here. Dispatched a topic, both sides write essays; dispatched a claim, both sides go find evidence.
+## 3. Score, then climb the ladder
 
-A usable proposition names the thing, the property, and the scope.
+Score each option by the worst thing found against it on the contracts.md severity table, not
+by how many things were found. Three Lows lose to one High. Where `grumpy` reports a defect at
+a line `sunny` reports confirmed, dispatch a `scout` to that line carrying both claims and let
+the reading settle it; on that line you have less evidence than either of them.
 
-**Weak:** "Is the caching approach right?"
-**Strong:** "No caller of `store.Get` can observe stale data, given that invalidation runs on the write path at store.go:142."
+Then take the rungs in order and stop at the first that separates the options:
 
-**Weak:** "Should we put this behind a queue?"
-**Strong:** "Moving `notify()` behind SQS introduces no user-visible ordering change, because the only ordering the UI depends on is per-conversation, and FIFO message groups preserve that."
+1. **Found defects.** A Critical or High against one option and not the others decides it.
+   Below High, a difference of one severity level decides it; equal worst-severity does not.
+2. **Reversal cost.** The option cheaper to undo wins. Being wrong cheaply is a fix; being
+   wrong expensively is a rewrite.
+3. **Conformance.** The option that does what the repository already does elsewhere wins;
+   one scout dispatch names the precedent or its absence. A codebase with two ways to do a
+   thing has a maintenance cost neither option's author pays.
+4. **Surface.** The option touching fewer files, interfaces, and dependencies wins.
+5. **Spike.** When a bounded experiment would separate them (one command a scout can run, or
+   one sm task an engineer can do on a throwaway branch and report), run it and score again
+   from rung 1. Bounded means one dispatch; a spike that needs a plan is not a spike.
+6. **Coin flip.** The options are equivalent by every measure available. Take the one the
+   user listed first, and say in the record that this rung decided. Equivalent options mean
+   the choice does not matter, and further argument is spending budget to feel better.
 
-The strong versions carry their own falsification condition — a worker can go find the caller that sees stale data, or the ordering dependency that isn't per-conversation. The weak versions can only be agreed with.
+A rung that separates the options is the decision. Do not keep climbing to see whether a
+later rung agrees; the ladder is ordered by how much each rung's evidence is worth.
 
-Write the dispatch once and send it to both verbatim: the proposition, the files or plan it concerns, the requirement it is meant to satisfy, and the repo root. Say nothing about which way you lean. A dispatch that leaks your prior gets it back from both sides, and you will mistake that for corroboration.
+## 4. Record
 
-## 2. Tier the two sides
-
-Their jobs are not equally hard, and the asymmetry runs the opposite way from intuition.
-
-`grumpy` wins by finding one hole. That is an existence proof. A mid-tier model that surfaces a real defect has done the entire job, and the first flaw is usually the cheapest one to find.
-
-`sunny` wins only if the proposition survives every attack it can construct. That is a universal claim, and universal claims are where weaker models fail silently — they confirm after two attacks instead of six and emit the same `<verdict>confirmed</verdict>` either way. A false confirmation is the single output of this exercise that can put a defect into the artifact.
-
-So the default is asymmetric: **`sunny` gets the stronger model.** Invert it when the proposition spans a surface `grumpy` has to sweep rather than a claim it has to puncture — a whole plan, a large diff, a system-wide invariant — because then `grumpy` is the one carrying the exhaustiveness burden.
-
-Set both per dispatch in `ticket.yml` rather than accepting the agent defaults. The right tier follows the proposition, not the worker.
-
-## 3. Dispatch both at once
-
-Run the shared dispatch through `promptlint` first, using the full prompt architecture because
-grumpy and sunny have no dedicated templates. Send the linted prompts in the same turn. Sequential
-dispatch is the quietest way to break this skill: whichever worker runs second inherits the first
-one's framing through you, and you get one perspective wearing two hats at twice the price. Neither
-worker is told the other exists.
-
-Both are read-only. A worker that starts fixing things has stopped examining them.
-
-## 4. Read the collision
-
-Their reports meet in one of four shapes, and the shape tells you what to do.
-
-**Both refute.** `grumpy` found a hole; `sunny` could not confirm that region. The proposition is dead. Do not spend a second pass rescuing it — return to step 1 with a different proposition.
-
-**Both hold.** `grumpy` found nothing above its bar; `sunny` confirmed with evidence. This is weaker than it feels. Two workers can share a blind spot, especially having read the same files in the same order. Compare their `<checked>` blocks before you act: if the coverage overlaps tightly and both are narrow, you bought one perspective, not two, and the proposition is unexamined outside that band.
-
-**They collide on one location.** `grumpy` reports a defect at `foo.py:88`; `sunny` reports the same line confirmed. This is the highest-information outcome in the exercise and the reason to run it at all — one of them misread the code, and which one is a cheap fact question. Dispatch a `scout` at that exact location carrying both claims and let it settle the reading. Do not adjudicate a collision from their prose; on that line you have less evidence than either of them.
-
-**They pass in the night.** `grumpy` attacked the concurrency, `sunny` confirmed the ordering, and neither touched the other's ground. Common, and not a failure — it means the proposition was compound. Split it and run the half nobody examined, or accept that half as unexamined and say so in the record.
-
-## 5. Adjudicate
-
-Land on one position, in your own words:
-
-- **Stands** — with the specific evidence it stands on, so the next agent can check you rather than trust you.
-- **Falls** — with the failure path, which is now an input to whatever you do next.
-- **Blocked** — on a named unknown, with what would resolve it. This is a real outcome, not a failure to decide.
-
-"Both sides raise valid points" is not one of these. It is what synthesis looks like when the proposition was never sharp enough to be settled, and it means step 1 failed. Split the proposition and rerun rather than shipping the hedge.
-
-Nothing in either report is authoritative because a worker said it. Their evidence is authoritative; their confidence is not. `sunny` confirming something does not clear it, and `grumpy` failing to break it does not either — both are bounded by whatever their `<checked>` blocks say they actually looked at.
-
-## The record
-
-Write `.mightymodels/<task-slug>/dialectic-<proposition-slug>.md`, 40 lines or fewer:
+Write `.mightymodels/<task-slug>/dialectic-<fork-slug>.md`, 40 lines or fewer. The full
+reports stay in the transcript; this file is what survives compaction.
 
 ```markdown
-# <the proposition, exactly as dispatched>
+# <the fork, one line>
 
-Position: stands | falls | blocked
-Evidence: <what carries it — file:line, command, trace>
+Options: <A: one line, reversal cost> | <B: ...>
+Worst found: <A: severity, location> | <B: ...>
+Decided by: rung <n> (<name>)
+Decision: <A or B>, because <the rung's evidence in one sentence>
+Reopen if: <the observable signal that would send this back to rung 1>
 Unexamined: <what neither worker covered>
-Next: <the action this decision unblocks, or the unknown that blocks it>
 ```
 
-The full reports stay in the transcript. This file is what survives compaction and what the next agent reads, so write it for someone who was not here.
+## 5. Put it to the user once
+
+One ask-user dialog: the decision marked `(recommended: rung n, reason)`, each other option
+as its own choice, `Run the spike first` when rung 5 was available and not taken, and
+`Stop`. No preamble and no rationale for asking; the user already said they could not
+separate the options, and the dialog's job is to let them accept or override in one tap. On
+accept, the record stands and work resumes. On override, the record is rewritten with
+`Decided by: user` and the reason they gave, if any. A user who picks the option the ladder
+rejected has not made a mistake; they have information the ladder did not.
+
+## Boundaries
+
+Reasoning workers and scouts only; nothing in the repository changes, and a spike runs on a
+branch that is deleted afterward. The only file written is the decision record. A fork whose
+wrong branch would be Critical on the severity table is not tie-broken here: say so, and
+route it to cross-examine or back to game-plan, because a ladder is the wrong tool for a
+choice that must not be made by a coin.
