@@ -39,7 +39,7 @@ flowchart TD
     A["lets-investigate\nchat triage with scouts"] --> B["what-we-know\ncited knowns, SWOT"]
     B --> C["prepare-handoff\ninterview, ticket.yml, issue, branch"]
     C --> D{scope}
-    D -->|"sm, no plan"| E["inline-sendoff"]
+    D -->|"sm, no plan"| E["yolo"]
     D -->|"any other combination"| F["game-plan"]
     E --> G["agents-assemble\nper-task work loop"]
     F --> G
@@ -70,7 +70,7 @@ files. All six are standard `SKILL.md` directories under `plugins/ai-engineer/`.
 
 ```text
 plugins/         one directory per plugin; each carries its own manifest, skills, and agents
-  mightymodels/  the dev loop: eighteen skills, seven worker agents
+  mightymodels/  the dev loop: twenty skills, seven worker agents
 evals/           pydantic-evals harness: package source, per-skill datasets, dated results
 tests/           marketplace-wide contracts: plugin layout, manifest agreement, integrity
 docs/            human documentation for the harness and the mightymodels plugin

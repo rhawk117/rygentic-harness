@@ -1,6 +1,6 @@
 # Skills
 
-Eighteen skills ship with the plugin: ten loop stages, two escalation skills, a two-skill review
+Twenty skills ship with the plugin: eleven loop stages, three escalation skills, a two-skill review
 stack, the using-mightymodels fleet reference, and three standalone utilities. Each is a directory
 under `plugins/mightymodels/skills/` with a `SKILL.md` whose frontmatter carries only `name` and
 `description` (plus `license` or `metadata` where needed), the keys Claude Code's skill loader
@@ -29,14 +29,26 @@ never asks the user anything.
 interview, then creates the ticket directory, `ticket.yml` with derived model routing, the
 optional GitHub issue with humanizer-cleaned prose, the branch, and a thin `handoffs/SPRINT.md`.
 
-`inline-sendoff` is the small-scope ramp. It reads `ticket.yml` and the issue first, reconfirms
-the ticket's claims at HEAD with two or three scouts, writes the task checklist into the issue
-body, and hands control to `agents-assemble`. It auto-invokes at session start when the active
-ticket says `scope: sm` and `plan-first: false`.
+`yolo` is the fast ramp. From an active ticket, a pasted issue, or a task described in chat, it
+asks in one dialog whatever prepare-handoff would have asked that the context has not answered,
+writes the minimal ticket directory when none exists, reconfirms the claims at HEAD with two or
+three scouts, writes the task checklist with a checkable acceptance criterion per item, and
+hands control to `agents-assemble`. It assumes no compaction and writes no plan or handoff
+file. It auto-invokes at session start when the active ticket says `scope: sm` and
+`plan-first: false`, and runs explicitly on any scope after an ask-user confirmation on med or
+large.
 
-`game-plan` is the large-scope ramp. Same verification first, then it writes
-`.mightymodels/<slug>/plan.md`, high-level strategy and enumerated tasks with size hints,
-deliberately free of code-level citations, and gets the user's approval before invoking
+`cross-examine` interviews the user about a plan, design, or decision at a depth the user
+picks first (Skim, Standard, or Relentless), working the design tree in rounds through the
+ask-user dialog: facts go to scouts, decisions go to the user, and a decisions record is
+restated after every round. `game-plan` runs it between claim verification and drafting; it
+also runs standalone for "grill me" or "stress-test this design".
+
+`game-plan` is the large-scope ramp. Verification first (the ticket's claims and every planned
+verification command, by scout), then `cross-examine`, then it writes `.mightymodels/<slug>/plan.md`
+as a compaction-safe ledger: invariants with proving commands, dependency-ordered tasks each with
+deterministic acceptance criteria and verify commands, non-goals, and risks with the user's chosen
+handling, free of code-level citations. It gets the user's approval before invoking
 `agents-assemble`. It auto-invokes for every scope/plan-first combination other than `sm` with
 `plan-first: false`; the routing table in [docs/workflow.md](workflow.md) is canonical.
 
@@ -57,10 +69,19 @@ Worth-fixing triage routes by risk first (Critical findings and High+ security f
 an engineer regardless of source), then by source: remaining uncle-bob findings to an engineer,
 remaining merge-vader findings to `budgetron`.
 
+`baton-pass` hands a session to the next one: from an active sprint or an un-ticketed session
+it runs `what-we-know`, asks the user what the next session should focus on and what to do
+with uncommitted work, writes `handoffs/BATON.md` with the facts that live nowhere else
+(settled decisions, dead ends, working commands, gotchas, parked threads) and refreshes the
+ticket's `context` lines, running `prepare-handoff` first when no ticket exists, then prints a
+`promptlint`-built opening prompt for the next session.
+
 `ask-an-adult` escalates a genuinely undecidable judgment call to `wingman`, a tool-less
-reasoning advisor, and carries its questions to the user before work resumes. `dialectic` runs
-`grumpy` and `sunny` independently and in parallel against one falsifiable proposition, then
-records the adjudicated position. Use these for reasoning, not for facts a scout can retrieve.
+reasoning advisor, and carries its questions to the user before work resumes. `dialectic` breaks a
+tie the primary cannot break and the user cannot answer: `grumpy` and `sunny` examine each
+option blind and in parallel, a fixed ladder (found defects, reversal cost, conformance,
+surface, a bounded spike, then a recorded coin flip) picks, and the record names the rung that
+decided and the signal that would reopen it. Use these for reasoning, not for facts a scout can retrieve.
 
 `whats-broken` is the debugging protocol: reproduce, gather evidence with scouts (no fixes
 proposed during the evidence phase), one named falsifiable hypothesis at a time written to the
