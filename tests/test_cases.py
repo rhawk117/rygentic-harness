@@ -16,8 +16,8 @@ from plugin_evals.registry import (
     select_specs,
 )
 
-TOTAL_SPECS = 12  # eleven mightymodels loop-skill cases + one ai-engineer case
-MIGHTYMODELS_SPECS = 11  # ten loop skills + the using-mightymodels fleet reference
+TOTAL_SPECS = 13  # twelve mightymodels loop-skill cases + one ai-engineer case
+MIGHTYMODELS_SPECS = 12  # eleven loop skills + the using-mightymodels fleet reference
 
 
 def test_specs_cover_the_roster_with_unique_names() -> None:

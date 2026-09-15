@@ -24,15 +24,18 @@ MIGHTYMODELS_ROOT = PLUGINS_ROOT.joinpath('mightymodels')
 # Grows only through review — a typo'd skill name must not end up here.
 ALLOWED_TOKENS = {
     'allowed-tools',
+    'branch-name',  # ticket.yml field, not a skill
     'claude-haiku-4-5',
     'claude-opus-5',
     'claude-sonnet-5',
     'continue-on-error',
+    'depends-on',  # plan.md task field, not a skill
     'disable-model-invocation',
     'files-in-scope',
     'full-meltdown',  # crashout journal severity, not a skill
     'mild-tilt',  # crashout journal severity, not a skill
     'plan-first',
+    'reference-urls',  # ticket.yml field, not a skill
     'review-weight',
     'subagent-models',
     'triaged-at',
@@ -48,6 +51,7 @@ NUMBER_WORDS = {
     'seven': 7,
     'ten': 10,
     'eighteen': 18,
+    'nineteen': 19,
     'twenty': 20,
 }
 

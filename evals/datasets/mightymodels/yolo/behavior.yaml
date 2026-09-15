@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=behavior.schema.json
-name: mightymodels-behavior-inline-sendoff
+name: mightymodels-behavior-yolo
 cases:
-- name: inline-sendoff-stale-claim
+- name: yolo-stale-claim
   inputs:
-    case: inline-sendoff-stale-claim
-    skill: inline-sendoff
+    case: yolo-stale-claim
+    skill: yolo
     fixture: fx-sendoff
     task: 'Session start on the active mightymodels ticket at .mightymodels/rate-limit
       — its scope is small. Pick up the ticket and proceed as the process dictates.
@@ -13,7 +13,7 @@ cases:
       The user is present and will answer questions in their next message.'
     sim_notes: ''
   metadata:
-    skill: inline-sendoff
+    skill: yolo
   expected_output: null
   evaluators:
   - ResponseContains:

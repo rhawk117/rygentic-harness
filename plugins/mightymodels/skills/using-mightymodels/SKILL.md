@@ -87,10 +87,14 @@ Route by what you need, not by what feels senior:
 - You are stuck between defensible choices, facing an expensive-to-reverse decision, holding
   conflicting scout reports, or have failed twice: use `ask-an-adult`, which dispatches wingman
   with the complete facts packet and surfaces its questions before work resumes.
-- You are arguing both sides of a technical proposition, weighing a safety or data-integrity
-  claim, or disputing a review finding: use `dialectic`, which dispatches grumpy and sunny in
-  parallel on one proposition, then adjudicate their evidence. Do not use it for a fact a scout
-  can retrieve or a decision already made.
+- You hold two or three options you rate equal and the user does not know either (ask-an-adult
+  came back with questions they could not answer, or they said "you pick"): use `dialectic`,
+  which runs grumpy and sunny per option, blind and in parallel, then walks a fixed tie-break
+  ladder and records which rung decided. Do not use it for a fact a scout can retrieve, a
+  decision already made, or a judgment call the user can answer.
+- You need one claim attacked or confirmed rather than a choice made (a root-cause hypothesis,
+  a disputed review finding, a safety claim): dispatch grumpy on the claim directly, and sunny
+  as well when being wrong is expensive; there is no skill wrapper for that.
 
 Review findings route by risk first, then source: a Critical finding, or a security finding at
 High severity or above, goes to a full engineer no matter which reviewer found it. Below that

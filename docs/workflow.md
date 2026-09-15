@@ -14,7 +14,7 @@ flowchart TD
     A["lets-investigate"] --> B["what-we-know"]
     B --> C["prepare-handoff"]
     C --> D{"scope in ticket.yml"}
-    D -->|"sm, no plan"| E["inline-sendoff"]
+    D -->|"sm, no plan"| E["yolo"]
     D -->|"any other combination"| F["game-plan"]
     E --> G["agents-assemble"]
     F -->|"plan approved"| G
@@ -66,16 +66,18 @@ document points here rather than restating it:
 
 | scope | plan-first | ramp             |
 | ----- | ---------- | ---------------- |
-| sm    | false      | `inline-sendoff` |
+| sm    | false      | `yolo`           |
 | sm    | true       | `game-plan`      |
 | med   | false      | `game-plan`      |
 | med   | true       | `game-plan`      |
 | large | false      | `game-plan`      |
 | large | true       | `game-plan`      |
 
-`inline-sendoff`: reconfirm the ticket's
-claims at HEAD with two or three scouts, write the task checklist into the issue body, and hand
-straight to `agents-assemble`. `game-plan`: verify claims,
+`yolo`: one short interview for whatever the context has not answered (it also runs without a
+ticket, writing the minimal ticket directory itself), reconfirm the claims at HEAD with two or
+three scouts, write the task checklist with an acceptance criterion per item into the issue
+body, and hand straight to `agents-assemble`; it assumes no compaction. An explicit `/yolo`
+runs on any scope after an ask-user confirmation on med or large. `game-plan`: verify claims,
 then write `plan.md` as high-level strategy with enumerated tasks and size hints, deliberately
 free of code citations because citations go stale while the plan survives compaction. The user
 approves the plan before any dispatch.
@@ -160,7 +162,7 @@ stateDiagram-v2
     [*] --> investigating: lets-investigate
     investigating --> consolidated: what-we-know
     consolidated --> ramped: prepare-handoff
-    ramped --> sprinting: inline-sendoff or game-plan
+    ramped --> sprinting: yolo or game-plan
     sprinting --> finishing: all tasks done
     finishing --> in_review: CI green
     in_review --> sprinting: findings routed back

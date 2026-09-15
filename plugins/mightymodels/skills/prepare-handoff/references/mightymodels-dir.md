@@ -10,6 +10,7 @@ Per-ticket, sparse, organized by unit of work. The unit of deletion is the unit 
 │   ├── issue-body.md                  when no forge issue was created, or as the local draft
 │   ├── handoffs/SPRINT.md             thin session bootstrap
 │   ├── handoffs/REVIEW.md             thin review-session bootstrap
+│   ├── handoffs/BATON.md              mid-work handoff, ≤40 lines, facts that live nowhere else
 │   ├── briefs/task-NN.md              two halves, ≤80 lines (contracts.md)
 │   ├── review/MERGE-VADER-REPORT.md
 │   ├── review/UNCLE-BOB-REPORT.md
@@ -22,12 +23,12 @@ Per-ticket, sparse, organized by unit of work. The unit of deletion is the unit 
 
 | Path | Writer | Readers |
 |---|---|---|
-| ticket.yml | prepare-handoff (then the user's hand) | every session |
+| ticket.yml | prepare-handoff, or yolo when ramping without a ticket (then the user's hand) | every session |
 | plan.md | game-plan primary, after user approval | primary, dispatch compilation |
 | briefs/ ASKED half | primary at dispatch | engineer, verifying scout |
 | briefs/ DONE half | engineer | primary, verifying scout |
 | review/ | review skills | review-circus primary, the user |
-| handoffs/ | prepare-handoff / stick-the-landing | the next session's primary |
+| handoffs/ | prepare-handoff / stick-the-landing / baton-pass (BATON.md) | the next session's primary |
 | REPORT.md | agents-assemble primary | stick-the-landing, review-circus, prune-ticket |
 | archives/ | prune-ticket | future humans |
 
