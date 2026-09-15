@@ -347,6 +347,62 @@ def _formulate_plan() -> CaseSpec:
     )
 
 
+def _cross_examine() -> CaseSpec:
+    task = (
+        'Cross-examine the approach for the ticket at .mightymodels/queue-overhaul (read '
+        'its ticket.yml and issue-body.md) before any plan is written; this is a '
+        'standalone interview, not a game-plan run. The ask-user dialog is '
+        'unavailable: take Standard depth and whole-frontier width as the round-zero '
+        "answers, ask each round's questions in chat in the dialog shape, take the "
+        "recommended option as the user's answer to every decision question, and "
+        'continue until the depth cap. Scout simulation: perform each fact retrieval '
+        'yourself and cite file:line. Do not write any file. Your final message IS the '
+        'deliverable.'
+    )
+    return CaseSpec(
+        name='cross-examine-queue-overhaul',
+        plugin=PLUGIN,
+        skill='cross-examine',
+        fixture='fx-plan',
+        task=task,
+        sim_notes='',
+        checks=(
+            GitStatusClean(check='read-only: nothing written'),
+            ResponseRegexCount(
+                check='depth recorded at the top of the record',
+                pattern=r'(?i)depth:.*standard',
+                minimum=1,
+            ),
+            ResponseRegexCount(
+                check='every question offers exactly one recommended option',
+                pattern=r'\(recommended',
+                minimum=3,
+            ),
+            ResponseContains(
+                check='the fallback answer closes every question', needle='Other / I don'
+            ),
+            ResponseContainsAll(
+                check='decisions record sections restated',
+                needles=['Decided', 'Facts', 'Open', 'Assumed', 'Frontier'],
+            ),
+            ResponseRegexCount(
+                check='facts cite file:line',
+                pattern=r'src/\w+\.py:\d+',
+                minimum=1,
+            ),
+            ResponseRegexCount(
+                check='decided lines attribute the choice to the user and round',
+                pattern=r'\(user, round \d',
+                minimum=2,
+            ),
+            ResponseContainsAny(
+                check='closes by offering the next stage, never invoking it',
+                needles=['game-plan', 'prepare-handoff'],
+            ),
+        ),
+    )
+
+
 def _finish_sprint() -> CaseSpec:
     task = (
         'The sprint on ticket .mightymodels/rate-limit is complete — see its REPORT.md. '
@@ -584,6 +640,7 @@ SPECS: tuple[CaseSpec, ...] = (
     _lets_investigate(),
     _inline_sendoff(),
     _formulate_plan(),
+    _cross_examine(),
     _finish_sprint(),
     _review_circus(),
     _whats_broken(),

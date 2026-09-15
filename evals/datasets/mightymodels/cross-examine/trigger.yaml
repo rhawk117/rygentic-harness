@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=trigger.schema.json
+name: cross-examine-trigger
+cases:
+- name: cross-examine-trigger-00
+  inputs:
+    query: grill me on this plan before i build it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-01
+  inputs:
+    query: cross-examine the design for the new queue before we commit to it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-02
+  inputs:
+    query: stress-test my approach to the migration — ask me the hard questions
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-03
+  inputs:
+    query: interview me about the caching strategy until we both understand it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-04
+  inputs:
+    query: poke holes in this before i build it
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-05
+  inputs:
+    query: walk me through the decisions in this design one question at a time
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-06
+  inputs:
+    query: i want to be interrogated on the api boundary choices before we plan
+  metadata: null
+  expected_output:
+    should_trigger: true
+  evaluators: []
+- name: cross-examine-trigger-07
+  inputs:
+    query: which retry bound does the client library use? look it up
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: cross-examine-trigger-08
+  inputs:
+    query: i can't decide between the two options, get a second opinion
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: cross-examine-trigger-09
+  inputs:
+    query: both designs seem fine, you pick
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: cross-examine-trigger-10
+  inputs:
+    query: review this branch before i merge it
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: cross-examine-trigger-11
+  inputs:
+    query: write the plan for the queue overhaul ticket
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: cross-examine-trigger-12
+  inputs:
+    query: what do we know so far about the memory leak
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+- name: cross-examine-trigger-13
+  inputs:
+    query: summarize the design doc for the team
+  metadata: null
+  expected_output:
+    should_trigger: false
+  evaluators: []
+evaluators: []
+report_evaluators: []

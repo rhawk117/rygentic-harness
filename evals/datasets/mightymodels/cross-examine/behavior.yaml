@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=behavior.schema.json
+name: mightymodels-behavior-cross-examine
+cases:
+- name: cross-examine-queue-overhaul
+  inputs:
+    case: cross-examine-queue-overhaul
+    skill: cross-examine
+    fixture: fx-plan
+    task: 'Cross-examine the approach for the ticket at .mightymodels/queue-overhaul
+      (read its ticket.yml and issue-body.md) before any plan is written; this is
+      a standalone interview, not a game-plan run. The ask-user dialog is unavailable:
+      take Standard depth and whole-frontier width as the round-zero answers, ask
+      each round''s questions in chat in the dialog shape, take the recommended option
+      as the user''s answer to every decision question, and continue until the depth
+      cap. Scout simulation: perform each fact retrieval yourself and cite file:line.
+      Do not write any file. Your final message IS the deliverable.'
+    sim_notes: ''
+  metadata:
+    skill: cross-examine
+  expected_output: null
+  evaluators:
+  - GitStatusClean: 'read-only: nothing written'
+  - ResponseRegexCount:
+      check: depth recorded at the top of the record
+      pattern: (?i)depth:.*standard
+  - ResponseRegexCount:
+      check: every question offers exactly one recommended option
+      pattern: \(recommended
+      minimum: 3
+  - ResponseContains:
+      check: the fallback answer closes every question
+      needle: Other / I don
+  - ResponseContainsAll:
+      check: decisions record sections restated
+      needles:
+      - Decided
+      - Facts
+      - Open
+      - Assumed
+      - Frontier
+  - ResponseRegexCount:
+      check: facts cite file:line
+      pattern: src/\w+\.py:\d+
+  - ResponseRegexCount:
+      check: decided lines attribute the choice to the user and round
+      pattern: \(user, round \d
+      minimum: 2
+  - ResponseContainsAny:
+      check: closes by offering the next stage, never invoking it
+      needles:
+      - game-plan
+      - prepare-handoff
+evaluators: []
+report_evaluators: []
