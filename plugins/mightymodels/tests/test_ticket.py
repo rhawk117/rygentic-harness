@@ -10,6 +10,7 @@ from mightymcp.ticket import (
     resolve_model,
     ticket_create,
     ticket_read,
+    ticket_set_companion,
     ticket_update_context,
 )
 
@@ -243,6 +244,74 @@ def test_update_context_refuses_a_ticket_that_breaks_the_schema(
 
 def test_update_context_refuses_a_missing_ticket(repo: Path) -> None:
     written = ticket_update_context('demo', ['a fact', 'b fact', 'c fact'])
+
+    assert written.ticket is None
+    assert 'no ticket.yml at' in written.refusals[0]
+
+
+@pytest.mark.parametrize(('key', 'number'), [('pr-number', 42), ('issue-number', 7)])
+def test_set_companion_writes_the_tracker_number(
+    key: str, number: int, repo: Path
+) -> None:
+    create()
+    written = ticket_set_companion('demo', key, number)
+
+    assert written.refusals == []
+    assert read_yaml(repo)['companion-docs'][key] == number
+
+
+def test_set_companion_leaves_the_other_keys_and_their_order_alone(repo: Path) -> None:
+    written = ticket_create(
+        'demo',
+        'Ship the thing',
+        CONTEXT,
+        handoff(),
+        CompanionDocs(issue_number=7, jira_key='PROJ-1'),
+    )
+    assert written.refusals == []
+    before = read_yaml(repo)
+
+    assert ticket_set_companion('demo', 'pr-number', 42).refusals == []
+    after = read_yaml(repo)
+
+    assert list(after) == SCHEMA_KEYS
+    assert list(after['companion-docs']) == list(before['companion-docs'])
+    assert after['companion-docs']['jira-key'] == 'PROJ-1'
+    assert after['companion-docs']['issue-number'] == 7
+    assert after['summary'] == before['summary']
+    assert after['subagent-models'] == before['subagent-models']
+
+
+def test_set_companion_refuses_a_key_outside_the_block(repo: Path) -> None:
+    create()
+    written = ticket_set_companion('demo', 'jira-key', 3)
+
+    assert written.ticket is None
+    assert "unknown companion-docs key 'jira-key'" in written.refusals[0]
+    assert read_yaml(repo)['companion-docs']['jira-key'] is None
+
+
+def test_set_companion_refuses_an_unsafe_slug(repo: Path) -> None:
+    written = ticket_set_companion('a/b', 'pr-number', 42)
+
+    assert written.ticket is None
+    assert written.refusals[0].startswith('name')
+
+
+def test_set_companion_refuses_a_ticket_that_misses_schema_fields(
+    ticket_root: Path,
+) -> None:
+    path = ticket_root.joinpath('ticket.yml')
+    path.write_text('task: demo\n', encoding='utf-8')
+    written = ticket_set_companion('demo', 'pr-number', 42)
+
+    assert written.ticket is None
+    assert 'does not match the ticket schema' in written.refusals[0]
+    assert path.read_text(encoding='utf-8') == 'task: demo\n'
+
+
+def test_set_companion_refuses_a_missing_ticket(repo: Path) -> None:
+    written = ticket_set_companion('demo', 'pr-number', 42)
 
     assert written.ticket is None
     assert 'no ticket.yml at' in written.refusals[0]

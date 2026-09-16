@@ -1,0 +1,17 @@
+{
+  "session_id": "0f9c1c8a-3f5e-4b2a-9e61-7a5f6c3d1b20",
+  "transcript_path": "/home/dev/.claude/projects/-home-dev-project/0f9c1c8a.jsonl",
+  "cwd": "/home/dev/project",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "gh pr create --fill --base main",
+    "description": "Open the pull request"
+  },
+  "tool_response": {
+    "stdout": "Creating pull request for feat/retry into main in dev/project\n\nhttps://github.com/dev/project/pull/42\n",
+    "stderr": "",
+    "interrupted": false
+  }
+}

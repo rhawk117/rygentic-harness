@@ -15,6 +15,9 @@ from mightymcp.paths import (
 )
 from mightymcp.routing import ModelChoice, Scope, choose_model, default_models
 
+ISSUE_NUMBER = 'issue-number'
+PR_NUMBER = 'pr-number'
+COMPANION_KEYS = (ISSUE_NUMBER, PR_NUMBER)
 CONTEXT_MIN = 3
 CONTEXT_MAX = 6
 CITATION = re.compile(r'\S+\.[A-Za-z0-9_]+:\d+')
@@ -158,6 +161,29 @@ def ticket_update_context(slug: str, context: list[str]) -> TicketWrite:
         return TicketWrite(refusals=refusals)
 
     raw['context'] = list(context)
+    ticket, refusals = _validate(raw, path)
+    if ticket is None:
+        return TicketWrite(refusals=refusals)
+    _write_yaml(path, raw)
+    return TicketWrite(ticket=ticket, path=str(path))
+
+
+def ticket_set_companion(slug: str, key: str, value: int) -> TicketWrite:
+    """Set one companion-docs number, leaving every other field of the ticket as it is."""
+    try:
+        path = ticket_dir(slug).joinpath('ticket.yml')
+    except TicketPathError as err:
+        return TicketWrite(refusals=[str(err)])
+    raw, refusals = _read_mapping(path)
+    if key not in COMPANION_KEYS:
+        refusals.append(
+            f'unknown companion-docs key {key!r}; expected {", ".join(COMPANION_KEYS)}'
+        )
+    if raw is None or refusals:
+        return TicketWrite(refusals=refusals)
+
+    docs = raw.get('companion-docs')
+    raw['companion-docs'] = (docs if isinstance(docs, dict) else {}) | {key: value}
     ticket, refusals = _validate(raw, path)
     if ticket is None:
         return TicketWrite(refusals=refusals)

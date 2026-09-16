@@ -14,6 +14,7 @@ NAMES = [
     'SubagentStart',
     'SubagentStart-engineer',
     'SubagentStop',
+    'SubagentStop-engineer',
     'PreToolUse-Agent',
     'PreToolUse-Agent-engineer',
     'PreToolUse-Agent-scout',
@@ -23,6 +24,7 @@ NAMES = [
     'PreToolUse-Bash',
     'PreToolUse-Bash-scout',
     'PostToolUse-Bash',
+    'PostToolUse-Bash-pr',
     'PreCompact',
     'Stop',
 ]
@@ -86,6 +88,20 @@ def test_post_tool_use_carries_the_tool_response(payload: Load) -> None:
     assert hook['tool_name'] == 'Bash'
     assert hook['tool_input']['command']
     assert hook['tool_response']['stdout']
+
+
+def test_the_engineer_stop_fixture_carries_a_prefixed_agent_type(payload: Load) -> None:
+    stopped = payload('SubagentStop-engineer')
+
+    assert stopped['agent_type'] == 'mightymodels:engineer'
+    assert '<report>' in stopped['last_assistant_message']
+
+
+def test_the_pr_fixture_carries_the_url_gh_printed(payload: Load) -> None:
+    hook = payload('PostToolUse-Bash-pr')
+
+    assert hook['tool_input']['command'].startswith('gh pr create')
+    assert 'https://github.com/dev/project/pull/42' in hook['tool_response']['stdout']
 
 
 def test_pre_compact_carries_its_trigger(payload: Load) -> None:
