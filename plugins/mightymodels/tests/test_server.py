@@ -1,6 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 from mcp import Client
@@ -13,6 +14,16 @@ from mcp.types import (
 from mightymcp.fleet import BUNDLED_PLUGIN_ROOT, load_fleet, plugin_root, render_fleet
 from mightymcp.server import server
 
+TOOLS = [
+    'fleet_roster',
+    'ticket_read',
+    'ticket_create',
+    'ticket_update_context',
+    'resolve_model',
+    'route_ramp',
+    'route_finding',
+    'sprint_status',
+]
 FLEET = [
     'budgetron',
     'engineer',
@@ -45,9 +56,12 @@ def probe() -> Probe:
     return asyncio.run(_probe())
 
 
-def test_server_exposes_only_fleet_roster(probe: Probe) -> None:
-    assert [tool.name for tool in probe.tools] == ['fleet_roster']
-    assert probe.tools[0].output_schema is not None
+def test_server_exposes_the_roster_and_the_ticket_tools(probe: Probe) -> None:
+    assert sorted(tool.name for tool in probe.tools) == sorted(TOOLS)
+
+
+def test_every_tool_returns_structured_output(probe: Probe) -> None:
+    assert all(tool.output_schema is not None for tool in probe.tools)
 
 
 def test_fleet_roster_returns_every_worker(probe: Probe) -> None:
@@ -91,3 +105,62 @@ def test_agent_file_without_frontmatter_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match='no YAML frontmatter'):
         load_fleet(tmp_path)
+
+
+async def _call(name: str, arguments: dict[str, Any]) -> CallToolResult:
+    async with Client(server) as client:
+        return await client.call_tool(name, arguments)
+
+
+def call(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    result = asyncio.run(_call(name, arguments))
+    assert not result.is_error
+    assert result.structured_content is not None
+    return result.structured_content
+
+
+def test_a_ticket_round_trips_through_the_client(repo: Path) -> None:
+    created = call(
+        'ticket_create',
+        {
+            'slug': 'demo',
+            'summary': 'Ship the thing',
+            'context': ['one fact', 'two fact', 'three fact'],
+            'handoff': {'scope': 'sm', 'plan-first': False, 'branch-name': 'feat/demo'},
+        },
+    )
+    assert created['refusals'] == []
+
+    read = call('ticket_read', {'slug': 'demo'})
+    assert read['ticket']['summary'] == 'Ship the thing'
+    assert read['ticket']['handoff-context']['scope'] == 'sm'
+
+    status = call('sprint_status', {'slug': 'demo'})
+    assert status == {
+        'slug': 'demo',
+        'tasks': [],
+        'unpushed_commits': -1,
+        'whats_broken_active': False,
+        'report_present': False,
+        'refusals': [],
+    }
+
+
+def test_a_path_violation_comes_back_as_a_refusal(repo: Path) -> None:
+    refused = call('ticket_read', {'slug': '../evil'})
+
+    assert refused['ticket'] is None
+    assert refused['refusals']
+
+
+def test_the_pure_tools_report_the_rule_that_fired() -> None:
+    assert call('route_ramp', {'scope': 'sm', 'plan_first': False})['ramp'] == 'yolo'
+    assert call(
+        'route_finding',
+        {'severity': 'Critical', 'source': 'merge-vader', 'security': False},
+    ) == {
+        'worker': 'engineer',
+        'rule': 'Critical finding',
+        'refusals': [],
+    }
+    assert call('resolve_model', {'role': 'wingman'})['model'] == 'claude-opus-5'

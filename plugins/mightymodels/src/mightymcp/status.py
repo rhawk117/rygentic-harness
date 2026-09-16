@@ -1,0 +1,111 @@
+import json
+from collections import Counter
+from pathlib import Path
+
+from pydantic import BaseModel, Field
+
+from mightymcp.paths import TicketPathError, git_output, repo_root, ticket_dir
+
+ASKED_HEADING = '## ASKED'
+DONE_HEADING = '## DONE'
+VERIFIED_HEADING = '## VERIFIED'
+COMMIT_PREFIX = 'commit:'
+NO_UPSTREAM = -1
+
+
+class TaskStatus(BaseModel):
+    """Where one task stands, read from its brief and the attempts log."""
+
+    task_id: str = Field(description='Brief stem, e.g. task-03')
+    asked: bool = Field(description='True when the brief carries an ASKED half')
+    done: bool = Field(description='True when the engineer appended the DONE half')
+    verified: bool = Field(
+        description='True when the scout appended the VERIFIED section'
+    )
+    commit: str | None = Field(default=None, description="The DONE half's commit hash")
+    attempts: int = Field(description='Attempts logged for this task in attempts.jsonl')
+
+
+class SprintStatus(BaseModel):
+    """The sprint at a glance: one row per brief, plus the ticket-wide state."""
+
+    slug: str = Field(description='The ticket this status is for')
+    tasks: list[TaskStatus] = Field(default_factory=list, description='One row per brief')
+    unpushed_commits: int = Field(
+        default=NO_UPSTREAM,
+        description='Commits ahead of upstream, or -1 with no upstream',
+    )
+    whats_broken_active: bool = Field(
+        default=False, description='True while a whats-broken debug is live'
+    )
+    report_present: bool = Field(default=False, description='True once REPORT.md exists')
+    refusals: list[str] = Field(
+        default_factory=list, description='Why the status is empty'
+    )
+
+
+def sprint_status(slug: str) -> SprintStatus:
+    """Report every task in a ticket, with unpushed commits and ticket-wide state."""
+    try:
+        root = repo_root()
+        directory = ticket_dir(slug, root)
+    except TicketPathError as err:
+        return SprintStatus(slug=slug, refusals=[str(err)])
+    if not directory.is_dir():
+        return SprintStatus(slug=slug, refusals=[f'no ticket directory at {directory}'])
+
+    attempts = _attempt_counts(directory.joinpath('attempts.jsonl'))
+    briefs = sorted(directory.joinpath('briefs').glob('task-*.md'))
+    return SprintStatus(
+        slug=slug,
+        tasks=[_task_status(brief, attempts) for brief in briefs],
+        unpushed_commits=_unpushed_commits(root),
+        whats_broken_active=directory.joinpath('whats-broken.md').is_file(),
+        report_present=directory.joinpath('REPORT.md').is_file(),
+    )
+
+
+def _task_status(brief: Path, attempts: Counter[str]) -> TaskStatus:
+    text = brief.read_text(encoding='utf-8')
+    return TaskStatus(
+        task_id=brief.stem,
+        asked=_has_section(text, ASKED_HEADING),
+        done=_has_section(text, DONE_HEADING),
+        verified=_has_section(text, VERIFIED_HEADING),
+        commit=_commit(text),
+        attempts=attempts[brief.stem],
+    )
+
+
+def _has_section(text: str, heading: str) -> bool:
+    return any(line.strip().startswith(heading) for line in text.splitlines())
+
+
+def _commit(text: str) -> str | None:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(COMMIT_PREFIX):
+            return stripped[len(COMMIT_PREFIX) :].strip() or None
+    return None
+
+
+def _attempt_counts(log: Path) -> Counter[str]:
+    if not log.is_file():
+        return Counter()
+    lines = log.read_text(encoding='utf-8').splitlines()
+    return Counter(task_id for task_id in map(_logged_task_id, lines) if task_id)
+
+
+def _logged_task_id(line: str) -> str | None:
+    try:
+        record = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    return record.get('task_id') if isinstance(record, dict) else None
+
+
+def _unpushed_commits(root: Path) -> int:
+    count = git_output(['rev-list', '@{upstream}..HEAD', '--count'], cwd=root)
+    if count is None or not count.isdigit():
+        return NO_UPSTREAM
+    return int(count)
