@@ -3,10 +3,24 @@ from mcp.server import MCPServer
 from mightymcp.attempts import task_record_attempt
 from mightymcp.brief import brief_append_done, brief_open, brief_read
 from mightymcp.debug import whats_broken_close, whats_broken_write
+from mightymcp.dialectic import dialectic_record_write, dialectic_score
 from mightymcp.fleet import Fleet, load_fleet, render_fleet
 from mightymcp.handoff import decision_record, handoff_prompt, handoff_write
 from mightymcp.report import checklist_render, report_write
-from mightymcp.routing import route_finding, route_ramp
+from mightymcp.review import (
+    findings_merge,
+    grade_compute,
+    pr_comment_render,
+    review_report_write,
+    review_verdict,
+)
+from mightymcp.routing import blast_radius_questions, route_finding, route_ramp
+from mightymcp.scripts import (
+    crashout_add,
+    crashout_last,
+    crashout_stats,
+    metrics_run,
+)
 from mightymcp.status import sprint_status
 from mightymcp.ticket import (
     resolve_model,
@@ -14,6 +28,7 @@ from mightymcp.ticket import (
     ticket_read,
     ticket_update_context,
 )
+from mightymcp.worker_reports import parse_report
 
 server = MCPServer(
     name='mightymodels',
@@ -25,8 +40,11 @@ server = MCPServer(
         'under .mightymodels/. The brief_ tools carry the two-half task brief, '
         'task_record_attempt logs an attempt and reports where it escalates, and '
         'report_write, whats_broken_, handoff_, and decision_record write the rest of '
-        'the sprint artifacts. Every tool returns a refusals list; a non-empty one '
-        'means nothing was written.'
+        'the sprint artifacts. parse_report turns a worker report into a verdict, the '
+        'review_ and findings_ tools apply the merge gate and the uncle-bob rubric, '
+        'dialectic_ breaks a tie, and the crashout_ and metrics_ tools run the skills '
+        'scripts. Every tool returns a refusals list; a non-empty one means nothing '
+        'was written.'
     ),
 )
 
@@ -62,6 +80,19 @@ for tool in (
     handoff_write,
     handoff_prompt,
     decision_record,
+    parse_report,
+    findings_merge,
+    review_verdict,
+    review_report_write,
+    grade_compute,
+    blast_radius_questions,
+    pr_comment_render,
+    dialectic_score,
+    dialectic_record_write,
+    crashout_add,
+    crashout_stats,
+    crashout_last,
+    metrics_run,
 ):
     server.add_tool(tool)
 

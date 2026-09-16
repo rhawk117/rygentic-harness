@@ -1,6 +1,11 @@
 import pytest
 from mightymcp.routing import (
     DEFAULT_MODELS,
+    FILE_BOUNDARY,
+    ONE_FILE,
+    SERVICE_BOUNDARY,
+    Uncertainty,
+    blast_radius_questions,
     choose_model,
     default_models,
     engineer_model,
@@ -138,3 +143,75 @@ def test_an_unknown_severity_and_source_are_both_refused() -> None:
     assert route.worker is None
     assert "unknown severity 'Nasty'" in route.refusals[0]
     assert "unknown source 'santa'" in route.refusals[1]
+
+
+def uncertainty(unknown: str, *paths: str) -> Uncertainty:
+    return Uncertainty(unknown=unknown, rests_on='a scout citation', paths=list(paths))
+
+
+@pytest.mark.parametrize(
+    ('paths', 'radius', 'rule'),
+    [
+        (('src/api/limits.py',), ONE_FILE, 'src/api/limits.py alone'),
+        (
+            ('src/api/limits.py', 'src/api/limits.py '),
+            ONE_FILE,
+            'src/api/limits.py alone',
+        ),
+        (
+            ('src/api/limits.py', 'src/api/client.py'),
+            FILE_BOUNDARY,
+            '2 files under src',
+        ),
+        (
+            ('src/api/limits.py', 'deploy/helm/values.yaml'),
+            SERVICE_BOUNDARY,
+            'deploy, src are separate',
+        ),
+        (
+            ('migrations/0014_add_index.py',),
+            SERVICE_BOUNDARY,
+            'migrations/0014_add_index.py is schema or stored data',
+        ),
+        (
+            ('src/db/models.py', 'src/db/session.py'),
+            SERVICE_BOUNDARY,
+            'src/db/models.py is schema or stored data',
+        ),
+    ],
+)
+def test_the_blast_radius_is_read_from_the_paths(
+    paths: tuple[str, ...], radius: str, rule: str
+) -> None:
+    result = blast_radius_questions([uncertainty('does it hold?', *paths)])
+
+    assert result.refusals == []
+    entry = result.uncertainties[0]
+    assert (entry.radius, entry.rule) == (radius, rule)
+
+
+def test_only_what_reaches_past_one_file_is_asked_about() -> None:
+    result = blast_radius_questions([
+        uncertainty('local only', 'src/api/limits.py'),
+        uncertainty('two files', 'src/api/limits.py', 'src/api/client.py'),
+        uncertainty('the schema', 'migrations/0014_add_index.py'),
+    ])
+
+    assert [entry.radius for entry in result.uncertainties] == [
+        ONE_FILE,
+        FILE_BOUNDARY,
+        SERVICE_BOUNDARY,
+    ]
+    assert result.ask == ['two files', 'the schema']
+
+
+def test_an_uncertainty_naming_no_path_is_refused() -> None:
+    result = blast_radius_questions([
+        uncertainty('local only', 'src/api/limits.py'),
+        uncertainty('nothing named', '  '),
+    ])
+
+    assert result.uncertainties == []
+    assert result.refusals == [
+        'uncertainty 2 names no path; the radius is read from the paths'
+    ]

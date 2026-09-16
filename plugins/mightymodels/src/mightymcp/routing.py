@@ -28,6 +28,13 @@ SEVERITIES = (CRITICAL, HIGH, 'Medium', 'Low')
 FINDING_SOURCES = ('uncle-bob', 'merge-vader')
 Scope = Literal['sm', 'med', 'large']
 SCOPES = get_args(Scope)
+# what-we-know reports an uncertainty's blast radius; it is the primary's routing signal
+ONE_FILE = 'one file'
+FILE_BOUNDARY = 'crosses a file boundary'
+SERVICE_BOUNDARY = 'crosses a service or data boundary'
+# a path here is state that outlives the change, so a wrong guess is not a local fix
+DATA_DIRS = ('migrations', 'schema', 'schemas', 'db', 'database', 'sql')
+SQL = '.sql'
 
 
 class ModelChoice(BaseModel):
@@ -64,6 +71,36 @@ class FindingRoute(BaseModel):
     rule: str = Field(default='', description='The rule that fired')
     refusals: list[str] = Field(
         default_factory=list, description='Why nothing was routed'
+    )
+
+
+class Uncertainty(BaseModel):
+    """One unknown what-we-know reported, with the paths it would land in."""
+
+    unknown: str = Field(description='What is not known, in one line')
+    rests_on: str = Field(default='', description='The evidence it rests on')
+    paths: list[str] = Field(description='The paths the unknown names')
+
+
+class UncertaintyRadius(BaseModel):
+    """One uncertainty, classified by how far a wrong guess would reach."""
+
+    unknown: str = Field(description='The unknown, as reported')
+    radius: str = Field(description=f'{ONE_FILE}, {FILE_BOUNDARY}, or {SERVICE_BOUNDARY}')
+    rule: str = Field(description='The paths that put it there')
+
+
+class BlastRadius(BaseModel):
+    """Every uncertainty classified, and the ones the primary must ask about."""
+
+    uncertainties: list[UncertaintyRadius] = Field(
+        default_factory=list, description='One entry per uncertainty, in order'
+    )
+    ask: list[str] = Field(
+        default_factory=list, description='The unknowns that reach past one file'
+    )
+    refusals: list[str] = Field(
+        default_factory=list, description='Why nothing was classified'
     )
 
 
@@ -143,3 +180,43 @@ def route_finding(severity: str, source: str, *, security: bool) -> FindingRoute
     return FindingRoute(
         worker='budgetron', rule='merge-vader finding below the risk line'
     )
+
+
+def blast_radius_questions(uncertainties: list[Uncertainty]) -> BlastRadius:
+    """Classify each uncertainty; anything past one file is the primary's to ask about."""
+    refusals = [
+        f'uncertainty {number} names no path; the radius is read from the paths'
+        for number, uncertainty in enumerate(uncertainties, start=1)
+        if not _paths(uncertainty)
+    ]
+    if refusals:
+        return BlastRadius(refusals=refusals)
+
+    classified = [_radius(uncertainty) for uncertainty in uncertainties]
+    return BlastRadius(
+        uncertainties=classified,
+        ask=[entry.unknown for entry in classified if entry.radius != ONE_FILE],
+    )
+
+
+def _radius(uncertainty: Uncertainty) -> UncertaintyRadius:
+    paths = _paths(uncertainty)
+    data = [path for path in paths if _is_data(path)]
+    components = {path.split('/')[0] for path in paths}
+    if data:
+        radius, rule = SERVICE_BOUNDARY, f'{data[0]} is schema or stored data'
+    elif len(components) > 1:
+        radius, rule = SERVICE_BOUNDARY, f'{", ".join(sorted(components))} are separate'
+    elif len(paths) > 1:
+        radius, rule = FILE_BOUNDARY, f'{len(paths)} files under {next(iter(components))}'
+    else:
+        radius, rule = ONE_FILE, f'{paths[0]} alone'
+    return UncertaintyRadius(unknown=uncertainty.unknown, radius=radius, rule=rule)
+
+
+def _paths(uncertainty: Uncertainty) -> list[str]:
+    return sorted({path.strip() for path in uncertainty.paths if path.strip()})
+
+
+def _is_data(path: str) -> bool:
+    return path.endswith(SQL) or any(part in DATA_DIRS for part in path.split('/'))

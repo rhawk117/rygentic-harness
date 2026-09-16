@@ -34,6 +34,19 @@ TOOLS = [
     'handoff_write',
     'handoff_prompt',
     'decision_record',
+    'parse_report',
+    'findings_merge',
+    'review_verdict',
+    'review_report_write',
+    'grade_compute',
+    'blast_radius_questions',
+    'pr_comment_render',
+    'dialectic_score',
+    'dialectic_record_write',
+    'crashout_add',
+    'crashout_stats',
+    'crashout_last',
+    'metrics_run',
 ]
 FLEET = [
     'budgetron',
@@ -236,3 +249,45 @@ def test_the_pure_tools_report_the_rule_that_fired() -> None:
         'refusals': [],
     }
     assert call('resolve_model', {'role': 'wingman'})['model'] == 'claude-opus-5'
+
+
+def test_a_worker_report_parses_through_the_client() -> None:
+    parsed = call(
+        'parse_report',
+        {
+            'role': 'gitty-up',
+            'text': (
+                '<report agent="ci-watcher" pr="214"><verdict>fail</verdict>'
+                '<confidence>high</confidence></report>'
+            ),
+        },
+    )
+
+    assert parsed['refusals'] == []
+    assert (parsed['verdict'], parsed['stop'], parsed['subject']) == ('fail', True, '214')
+
+
+def test_the_review_and_dialectic_tools_take_their_models_through_the_client() -> None:
+    verdict = call(
+        'review_verdict',
+        {
+            'findings': [
+                {
+                    'id': 'UB-1',
+                    'severity': 'Blocker',
+                    'file': 'src/api/limits.py',
+                    'line': '17',
+                    'source': 'uncle-bob',
+                    'summary': 'a dependency cycle',
+                }
+            ],
+            'security_unknown_blocked': False,
+        },
+    )
+    decided = call(
+        'dialectic_score',
+        {'options': [{'name': 'A', 'worst': 'High'}, {'name': 'B'}]},
+    )
+
+    assert verdict['verdict'] == 'BLOCK'
+    assert (decided['winner'], decided['rung']) == ('B', 1)
