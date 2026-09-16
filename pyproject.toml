@@ -60,6 +60,7 @@ root = [
     "tests",
     "plugins/mightymodels/src",
     "plugins/mightymodels/tests",
+    "plugins/mightymodels/hooks",
 ]
 
 [tool.ty.src]

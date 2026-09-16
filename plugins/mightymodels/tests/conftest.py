@@ -1,8 +1,15 @@
+import json
+import os
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
-from mightymcp.paths import git_output
+from mightymcp.paths import PROJECT_DIR_VARS, git_output
+
+PAYLOADS = Path(__file__).parent.joinpath('payloads')
 
 
 @pytest.fixture
@@ -46,3 +53,39 @@ def ticket_root(repo: Path) -> Path:
     directory.joinpath('briefs').mkdir(parents=True)
     directory.joinpath('handoffs').mkdir()
     return directory
+
+
+@pytest.fixture
+def payload() -> Callable[[str], dict[str, Any]]:
+    """Load one hook payload fixture by name, e.g. SessionStart-startup."""
+
+    def load(name: str) -> dict[str, Any]:
+        return json.loads(PAYLOADS.joinpath(f'{name}.json').read_text(encoding='utf-8'))
+
+    return load
+
+
+@pytest.fixture
+def run_hook_script() -> Callable[..., subprocess.CompletedProcess[str]]:
+    """Run a hook script the way Claude Code does: stdin payload, cwd at the repo.
+
+    The project-dir variables are dropped from the child environment so the hook
+    resolves the repository from its cwd, as it does in a real session.
+    """
+
+    def run(
+        script: Path, stdin: str, cwd: Path, **env: str
+    ) -> subprocess.CompletedProcess[str]:
+        inherited = {k: v for k, v in os.environ.items() if k not in PROJECT_DIR_VARS}
+        return subprocess.run(  # noqa: S603 -- argv is this interpreter and a script
+            [sys.executable, str(script)],
+            input=stdin,
+            cwd=cwd,
+            env=inherited | env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+    return run

@@ -121,6 +121,8 @@ ignore = [
     "S101",
     "PLC0415",
 ]
+# Plugin hook entry points, invoked by path under `uv run --project`.
+"plugins/mightymodels/hooks/**/*.py" = ["INP001"]
 # Standalone entry point invoked by path, not under a scripts/ directory; boolean
 # flags are finding UB-15, ticketed for a later branch.
 "plugins/ai-engineer/skills/build-a-loop/assets/verify_gate.py" = [
