@@ -6,6 +6,7 @@ from mightymcp.debug import whats_broken_close, whats_broken_write
 from mightymcp.dialectic import dialectic_record_write, dialectic_score
 from mightymcp.fleet import Fleet, load_fleet, render_fleet
 from mightymcp.handoff import decision_record, handoff_prompt, handoff_write
+from mightymcp.prune import ticket_archive, ticket_delete, ticket_prunable
 from mightymcp.report import checklist_render, report_write
 from mightymcp.resources import register_resources
 from mightymcp.review import (
@@ -44,8 +45,9 @@ server = MCPServer(
         'the sprint artifacts. parse_report turns a worker report into a verdict, the '
         'review_ and findings_ tools apply the merge gate and the uncle-bob rubric, '
         'dialectic_ breaks a tie, and the crashout_ and metrics_ tools run the skills '
-        'scripts. Every tool returns a refusals list; a non-empty one means nothing '
-        'was written.'
+        'scripts. The ticket_prunable, ticket_archive, and ticket_delete tools close '
+        'a finished ticket out. Every tool returns a refusals list; a non-empty one '
+        'means nothing was written.'
     ),
 )
 
@@ -94,6 +96,9 @@ for tool in (
     crashout_stats,
     crashout_last,
     metrics_run,
+    ticket_prunable,
+    ticket_archive,
+    ticket_delete,
 ):
     server.add_tool(tool)
 

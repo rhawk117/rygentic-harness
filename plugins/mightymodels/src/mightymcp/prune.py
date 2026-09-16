@@ -1,15 +1,19 @@
+import shutil
 import subprocess
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from mightymcp.artifacts import NONE_ITEM, ticket_directory
+from mightymcp.artifacts import NONE_ITEM, cap_refusals, ticket_directory
 from mightymcp.report import REPORT
 from mightymcp.status import NO_UPSTREAM, SprintStatus, sprint_status
 from mightymcp.ticket import ticket_read
 
 OPEN_THREADS = 'open threads:'
 UNCHECKED_BOX = '- [ ]'
+ARCHIVES_DIR = 'archives'
+# prune-ticket sets the archive cap; pre_write_edit holds it for hand-written ones
+ARCHIVE_CAP = 30
 
 
 class PruneCheck(BaseModel):
@@ -30,6 +34,24 @@ class PruneCheck(BaseModel):
     )
 
 
+class ArchiveWrite(BaseModel):
+    """The archive as written, or why nothing was written."""
+
+    path: str | None = Field(default=None, description='Absolute path of the archive')
+    refusals: list[str] = Field(
+        default_factory=list, description='Why nothing was written'
+    )
+
+
+class PruneDelete(BaseModel):
+    """The ticket directory as deleted, or why it is still there."""
+
+    path: str | None = Field(default=None, description='The directory that was deleted')
+    refusals: list[str] = Field(
+        default_factory=list, description='Why nothing was deleted'
+    )
+
+
 def prunable(slug: str) -> PruneCheck:
     """Report whether .mightymodels/<slug> is safe to delete, per prune-ticket."""
     directory, refusals = ticket_directory(slug)
@@ -46,6 +68,53 @@ def prunable(slug: str) -> PruneCheck:
         *issue_reasons,
     ]
     return PruneCheck(slug=slug, prunable=not reasons, reasons=reasons, skipped=skipped)
+
+
+def ticket_prunable(slug: str) -> PruneCheck:
+    """Report the live work that blocks pruning this ticket, or that nothing does."""
+    return prunable(slug)
+
+
+def ticket_archive(slug: str, body: str) -> ArchiveWrite:
+    """Write the archive that outlives the ticket directory, per prune-ticket."""
+    directory, refusals = ticket_directory(slug)
+    if directory is None:
+        return ArchiveWrite(refusals=refusals)
+
+    path = _archive_path(directory)
+    refusals.extend(cap_refusals('the archive', body, ARCHIVE_CAP))
+    if path.exists():
+        refusals.append(f'{path} already exists; a ticket is archived once')
+    if refusals:
+        return ArchiveWrite(refusals=refusals)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding='utf-8')
+    return ArchiveWrite(path=str(path))
+
+
+def ticket_delete(slug: str) -> PruneDelete:
+    """Delete the ticket directory, once it is archived and nothing live is left in it."""
+    directory, refusals = ticket_directory(slug)
+    if directory is None:
+        return PruneDelete(refusals=refusals)
+
+    check = prunable(slug)
+    refusals.extend(check.refusals)
+    refusals.extend(check.reasons)
+    archive = _archive_path(directory)
+    if not archive.is_file():
+        refusals.append(f'no archive at {archive}; the archive is written first')
+    if refusals:
+        return PruneDelete(refusals=refusals)
+
+    shutil.rmtree(directory)
+    return PruneDelete(path=str(directory))
+
+
+def _archive_path(directory: Path) -> Path:
+    """Return the archive beside the vetted ticket directory: archives/<slug>.md."""
+    return directory.parent.joinpath(ARCHIVES_DIR, f'{directory.name}.md')
 
 
 def _thread_reasons(directory: Path) -> list[str]:

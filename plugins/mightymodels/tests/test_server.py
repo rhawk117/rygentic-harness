@@ -47,6 +47,9 @@ TOOLS = [
     'crashout_stats',
     'crashout_last',
     'metrics_run',
+    'ticket_prunable',
+    'ticket_archive',
+    'ticket_delete',
 ]
 FLEET = [
     'budgetron',
@@ -291,3 +294,17 @@ def test_the_review_and_dialectic_tools_take_their_models_through_the_client() -
 
     assert verdict['verdict'] == 'BLOCK'
     assert (decided['winner'], decided['rung']) == ('B', 1)
+
+
+def test_a_ticket_is_closed_out_through_the_client(ticket_root: Path) -> None:
+    assert call('ticket_prunable', {'slug': 'demo'})['prunable']
+
+    archived = call(
+        'ticket_archive',
+        {'slug': 'demo', 'body': '# demo\nshipped: the retry cap · PR: #12\n'},
+    )
+    assert archived['refusals'] == []
+
+    deleted = call('ticket_delete', {'slug': 'demo'})
+    assert deleted['refusals'] == []
+    assert not ticket_root.exists()
