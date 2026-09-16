@@ -15,5 +15,7 @@ ignores:
   - "evals/fixtures/**"
   - "evals/staging/**"
   - "CHANGELOG.md"
+  # gitignored working state: per-ticket briefs and notes
+  - ".mightymodels/**"
   - "node_modules/**"
   - ".venv/**"
