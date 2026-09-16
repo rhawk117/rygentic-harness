@@ -47,6 +47,31 @@ def repo(make_repo: Callable[[str], Path], monkeypatch: pytest.MonkeyPatch) -> P
 
 
 @pytest.fixture
+def commit(git: Callable[..., str]) -> Callable[[Path, str], str]:
+    """Commit one named file into a repository and return the new commit's hash."""
+
+    def run(root: Path, name: str) -> str:
+        root.joinpath(name).write_text(name, encoding='utf-8')
+        git(root, 'add', '-A')
+        git(
+            root,
+            '-c',
+            'user.email=test@example.com',
+            '-c',
+            'user.name=test',
+            '-c',
+            'commit.gpgsign=false',
+            'commit',
+            '-q',
+            '-m',
+            name,
+        )
+        return git(root, 'rev-parse', 'HEAD')
+
+    return run
+
+
+@pytest.fixture
 def ticket_root(repo: Path) -> Path:
     """The .mightymodels/demo directory, with the subdirectories a ticket carries."""
     directory = repo.joinpath('.mightymodels', 'demo')

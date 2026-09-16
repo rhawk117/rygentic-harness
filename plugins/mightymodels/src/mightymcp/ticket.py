@@ -35,6 +35,9 @@ class CompanionDocs(BaseModel):
 
     issue_number: int | None = Field(default=None, description='GitHub issue number')
     jira_key: str | None = Field(default=None, description='Jira key, e.g. PROJ-123')
+    pr_number: int | None = Field(
+        default=None, description='Pull request number, once stick-the-landing opens it'
+    )
     reference_urls: list[str] = Field(
         default_factory=list, description='External docs read during triage, never issues'
     )

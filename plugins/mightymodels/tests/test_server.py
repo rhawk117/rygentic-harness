@@ -23,6 +23,17 @@ TOOLS = [
     'route_ramp',
     'route_finding',
     'sprint_status',
+    'brief_open',
+    'brief_append_done',
+    'brief_read',
+    'task_record_attempt',
+    'report_write',
+    'checklist_render',
+    'whats_broken_write',
+    'whats_broken_close',
+    'handoff_write',
+    'handoff_prompt',
+    'decision_record',
 ]
 FLEET = [
     'budgetron',
@@ -62,6 +73,19 @@ def test_server_exposes_the_roster_and_the_ticket_tools(probe: Probe) -> None:
 
 def test_every_tool_returns_structured_output(probe: Probe) -> None:
     assert all(tool.output_schema is not None for tool in probe.tools)
+
+
+def test_every_workflow_tool_carries_a_refusals_list(probe: Probe) -> None:
+    schemas = {
+        tool.name: tool.output_schema or {}
+        for tool in probe.tools
+        if tool.name != 'fleet_roster'
+    }
+
+    assert sorted(schemas) == sorted(name for name in TOOLS if name != 'fleet_roster')
+    assert all(
+        schema['properties']['refusals']['type'] == 'array' for schema in schemas.values()
+    )
 
 
 def test_fleet_roster_returns_every_worker(probe: Probe) -> None:
@@ -151,6 +175,54 @@ def test_a_path_violation_comes_back_as_a_refusal(repo: Path) -> None:
 
     assert refused['ticket'] is None
     assert refused['refusals']
+
+
+def test_a_brief_round_trips_through_the_client(ticket_root: Path) -> None:
+    stanza = {
+        'objective': 'Ship the thing',
+        'acceptance': ['AC-1: `uv run pytest -q` passes'],
+        'verification': '`uv run pytest -q`',
+        'files-in-scope': ['src/demo.py'],
+        'engineer-tier': 'claude-sonnet-5',
+    }
+    opened = call(
+        'brief_open',
+        {
+            'slug': 'demo',
+            'task_id': 'task-01',
+            'asked': stanza,
+            'commit_message': 'feat(demo): ship it [#7]',
+        },
+    )
+    assert opened['refusals'] == []
+    assert 'feat(demo): ship it [#7]' in opened['dispatch']
+
+    read = call('brief_read', {'slug': 'demo', 'task_id': 'task-01'})
+    assert read['asked']['files-in-scope'] == ['src/demo.py']
+    assert read['done'] is None
+    assert not read['verified']
+
+
+def test_a_placeholder_criterion_comes_back_as_a_refusal(ticket_root: Path) -> None:
+    refused = call(
+        'brief_open',
+        {
+            'slug': 'demo',
+            'task_id': 'task-01',
+            'asked': {
+                'objective': 'Ship the thing',
+                'acceptance': ['AC-1: it works correctly'],
+                'verification': '`uv run pytest -q`',
+                'files-in-scope': ['src/demo.py'],
+                'engineer-tier': 'claude-sonnet-5',
+            },
+            'commit_message': 'feat(demo): ship it [#7]',
+        },
+    )
+
+    assert refused['path'] is None
+    assert 'is a placeholder' in refused['refusals'][0]
+    assert not ticket_root.joinpath('briefs', 'task-01.md').exists()
 
 
 def test_the_pure_tools_report_the_rule_that_fired() -> None:
