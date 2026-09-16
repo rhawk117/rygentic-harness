@@ -36,10 +36,17 @@ dev = [
     { include-group = "lint" },
     { include-group = "test" },
     "pre-commit>=4.0",
+    "mightymcp",
 ]
 
 [tool.uv]
 default-groups = ["dev"]
+
+[tool.uv.workspace]
+members = ["plugins/mightymodels"]
+
+[tool.uv.sources]
+mightymcp = { workspace = true }
 
 # hook-facing scripts under scripts/ stay 3.12-compatible; the package itself is 3.14
 [tool.uv.dependency-groups]
@@ -48,12 +55,22 @@ lint = { requires-python = ">=3.14" }
 
 [tool.ty.environment]
 python-version = "3.14"
-root = ["evals/src", "tests"]
+root = [
+    "evals/src",
+    "tests",
+    "plugins/mightymodels/src",
+    "plugins/mightymodels/tests",
+]
 
 [tool.ty.src]
 # fixture template bodies are eval material with intentional violations, not package
 # code; skills/ scripts ship to foreign harnesses and follow their own conventions
-exclude = ["evals/src/plugin_evals/templates", "plugins"]
+exclude = [
+    "evals/src/plugin_evals/templates",
+    "plugins/ai-engineer",
+    "plugins/mightymodels/skills",
+    "plugins/mightymodels/agents",
+]
 
 [tool.ty.terminal]
 error-on-warning = true
