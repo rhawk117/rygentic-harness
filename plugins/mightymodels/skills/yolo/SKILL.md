@@ -54,8 +54,8 @@ Answers already in the conversation or the ticket are confirmed in the target su
 re-asked.
 
 **3. Materialize the minimum.** Only when no ticket exists: the ticket directory, the ignore
-ritual from `prepare-handoff/references/mightymodels-dir.md`, and `ticket.yml` per
-`references/ticket-schema.md` with `plan-first: false`, the scope answer, and the derived
+ritual from `prepare-handoff/references/mightymodels-dir.md` (`mm://ref/prepare-handoff/mightymodels-dir`), and `ticket.yml` per
+`references/ticket-schema.md` (`mm://ref/prepare-handoff/ticket-schema`) with `plan-first: false`, the scope answer, and the derived
 engineer model. The branch if one was asked for. The issue via `gh issue create` if one was
 asked for, else `issue-body.md`. No `handoffs/SPRINT.md`, no `plan.md`; nothing is written
 for a next session that is not expected to exist. Tell the user the file exists and that

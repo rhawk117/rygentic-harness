@@ -21,7 +21,7 @@ The bridge from "work done" to "work reviewable". It exists as its own stage so 
 - **Yes — mechanical.** Lint rule, formatter drift, missing import, trivially wrong assertion. Dispatch **budgetron** with the Fix:/Verify: verbatim; its commits push so CI re-runs.
 - **No — non-obvious.** Behavioral test failure, flake that isn't obviously a flake, anything where you'd be guessing the cause. Invoke **whats-broken** — the phased protocol exists precisely so the cheapest worker doesn't symptom-patch CI into a worse state.
 
-After any fix lands, gitty-up re-watches. Two failed fix rounds on the *same check* → stop and escalate to the user with both attempts' evidence; a third quiet round is thrash with better manners.
+After any fix lands, gitty-up re-watches, and each round is logged through `mcp__mightymodels__task_record_attempt`, whose threshold names the stop. Two failed fix rounds on the *same check* → stop and escalate to the user with both attempts' evidence; a third quiet round is thrash with better manners.
 
 **4. On green:** notify the user, then offer to generate `handoffs/REVIEW.md` — thin per the handoff rule (point at ticket.yml, the issue, the PR; name review-circus and the reviewer models' source; nothing copied). The review session runs on a mid-tier primary; say so in the offer.
 

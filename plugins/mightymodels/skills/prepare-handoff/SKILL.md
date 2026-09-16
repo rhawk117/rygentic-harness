@@ -22,7 +22,7 @@ durable lands in `ticket.yml` and the tracker; the handoff prompt stays thin bec
 session reads those first.
 
 Read `references/ticket-schema.md` and `references/mightymodels-dir.md` before the first run in
-a session; they are the contract this skill exists to instantiate.
+a session; they are the contract this skill exists to instantiate. The server serves both at `mm://ref/prepare-handoff/ticket-schema` and `mm://ref/prepare-handoff/mightymodels-dir`.
 
 ## The interview
 
@@ -69,6 +69,7 @@ findings sends the next session confirming the wrong things.
 
 **A. Ticket directory.** `mkdir -p .mightymodels/<slug>/handoffs`, then the ignore ritual
 from mightymodels-dir.md (idempotent; run it every time).
+`mcp__mightymodels__ticket_create` does both, and writes the ticket.yml of step D in the same call.
 
 **B. Tracker.** Draft one body: summary, Findings from the rollup, acceptance as checkable
 criteria where the triage established them, and a **security surface** section only when the
@@ -98,7 +99,7 @@ summary, not a blocker, since the branch exists locally. *Current checkout*: rec
 current branch name in `branch-name` and create nothing. A detached HEAD is not a checkout the
 sprint can run on; say so and ask for a branch.
 
-**D. ticket.yml.** Emit per `references/ticket-schema.md`: `engineer`, `plan-first`, and
+**D. ticket.yml.** Emit per `references/ticket-schema.md` (`mm://ref/prepare-handoff/ticket-schema`): `engineer`, `plan-first`, and
 `scope` from the answers, `context` and `reference-urls` from the rollup, the tracker keys
 from step B, `branch-name` from step C. Tell the user the file exists and pause: they tweak it
 by hand before anything else happens, and their edit wins over your derivation.
@@ -108,11 +109,11 @@ by hand before anything else happens, and their edit wins over your derivation.
 ## The handoff
 
 After the user is done tweaking, offer: "Generate a prompt to begin the next session?" On yes,
-invoke the `promptlint` skill and write `handoffs/SPRINT.md`, reading the tweaked yaml, never
+invoke the `promptlint` skill and write `handoffs/SPRINT.md` through `mcp__mightymodels__handoff_write`, reading the tweaked yaml, never
 your original draft. The thinness rule from mightymodels-dir.md applies absolutely: the file
 points at ticket.yml and the tracker item(s), names the ramp per the routing table in
 `docs/workflow.md` (`yolo` only for sm with plan-first false), and stops. Any fact copied into
-it is a fact that can drift.
+it is a fact that can drift. `mcp__mightymodels__handoff_prompt` builds the next session's opening prompt from the handoff just written.
 
 ```markdown
 # Handoff for <slug>

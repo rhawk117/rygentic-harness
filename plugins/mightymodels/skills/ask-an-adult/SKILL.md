@@ -65,6 +65,7 @@ citations through as they came back.
 ## Act on the report
 
 wingman returns a `<report agent="wingman">` block. Handle it in this order:
+`mcp__mightymodels__parse_report` turns it into the verdict and its evidence.
 
 1. **Read `<verdict>` first.** If wingman disagrees with your lean, the
    disagreement is the first sentence. Do not proceed with your original plan

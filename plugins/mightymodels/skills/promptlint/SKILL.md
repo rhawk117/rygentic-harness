@@ -33,14 +33,14 @@ Do not interrogate. If the user said to skip questions, is unavailable, or alrea
 
 Build from the architecture below, then read exactly one target file and adapt:
 
-- Claude Code → `references/claude-code.md`
-- Any Copilot surface → `references/copilot.md`
+- Claude Code → `references/claude-code.md` (`mm://ref/promptlint/claude-code`)
+- Any Copilot surface → `references/copilot.md` (`mm://ref/promptlint/copilot`)
 
-For proven prompt language covering common failure modes (overengineering, hardcoding to tests, hallucinated claims, action defaults), pull from `references/snippets.md` rather than reinventing — adapt the snippets, don't paste them wholesale.
+For proven prompt language covering common failure modes (overengineering, hardcoding to tests, hallucinated claims, action defaults), pull from `references/snippets.md` (`mm://ref/promptlint/snippets`) rather than reinventing — adapt the snippets, don't paste them wholesale.
 
 ### 3b. Fast path — mightymodels role dispatches
 
-When the prompt targets a known mightymodels worker inside an active loop — a scout retrieval question, an engineer task dispatch, a budgetron fix, or a reviewer kickoff — skip the interview and instantiate the matching template from `references/templates/`. The templates are pre-linted; the job shrinks to filling slots and running the ten-second checklist at the top of each. The engineer template's output doubles as the task brief's `## ASKED` half — write it once, use it in both places. Fall back to the full workflow for anything novel: a template forced onto a strange task is worse than the interview.
+When the prompt targets a known mightymodels worker inside an active loop — a scout retrieval question, an engineer task dispatch, a budgetron fix, or a reviewer kickoff — skip the interview and instantiate the matching template from `references/templates/` (`mm://template/{role}`). The templates are pre-linted; the job shrinks to filling slots and running the ten-second checklist at the top of each. The engineer template's output doubles as the task brief's `## ASKED` half — write it once, use it in both places. Fall back to the full workflow for anything novel: a template forced onto a strange task is worse than the interview.
 
 ### 4. Deliver
 

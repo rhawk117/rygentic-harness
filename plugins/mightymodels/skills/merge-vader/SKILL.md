@@ -25,7 +25,7 @@ The diff shows what changed. It cannot show what the change breaks: the caller o
 <division_of_labor>
 You: read the diff, build the question ledger, dispatch scouts, judge severity, write the report, issue the verdict. All interpretation is yours.
 
-`scout`: a retrieval-only subagent with a five-tool-call budget. It locates files and symbols, finds call sites, extracts config values, runs one read-only command, and returns an XML `<report>` carrying a verdict (`VERIFIED`, `INFERRED`, `NEEDS-ANALYSIS`, `UNKNOWN-BLOCKED`), `file:line` findings, and sometimes a `<follow_up>`. Read [references/scout.md](references/scout.md) once before your first dispatch so you know the contract you are consuming.
+`scout`: a retrieval-only subagent with a five-tool-call budget. It locates files and symbols, finds call sites, extracts config values, runs one read-only command, and returns an XML `<report>` carrying a verdict (`VERIFIED`, `INFERRED`, `NEEDS-ANALYSIS`, `UNKNOWN-BLOCKED`), `file:line` findings, and sometimes a `<follow_up>`. Read the scout's own contract at `mm://agent/scout` once before your first dispatch so you know the contract you are consuming.
 
 Two consequences of that contract shape every dispatch:
 
@@ -59,7 +59,7 @@ Size triage. Under roughly 300 changed lines: read everything. Up to roughly 200
 
 ### Phase 1: read the diff, build the ledger
 
-Read [references/dimensions.md](references/dimensions.md) first. It holds the four checklists (security, SDLC regressions, quality and maintainability, documentation drift) with severity anchors and a scout question bank per dimension.
+Read [references/dimensions.md](references/dimensions.md) (`mm://ref/merge-vader/dimensions`) first. It holds the four checklists (security, SDLC regressions, quality and maintainability, documentation drift) with severity anchors and a scout question bank per dimension.
 
 Then read every hunk. As you read, keep a ledger with four columns: file, observation, dimension, and the fact question that would confirm or kill the observation. Most rows need no scout; the diff itself is the evidence. A question earns a dispatch only when its answer lies outside the diff.
 
@@ -94,14 +94,14 @@ Convert the ledger plus scout facts into findings. Every finding carries:
 
 - **ID**: MV-1, MV-2, and so on, stable within the report, so downstream agents can reference them.
 - **Dimension**: security, sdlc, quality, docs, or plan.
-- **Severity**: per the canonical severity table in `skills/agents-assemble/references/contracts.md`.
+- **Severity**: per the canonical severity table in `skills/agents-assemble/references/contracts.md` (`mm://ref/agents-assemble/contracts`).
 - **Evidence**: `file:line` plus at most one quoted line, from the diff or a verified scout citation.
 - **Why it matters**: the concrete failure mode in one or two sentences.
 - **Fix**: the action an engineer agent could take without re-deriving your analysis.
 - **Verify**: how to confirm the fix landed (a command, a grep, a test to run).
 - **Confidence**: High when the evidence is verified, Low when it rests on inference.
 
-Severity anchors live in the shared table in `skills/agents-assemble/references/contracts.md` — cite it, never restate it; one severity means one thing across every reviewer.
+Severity anchors live in the shared table in `skills/agents-assemble/references/contracts.md` (`mm://ref/agents-assemble/contracts`) — cite it, never restate it; one severity means one thing across every reviewer.
 
 Two guards. Inflation: a finding is Critical only if you can name the attacker action or the failure event; if you cannot, it is High at most. A report that cries Critical loses the credibility that makes its next BLOCK stick. Deflation: a deleted test or a lowered coverage gate is High even though no shipped line is wrong; the safety net is part of the product.
 
@@ -114,7 +114,7 @@ The verdict is deterministic:
 - Otherwise: **CLEAR**.
 - Cap: if any security-relevant question ended `UNKNOWN-BLOCKED`, or blast-radius checks could not be performed, the verdict cannot be CLEAR. You cannot clear what nobody could see.
 
-Write the report to `.mightymodels/<task-slug>/review/MERGE-VADER-REPORT.md` when an active ticket directory exists — the one the request names, else the newest `.mightymodels/*/ticket.yml` on this branch — creating `review/` if needed; the `.mightymodels` tree is locally excluded, so no ignore guard applies there. When no ticket directory exists (standalone invocation), fall back to the repository root as before: write `MERGE-VADER-REPORT.md`, run `git check-ignore MERGE-VADER-REPORT.md`, and if the file is not ignored, put a "Do not commit this file" line at the top of the report and mention it in your reply. Follow [references/report-template.md](references/report-template.md) exactly; the `VERDICT:` line must stay machine-greppable.
+Write the report through `mcp__mightymodels__review_report_write` to `.mightymodels/<task-slug>/review/MERGE-VADER-REPORT.md` when an active ticket directory exists — the one the request names, else the newest `.mightymodels/*/ticket.yml` on this branch — creating `review/` if needed; the `.mightymodels` tree is locally excluded, so no ignore guard applies there. When no ticket directory exists (standalone invocation), fall back to the repository root as before: write `MERGE-VADER-REPORT.md`, run `git check-ignore MERGE-VADER-REPORT.md`, and if the file is not ignored, put a "Do not commit this file" line at the top of the report and mention it in your reply. Follow [references/report-template.md](references/report-template.md) (`mm://ref/merge-vader/report-template`) exactly; the `VERDICT:` line must stay machine-greppable.
 
 Report clean dimensions too, one line each stating what was checked and found clean. "Nothing found" is information the merger needs, and its absence reads as "not examined".
 

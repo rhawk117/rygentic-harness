@@ -67,6 +67,7 @@ after that action, and a baton that describes a stash that was never made is wor
 lines in ticket.yml with any decision made this session that the next session cannot afford
 to lose (three to six lines total, no `file:line`). The baton carries only what lives nowhere
 else; a fact that is in ticket.yml, the issue, or a brief is a pointer here, not a copy.
+`mcp__mightymodels__handoff_write` writes it, kind `BATON`, in the shape below.
 
 ```markdown
 # Baton for <slug>

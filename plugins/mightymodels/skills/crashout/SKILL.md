@@ -55,7 +55,7 @@ before you have read the last one.
 
 ### 3. Check the record
 
-Before diagnosing, look at whether this has happened before:
+Before diagnosing, look at whether this has happened before, through `mcp__mightymodels__crashout_stats`:
 
 ```bash
 uv run <skill-base-dir>/scripts/crashout_journal.py stats
@@ -98,7 +98,7 @@ either way the journal records a lie and the pattern data rots.
 
 ### 6. Journal it
 
-Append the entry before you respond, while the state is raw. Use the bundled
+Append the entry before you respond, while the state is raw. `mcp__mightymodels__crashout_add` runs the bundled
 script (it enforces the schema); it lives in `scripts/` under this skill's
 base directory:
 
@@ -231,7 +231,7 @@ Rules of the bark:
 
 ## Journal mode
 
-On `/crashout journal`, read the journal and report the pattern, not the
+On `/crashout journal`, read the journal through `mcp__mightymodels__crashout_stats` and report the pattern, not the
 diary:
 
 ```bash
@@ -246,7 +246,7 @@ Your job is the interpretation. Present, compactly:
 - recurring failure themes, grouped — three entries about scope creep is one
   standing order, not three anecdotes
 - the standing corrective actions currently in force
-- the most recent entry, briefly
+- the most recent entry, briefly (`mcp__mightymodels__crashout_last`)
 
 The journal exists so other mightymodels sessions inherit the scar tissue. If a
 theme recurs three or more times, say so plainly and elevate it: that is no
