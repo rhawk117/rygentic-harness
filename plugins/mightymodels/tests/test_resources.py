@@ -14,7 +14,6 @@ REFS = [
     'agents-assemble/contracts',
     'merge-vader/dimensions',
     'merge-vader/report-template',
-    'merge-vader/scout',
     'prepare-handoff/mightymodels-dir',
     'prepare-handoff/ticket-schema',
     'promptlint/claude-code',
@@ -136,11 +135,6 @@ def test_a_reference_an_agent_and_a_template_read_back_verbatim() -> None:
 
 def test_the_agent_contract_keeps_its_frontmatter() -> None:
     assert read('mm://agent/scout').startswith('---\nname: scout\n')
-
-
-def test_the_bundled_scout_reference_is_not_the_scout_agent() -> None:
-    """The merge-vader copy is stale by design; a later task retires it."""
-    assert read('mm://ref/merge-vader/scout') != read('mm://agent/scout')
 
 
 def test_an_unknown_skill_or_reference_is_an_error() -> None:
