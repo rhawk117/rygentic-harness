@@ -5,6 +5,7 @@ import pytest
 from mightymcp.brief import (
     AskedStanza,
     DoneHalf,
+    asked_half,
     brief_append_done,
     brief_open,
     brief_read,
@@ -267,3 +268,16 @@ def test_read_refuses_a_brief_that_is_not_there(ticket_root: Path) -> None:
     assert read.refusals == [
         f'no brief at {ticket_root.joinpath("briefs", "task-09.md")}'
     ]
+
+
+def test_asked_half_returns_the_stanza_without_the_done_half(opened: Path) -> None:
+    text = opened.read_text(encoding='utf-8') + '\n## DONE\nwhat: shipped it\n'
+
+    half = asked_half(text)
+
+    assert 'objective: Ship the thing' in half
+    assert 'what: shipped it' not in half
+
+
+def test_asked_half_of_a_brief_without_one_is_empty() -> None:
+    assert asked_half('# notes\nnothing here\n') == ''

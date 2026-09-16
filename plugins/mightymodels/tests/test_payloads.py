@@ -12,11 +12,16 @@ NAMES = [
     'SessionStart-resume',
     'SessionStart-compact',
     'SubagentStart',
+    'SubagentStart-engineer',
     'SubagentStop',
     'PreToolUse-Agent',
+    'PreToolUse-Agent-engineer',
+    'PreToolUse-Agent-scout',
     'PreToolUse-Write',
+    'PreToolUse-Write-brief',
     'PreToolUse-Edit',
     'PreToolUse-Bash',
+    'PreToolUse-Bash-scout',
     'PostToolUse-Bash',
     'PreCompact',
     'Stop',
@@ -70,7 +75,7 @@ def test_subagent_stop_carries_the_agent_and_its_last_message(payload: Load) -> 
 def test_every_pre_tool_use_fixture_carries_its_tool(name: str, payload: Load) -> None:
     hook = payload(name)
 
-    assert hook['tool_name'] == name.removeprefix('PreToolUse-')
+    assert hook['tool_name'] == name.removeprefix('PreToolUse-').split('-')[0]
     assert isinstance(hook['tool_input'], dict)
     assert hook['tool_input']
 

@@ -195,6 +195,11 @@ def brief_read(slug: str, task_id: str) -> BriefRead:
     )
 
 
+def asked_half(text: str) -> str:
+    """Return a brief's ASKED half as written, or '' when the text carries none."""
+    return '\n'.join(_halves(text).get(ASKED_HEADING, []))
+
+
 def render_asked(asked: AskedStanza) -> str:
     """Render the ASKED stanza in the shape contracts.md specifies."""
     lines = [ASKED_HEADING, f'objective: {asked.objective}', 'acceptance:']
