@@ -54,6 +54,8 @@ CANONICAL_TOOLS = frozenset({
     'WebFetch',
     'WebSearch',
     'Task',
+    # The plugin's own MCP server, granted to agents by name.
+    'mcp__mightymodels',
 })
 AGENT_MODELS = frozenset({'claude-sonnet-5', 'claude-haiku-4-5', 'claude-opus-5'})
 # Agents that pin tools: [] on purpose; grows only through review.
