@@ -3,6 +3,9 @@ import subprocess
 from pathlib import Path
 
 MIGHTYMODELS_DIR = '.mightymodels'
+TICKET_FILE = 'ticket.yml'
+# Names the live ticket when the repository carries more than one, or none yet.
+ACTIVE_TICKET_VAR = 'MIGHTYMCP_TICKET'
 # .mcp.json sets MIGHTYMCP_PROJECT_DIR to ${CLAUDE_PROJECT_DIR}; a harness that does not
 # substitute the placeholder leaves the literal behind, which is never a path.
 PROJECT_DIR_PLACEHOLDER = '${CLAUDE_PROJECT_DIR}'
@@ -42,6 +45,25 @@ def ticket_dir(slug: str, root: Path | None = None) -> Path:
     """Return .mightymodels/<slug> under the repository root, after vetting the slug."""
     name = safe_name(slug)
     return repo_root(root).joinpath(MIGHTYMODELS_DIR, name)
+
+
+def active_ticket(root: Path | None = None) -> str:
+    """Return the slug of the live ticket: the only one on disk, else the env override."""
+    directory = repo_root(root).joinpath(MIGHTYMODELS_DIR)
+    slugs = [
+        path.name
+        for path in sorted(directory.glob('*'))
+        if path.joinpath(TICKET_FILE).is_file()
+    ]
+    if len(slugs) == 1:
+        return slugs[0]
+    override = os.environ.get(ACTIVE_TICKET_VAR, '').strip()
+    if override:
+        return safe_name(override)
+    raise TicketPathError(
+        f'{len(slugs)} tickets under {directory}: '
+        f'set {ACTIVE_TICKET_VAR} to the slug of the live one'
+    )
 
 
 def git_output(args: list[str], cwd: Path) -> str | None:

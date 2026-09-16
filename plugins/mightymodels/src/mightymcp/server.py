@@ -7,6 +7,7 @@ from mightymcp.dialectic import dialectic_record_write, dialectic_score
 from mightymcp.fleet import Fleet, load_fleet, render_fleet
 from mightymcp.handoff import decision_record, handoff_prompt, handoff_write
 from mightymcp.report import checklist_render, report_write
+from mightymcp.resources import register_resources
 from mightymcp.review import (
     findings_merge,
     grade_compute,
@@ -95,6 +96,8 @@ for tool in (
     metrics_run,
 ):
     server.add_tool(tool)
+
+register_resources(server)
 
 
 def main() -> None:

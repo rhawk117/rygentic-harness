@@ -65,6 +65,39 @@ def sprint_status(slug: str) -> SprintStatus:
     )
 
 
+def render_status(status: SprintStatus) -> str:
+    """Render a sprint status as one line per task, then the ticket-wide counters."""
+    done = sum(1 for task in status.tasks if task.done)
+    verified = sum(1 for task in status.tasks if task.verified)
+    unpushed = (
+        'no upstream'
+        if status.unpushed_commits == NO_UPSTREAM
+        else f'{status.unpushed_commits} unpushed'
+    )
+    summary = (
+        f'{status.slug}: {len(status.tasks)} tasks, {done} done, {verified} verified, '
+        f'{unpushed}, whats-broken {"yes" if status.whats_broken_active else "no"}, '
+        f'report {"yes" if status.report_present else "no"}'
+    )
+    return '\n'.join([*(_status_line(task) for task in status.tasks), summary])
+
+
+def _status_line(task: TaskStatus) -> str:
+    halves = '/'.join(
+        name
+        for name, present in (
+            ('asked', task.asked),
+            ('done', task.done),
+            ('verified', task.verified),
+        )
+        if present
+    )
+    return (
+        f'{task.task_id}: {halves or "empty"}, {task.attempts} attempts, '
+        f'commit {task.commit or "none"}'
+    )
+
+
 def _task_status(brief: Path, attempts: Counter[str]) -> TaskStatus:
     text = brief.read_text(encoding='utf-8')
     return TaskStatus(
