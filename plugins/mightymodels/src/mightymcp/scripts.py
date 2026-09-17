@@ -59,15 +59,15 @@ def crashout_last() -> ScriptRun:
 
 
 def metrics_run(
-    repo_root: str | None = None,
+    root_override: str | None = None,
     package_depth: int = PACKAGE_DEPTH,
     max_listed: int = MAX_LISTED,
 ) -> ScriptRun:
     """Run the uncle-bob metrics script over the repository and return what it printed.
 
-    repo_root is the fallback: the project-dir variables and git are resolved first.
+    root_override is the fallback: the project-dir variables and git are resolved first.
     """
-    root, refusals = _root(repo_root)
+    root, refusals = _root(root_override)
     if root is None:
         return ScriptRun(refusals=refusals)
     arguments = [

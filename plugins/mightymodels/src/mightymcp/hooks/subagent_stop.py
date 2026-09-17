@@ -1,5 +1,5 @@
 import json
-from contextlib import suppress
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -44,5 +44,8 @@ def _log(root: Path, payload: dict[str, Any], role: str, report: WorkerReport) -
         'ok': not report.refusals and not report.stop,
     }
     log = root.joinpath(MIGHTYMODELS_DIR, slug, LOG)
-    with suppress(OSError), log.open('a', encoding='utf-8') as handle:
-        handle.write(json.dumps(record) + '\n')
+    try:
+        with log.open('a', encoding='utf-8') as handle:
+            handle.write(json.dumps(record) + '\n')
+    except OSError as err:
+        print(f'mightymcp hook stood down: {err}', file=sys.stderr)

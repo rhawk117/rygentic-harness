@@ -1,4 +1,4 @@
-from contextlib import suppress
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -23,8 +23,10 @@ def pre_compact(payload: dict[str, Any]) -> dict[str, Any]:
         return {}
     directory = root.joinpath(MIGHTYMODELS_DIR, slug)
     text = '\n'.join(_lines(root, slug, directory, payload)) + '\n'
-    with suppress(OSError):
+    try:
         directory.joinpath(SNAPSHOT).write_text(text, encoding='utf-8')
+    except OSError as err:
+        print(f'mightymcp hook stood down: {err}', file=sys.stderr)
     return {}
 
 

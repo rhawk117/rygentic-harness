@@ -151,6 +151,19 @@ def test_a_session_with_no_active_ticket_writes_nothing(
     assert list(repo.joinpath('.mightymodels').glob('*/snapshot.md')) == []
 
 
+def test_a_snapshot_that_cannot_be_written_says_so_on_stderr(
+    ticket: Path, repo: Path, payload: Load, run_hook_script: RunScript
+) -> None:
+    ticket.joinpath('snapshot.md').mkdir()
+    hook = payload('PreCompact') | {'cwd': str(repo)}
+    proc = run_hook_script(HOOK, json.dumps(hook), repo)
+
+    assert proc.returncode == 0
+    assert proc.stderr.startswith('mightymcp hook stood down: ')
+    assert 'snapshot.md' in proc.stderr
+    assert json.loads(proc.stdout) == {}
+
+
 def test_the_off_switch_stands_the_hook_down(
     ticket: Path, repo: Path, payload: Load, run_hook_script: RunScript
 ) -> None:

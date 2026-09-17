@@ -182,6 +182,21 @@ def test_a_stop_with_no_ticket_is_still_gated(repo: Path, stop: Stop) -> None:
     assert list(repo.joinpath('.mightymodels').glob('*/dispatches.jsonl')) == []
 
 
+def test_a_dispatch_log_that_cannot_be_written_still_blocks(
+    ticket: Path, repo: Path, payload: Load, run_hook_script: RunScript
+) -> None:
+    ticket.joinpath('dispatches.jsonl').mkdir()
+    hook = payload('SubagentStop') | {
+        'cwd': str(repo),
+        'last_assistant_message': UNPARSEABLE,
+    }
+    proc = run_hook_script(HOOK, json.dumps(hook), repo)
+
+    assert proc.stderr.startswith('mightymcp hook stood down: ')
+    assert 'dispatches.jsonl' in proc.stderr
+    assert json.loads(proc.stdout)['decision'] == 'block'
+
+
 def test_the_off_switch_stands_the_hook_down(
     ticket: Path, repo: Path, payload: Load, run_hook_script: RunScript
 ) -> None:

@@ -7,14 +7,13 @@ from mightymcp.handoff import BATON_CAP, DECISIONS_CAP
 from mightymcp.hooks.guard import ENGINEER, deny, payload_root, payload_slug
 from mightymcp.hookstate import agent_state
 from mightymcp.paths import MIGHTYMODELS_DIR
+from mightymcp.prune import ARCHIVE_CAP
 from mightymcp.report import REPORT_CAP
 from mightymcp.scripts import JOURNAL
 
 WRITE = 'Write'
 BRIEFS = f'{MIGHTYMODELS_DIR}/*/briefs/*.md'
 CRASHOUTS = f'{MIGHTYMODELS_DIR}/{JOURNAL}'
-# prune-ticket sets the archive cap; every other cap belongs to the tool that writes it
-ARCHIVE_CAP = 30
 # archives first: a cap is read from the first pattern the path matches
 CAPS = (
     (f'{MIGHTYMODELS_DIR}/archives/*.md', ARCHIVE_CAP),

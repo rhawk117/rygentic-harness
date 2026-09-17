@@ -258,22 +258,24 @@ def _conditions(findings: list[Finding], remediation: list[str] | None) -> list[
 
 
 def _group(findings: list[Finding]) -> list[list[Finding]]:
-    """Group findings that overlap on file:line; each group is one defect."""
+    """Group findings that overlap on file:line; each group is one defect.
+
+    Sorted by file and span first, so a chain of overlaps closes the same way
+    whatever order the reviewers reported it in: once the spans ascend, only the
+    group still being built can overlap the next finding.
+    """
     groups: list[list[Finding]] = []
-    for finding in findings:
+    for finding in sorted(findings, key=lambda entry: (entry.file, _span(entry.line))):
         span = _span(finding.line)
-        group = next(
-            (
-                group
-                for group in groups
-                if group[0].file == finding.file and _overlaps(_bounds(group), span)
-            ),
-            None,
-        )
-        if group is None:
-            groups.append([finding])
+        open_group = groups[-1] if groups else None
+        if (
+            open_group is not None
+            and open_group[0].file == finding.file
+            and _overlaps(_bounds(open_group), span)
+        ):
+            open_group.append(finding)
         else:
-            group.append(finding)
+            groups.append([finding])
     return groups
 
 

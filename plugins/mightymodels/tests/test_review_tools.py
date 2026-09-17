@@ -77,6 +77,22 @@ def test_findings_that_do_not_overlap_stay_separate() -> None:
     assert [entry.ids for entry in merged.findings] == [['MV-1'], ['MV-2'], ['UB-3']]
 
 
+def test_a_chain_of_overlaps_merges_the_same_in_either_order() -> None:
+    chain = [
+        finding(id='UB-1', line='1-5', source='uncle-bob'),
+        finding(id='UB-2', line='4-12', source='uncle-bob'),
+        finding(id='MV-1', severity='High', line='10-15'),
+    ]
+
+    for order in (chain, list(reversed(chain))):
+        merged = findings_merge(order)
+
+        assert len(merged.findings) == 1
+        assert merged.findings[0].line == '1-15'
+        assert merged.findings[0].severity == 'High'
+        assert sorted(merged.findings[0].ids) == ['MV-1', 'UB-1', 'UB-2']
+
+
 def test_uncle_bob_blocker_merges_as_critical() -> None:
     merged = findings_merge([
         finding(id='UB-1', severity='Blocker', source='uncle-bob'),
