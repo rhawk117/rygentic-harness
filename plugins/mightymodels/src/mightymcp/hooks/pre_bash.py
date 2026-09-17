@@ -8,13 +8,15 @@ from mightymcp.paths import MIGHTYMODELS_DIR
 from mightymcp.prune import prunable
 
 # never-rules from the fleet contracts: they hold for every role, primary included
-NEVER = (
-    '--no-verify',
-    'push --force',
-    'push -f',
-    '--force-with-lease',
-    'reset --hard',
-)
+NO_VERIFY = '--no-verify'
+NEVER_GIT = {
+    'push': {
+        '--force': 'push --force',
+        '-f': 'push -f',
+        '--force-with-lease': '--force-with-lease',
+    },
+    'reset': {'--hard': 'reset --hard'},
+}
 GIT = 'git'
 GITTY_UP = 'gitty-up'
 SEPARATORS = ('|', '||', '&&', ';', '&')
@@ -33,20 +35,21 @@ def pre_bash(payload: dict[str, Any]) -> dict[str, Any]:
     role = agent_role(payload.get('agent_type', ''))
     tokens = _tokens(command)
     segments = _segments(tokens)
-    calls = _count(payload, role)
 
-    reason = (
-        _never_reason(command)
-        or _role_reason(role, tokens, segments)
-        or _budget_reason(role, calls)
-        or _prune_reason(payload, segments)
-    )
+    refusal = _never_reason(command) or _role_reason(role, tokens, segments)
+    if refusal:
+        return deny(refusal)
+
+    calls = _spend_budget(payload, role)
+    reason = _budget_reason(role, calls) or _prune_reason(payload, segments)
     return deny(reason) if reason else {}
 
 
 def _tokens(command: str) -> list[str]:
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
     try:
-        return shlex.split(command)
+        return list(lexer)
     except ValueError:
         return command.split()
 
@@ -61,7 +64,7 @@ def _segments(tokens: list[str]) -> list[list[str]]:
     return [segment for segment in segments if segment]
 
 
-def _count(payload: dict[str, Any], role: str | None) -> int:
+def _spend_budget(payload: dict[str, Any], role: str | None) -> int:
     agent_id = payload.get('agent_id', '')
     if role is None or not agent_id:
         return 0
@@ -69,11 +72,21 @@ def _count(payload: dict[str, Any], role: str | None) -> int:
 
 
 def _never_reason(command: str) -> str | None:
-    folded = ' '.join(command.split())
-    named = [rule for rule in NEVER if rule in folded]
-    if not named:
+    segments = _segments(_tokens(command))
+    named = next(filter(None, (_segment_never(segment) for segment in segments)), None)
+    if named is None:
         return None
-    return f'{named[0]} is a never-rule; solve the obstacle instead of bypassing it'
+    return f'{named} is a never-rule; solve the obstacle instead of bypassing it'
+
+
+def _segment_never(segment: list[str]) -> str | None:
+    command, *arguments = segment
+    if command != GIT:
+        return None
+    if NO_VERIFY in arguments:
+        return NO_VERIFY
+    flags = NEVER_GIT.get(_subcommand(arguments), {})
+    return next((name for flag, name in flags.items() if flag in arguments), None)
 
 
 def _role_reason(

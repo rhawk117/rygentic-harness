@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from mightymcp.hookstate import agent_state
 from mightymcp.ticket import HandoffContext, ticket_create
 
 HOOK = Path(__file__).resolve().parents[1].joinpath('hooks', 'pre_bash.py')
@@ -75,6 +76,13 @@ def scout(**overrides: str) -> dict[str, str]:
     return {'agent_id': 'agent_01', 'agent_type': 'scout'} | overrides
 
 
+def bash_calls(repo: Path, session: str) -> int:
+    """The Bash calls the state file records against the scout helper's agent."""
+    state = agent_state(repo, session, 'agent_01')
+    assert state is not None
+    return state.bash_calls
+
+
 def test_an_ordinary_command_is_left_alone(ticket: Path, guard: Guard) -> None:
     assert guard('uv run pytest -q') == {}
 
@@ -87,6 +95,10 @@ def test_an_ordinary_command_is_left_alone(ticket: Path, guard: Guard) -> None:
         'git push -f origin main',
         'git push --force-with-lease',
         'git reset --hard origin/main',
+        'git push origin main --force',
+        'git push origin x -f',
+        'git reset HEAD~1 --hard',
+        'git commit --no-verify',
     ],
 )
 def test_a_never_rule_is_denied_for_anyone(
@@ -96,6 +108,38 @@ def test_a_never_rule_is_denied_for_anyone(
 
     assert decision['permissionDecision'] == 'deny'
     assert 'never-rule' in decision['permissionDecisionReason']
+
+
+def test_a_never_rule_names_itself_in_the_reason(ticket: Path, guard: Guard) -> None:
+    decision = guard('git push --force origin main')
+
+    assert 'push --force' in decision['permissionDecisionReason']
+
+
+@pytest.mark.parametrize(
+    'command',
+    [
+        'command grep -rn -- "--no-verify" .',
+        'echo "never use push --force here"',
+    ],
+)
+def test_a_never_rule_named_in_an_argument_is_left_alone(
+    command: str, ticket: Path, guard: Guard
+) -> None:
+    assert guard(command) == {}
+
+
+def test_a_never_rule_denial_costs_a_scout_no_budget(
+    ticket: Path, repo: Path, payload: Load, guard: Guard
+) -> None:
+    session = payload('PreToolUse-Bash-scout')['session_id']
+    assert guard('cat src/app.py', **scout()) == {}
+    before = bash_calls(repo, session)
+
+    decision = guard('git push --force origin main', **scout())
+
+    assert decision['permissionDecision'] == 'deny'
+    assert bash_calls(repo, session) == before
 
 
 def test_gitty_up_may_not_run_git(ticket: Path, guard: Guard) -> None:
@@ -115,6 +159,22 @@ def test_a_scout_may_not_mutate_state(command: str, ticket: Path, guard: Guard) 
 
     assert decision['permissionDecision'] == 'deny'
     assert 'read-only' in decision['permissionDecisionReason']
+
+
+def test_a_scout_may_not_mutate_after_an_unspaced_operator(
+    ticket: Path, guard: Guard
+) -> None:
+    decision = guard('echo y&&rm -rf x', **scout())
+
+    assert decision['permissionDecision'] == 'deny'
+    assert 'rm mutates state' in decision['permissionDecisionReason']
+
+
+def test_a_scout_may_not_redirect_without_spaces(ticket: Path, guard: Guard) -> None:
+    decision = guard('echo x>file', **scout())
+
+    assert decision['permissionDecision'] == 'deny'
+    assert 'a redirection' in decision['permissionDecisionReason']
 
 
 @pytest.mark.parametrize('command', READ_ONLY)
