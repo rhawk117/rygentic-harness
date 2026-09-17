@@ -1,0 +1,13 @@
+{
+  "session_id": "0f9c1c8a-3f5e-4b2a-9e61-7a5f6c3d1b20",
+  "transcript_path": "/home/dev/.claude/projects/-home-dev-project/0f9c1c8a.jsonl",
+  "cwd": "/home/dev/project",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "subagent_type": "mightymodels:engineer",
+    "description": "implement task-03",
+    "prompt": "<objective>Execute the task specified in the ASKED stanza below. Brief path: .mightymodels/demo/briefs/task-03.md — append your ## DONE section there before reporting.</objective>\n\n## ASKED\nobjective: Cap the retry backoff.\nacceptance:\n  - AC-1: uv run pytest -q passes\nverification: uv run pytest -q\nfiles-in-scope: [src/app/**]\nengineer-tier: claude-sonnet-5\n\n<constraints>Commit when done.</constraints>\n"
+  }
+}

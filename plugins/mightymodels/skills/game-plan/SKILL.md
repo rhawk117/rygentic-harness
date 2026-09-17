@@ -99,6 +99,8 @@ plan (never append to it) and state in one paragraph what changed and why, so th
 a delta rather than re-reading two hundred lines. A revision that contradicts a Decided line
 is a new decision: put it back through one cross-examine round rather than editing the plan
 around it. On abandon, leave no plan.md behind.
+No server tool writes it: the brief halves have `mcp__mightymodels__brief_open` and
+`REPORT.md` has `mcp__mightymodels__report_write`, but the plan stays hand-written.
 
 ## plan.md schema (~200 lines max, contracts.md cap)
 

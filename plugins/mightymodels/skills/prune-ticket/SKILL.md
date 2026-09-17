@@ -10,9 +10,9 @@ The lifecycle's last move, and the reason `.mightymodels/` never becomes a landf
 
 ## Sequence
 
-**1. Refuse live work.** Before anything: `REPORT.md` open threads, an active `whats-broken.md`, unpushed commits on the ticket's branch, unchecked tasks in the issue. Any of these → refuse, list exactly what's blocking, stop. Pruning a live ticket doesn't close work, it hides it.
+**1. Refuse live work.** Before anything: `REPORT.md` open threads, an active `whats-broken.md`, unpushed commits on the ticket's branch, unchecked tasks in the issue. Any of these → refuse, list exactly what's blocking, stop. `mcp__mightymodels__ticket_prunable` enumerates exactly those blockers. Pruning a live ticket doesn't close work, it hides it.
 
-**2. Write the archive first.** `.mightymodels/archives/<task-slug>.md`, 30 lines max, written and verified *before* any deletion:
+**2. Write the archive first.** `.mightymodels/archives/<task-slug>.md`, 30 lines max, written through `mcp__mightymodels__ticket_archive` and verified *before* any deletion:
 
 ```markdown
 # <slug>
@@ -25,6 +25,6 @@ The compression test: a teammate touching this area next quarter reads 30 lines 
 
 **3. Extract cascading documentation.** Read `REPORT.md` and the review reports for "this changed how X works" signals — a new config key, a changed workflow, a retired endpoint. Propose the corresponding updates to the repo's real docs (AGENTS.md, README, runbooks) **as diffs, applied only on the user's approval**. Never auto-commit documentation; wrong docs outlive wrong code.
 
-**4. Delete the ticket directory.** After the archive exists and doc diffs are settled: remove `.mightymodels/<task-slug>/` entirely. Confirm what was removed in one line.
+**4. Delete the ticket directory.** After the archive exists and doc diffs are settled: `mcp__mightymodels__ticket_delete` removes `.mightymodels/<task-slug>/` entirely. Confirm what was removed in one line.
 
 When `.mightymodels/` is tracked by the repo (team mode), the deletion is a commit — say so and let the user commit it with their next batch rather than committing unilaterally.

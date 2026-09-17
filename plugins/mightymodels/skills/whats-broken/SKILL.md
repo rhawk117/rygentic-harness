@@ -16,7 +16,7 @@ The protocol exists because of one failure mode: a plausible quick fix that skip
 
 **2. Evidence.** Scouts gather facts: the failing path, recent changes touching it (`git log`), what the error actually says versus what everyone assumed it says, config and environment at the failure site. Gitty-up's fail report (buckets + log tails) is admissible evidence on the CI path. No fixes in this phase — not proposed, not "just noted for later". Full stop.
 
-**3. Hypothesis — exactly one, falsifiable, on disk.** Write to `.mightymodels/<slug>/whats-broken.md`:
+**3. Hypothesis — exactly one, falsifiable, on disk.** Write it through `mcp__mightymodels__whats_broken_write` to `.mightymodels/<slug>/whats-broken.md`:
 
 ```markdown
 # whats-broken: <slug or symptom>
@@ -28,10 +28,10 @@ test: <the minimal check that could falsify this>
 
 Current-state only — each attempt regenerates the file (prior attempts live in the summary line, not as an appended archive). One hypothesis at a time: two live hypotheses means the test that follows proves neither.
 
-**4. Test the hypothesis, minimally.** The cheapest check that could falsify it — a log line, a one-off command, a narrowed test invocation. Not a fix. Falsified → back to phase 3 with the new evidence, attempt counter up. Confirmed → phase 5.
+**4. Test the hypothesis, minimally.** The cheapest check that could falsify it — a log line, a one-off command, a narrowed test invocation. Not a fix. Falsified → back to phase 3 with the new evidence, attempt counter up through `mcp__mightymodels__task_record_attempt`. Confirmed → phase 5.
 
 **5. Fix, through the normal path.** An engineer dispatch whose ASKED stanza includes a regression test as an acceptance criterion. The fix targets the confirmed cause — if the diff you're reviewing patches the symptom's location instead of the hypothesis's location, that is the quick fix wearing a lab coat; reject it.
 
 ## The breaker
 
-Three failed fixes → **stop.** Summarize the hypothesis log and escalate to the user: "the architecture or the understanding is wrong — which do you want to attack?" A fourth patch is never the answer; by strike three the cheap explanations are exhausted and continuing spends real money relocating the problem. Delete `whats-broken.md` when the debug closes (prune-ticket removes stragglers).
+Three failed fixes → **stop.** Summarize the hypothesis log and escalate to the user: "the architecture or the understanding is wrong — which do you want to attack?" A fourth patch is never the answer; by strike three the cheap explanations are exhausted and continuing spends real money relocating the problem. Delete `whats-broken.md` through `mcp__mightymodels__whats_broken_close` when the debug closes (prune-ticket removes stragglers).

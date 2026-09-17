@@ -87,6 +87,7 @@ later rung agrees; the ladder is ordered by how much each rung's evidence is wor
 
 Write `.mightymodels/<task-slug>/dialectic-<fork-slug>.md`, 40 lines or fewer. The full
 reports stay in the transcript; this file is what survives compaction.
+`mcp__mightymodels__dialectic_record_write` writes it into the ticket directory.
 
 ```markdown
 # <the fork, one line>

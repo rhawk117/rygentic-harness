@@ -23,6 +23,8 @@ externalized before the workflow advances, and verification requiring independen
 fresh worker context.
 The fleet stays cheap because each worker refuses the work of the tier above it, and your
 dispatches stay honest because every claim a worker makes is checkable by another worker.
+The server answers the mechanical questions: `mcp__mightymodels__route_ramp` picks the ramp from `ticket.yml`,
+and `mcp__mightymodels__sprint_status` reports where every task stands.
 
 ## Promptlint requirement for every subagent prompt
 
@@ -41,7 +43,7 @@ promptlint role template or apply its full prompt architecture. Every prompt mus
 Prompts must state instructions positively, explain non-obvious constraints, avoid prescribing
 implementation before discovery, and trim any content that does not change worker behavior.
 For known fleet roles, use the corresponding template under
-`skills/promptlint/references/templates/`; engineer prompts must carry the complete ASKED stanza.
+`skills/promptlint/references/templates/` (`mm://template/{role}`); engineer prompts must carry the complete ASKED stanza.
 When no role template exists, apply the full prompt architecture rather than dispatching the
 rough task directly. This applies especially to grumpy, sunny, and wingman.
 
@@ -129,7 +131,7 @@ active `.mightymodels/<task-slug>/` directory; neither reviewer modifies the rev
 
 Read the active ticket's `subagent-models` block in `.mightymodels/<slug>/ticket.yml` at every
 dispatch; the `model:` pins inside the agent files are only the fallback for headless runs
-where no ticket answers. Defaults: scout and gitty-up on `claude-haiku-4-5`; budgetron and
+where no ticket answers. `mcp__mightymodels__resolve_model` performs that read and applies the fallback. Defaults: scout and gitty-up on `claude-haiku-4-5`; budgetron and
 grumpy on `claude-sonnet-5`; sunny, wingman, uncle-bob, and merge-vader on `claude-opus-5`;
 engineer derived from ticket scope (`large` pulls `claude-opus-5`, otherwise
 `claude-sonnet-5`). You may bump a
@@ -140,8 +142,9 @@ single gnarly task's engineer one tier at dispatch; log the reason in that task'
 Workers report in XML with a shared vocabulary: `<report>`, `<findings>`, `<verdict>`,
 `<confidence>`, `<follow_up>`. Scouts separate `VERIFIED` facts from `INFERRED` ones, and
 anything inferred names what it rests on; treat an `INFERRED` line as a hypothesis, not a fact.
+`mcp__mightymodels__parse_report` parses one worker report into that verdict and the evidence behind it.
 The full verdict vocabularies and the severity table live in
-`skills/agents-assemble/references/contracts.md`, which wins whenever a report and this page seem
+`skills/agents-assemble/references/contracts.md` (`mm://ref/agents-assemble/contracts`), which wins whenever a report and this page seem
 to disagree.
 
 ## Anti-patterns the mill exists to prevent

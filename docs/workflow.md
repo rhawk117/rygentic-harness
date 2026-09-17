@@ -122,6 +122,16 @@ full ordering rule lives in `plugins/mightymodels/skills/agents-assemble/referen
 The sprint ends with a `REPORT.md` of at most 50 lines: what shipped, what deviated, what
 remains.
 
+Those artifacts have a server behind them. The plugin ships an MCP server named
+`mightymodels`: the loop's writes run through its tools, and every skill reference, agent
+contract, and role template is readable at an `mm://` URI, so a worker loads a contract
+without being handed a path. Activate it for a session with
+`claude --plugin-dir plugins/mightymodels`, then `/reload-plugins`. Its hooks stand down
+when `MIGHTYMCP_OFF` holds any non-empty value, and the workflow still runs as written —
+every tool writes a file a human could have written by hand. When more than one ticket
+directory is on disk, `MIGHTYMCP_TICKET` selects the live one, after a ticket whose
+branch-name matches the checked-out branch is tried first.
+
 ## Finish
 
 `stick-the-landing` pushes the branch and dispatches `gitty-up` to open the PR from the repo's

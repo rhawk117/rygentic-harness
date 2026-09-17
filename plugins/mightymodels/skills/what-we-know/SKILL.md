@@ -118,6 +118,7 @@ An uncertainty here is a report, not a question. The primary decides ask-versus-
 do not ask the user, and you do not silently guess on anything whose blast radius crosses a
 file boundary. Blast radius is the primary's routing signal, so state it for every
 uncertainty, including the ones you think are harmless.
+`mcp__mightymodels__blast_radius_questions` classifies them and names the ones past one file, which are the primary's to ask about.
 
 Sprint mode never produces the analysis or readiness sections. The task's judgment lives in the
 plan and the ASKED stanza; adding a SWOT per task is context spent on a question nobody asked.

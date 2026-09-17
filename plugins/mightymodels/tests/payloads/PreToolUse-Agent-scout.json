@@ -1,0 +1,13 @@
+{
+  "session_id": "0f9c1c8a-3f5e-4b2a-9e61-7a5f6c3d1b20",
+  "transcript_path": "/home/dev/.claude/projects/-home-dev-project/0f9c1c8a.jsonl",
+  "cwd": "/home/dev/project",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "subagent_type": "mightymodels:scout",
+    "description": "verify task-03",
+    "prompt": "<objective>\nAnswer one retrieval question: does the DONE half of .mightymodels/demo/briefs/task-03.md meet its ASKED criteria?\n</objective>\n<discovery>\nSearch scope: src/app. Terms: \"backoff\". Exclude vendored trees.\n</discovery>\n"
+  }
+}

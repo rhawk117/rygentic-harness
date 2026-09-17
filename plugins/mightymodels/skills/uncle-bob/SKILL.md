@@ -27,7 +27,7 @@ Two modes. **Pure** (default): the book as written — 20-line function limit,
 comments as failures, one switch per selection type. **Calibrated** (only
 when the user asks, with words like "calibrated", "pragmatic", "less
 dogmatic"): same analysis, but contested-doctrine findings are tagged and
-capped per references/report.md. Never silently downgrade pure mode; the
+capped per references/report.md (`mm://ref/uncle-bob/report`). Never silently downgrade pure mode; the
 user chose a skill named uncle-bob.
 
 ## Workflow
@@ -44,7 +44,7 @@ than sampling everything thinly.
 
 ### 2. Mechanical pass
 
-Run the bundled script (stdlib-only, py/js/ts):
+Run the bundled script through `mcp__mightymodels__metrics_run` (stdlib-only, py/js/ts):
 
 ```bash
 python3 scripts/metrics.py <repo_root> --out <repo_root>/uncle-bob-metrics.json
@@ -72,12 +72,12 @@ file — the false-positive lists exist because mechanical matches lie.
 Read all three rubric references before judging (they are the rubric —
 do not grade from memory):
 
-- `references/solid.md` — the five principles: detection signatures AND
+- `references/solid.md` (`mm://ref/uncle-bob/solid`) — the five principles: detection signatures AND
   the false-positive list for each. The false positives are Martin's own
   carve-outs; applying the principles without them produces a caricature.
-- `references/clean-code.md` — chapter rules, numeric thresholds, and the
+- `references/clean-code.md` (`mm://ref/uncle-bob/clean-code`) — chapter rules, numeric thresholds, and the
   complete ch. 17 smells catalog (cite findings by ID: G23, F3, N7...).
-- `references/components.md` — component principles, how to interpret
+- `references/components.md` (`mm://ref/uncle-bob/components`) — component principles, how to interpret
   I/A/D and cycles, the Dependency Rule, Screaming Architecture, and the
   testability probe.
 
@@ -101,7 +101,7 @@ judgment rests on at least a dozen files from different areas. Track what
 you read — the report's coverage section states it.
 
 While reading, collect findings as you go: principle ID, file:line, the
-evidence line(s), severity per references/report.md. Check every candidate
+evidence line(s), severity per references/report.md (`mm://ref/uncle-bob/report`). Check every candidate
 against the relevant false-positive list before recording it.
 
 ### 4. Architecture pass
@@ -115,9 +115,9 @@ packages? does one file change for five unrelated reasons?).
 
 ### 5. Grade and write
 
-Follow `references/report.md` exactly: severity model, category grades,
-weighted overall grade, the no-tests cap, and the report template. Write
-`UNCLE-BOB-REPORT.md` to `.mightymodels/<task-slug>/review/` when an active
+Follow `references/report.md` (`mm://ref/uncle-bob/report`) exactly: severity model, category grades,
+the weighted overall grade `mcp__mightymodels__grade_compute` computes, the no-tests cap, and the report template. Write
+`UNCLE-BOB-REPORT.md` through `mcp__mightymodels__review_report_write` to `.mightymodels/<task-slug>/review/` when an active
 ticket directory exists (the one the user names, else the newest
 `.mightymodels/*/ticket.yml` on this branch). When no ticket directory
 exists, fall back to the repository root: write `UNCLE-BOB-REPORT.md`, run

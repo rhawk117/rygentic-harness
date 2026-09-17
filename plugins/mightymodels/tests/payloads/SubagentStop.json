@@ -1,0 +1,12 @@
+{
+  "session_id": "0f9c1c8a-3f5e-4b2a-9e61-7a5f6c3d1b20",
+  "transcript_path": "/home/dev/.claude/projects/-home-dev-project/0f9c1c8a.jsonl",
+  "cwd": "/home/dev/project",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_id": "agent_01J8QK3P7N",
+  "agent_transcript_path": "/home/dev/.claude/projects/-home-dev-project/agent_01J8QK3P7N.jsonl",
+  "agent_type": "scout",
+  "last_assistant_message": "<report>\n  <status>done</status>\n</report>"
+}

@@ -1,6 +1,6 @@
 ---
 name: engineer
-tools: [Read, Grep, Glob, Bash, Edit, Write]
+tools: [Read, Grep, Glob, Bash, Edit, Write, mcp__mightymodels]
 model: claude-sonnet-5 # default — an active ticket's .mightymodels/<slug>/ticket.yml subagent-models block overrides at dispatch; the pin is the headless fallback
 description: >-
     Executes exactly one task group from an approved plan. Edits only the files the group owns, runs each task's verification in order, and reports what changed. Language- and ecosystem-agnostic. One implementer per parallel group; other implementers may be running concurrently on other groups.

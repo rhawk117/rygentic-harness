@@ -31,6 +31,11 @@ Per-ticket, sparse, organized by unit of work. The unit of deletion is the unit 
 | handoffs/ | prepare-handoff / stick-the-landing / baton-pass (BATON.md) | the next session's primary |
 | REPORT.md | agents-assemble primary | stick-the-landing, review-circus, prune-ticket |
 | archives/ | prune-ticket | future humans |
+| attempts.jsonl | `mcp__mightymodels__task_record_attempt`, append-only, no cap | `mcp__mightymodels__sprint_status`, the primary |
+| dispatches.jsonl | the SubagentStop hook, append-only, no cap | the primary, auditing what was dispatched |
+| decisions.md | `mcp__mightymodels__decision_record`, ≤40 lines | the next session's primary, baton-pass |
+| snapshot.md | the PreCompact hook, regenerated per compaction, ≤40 lines | the SessionStart hook, the primary after a compaction |
+| .hookstate/<session>.json | the guard hooks, one JSON per session, no cap | the guard hooks; repo-level, outside any ticket directory |
 
 ## Thinness rule for handoffs
 

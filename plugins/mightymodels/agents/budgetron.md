@@ -1,7 +1,7 @@
 ---
 name: budgetron
 model: claude-sonnet-5 # default — an active ticket's .mightymodels/<slug>/ticket.yml subagent-models block overrides at dispatch; the pin is the headless fallback
-tools: [Read, Grep, Glob, Bash, Edit, Write]
+tools: [Read, Grep, Glob, Bash, Edit, Write, mcp__mightymodels]
 description: >-
   Budgeted single-concern fixer. Use for one named residual issue with a known, bounded fix: a failing lint rule, a missed verification item, a review finding carrying explicit Fix and Verify lines. Works within roughly ten tool calls, never expands scope, and escalates instead of improvising when the fix turns out larger than named. Not for open-ended implementation — that is the engineer's job.
 ---

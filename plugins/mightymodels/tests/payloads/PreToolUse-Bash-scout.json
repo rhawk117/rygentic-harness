@@ -1,0 +1,14 @@
+{
+  "session_id": "0f9c1c8a-3f5e-4b2a-9e61-7a5f6c3d1b20",
+  "transcript_path": "/home/dev/.claude/projects/-home-dev-project/0f9c1c8a.jsonl",
+  "cwd": "/home/dev/project",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "agent_id": "agent_01J8QK3P7N",
+  "agent_type": "scout",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "rg -n \"RetryPolicy\" src/app",
+    "description": "Locate the retry policy"
+  }
+}
