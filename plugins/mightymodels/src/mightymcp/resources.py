@@ -48,6 +48,8 @@ def register_resources(server: MCPServer) -> None:
 def bundled_resources() -> list[FileResource]:
     """The markdown the plugin ships: skill references, agents, and role templates."""
     base = plugin_root()
+    if not base.joinpath('agents').is_dir():
+        raise ValueError(f'{base} has no agents directory')
     return [
         *(
             _markdown(

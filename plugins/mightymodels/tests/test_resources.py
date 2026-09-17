@@ -7,7 +7,13 @@ from mcp.types import Resource, ResourceTemplate, TextResourceContents
 from mightymcp.brief import AskedStanza, render_asked
 from mightymcp.fleet import plugin_root
 from mightymcp.paths import ACTIVE_TICKET_VAR
-from mightymcp.resources import BRIEF_URI, ENGINEER_URI, STATUS_URI, TICKET_URI
+from mightymcp.resources import (
+    BRIEF_URI,
+    ENGINEER_URI,
+    STATUS_URI,
+    TICKET_URI,
+    bundled_resources,
+)
 from mightymcp.server import server
 
 REFS = [
@@ -253,3 +259,12 @@ def test_a_traversal_parameter_is_rejected_before_a_path_is_built(repo: Path) ->
     assert 'Unknown resource' in read_error('mm://ticket/demo/brief/..')
     assert "contains '..'" in read_error('mm://ticket/a..b')
     assert "contains '..'" in read_error('mm://ticket/demo/brief/a..b')
+
+
+def test_a_plugin_root_without_an_agents_directory_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv('CLAUDE_PLUGIN_ROOT', str(tmp_path))
+
+    with pytest.raises(ValueError, match=str(tmp_path)):
+        bundled_resources()

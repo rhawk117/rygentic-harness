@@ -38,7 +38,10 @@ def plugin_root() -> Path:
 
 
 def load_fleet(root: Path | None = None) -> Fleet:
-    agents_dir = (root or plugin_root()).joinpath('agents')
+    resolved_root = root or plugin_root()
+    agents_dir = resolved_root.joinpath('agents')
+    if not agents_dir.is_dir():
+        raise ValueError(f'{resolved_root} has no agents directory')
     return Fleet(workers=[_read_worker(p) for p in sorted(agents_dir.glob('*.md'))])
 
 

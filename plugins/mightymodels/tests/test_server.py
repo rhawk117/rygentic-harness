@@ -147,6 +147,15 @@ def test_agent_file_without_frontmatter_is_rejected(tmp_path: Path) -> None:
         load_fleet(tmp_path)
 
 
+def test_a_plugin_root_without_an_agents_directory_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv('CLAUDE_PLUGIN_ROOT', str(tmp_path))
+
+    with pytest.raises(ValueError, match=str(tmp_path)):
+        load_fleet()
+
+
 async def _call(name: str, arguments: dict[str, Any]) -> CallToolResult:
     async with Client(server) as client:
         return await client.call_tool(name, arguments)
