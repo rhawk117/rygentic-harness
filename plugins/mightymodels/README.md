@@ -14,7 +14,17 @@ on the contract.
 The server and the hooks are Python 3.14 and run through
 [uv](https://docs.astral.sh/uv/), which Claude Code invokes for them; nothing
 is installed into the host project. Create the environment once after
-installing, from the repository that holds the plugin:
+installing.
+
+Marketplace install, using the directory `/plugin install` reports (for
+example `~/.claude/plugins/cache/rygentic-harness/mightymodels/<version>`):
+
+```bash
+uv sync --project ~/.claude/plugins/cache/rygentic-harness/mightymodels/<version>
+```
+
+Working checkout, the case the Activation section below describes, from the
+repository that holds the plugin:
 
 ```bash
 uv sync --project plugins/mightymodels
@@ -42,6 +52,11 @@ Edits to the skills, agents, hooks, or server are picked up with
 --project ${CLAUDE_PLUGIN_ROOT} mightymcp`. Every tool returns a `refusals`
 list and writes nothing while that list is non-empty, so a refused call leaves
 the ticket as it found it.
+
+When more than one ticket directory is present under `.mightymodels/`, the
+server picks the one whose `handoff-context.branch-name` matches the checked
+out branch; if none matches, it falls back to the `MIGHTYMCP_TICKET`
+environment variable, and refuses if neither resolves a ticket.
 
 | Tools | What they do |
 | --- | --- |

@@ -128,7 +128,9 @@ contract, and role template is readable at an `mm://` URI, so a worker loads a c
 without being handed a path. Activate it for a session with
 `claude --plugin-dir plugins/mightymodels`, then `/reload-plugins`. Its hooks stand down
 when `MIGHTYMCP_OFF` holds any non-empty value, and the workflow still runs as written —
-every tool writes a file a human could have written by hand.
+every tool writes a file a human could have written by hand. When more than one ticket
+directory is on disk, `MIGHTYMCP_TICKET` selects the live one, after a ticket whose
+branch-name matches the checked-out branch is tried first.
 
 ## Finish
 
