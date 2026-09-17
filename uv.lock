@@ -595,6 +595,7 @@ lint = [
     { name = "ty" },
 ]
 test = [
+    { name = "mightymcp" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
@@ -626,6 +627,7 @@ lint = [
     { name = "ty", marker = "python_full_version >= '3.14'", specifier = ">=0.0.73" },
 ]
 test = [
+    { name = "mightymcp", editable = "plugins/mightymodels" },
     { name = "pytest", specifier = ">=9.0" },
     { name = "pytest-cov", specifier = ">=7.0" },
     { name = "pytest-mock", specifier = ">=3.15" },
