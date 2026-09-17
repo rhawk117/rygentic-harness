@@ -4,6 +4,8 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, Field
 
+from mightymcp.fleet import FLEET_ROLES
+
 # Vocabularies come from contracts.md; grumpy and sunny classify entries instead of
 # carrying a verdict, so their leading entry class is the verdict the loop routes on.
 VERDICTS = {
@@ -15,7 +17,7 @@ VERDICTS = {
     'sunny': ('CONFIRMED', 'SOUND', 'UNCONFIRMED'),
 }
 WINGMAN = 'wingman'
-ROLES = (*VERDICTS, WINGMAN)
+ROLES = FLEET_ROLES
 TEXT_ROLES = ('grumpy', 'sunny')
 REQUIRED = {
     'scout': ('verdict', 'confidence'),

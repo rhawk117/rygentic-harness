@@ -1,4 +1,7 @@
 import pytest
+from mightymcp.fleet import BUNDLED_PLUGIN_ROOT, FLEET_ROLES, load_fleet
+from mightymcp.hooks.guard import AGENT_ROLES
+from mightymcp.hooks.pre_bash import BUDGETS
 from mightymcp.routing import (
     DEFAULT_MODELS,
     FILE_BOUNDARY,
@@ -12,6 +15,7 @@ from mightymcp.routing import (
     route_finding,
     route_ramp,
 )
+from mightymcp.worker_reports import VERDICTS, WINGMAN
 
 RAMP_ROWS = [
     ('sm', False, 'yolo', 'scope sm with plan-first false'),
@@ -215,3 +219,17 @@ def test_an_uncertainty_naming_no_path_is_refused() -> None:
     assert result.refusals == [
         'uncertainty 2 names no path; the radius is read from the paths'
     ]
+
+
+def test_the_fleet_vocabulary_is_the_agent_files_the_plugin_ships() -> None:
+    roster = sorted(worker.name for worker in load_fleet(BUNDLED_PLUGIN_ROOT).workers)
+
+    assert list(FLEET_ROLES) == roster
+
+
+def test_every_role_table_keys_off_the_fleet_vocabulary() -> None:
+    roles = set(FLEET_ROLES)
+
+    assert set(VERDICTS) | {WINGMAN} <= roles
+    assert set(BUDGETS) <= roles
+    assert set(AGENT_ROLES) <= roles

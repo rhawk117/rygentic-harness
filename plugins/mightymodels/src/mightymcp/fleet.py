@@ -9,6 +9,17 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 # src/mightymcp -> src -> plugins/mightymodels
 BUNDLED_PLUGIN_ROOT = PACKAGE_DIR.parents[1]
 FRONTMATTER_FENCE = '---\n'
+# the one fleet vocabulary: the agent files under agents/, in the order load_fleet
+# reads them; routing, hooks.guard, and worker_reports key their role tables off it
+FLEET_ROLES = (
+    'budgetron',
+    'engineer',
+    'gitty-up',
+    'grumpy',
+    'scout',
+    'sunny',
+    'wingman',
+)
 
 
 class Worker(BaseModel):

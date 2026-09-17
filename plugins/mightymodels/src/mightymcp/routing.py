@@ -2,24 +2,31 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, Field
 
+from mightymcp.fleet import FLEET_ROLES
+
 HAIKU = 'claude-haiku-4-5'
 SONNET = 'claude-sonnet-5'
 OPUS = 'claude-opus-5'
 
 # Defaults from using-mightymodels; engineer is derived from ticket scope instead.
 PRIMARY = 'primary-agent'
-DEFAULT_MODELS = {
-    PRIMARY: SONNET,
-    'scout': HAIKU,
+ENGINEER = 'engineer'
+FLEET_MODELS = {
     'budgetron': SONNET,
     'gitty-up': HAIKU,
     'grumpy': SONNET,
+    'scout': HAIKU,
     'sunny': OPUS,
     'wingman': OPUS,
+}
+# the primary and the reviewers are not fleet agents; every fleet pin is read out of
+# FLEET_ROLES, so a new agent file is a KeyError here until it is pinned
+DEFAULT_MODELS = {
+    PRIMARY: SONNET,
+    **{role: FLEET_MODELS[role] for role in FLEET_ROLES if role != ENGINEER},
     'merge-vader': OPUS,
     'uncle-bob': OPUS,
 }
-ENGINEER = 'engineer'
 MODEL_ROLES = (*DEFAULT_MODELS, ENGINEER)
 LARGE_SCOPE = 'large'
 CRITICAL = 'Critical'

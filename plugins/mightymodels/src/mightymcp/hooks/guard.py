@@ -1,22 +1,15 @@
 from pathlib import Path
 from typing import Any
 
+from mightymcp.fleet import FLEET_ROLES
 from mightymcp.paths import TicketPathError, active_ticket, repo_root
 
 PRE_TOOL_USE = 'PreToolUse'
 PLUGIN_PREFIX = 'mightymodels:'
 ENGINEER = 'engineer'
 SCOUT = 'scout'
-# the agent files this plugin ships; a dispatch names one of these after the prefix
-AGENT_ROLES = (
-    SCOUT,
-    ENGINEER,
-    'budgetron',
-    'gitty-up',
-    'grumpy',
-    'sunny',
-    'wingman',
-)
+# a dispatch names one of the fleet roles after the prefix
+AGENT_ROLES = FLEET_ROLES
 
 
 def allow(tool_input: dict[str, Any], reason: str) -> dict[str, Any]:

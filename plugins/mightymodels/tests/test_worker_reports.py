@@ -418,8 +418,8 @@ def test_an_unknown_role_is_refused() -> None:
 
     assert refusals == [
         (
-            "unknown role 'merge-vader'; expected scout, engineer, budgetron, "
-            'gitty-up, grumpy, sunny, wingman'
+            "unknown role 'merge-vader'; expected budgetron, engineer, gitty-up, "
+            'grumpy, scout, sunny, wingman'
         )
     ]
 
