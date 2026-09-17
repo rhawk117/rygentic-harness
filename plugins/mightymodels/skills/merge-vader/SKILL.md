@@ -25,7 +25,7 @@ The diff shows what changed. It cannot show what the change breaks: the caller o
 <division_of_labor>
 You: read the diff, build the question ledger, dispatch scouts, judge severity, write the report, issue the verdict. All interpretation is yours.
 
-`scout`: a retrieval-only subagent with a five-tool-call budget. It locates files and symbols, finds call sites, extracts config values, runs one read-only command, and returns an XML `<report>` carrying a verdict (`VERIFIED`, `INFERRED`, `NEEDS-ANALYSIS`, `UNKNOWN-BLOCKED`), `file:line` findings, and sometimes a `<follow_up>`. Read the scout's own contract at `mm://agent/scout` once before your first dispatch so you know the contract you are consuming.
+`scout`: a retrieval-only subagent with a five-tool-call budget. It locates files and symbols, finds call sites, extracts config values, runs one read-only command, and returns an XML `<report>` carrying a verdict (`VERIFIED`, `INFERRED`, `NEEDS-ANALYSIS`, `UNKNOWN-BLOCKED`), `file:line` findings, and sometimes a `<follow_up>`. Read the scout's own contract (`agents/scout.md`, `mm://agent/scout`) once before your first dispatch so you know the contract you are consuming.
 
 Two consequences of that contract shape every dispatch:
 
