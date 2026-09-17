@@ -1,8 +1,9 @@
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from mightymcp.attempts import AttemptRecord, task_record_attempt
+from mightymcp.attempts import AttemptRecord, attempts_by_task, task_record_attempt
 
 
 def record(kind: str, outcome: str = 'fail', check: str | None = None) -> AttemptRecord:
@@ -115,3 +116,25 @@ def test_a_log_line_that_is_not_json_is_skipped(ticket_root: Path) -> None:
 
     assert logged.attempts == 1
     assert logged.escalate_to is None
+
+
+def test_attempts_by_task_counts_every_task_and_skips_junk(ticket_root: Path) -> None:
+    log = ticket_root.joinpath('attempts.jsonl')
+    log.write_text(
+        '\n'.join([
+            json.dumps({'task_id': 'task-01', 'outcome': 'fail'}),
+            json.dumps({'task_id': 'task-01', 'outcome': 'pass'}),
+            json.dumps({'task_id': 'task-02', 'outcome': 'fail'}),
+            json.dumps({'outcome': 'fail'}),
+            'not json at all',
+            '',
+        ])
+        + '\n',
+        encoding='utf-8',
+    )
+
+    assert attempts_by_task(log) == Counter({'task-01': 2, 'task-02': 1})
+
+
+def test_attempts_by_task_without_a_log_counts_nothing(ticket_root: Path) -> None:
+    assert attempts_by_task(ticket_root.joinpath('attempts.jsonl')) == Counter()

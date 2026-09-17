@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -83,6 +84,11 @@ def task_record_attempt(
         rule=rule,
         path=str(log),
     )
+
+
+def attempts_by_task(log: Path) -> Counter[str]:
+    """Count the attempts logged per task id, skipping records that name no task."""
+    return Counter(entry['task_id'] for entry in _read(log) if entry.get('task_id'))
 
 
 def _escalation(

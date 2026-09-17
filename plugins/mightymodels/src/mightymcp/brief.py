@@ -12,7 +12,6 @@ from mightymcp.artifacts import (
     ticket_directory,
 )
 from mightymcp.paths import MIGHTYMODELS_DIR, git_output
-from mightymcp.status import ASKED_HEADING, DONE_HEADING, VERIFIED_HEADING
 
 TASK_ID = re.compile(r'^task-\d{2,}$')
 BRIEF_CAP = 80
@@ -23,6 +22,9 @@ PLACEHOLDERS = (
     'handles errors appropriately',
     'consistent with the rest',
 )
+ASKED_HEADING = '## ASKED'
+DONE_HEADING = '## DONE'
+VERIFIED_HEADING = '## VERIFIED'
 HEADINGS = (ASKED_HEADING, DONE_HEADING, VERIFIED_HEADING)
 ASKED_KEYS = (
     'objective',
@@ -93,6 +95,15 @@ class BriefWrite(BaseModel):
     refusals: list[str] = Field(
         default_factory=list, description='Why nothing was written'
     )
+
+
+class BriefHalves(BaseModel):
+    """Which halves a brief carries, whether or not either one is complete."""
+
+    asked: bool = Field(description='True when the brief carries an ASKED half')
+    done: bool = Field(description='True when the brief carries a DONE half')
+    verified: bool = Field(description='True when the scout appended ## VERIFIED')
+    commit: str | None = Field(default=None, description="The DONE half's commit hash")
 
 
 class BriefRead(BaseModel):
@@ -192,6 +203,18 @@ def brief_read(slug: str, task_id: str) -> BriefRead:
         done=done,
         verified=VERIFIED_HEADING in halves,
         refusals=[*refusals, *done_refusals],
+    )
+
+
+def brief_halves(text: str) -> BriefHalves:
+    """Report which halves a brief carries and the commit its DONE half names."""
+    halves = _halves(text)
+    done = halves.get(DONE_HEADING)
+    return BriefHalves(
+        asked=ASKED_HEADING in halves,
+        done=done is not None,
+        verified=VERIFIED_HEADING in halves,
+        commit=parse_fields('\n'.join(done or []), DONE_KEYS).get('commit') or None,
     )
 
 

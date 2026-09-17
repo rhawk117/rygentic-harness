@@ -5,7 +5,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError, ResourceNotFoundError
 from mcp.server.mcpserver.resources import FileResource
 
-from mightymcp.brief import brief_read, render_asked
+from mightymcp.brief import ASKED_HEADING, brief_read, render_asked
 from mightymcp.fleet import plugin_root
 from mightymcp.paths import (
     MIGHTYMODELS_DIR,
@@ -15,7 +15,7 @@ from mightymcp.paths import (
     safe_name,
     ticket_dir,
 )
-from mightymcp.status import ASKED_HEADING, render_status, sprint_status
+from mightymcp.status import render_status, sprint_status
 
 URI_SCHEME = 'mm://'
 MARKDOWN = 'text/markdown'

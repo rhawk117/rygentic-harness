@@ -1,15 +1,12 @@
-import json
 from collections import Counter
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from mightymcp.attempts import attempts_by_task
+from mightymcp.brief import brief_halves
 from mightymcp.paths import TicketPathError, git_output, repo_root, ticket_dir
 
-ASKED_HEADING = '## ASKED'
-DONE_HEADING = '## DONE'
-VERIFIED_HEADING = '## VERIFIED'
-COMMIT_PREFIX = 'commit:'
 NO_UPSTREAM = -1
 
 
@@ -54,7 +51,7 @@ def sprint_status(slug: str) -> SprintStatus:
     if not directory.is_dir():
         return SprintStatus(slug=slug, refusals=[f'no ticket directory at {directory}'])
 
-    attempts = _attempt_counts(directory.joinpath('attempts.jsonl'))
+    attempts = attempts_by_task(directory.joinpath('attempts.jsonl'))
     briefs = sorted(directory.joinpath('briefs').glob('task-*.md'))
     return SprintStatus(
         slug=slug,
@@ -99,42 +96,15 @@ def _status_line(task: TaskStatus) -> str:
 
 
 def _task_status(brief: Path, attempts: Counter[str]) -> TaskStatus:
-    text = brief.read_text(encoding='utf-8')
+    halves = brief_halves(brief.read_text(encoding='utf-8'))
     return TaskStatus(
         task_id=brief.stem,
-        asked=_has_section(text, ASKED_HEADING),
-        done=_has_section(text, DONE_HEADING),
-        verified=_has_section(text, VERIFIED_HEADING),
-        commit=_commit(text),
+        asked=halves.asked,
+        done=halves.done,
+        verified=halves.verified,
+        commit=halves.commit,
         attempts=attempts[brief.stem],
     )
-
-
-def _has_section(text: str, heading: str) -> bool:
-    return any(line.strip().startswith(heading) for line in text.splitlines())
-
-
-def _commit(text: str) -> str | None:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(COMMIT_PREFIX):
-            return stripped[len(COMMIT_PREFIX) :].strip() or None
-    return None
-
-
-def _attempt_counts(log: Path) -> Counter[str]:
-    if not log.is_file():
-        return Counter()
-    lines = log.read_text(encoding='utf-8').splitlines()
-    return Counter(task_id for task_id in map(_logged_task_id, lines) if task_id)
-
-
-def _logged_task_id(line: str) -> str | None:
-    try:
-        record = json.loads(line)
-    except json.JSONDecodeError:
-        return None
-    return record.get('task_id') if isinstance(record, dict) else None
 
 
 def _unpushed_commits(root: Path) -> int:

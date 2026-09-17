@@ -7,6 +7,7 @@ from mightymcp.brief import (
     DoneHalf,
     asked_half,
     brief_append_done,
+    brief_halves,
     brief_open,
     brief_read,
 )
@@ -281,3 +282,28 @@ def test_asked_half_returns_the_stanza_without_the_done_half(opened: Path) -> No
 
 def test_asked_half_of_a_brief_without_one_is_empty() -> None:
     assert asked_half('# notes\nnothing here\n') == ''
+
+
+def test_halves_reports_a_partial_brief_without_parsing_its_fields() -> None:
+    halves = brief_halves('## ASKED\nobjective: ship it\n')
+
+    assert (halves.asked, halves.done, halves.verified) == (True, False, False)
+    assert halves.commit is None
+
+
+def test_halves_takes_the_commit_from_the_done_half() -> None:
+    text = (
+        '## ASKED\nobjective: ship it\n\n## DONE\nwhat: shipped it\n'
+        'commit: abc1234\n\n## VERIFIED\nscout: matches ASKED\n'
+    )
+
+    halves = brief_halves(text)
+
+    assert (halves.asked, halves.done, halves.verified) == (True, True, True)
+    assert halves.commit == 'abc1234'
+
+
+def test_halves_of_a_heading_that_is_not_the_whole_line_are_empty() -> None:
+    halves = brief_halves('## ASKED half pending\nobjective: ship it\n')
+
+    assert (halves.asked, halves.done, halves.verified) == (False, False, False)

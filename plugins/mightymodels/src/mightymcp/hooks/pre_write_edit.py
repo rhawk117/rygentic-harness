@@ -2,14 +2,13 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from mightymcp.artifacts import cap_refusals
-from mightymcp.brief import BRIEF_CAP, asked_half, brief_read
+from mightymcp.brief import BRIEF_CAP, DONE_HEADING, asked_half, brief_read
 from mightymcp.handoff import BATON_CAP, DECISIONS_CAP
 from mightymcp.hooks.guard import ENGINEER, deny, payload_root, payload_slug
 from mightymcp.hookstate import agent_state
 from mightymcp.paths import MIGHTYMODELS_DIR
 from mightymcp.report import REPORT_CAP
 from mightymcp.scripts import JOURNAL
-from mightymcp.status import DONE_HEADING
 
 WRITE = 'Write'
 BRIEFS = f'{MIGHTYMODELS_DIR}/*/briefs/*.md'
