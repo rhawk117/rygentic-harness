@@ -1,16 +1,20 @@
-import os
-import sys
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from mightymcp.prune import prunable, ticket_archive, ticket_delete, ticket_prunable
+from mightymcp.prune import (
+    IssueReader,
+    prunable,
+    prune_ticket,
+    ticket_archive,
+    ticket_delete,
+    ticket_prunable,
+)
 from mightymcp.ticket import CompanionDocs, HandoffContext, ticket_create
 
 CONTEXT = ['the ticket is done', 'the branch is merged', 'the archive is written']
 ARCHIVE = '# demo\nshipped: the retry cap · PR: #12 · pruned: 2026-09-16\n'
 ISSUE = 7
-Install = Callable[..., None]
 
 
 def make_ticket(issue_number: int | None = None) -> None:
@@ -30,23 +34,14 @@ def ticket(repo: Path) -> Path:
     return repo.joinpath('.mightymodels', 'demo')
 
 
-@pytest.fixture
-def fake_gh(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Install:
-    """Put a gh on PATH that prints the issue body this test wants."""
+def issue_reader(body: str) -> IssueReader:
+    """An issue reader that hands back the checklist this test wants."""
+    return lambda number: body
 
-    def install(body: str, exit_code: int = 0) -> None:
-        directory = tmp_path.joinpath('bin')
-        directory.mkdir(exist_ok=True)
-        script = directory.joinpath('gh')
-        script.write_text(
-            f'#!{sys.executable}\nimport sys\n'
-            f'sys.stdout.write({body!r})\nsys.exit({exit_code})\n',
-            encoding='utf-8',
-        )
-        script.chmod(0o755)
-        monkeypatch.setenv('PATH', f'{directory}{os.pathsep}{os.environ["PATH"]}')
 
-    return install
+def unreadable(number: int) -> str | None:
+    """An issue reader standing in for a gh that is absent, or that failed."""
+    return None
 
 
 def test_a_quiet_ticket_is_prunable(ticket: Path) -> None:
@@ -111,30 +106,29 @@ def test_a_branch_without_an_upstream_does_not_block(ticket: Path) -> None:
     assert prunable('demo').prunable
 
 
-def test_unchecked_issue_boxes_block_the_prune(repo: Path, fake_gh: Install) -> None:
+def test_unchecked_issue_boxes_block_the_prune(repo: Path) -> None:
     make_ticket(issue_number=ISSUE)
-    fake_gh('## Tasks\n- [x] T1 done\n- [ ] T2 open\n')
-    check = prunable('demo')
+    check = prunable(
+        'demo', read_issue=issue_reader('## Tasks\n- [x] T1 done\n- [ ] T2 open\n')
+    )
 
     assert not check.prunable
     assert f'issue #{ISSUE} has 1 unchecked boxes' in check.reasons[0]
 
 
-def test_a_fully_checked_issue_does_not_block(repo: Path, fake_gh: Install) -> None:
+def test_a_fully_checked_issue_does_not_block(repo: Path) -> None:
     make_ticket(issue_number=ISSUE)
-    fake_gh('## Tasks\n- [x] T1 done\n- [x] T2 done\n')
-    check = prunable('demo')
+    check = prunable(
+        'demo', read_issue=issue_reader('## Tasks\n- [x] T1 done\n- [x] T2 done\n')
+    )
 
     assert check.prunable
     assert check.skipped == []
 
 
-def test_a_failing_gh_is_a_skipped_check_not_a_refusal(
-    repo: Path, fake_gh: Install
-) -> None:
+def test_a_failing_gh_is_a_skipped_check_not_a_refusal(repo: Path) -> None:
     make_ticket(issue_number=ISSUE)
-    fake_gh('', exit_code=1)
-    check = prunable('demo')
+    check = prunable('demo', read_issue=unreadable)
 
     assert check.prunable
     assert f'issue #{ISSUE}' in check.skipped[0]
@@ -193,17 +187,6 @@ def test_the_prunable_tool_reports_unpushed_commits(
     assert 'upstream' in check.reasons[0]
 
 
-def test_the_prunable_tool_reports_unchecked_issue_boxes(
-    repo: Path, fake_gh: Install
-) -> None:
-    make_ticket(issue_number=ISSUE)
-    fake_gh('## Tasks\n- [x] T1 done\n- [ ] T2 open\n')
-    check = ticket_prunable('demo')
-
-    assert not check.prunable
-    assert f'issue #{ISSUE} has 1 unchecked boxes' in check.reasons[0]
-
-
 def test_the_archive_lands_under_the_archives_directory(ticket: Path, repo: Path) -> None:
     written = ticket_archive('demo', ARCHIVE)
     path = repo.joinpath('.mightymodels', 'archives', 'demo.md')
@@ -233,7 +216,7 @@ def test_a_second_archive_is_refused(ticket: Path, repo: Path) -> None:
 
 def test_an_archived_and_quiet_ticket_is_deleted(ticket: Path) -> None:
     ticket_archive('demo', ARCHIVE)
-    deleted = ticket_delete('demo')
+    deleted = ticket_delete('demo', accept_skipped=True)
 
     assert deleted.refusals == []
     assert deleted.path == str(ticket)
@@ -261,6 +244,32 @@ def test_an_archive_for_a_ticket_that_is_not_there_is_refused(repo: Path) -> Non
 
     assert 'no ticket directory' in refused.refusals[0]
     assert refused.path is None
+
+
+def test_an_unread_checklist_blocks_the_delete(repo: Path) -> None:
+    make_ticket(issue_number=ISSUE)
+    ticket_archive('demo', ARCHIVE)
+    refused = prune_ticket('demo', read_issue=unreadable)
+
+    assert f'issue #{ISSUE}' in refused.refusals[0]
+    assert repo.joinpath('.mightymodels', 'demo').is_dir()
+
+
+def test_an_accepted_skip_deletes_the_ticket(repo: Path) -> None:
+    make_ticket(issue_number=ISSUE)
+    ticket_archive('demo', ARCHIVE)
+    deleted = prune_ticket('demo', accept_skipped=True, read_issue=unreadable)
+
+    assert deleted.refusals == []
+    assert not repo.joinpath('.mightymodels', 'demo').exists()
+
+
+def test_a_ticket_that_names_no_issue_blocks_the_delete(ticket: Path) -> None:
+    ticket_archive('demo', ARCHIVE)
+    refused = ticket_delete('demo')
+
+    assert 'names no issue' in refused.refusals[0]
+    assert ticket.is_dir()
 
 
 def test_a_slug_that_is_not_one_path_segment_is_refused(repo: Path) -> None:

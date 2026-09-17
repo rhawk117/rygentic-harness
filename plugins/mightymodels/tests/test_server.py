@@ -305,6 +305,6 @@ def test_a_ticket_is_closed_out_through_the_client(ticket_root: Path) -> None:
     )
     assert archived['refusals'] == []
 
-    deleted = call('ticket_delete', {'slug': 'demo'})
+    deleted = call('ticket_delete', {'slug': 'demo', 'accept_skipped': True})
     assert deleted['refusals'] == []
     assert not ticket_root.exists()

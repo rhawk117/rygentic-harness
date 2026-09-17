@@ -1,10 +1,12 @@
 import shutil
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
 from mightymcp.artifacts import NONE_ITEM, cap_refusals, ticket_directory
+from mightymcp.paths import TicketPathError, repo_root
 from mightymcp.report import REPORT
 from mightymcp.status import NO_UPSTREAM, SprintStatus, sprint_status
 from mightymcp.ticket import ticket_read
@@ -14,6 +16,10 @@ UNCHECKED_BOX = '- [ ]'
 ARCHIVES_DIR = 'archives'
 # prune-ticket sets the archive cap; pre_write_edit holds it for hand-written ones
 ARCHIVE_CAP = 30
+
+# How prunable reads an issue checklist: the number in, the body out, None when it
+# could not be read. The gh gateway below is the default; a caller may pass its own.
+IssueReader = Callable[[int], str | None]
 
 
 class PruneCheck(BaseModel):
@@ -52,7 +58,22 @@ class PruneDelete(BaseModel):
     )
 
 
-def prunable(slug: str) -> PruneCheck:
+def _gh_issue_body(number: int) -> str | None:
+    """Read the issue body through gh in the repository; a failing gh reads as None."""
+    try:
+        proc = subprocess.run(  # noqa: S603 -- argv list built here, never a shell string
+            ['gh', 'issue', 'view', str(number), '--json', 'body', '-q', '.body'],  # noqa: S607
+            cwd=repo_root(),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError, TicketPathError:
+        return None
+    return proc.stdout if proc.returncode == 0 else None
+
+
+def prunable(slug: str, *, read_issue: IssueReader = _gh_issue_body) -> PruneCheck:
     """Report whether .mightymodels/<slug> is safe to delete, per prune-ticket."""
     directory, refusals = ticket_directory(slug)
     status = sprint_status(slug)
@@ -60,7 +81,7 @@ def prunable(slug: str) -> PruneCheck:
     if directory is None or refusals:
         return PruneCheck(slug=slug, refusals=refusals)
 
-    issue_reasons, skipped = _issue_reasons(slug, directory)
+    issue_reasons, skipped = _issue_reasons(slug, read_issue)
     reasons = [
         *_thread_reasons(directory),
         *_broken_reasons(status),
@@ -93,23 +114,38 @@ def ticket_archive(slug: str, body: str) -> ArchiveWrite:
     return ArchiveWrite(path=str(path))
 
 
-def ticket_delete(slug: str) -> PruneDelete:
-    """Delete the ticket directory, once it is archived and nothing live is left in it."""
+def prune_ticket(
+    slug: str,
+    *,
+    accept_skipped: bool = False,
+    read_issue: IssueReader = _gh_issue_body,
+) -> PruneDelete:
+    """Delete .mightymodels/<slug>, once it is archived and nothing live is left in it."""
     directory, refusals = ticket_directory(slug)
     if directory is None:
         return PruneDelete(refusals=refusals)
 
-    check = prunable(slug)
+    check = prunable(slug, read_issue=read_issue)
     refusals.extend(check.refusals)
     refusals.extend(check.reasons)
     archive = _archive_path(directory)
     if not archive.is_file():
         refusals.append(f'no archive at {archive}; the archive is written first')
+    if check.skipped and not accept_skipped:
+        refusals.append(
+            f'{len(check.skipped)} checks did not run ({"; ".join(check.skipped)}); '
+            'the delete is unrecoverable, so pass accept_skipped to take it anyway'
+        )
     if refusals:
         return PruneDelete(refusals=refusals)
 
     shutil.rmtree(directory)
     return PruneDelete(path=str(directory))
+
+
+def ticket_delete(slug: str, *, accept_skipped: bool = False) -> PruneDelete:
+    """Delete a ticket directory; a check that could not run blocks it until accepted."""
+    return prune_ticket(slug, accept_skipped=accept_skipped)
 
 
 def _archive_path(directory: Path) -> Path:
@@ -151,30 +187,15 @@ def _commit_reasons(status: SprintStatus) -> list[str]:
     return [f'the branch is ahead of its upstream by {status.unpushed_commits}']
 
 
-def _issue_reasons(slug: str, directory: Path) -> tuple[list[str], list[str]]:
+def _issue_reasons(slug: str, read_issue: IssueReader) -> tuple[list[str], list[str]]:
     read = ticket_read(slug)
     number = read.ticket.companion_docs.issue_number if read.ticket else None
     if number is None:
         return [], ['the ticket names no issue; the checklist was not read']
-    body = _issue_body(number, directory)
+    body = read_issue(number)
     if body is None:
         return [], [f'gh could not read issue #{number}; the checklist was not read']
     boxes = [line for line in body.splitlines() if line.strip().startswith(UNCHECKED_BOX)]
     if not boxes:
         return [], []
     return [f'issue #{number} has {len(boxes)} unchecked boxes'], []
-
-
-def _issue_body(number: int, cwd: Path) -> str | None:
-    """Read the issue body through gh; an unavailable or failing gh reads as None."""
-    try:
-        proc = subprocess.run(  # noqa: S603 -- argv list built here, never a shell string
-            ['gh', 'issue', 'view', str(number), '--json', 'body', '-q', '.body'],  # noqa: S607
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return None
-    return proc.stdout if proc.returncode == 0 else None
