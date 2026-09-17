@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from mightymcp.artifacts import ALIASED
 from mightymcp.paths import (
     MIGHTYMODELS_DIR,
     TicketPathError,
@@ -24,17 +25,10 @@ CITATION = re.compile(r'\S+\.[A-Za-z0-9_]+:\d+')
 IGNORE_LINE = f'{MIGHTYMODELS_DIR}/\n'
 
 
-def _kebab(name: str) -> str:
-    return name.replace('_', '-')
-
-
-_ALIASED = ConfigDict(alias_generator=_kebab, populate_by_name=True)
-
-
 class CompanionDocs(BaseModel):
     """Tracker keys and triage reading, per the ticket schema's companion-docs block."""
 
-    model_config = _ALIASED
+    model_config = ALIASED
 
     issue_number: int | None = Field(default=None, description='GitHub issue number')
     jira_key: str | None = Field(default=None, description='Jira key, e.g. PROJ-123')
@@ -49,7 +43,7 @@ class CompanionDocs(BaseModel):
 class HandoffContext(BaseModel):
     """The answers that drive ramp and engineer-tier selection for the whole ticket."""
 
-    model_config = _ALIASED
+    model_config = ALIASED
 
     scope: Scope = Field(description='Ticket scope: sm, med, or large')
     plan_first: bool = Field(
@@ -64,7 +58,7 @@ class HandoffContext(BaseModel):
 class Ticket(BaseModel):
     """A ticket.yml file: the per-ticket source of truth every session reads first."""
 
-    model_config = _ALIASED
+    model_config = ALIASED
 
     task: str = Field(description='Slug, and the directory name under .mightymodels/')
     summary: str = Field(description='What the ticket is, in one sentence')
@@ -77,6 +71,14 @@ class Ticket(BaseModel):
         default_factory=dict, description='Per-role model pins, keyed by fleet role'
     )
     handoff_context: HandoffContext
+
+    @field_validator('context', mode='before')
+    @classmethod
+    def _fold_prose(cls, value: Any) -> Any:
+        """A context line carrying a colon parses as a mapping; fold it back to prose."""
+        if not isinstance(value, list):
+            return value
+        return [_context_line(entry) for entry in value]
 
 
 class TicketRead(BaseModel):
@@ -226,9 +228,21 @@ def ensure_ignored(root: Path) -> None:
     if git_output(['check-ignore', '-q', MIGHTYMODELS_DIR], cwd=root) is not None:
         return
     exclude = root.joinpath('.git', 'info', 'exclude')
+    if exclude.is_file() and IGNORE_LINE in exclude.read_text(encoding='utf-8'):
+        return
     exclude.parent.mkdir(parents=True, exist_ok=True)
     with exclude.open('a', encoding='utf-8') as handle:
         handle.write(IGNORE_LINE)
+
+
+def _context_line(entry: Any) -> Any:
+    """Render one context entry as the prose line it was written as."""
+    if isinstance(entry, dict) and len(entry) == 1:
+        key, value = next(iter(entry.items()))
+        return f'{key}: {value}'
+    if isinstance(entry, dict | list):
+        return entry
+    return str(entry)
 
 
 def _read_mapping(path: Path) -> tuple[dict[str, Any] | None, list[str]]:

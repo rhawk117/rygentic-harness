@@ -62,7 +62,7 @@ def payload_root(payload: dict[str, Any]) -> Path:
 
 
 def payload_slug(root: Path) -> str | None:
-    """The live ticket's slug, or None when no single ticket answers."""
+    """The live ticket's slug, or None when no ticket answers for this repository."""
     try:
         return active_ticket(root)
     except TicketPathError:

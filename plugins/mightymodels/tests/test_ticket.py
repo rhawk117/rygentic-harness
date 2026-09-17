@@ -7,6 +7,7 @@ from mightymcp.ticket import (
     CompanionDocs,
     HandoffContext,
     Ticket,
+    ensure_ignored,
     resolve_model,
     ticket_create,
     ticket_read,
@@ -15,6 +16,19 @@ from mightymcp.ticket import (
 )
 
 CONTEXT = ['the api is sync', 'retries are capped at three', 'the fixture is shared']
+MAPPING_LINE = 'Open until spiked: the SubagentStop block field name'
+MAPPING_TICKET = f"""task: demo
+summary: Ship the thing
+triaged-at: 2026-01-01T00:00:00Z
+context:
+- the api is sync
+- {MAPPING_LINE}
+- the fixture is shared
+handoff-context:
+  scope: med
+  plan-first: false
+  branch-name: feat/demo
+"""
 SCHEMA_KEYS = [
     'task',
     'summary',
@@ -91,6 +105,15 @@ def test_create_runs_the_ignore_ritual_once(repo: Path) -> None:
     assert exclude.splitlines().count('.mightymodels/') == 1
 
 
+def test_the_ignore_ritual_writes_one_line_before_any_ticket_exists(repo: Path) -> None:
+    for _ in range(5):
+        ensure_ignored(repo)
+
+    exclude = repo.joinpath('.git', 'info', 'exclude').read_text(encoding='utf-8')
+    assert exclude.splitlines().count('.mightymodels/') == 1
+    assert not repo.joinpath('.mightymodels').exists()
+
+
 def test_create_refuses_a_slug_that_already_exists(repo: Path) -> None:
     create()
     written = ticket_create('demo', 'Ship it again', CONTEXT, handoff())
@@ -145,6 +168,17 @@ def test_read_returns_the_parsed_ticket(repo: Path) -> None:
     assert read.ticket.summary == 'Ship the thing'
     assert read.ticket.context == CONTEXT
     assert read.ticket.handoff_context.branch_name == 'feat/demo'
+
+
+def test_read_folds_a_context_line_that_yaml_parses_as_a_mapping(
+    ticket_root: Path,
+) -> None:
+    ticket_root.joinpath('ticket.yml').write_text(MAPPING_TICKET, encoding='utf-8')
+    read = ticket_read('demo')
+
+    assert read.refusals == []
+    assert read.ticket is not None
+    assert read.ticket.context[1] == MAPPING_LINE
 
 
 def test_read_refuses_a_missing_ticket(repo: Path) -> None:

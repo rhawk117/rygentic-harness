@@ -2,14 +2,14 @@ from pathlib import Path
 from typing import Any
 
 from mightymcp.fleet import load_fleet, render_fleet
-from mightymcp.paths import MIGHTYMODELS_DIR, git_output, repo_root
+from mightymcp.hooks.guard import payload_slug
+from mightymcp.paths import ARCHIVES_DIR, MIGHTYMODELS_DIR, repo_root
 from mightymcp.routing import MODEL_ROLES, route_ramp
 from mightymcp.status import sprint_status
 from mightymcp.ticket import IGNORE_LINE, ensure_ignored, resolve_model, ticket_read
 
 EVENT = 'SessionStart'
 COMPACT = 'compact'
-ARCHIVES = 'archives'
 EXCLUDE = Path('.git', 'info', 'exclude')
 
 
@@ -21,7 +21,7 @@ def session_start(payload: dict[str, Any]) -> dict[str, Any]:
         'mightymodels fleet:',
         render_fleet(load_fleet()),
         '',
-        *_ticket_lines(root, _active_slug(root, slugs), slugs, payload.get('source', '')),
+        *_ticket_lines(root, payload_slug(root), slugs, payload.get('source', '')),
         '',
         _ignore_line(root),
     ]
@@ -35,22 +35,9 @@ def session_start(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _ticket_slugs(root: Path) -> list[str]:
     tickets = root.joinpath(MIGHTYMODELS_DIR).glob('*/ticket.yml')
-    return sorted(path.parent.name for path in tickets if path.parent.name != ARCHIVES)
-
-
-def _active_slug(root: Path, slugs: list[str]) -> str | None:
-    if len(slugs) == 1:
-        return slugs[0]
-    branch = git_output(['rev-parse', '--abbrev-ref', 'HEAD'], cwd=root)
-    if branch is None:
-        return None
-    on_branch = [slug for slug in slugs if _ticket_branch(slug) == branch]
-    return on_branch[0] if len(on_branch) == 1 else None
-
-
-def _ticket_branch(slug: str) -> str | None:
-    read = ticket_read(slug)
-    return read.ticket.handoff_context.branch_name if read.ticket else None
+    return sorted(
+        path.parent.name for path in tickets if path.parent.name != ARCHIVES_DIR
+    )
 
 
 def _ticket_lines(
