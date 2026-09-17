@@ -88,6 +88,13 @@ def _done_reason(
     return f'{DONE_HEADING} is the worker half of a brief; the primary never writes it'
 
 
+def _in_scope(relative: PurePosixPath, entry: str) -> bool:
+    if any(ch in entry for ch in '*?['):
+        return relative.full_match(entry)
+    scope_entry = PurePosixPath(entry)
+    return relative == scope_entry or relative.is_relative_to(scope_entry)
+
+
 def _scope_reason(
     root: Path,
     payload: dict[str, Any],
@@ -107,7 +114,7 @@ def _scope_reason(
     if relative == _relative(root, Path(read.path)):
         return _asked_reason(state.task_id, current, content)
     scope = read.asked.files_in_scope
-    if relative is not None and any(relative.full_match(p) for p in scope):
+    if relative is not None and any(_in_scope(relative, p) for p in scope):
         return None
     return (
         f'{relative or payload["tool_input"]["file_path"]} is outside '

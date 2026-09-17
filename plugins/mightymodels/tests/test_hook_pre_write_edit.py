@@ -102,6 +102,28 @@ def engineer(repo: Path, ticket: Path, payload: Load) -> str:
     return AGENT
 
 
+@pytest.fixture
+def dir_scope_engineer(repo: Path, ticket: Path, payload: Load) -> str:
+    """Bind an engineer subagent to a task whose scope is a bare directory."""
+    opened = brief_open(
+        'demo',
+        'task-04',
+        AskedStanza(
+            objective='Cap the retry backoff',
+            acceptance=['AC-1: uv run pytest -q passes'],
+            verification='uv run pytest -q',
+            files_in_scope=['a/b'],
+            engineer_tier='claude-sonnet-5',
+        ),
+        'feat(app): cap the retry backoff',
+    )
+    assert opened.refusals == [], opened.refusals
+    session = payload('PreToolUse-Write')['session_id']
+    record_pending(repo, session, 'engineer', 'task-04')
+    bind_agent(repo, session, 'agent_02', 'engineer')
+    return 'agent_02'
+
+
 def lines(count: int) -> str:
     return ''.join(f'line {number}\n' for number in range(count))
 
@@ -255,6 +277,25 @@ def test_an_engineer_is_denied_a_path_outside_its_files_in_scope(
     assert decision['permissionDecision'] == 'deny'
     assert 'files-in-scope' in decision['permissionDecisionReason']
     assert 'task-03' in decision['permissionDecisionReason']
+
+
+def test_an_engineer_writes_inside_a_bare_directory_scope(
+    ticket: Path, repo: Path, dir_scope_engineer: str, write: Build, guard: Guard
+) -> None:
+    target = repo.joinpath('a', 'b', 'c.py')
+
+    assert guard(write(target, 'LIMIT = 10\n', agent_id=dir_scope_engineer)) == {}
+
+
+def test_an_engineer_is_denied_a_sibling_of_a_bare_directory_scope(
+    ticket: Path, repo: Path, dir_scope_engineer: str, write: Build, guard: Guard
+) -> None:
+    decision = guard(
+        write(repo.joinpath('a', 'bc.py'), 'LIMIT = 10\n', agent_id=dir_scope_engineer)
+    )
+
+    assert decision['permissionDecision'] == 'deny'
+    assert 'files-in-scope' in decision['permissionDecisionReason']
 
 
 def test_an_engineer_is_denied_a_path_outside_the_repository(
