@@ -95,14 +95,15 @@ independently.
 
 ## The vibe-code plugin
 
-`plugins/vibe-code/` ships ten skills and no agents: `build-a-loop`, `create-agents-md`,
+`plugins/vibe-code/` ships eleven skills and no agents: `build-a-loop`, `create-agents-md`,
 `create-hooks`, `create-instructions`, `create-mcp`, `create-skill`, `create-subagent`,
-`humanizer`, `plan-plugin`, and `promptlint`. Install it with
+`humanizer`, `plan-plugin`, `promptlint`, and `tune-skill-descriptions`. Install it with
 `/plugin install vibe-code@rygentic-harness`.
 
 The skills call a `vibe-code` CLI to validate what they write: `skill validate`,
 `hook validate` and `hook test`, `subagent validate`, `instruction validate`,
-`mcp scaffold` and `mcp validate`, and `plugin validate`, `plugin render`, and `plugin inventory`.
+`mcp scaffold` and `mcp validate`, `plugin validate`, `plugin render`, and `plugin inventory`,
+and the `tune` commands that run the description-tuning loop.
 Claude Code puts a plugin's `bin/` directory on the Bash tool's `PATH` while the plugin is
 enabled, so the skills run `vibe-code` by name.
 

@@ -39,4 +39,6 @@ Reports about gaps in those checks are in scope for vulnerability reports.
 
 The vibe-code CLI pins its Python floor (3.12) and carries two runtime dependencies, msgspec and
 PyYAML, pinned by version in its launcher. Dependency updates go through the normal gate; there is
-no vendored code.
+no vendored code. `vibe-code tune route` starts headless `claude -p` sessions on your account, one
+per trigger request, with project settings only and the `Skill` tool as their only tool; each runs in
+a temporary directory that holds stub skills (name and routing frontmatter, never a body).

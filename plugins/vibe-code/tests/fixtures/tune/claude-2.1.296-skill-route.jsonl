@@ -1,0 +1,20 @@
+{"type": "active_goal"}
+{"type": "autocompact_state"}
+{"type": "system", "subtype": "init", "tools": ["Skill"], "skills": ["zebra-facts", "design", "slides", "design-sync", "dataviz", "artifact-diagramming", "artifact-capabilities", "update-config", "verify", "debug", "code-review", "simplify", "batch", "fewer-permission-prompts", "doctor", "explain-usage", "setup-claude", "loop", "claude-api", "run", "run-skill-generator", "plugin-authoring"], "claude_code_version": "2.1.296"}
+{"type": "system", "subtype": "status"}
+{"type": "rate_limit_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "tool_use", "id": "toolu_01HejCuECGdez6oQqpJJsu5P", "name": "Skill", "input": {"skill": "zebra-facts", "args": "why do zebras have stripes?"}, "caller": {"type": "direct"}}]}}
+{"type": "stream_event"}
+{"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_01HejCuECGdez6oQqpJJsu5P", "content": "Launching skill: zebra-facts"}]}}
+{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Base directory for this skill: /tmp/skill-routing-example/.claude/skills/zebra-facts\n\nSay ZEBRA-OK.\n\n\nARGUMENTS: why do zebras have stripes?"}]}}
+{"type": "stream_event"}
+{"type": "stream_event"}
+{"type": "result", "subtype": "error_max_turns", "is_error": true, "num_turns": 2, "result": ""}
