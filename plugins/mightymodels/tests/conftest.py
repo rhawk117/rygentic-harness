@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 CONCEPTS = (
+    'core',
     'tools',
     'tools.ticket',
     'tools.task',
