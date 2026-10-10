@@ -1,15 +1,18 @@
 """The module graph of the measured files, its cycles, and Martin's component metrics.
 
 An import becomes an edge when it resolves to a measured file. Cycles are the strongly connected
-components of more than one module, found with Tarjan's algorithm on an explicit stack and listed
-in the order the search closes them. Modules roll up to packages of `depth` path components, and
-each package carries its fan-in (Ca), fan-out (Ce), instability I = Ce/(Ca+Ce), abstractness A
-and distance from the main sequence D = |A + I - 1|.
+components of more than one module, found with Tarjan's algorithm in two steps: one depth-first
+walk on an explicit stack records where each module is discovered and the order the walk leaves
+them, then each module's lowlink is settled in that leaving order. Cycles are listed in the order
+their roots are left. Modules roll up to packages of `depth` path components, and each package
+carries its fan-in (Ca), fan-out (Ce), instability I = Ce/(Ca+Ce), abstractness A and distance
+from the main sequence D = |A + I - 1|.
 """
 
-from collections.abc import Iterator
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 from mightymodels_plugin.review_metrics.shapes import (
     FileMetric,
@@ -21,8 +24,6 @@ from mightymodels_plugin.review_metrics.sources import JS_SUFFIXES, TS_SUFFIXES,
 
 LAYOUT_DIRS = ('src', 'lib', 'app')
 SRC_PREFIX = 'src.'
-
-type Frame = tuple[str, Iterator[str]]
 
 
 def package_of(module: str, depth: int = 1) -> str:
@@ -87,59 +88,52 @@ def resolve_internal(imp: str, metric: FileMetric, lookup: dict[str, str]) -> st
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class CycleSearch:
-    graph: Graph
-    stack: list[str] = field(default_factory=list)
-    lowlinks: dict[str, int] = field(default_factory=dict)
-    index: dict[str, int] = field(default_factory=dict)
-    on_stack: set[str] = field(default_factory=set)
-    sccs: list[list[str]] = field(default_factory=list)
+class DepthFirstWalk:
+    discovered: Mapping[str, int]
+    left: tuple[str, ...]
 
-    def enter(self, node: str) -> Frame:
-        self.index[node] = self.lowlinks[node] = len(self.index)
-        self.stack.append(node)
-        self.on_stack.add(node)
-        return node, iter(sorted(self.graph.get(node, ())))
 
-    def advance(self, current: str, children: Iterator[str], worklist: list[Frame]) -> bool:
-        descended = False
-        for child in children:
-            if child not in self.index:
-                worklist.append(self.enter(child))
-                descended = True
-                break
-            if child in self.on_stack:
-                self.lowlinks[current] = min(self.lowlinks[current], self.index[child])
-        return descended
-
-    def complete(self, worklist: list[Frame]) -> None:
-        current = worklist.pop()[0]
-        if worklist:
-            parent = worklist[-1][0]
-            self.lowlinks[parent] = min(self.lowlinks[parent], self.lowlinks[current])
-        if self.lowlinks[current] != self.index[current]:
-            return
-        component: list[str] = []
-        while not component or component[-1] != current:
-            member = self.stack.pop()
-            self.on_stack.discard(member)
-            component.append(member)
-        self.sccs.append(sorted(component))
-
-    def visit(self, node: str) -> None:
-        worklist = [self.enter(node)]
-        while worklist:
-            current, children = worklist[-1]
-            if not self.advance(current, children, worklist):
-                self.complete(worklist)
+def depth_first_walk(graph: Graph) -> DepthFirstWalk:
+    discovered: dict[str, int] = {}
+    left: list[str] = []
+    path: list[str] = []
+    unexplored = [iter(sorted(graph))]
+    while unexplored:
+        child = next((node for node in unexplored[-1] if node not in discovered), None)
+        if child is not None:
+            discovered[child] = len(discovered)
+            path.append(child)
+            unexplored.append(iter(sorted(graph.get(child, ()))))
+            continue
+        unexplored.pop()
+        if path:
+            left.append(path.pop())
+    return DepthFirstWalk(discovered=MappingProxyType(discovered), left=tuple(left))
 
 
 def tarjan_sccs(graph: Graph) -> list[list[str]]:
-    search = CycleSearch(graph=graph)
-    for node in sorted(graph):
-        if node not in search.index:
-            search.visit(node)
-    return [scc for scc in search.sccs if len(scc) > 1]
+    walk = depth_first_walk(graph)
+    discovered = walk.discovered
+    lowlinks: dict[str, int] = {}
+    stack: list[str] = []
+    closed: set[str] = set()
+    sccs: list[list[str]] = []
+    for node in walk.left:
+        reached = [
+            lowlinks[child] if discovered[child] > discovered[node] else discovered[child]
+            for child in graph.get(node, ())
+            if child not in closed
+        ]
+        lowlinks[node] = min([discovered[node], *reached])
+        if lowlinks[node] < discovered[node]:
+            stack.append(node)
+            continue
+        component = [node]
+        while stack and discovered[stack[-1]] > discovered[node]:
+            component.append(stack.pop())
+        closed.update(component)
+        sccs.append(sorted(component))
+    return [scc for scc in sccs if len(scc) > 1]
 
 
 def package_edges(graph: Graph, depth: int) -> set[tuple[str, str]]:
