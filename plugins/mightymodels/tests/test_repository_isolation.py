@@ -11,6 +11,7 @@ from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import Base
 from mightymodels_plugin.core.edge import OpenState, open_state
+from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
@@ -352,7 +353,9 @@ def clone_of(state: OpenState) -> Clone:
     workspace, database = state.workspace, state.database
     return Clone(
         tickets=TicketService(workspace=workspace, database=database),
-        contracts=ContractService(workspace=workspace, database=database),
+        contracts=ContractService(
+            workspace=workspace, database=database, processes=process_runner()
+        ),
         reviews=ReviewService(workspace=workspace, database=database),
         closings=CloseService(workspace=workspace, database=database),
         investigations=InvestigationService(workspace=workspace, database=database),

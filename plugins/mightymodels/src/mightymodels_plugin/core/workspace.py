@@ -23,23 +23,31 @@ Resolving the report would hide that its last part is one, so `Workspace.persona
 the name as the reviewer wrote it before resolving it, and hands out a contained file only when
 that name is no symlink.
 
-Git runs in `Git._answer` and nowhere else. `git_at` looks the executable up on PATH once, and
-every call of that `Git` and of the workspace built from it runs what was found. A missing git
-binary is an answer without an exit code, never an exception, so HEAD is absent there as it is
-outside a repository or before the first commit. An operation that cannot work without git asks
-`Git.refusal` first and raises what it returns, and one that can says in its result that git was
-not consulted.
+Git runs in `Git._answer` and nowhere else, through the process runner and within the timeout
+that `git_at` gives it. `git_at` looks the executable up on PATH once, and every call of that
+`Git` and of the workspace built from it runs what was found. A missing git binary is an answer
+without an exit code, never an exception, and so is a git that could not be launched, did not
+finish in time or printed what is not text; HEAD is absent there as it is outside a repository or
+before the first commit. `Git.refusal` and `Git.checkout` tell the two apart: `GitMissingError`
+when there is no executable, `GitNoAnswerError` naming the cause otherwise. An operation that
+cannot work without git asks `Git.refusal` first and raises what it returns, and one that can
+says in its result that git was not consulted.
 """
 
 import re
 import shutil
-import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 
 from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.process import (
+    FailedRun,
+    FailureKind,
+    ProcessRunner,
+    process_runner,
+)
 from mightymodels_plugin.core.repository_key import RepositoryKey, local_key, origin_key
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import ARCHIVES_DIRECTORY, Slug
@@ -49,6 +57,7 @@ STATE_DIRECTORY = '.mightymodels'
 RUNTIME_DIRECTORY = '.runtime'
 GIT_EXECUTABLE = 'git'
 GIT_NOT_FOUND = 'no git executable is on PATH'
+GIT_TIMEOUT_SECONDS = 30
 TICKET_FILE = 'ticket.yml'
 TICKET_DRAFT = f'{TICKET_FILE}.tmp'
 EXCLUDE_LINE = f'{STATE_DIRECTORY}/'
@@ -72,6 +81,12 @@ class GitMissingError(StateError):
         super().__init__('this needs git and no git executable is on PATH')
 
 
+class GitNoAnswerError(StateError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f'this needs git and git did not answer: {detail}')
+        self.detail = detail
+
+
 class NotARepositoryError(StateError):
     def __init__(self, root: Path, detail: str) -> None:
         super().__init__(f'{root} is not inside a git repository: {detail}')
@@ -91,7 +106,8 @@ class GitUnavailableError(StateError):
         self.detail = detail
 
 
-type GitRefusal = GitMissingError | NotARepositoryError
+type GitUnanswered = GitMissingError | GitNoAnswerError
+type GitRefusal = GitUnanswered | NotARepositoryError
 
 
 class UntrackedFiles(StrEnum):
@@ -104,6 +120,7 @@ class GitAnswer:
     exit: int | None
     stdout: str
     stderr: str
+    failure: FailureKind | None
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -140,6 +157,14 @@ def revision_error(*revisions: str) -> UnsafeRevisionError | None:
     return None if unsafe is None else UnsafeRevisionError(unsafe)
 
 
+def unanswered_error(answer: GitAnswer) -> GitUnanswered | None:
+    if answer.failure is None:
+        return None
+    if answer.failure is FailureKind.NOT_FOUND:
+        return GitMissingError()
+    return GitNoAnswerError(answer.stderr)
+
+
 def contained_in(state_directory: Path, *parts: str) -> Path:
     resolved = state_directory.joinpath(*parts).resolve()
     if not resolved.is_relative_to(state_directory):
@@ -167,35 +192,38 @@ def exclude_state(common_directory: Path) -> None:
 class Git:
     root: Path
     executable: str | None
+    processes: ProcessRunner
+    timeout: float
 
     def _answer(self, *arguments: str) -> GitAnswer:
         if self.executable is None:
-            return GitAnswer(exit=None, stdout='', stderr=GIT_NOT_FOUND)
-        completed = subprocess.run(  # noqa: S603 - fixed git argv, every argument is a separate word and revisions are checked plain names
-            [self.executable, '-C', str(self.root), *arguments],
-            capture_output=True,
-            text=True,
-            check=False,
+            return GitAnswer(
+                exit=None, stdout='', stderr=GIT_NOT_FOUND, failure=FailureKind.NOT_FOUND
+            )
+        run = self.processes.run(
+            [self.executable, '-C', str(self.root), *arguments], timeout=self.timeout
         )
-        return GitAnswer(
-            exit=completed.returncode, stdout=completed.stdout, stderr=completed.stderr
-        )
+        if isinstance(run, FailedRun):
+            return GitAnswer(exit=None, stdout='', stderr=run.detail, failure=run.kind)
+        return GitAnswer(exit=run.exit, stdout=run.stdout, stderr=run.stderr, failure=None)
 
     def refusal(self) -> GitRefusal | None:
         answer = self._answer('rev-parse', '--git-dir')
-        if answer.exit is None:
-            return GitMissingError()
+        if (unanswered := unanswered_error(answer)) is not None:
+            return unanswered
         if answer.exit != 0:
             return NotARepositoryError(self.root, answer.stderr.strip())
         return None
 
     def checkout(self) -> Checkout | GitRefusal:
         toplevel = self._answer('rev-parse', '--show-toplevel')
-        if toplevel.exit is None:
-            return GitMissingError()
+        if (unanswered := unanswered_error(toplevel)) is not None:
+            return unanswered
         if toplevel.exit != 0:
             return NotARepositoryError(self.root, toplevel.stderr.strip())
         origin = self._answer('config', '--get', 'remote.origin.url')
+        if (unanswered := unanswered_error(origin)) is not None:
+            return unanswered
         url = origin.stdout.removesuffix('\n')
         return Checkout(
             toplevel=Path(toplevel.stdout.removesuffix('\n')).resolve(),
@@ -317,7 +345,12 @@ class Workspace:
 
 
 def git_at(root: Path) -> Git:
-    return Git(root=root.resolve(), executable=shutil.which(GIT_EXECUTABLE))
+    return Git(
+        root=root.resolve(),
+        executable=shutil.which(GIT_EXECUTABLE),
+        processes=process_runner(),
+        timeout=GIT_TIMEOUT_SECONDS,
+    )
 
 
 def workspace_of(git: Git) -> Workspace:

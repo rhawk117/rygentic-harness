@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.process import ProcessRunner
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.head import SHORT_SHA, short_head
@@ -136,6 +137,7 @@ def receipt_text(receipt: Receipt) -> str:
 class ContractService:
     workspace: Workspace
     database: Database
+    processes: ProcessRunner
 
     def approve(self, slug: Slug, commands: Sequence[ContractCommand]) -> ContractView:
         if any(not command.approved_by.strip() for command in commands):
@@ -174,7 +176,10 @@ class ContractService:
     def run_approved(self, slug: Slug, request: RunRequest) -> RunResult:
         with contract_transaction(self.database) as repository:
             commands = approved_commands(repository.commands(slug), slug, request.ids)
-        receipts = [receipt_for(command, self.workspace, request.phase) for command in commands]
+        receipts = [
+            receipt_for(command, self.workspace, request.phase, processes=self.processes)
+            for command in commands
+        ]
         with contract_transaction(self.database) as repository:
             repository.record(slug, receipts)
         return RunResult(

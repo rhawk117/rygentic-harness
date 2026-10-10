@@ -19,6 +19,7 @@ from mightymodels_plugin.core.database import (
     WriteLimitError,
 )
 from mightymodels_plugin.core.declarative import Base
+from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
@@ -861,7 +862,9 @@ def approve_commands(workspace: Workspace, database: Database, numbers: range) -
     approved = [
         ContractCommand(id=f'c{number}', argv=('true',), approved_by='user') for number in numbers
     ]
-    ContractService(workspace=workspace, database=database).approve(TICKET, approved)
+    ContractService(workspace=workspace, database=database, processes=process_runner()).approve(
+        TICKET, approved
+    )
 
 
 def start_tasks(workspace: Workspace, database: Database, numbers: range) -> None:
@@ -921,7 +924,11 @@ def add_entries(workspace: Workspace, database: Database, numbers: range) -> Non
 
 
 def contract_status(workspace: Workspace, database: Database) -> str:
-    return ContractService(workspace=workspace, database=database).status(TICKET).text
+    return (
+        ContractService(workspace=workspace, database=database, processes=process_runner())
+        .status(TICKET)
+        .text
+    )
 
 
 def task_listing(workspace: Workspace, database: Database) -> str:

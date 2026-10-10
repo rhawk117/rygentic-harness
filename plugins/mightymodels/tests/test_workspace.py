@@ -10,6 +10,7 @@ import pytest
 from mcp.types import CallToolResult
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
+from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import (
@@ -139,7 +140,9 @@ class Project:
     def command_states(self) -> list[str]:
         workspace = workspace_at(self.server.root)
         with workspace_database(workspace, self.data_directory) as database:
-            status = ContractService(workspace=workspace, database=database).status(TICKET)
+            status = ContractService(
+                workspace=workspace, database=database, processes=process_runner()
+            ).status(TICKET)
         return [command.state for command in status.commands]
 
     def created_files(self) -> dict[str, bytes]:

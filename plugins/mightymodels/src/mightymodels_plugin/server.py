@@ -35,6 +35,7 @@ from mightymodels_plugin.core.data_directory import (
 )
 from mightymodels_plugin.core.edge import open_state
 from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tool import close_tool
@@ -115,7 +116,9 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
             yield AppState(
                 tickets=TicketService(workspace=workspace, database=database),
                 tasks=TaskService(workspace=workspace, database=database),
-                contracts=ContractService(workspace=workspace, database=database),
+                contracts=ContractService(
+                    workspace=workspace, database=database, processes=process_runner()
+                ),
                 reviews=ReviewService(workspace=workspace, database=database),
                 snapshots=SnapshotService(workspace=workspace, database=database),
                 closings=CloseService(workspace=workspace, database=database),

@@ -3,23 +3,25 @@
 The argv comes only from the ticket's contract, never from the caller. Every run gets a receipt
 with the exit code, duration, bounded output tails, a digest of the full output, and the HEAD it
 ran at. A run that HEAD moved under cannot pass.
+
+The process runner is handed in. A command that cannot be launched, outlives its timeout or prints
+what is not text still gets a receipt: no exit code, whatever it printed before a timeout, and the
+cause as the last line of stderr.
 """
 
 import hashlib
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from mightymodels_plugin.clock import now
+from mightymodels_plugin.core.process import FailedRun, FailureKind, ProcessRunner
 from mightymodels_plugin.core.workspace import Git, Workspace
 from mightymodels_plugin.tools.contract.schema import ApprovedCommand, Outcome, Phase, Receipt
 
 TAIL_LINES = 40
 TAIL_CHARS = 4000
 HEAD_MOVED = '\nHEAD changed during verification; rerun at the current HEAD.'
-
-type RunFailure = subprocess.TimeoutExpired | FileNotFoundError
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -34,36 +36,38 @@ def tail(text: str) -> str:
     return '\n'.join(text.splitlines()[-TAIL_LINES:])[-TAIL_CHARS:]
 
 
-def failed_execution(failure: RunFailure, command: ApprovedCommand) -> Execution:
-    if isinstance(failure, FileNotFoundError):
-        return Execution(outcome=Outcome.NOT_FOUND, exit=None, stdout='', stderr=str(failure))
-    output = failure.stdout if isinstance(failure.stdout, str) else ''
+def failure_outcome(kind: FailureKind) -> Outcome:
+    if kind is FailureKind.TIMED_OUT:
+        return Outcome.TIMEOUT
+    if kind is FailureKind.NOT_FOUND:
+        return Outcome.NOT_FOUND
+    return Outcome.FAILED
+
+
+def with_cause(captured: str, cause: str) -> str:
+    separator = '' if not captured or captured.endswith('\n') else '\n'
+    return f'{captured}{separator}{cause}'
+
+
+def failed_execution(failure: FailedRun) -> Execution:
     return Execution(
-        outcome=Outcome.TIMEOUT,
+        outcome=failure_outcome(failure.kind),
         exit=None,
-        stdout=output,
-        stderr=f'timed out after {command.timeout}s',
+        stdout=failure.stdout,
+        stderr=with_cause(failure.stderr, failure.detail),
     )
 
 
-def execute(command: ApprovedCommand, root: Path) -> Execution:
-    try:
-        completed = subprocess.run(  # noqa: S603 - argv comes only from the user-approved contract, never from the caller
-            list(command.argv),
-            cwd=root,
-            capture_output=True,
-            text=True,
-            timeout=command.timeout,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError) as failure:
-        return failed_execution(failure, command)
-    passed = completed.returncode == command.expect_exit
+def execute(command: ApprovedCommand, root: Path, *, processes: ProcessRunner) -> Execution:
+    run = processes.run(command.argv, timeout=command.timeout, cwd=root)
+    if isinstance(run, FailedRun):
+        return failed_execution(run)
+    passed = run.exit == command.expect_exit
     return Execution(
         outcome=Outcome.PASSED if passed else Outcome.FAILED,
-        exit=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
+        exit=run.exit,
+        stdout=run.stdout,
+        stderr=run.stderr,
     )
 
 
@@ -78,10 +82,13 @@ def failed_if_head_moved(execution: Execution, head: str | None, git: Git) -> Ex
     )
 
 
-def receipt_for(command: ApprovedCommand, workspace: Workspace, phase: Phase) -> Receipt:
+def receipt_for(
+    command: ApprovedCommand, workspace: Workspace, phase: Phase, *, processes: ProcessRunner
+) -> Receipt:
     head = workspace.git.resolve_head()
     started = time.monotonic()
-    result = failed_if_head_moved(execute(command, workspace.root), head, workspace.git)
+    execution = execute(command, workspace.root, processes=processes)
+    result = failed_if_head_moved(execution, head, workspace.git)
     elapsed = int((time.monotonic() - started) * 1000)
     return Receipt(
         id=command.id,
