@@ -67,7 +67,7 @@ from mightymodels_plugin.core.repository_key import RepositoryKey
 type RowTypes = tuple[type[Base], ...]
 
 DATABASE_NAME = 'mightymodels.db'
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 1
 UNSTAMPED = 0
 STORED_VERSION = 'PRAGMA user_version'
 STAMP = f'{STORED_VERSION} = {SCHEMA_VERSION}'

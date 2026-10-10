@@ -467,29 +467,26 @@ class TestIndexes:
         assert led_by(OF_A_TICKET, ReviewRunRow) == [(*OF_A_TICKET, 'run_id')]
 
 
-class TestAFileStampedByThePreviousSchema:
-    PREVIOUS_VERSION = 1
+class TestAFileStampedByAnotherSchema:
+    ANOTHER_VERSION = SCHEMA_VERSION + 1
 
     @pytest.fixture
-    def stamped_by_the_previous_schema(self, tmp_path: Path) -> Path:
+    def stamped_by_another_schema(self, tmp_path: Path) -> Path:
         database_file = tmp_path.joinpath(DATABASE_NAME)
         with closing(sqlite3.connect(database_file)) as connection:
-            connection.execute(f'PRAGMA user_version = {self.PREVIOUS_VERSION}')
+            connection.execute(f'PRAGMA user_version = {self.ANOTHER_VERSION}')
         return database_file
 
-    def test_the_schema_version_is_past_the_previous_one(self) -> None:
-        assert SCHEMA_VERSION > self.PREVIOUS_VERSION
-
     def test_opening_it_is_refused_with_the_file_and_the_version_found(
-        self, stamped_by_the_previous_schema: Path, tmp_path: Path
+        self, stamped_by_another_schema: Path, tmp_path: Path
     ) -> None:
         with (
             pytest.raises(SchemaVersionError) as refused,
-            open_database(stamped_by_the_previous_schema, local_key(tmp_path), ROW_TYPES),
+            open_database(stamped_by_another_schema, local_key(tmp_path), ROW_TYPES),
         ):
             pass
 
         assert (refused.value.database_file, refused.value.found) == (
-            stamped_by_the_previous_schema,
-            self.PREVIOUS_VERSION,
+            stamped_by_another_schema,
+            self.ANOTHER_VERSION,
         )

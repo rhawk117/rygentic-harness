@@ -70,7 +70,7 @@ stores its text there in the same transaction (the entry's text, the finding's t
 crashout's root cause), and so does a scout report, whose full text is also kept in `scout_reports`.
 The text is redacted on its way in. An FTS5 index, `similarity_index`, reads the table's text, and
 SQLite triggers keep it current. The index is created after the schema stamp is accepted, so a file
-stamped with another version is still refused untouched. The schema version is 5.
+stamped with another version is still refused untouched. The schema version is 1.
 
 A write answers with a line when the text resembles a row stored earlier, of any kind:
 `near-duplicate: <written> resembles <kind> <reference> (overlap 0.75): <start of the earlier text>`.

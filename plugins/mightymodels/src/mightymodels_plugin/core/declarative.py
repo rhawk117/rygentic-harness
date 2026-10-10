@@ -34,6 +34,12 @@ clock's own form, and a `TextsIfAny` left out is an empty list.
 `child_of` is the foreign key of a row that cannot exist without another: it names the parent by
 the parent's whole primary key, under the same column names. It is checked when the transaction
 commits, so a parent and its child are written in one transaction in either order.
+
+Every key and index is stored under a name, which `NAMING_CONVENTION` gives it: a primary key is
+named from its table, a unique constraint and an index from the table and the first column, a
+foreign key from the table, the first column and the parent's table, and a check from the table
+and the name it was declared with. An index a `tables.py` declares over several columns keeps the
+name written there.
 """
 
 from types import MappingProxyType
@@ -54,6 +60,15 @@ PROSE_LIMIT = 4000
 REPORT_LIMIT = 60_000
 TIME_OF_THE_WRITE = sql.text("(strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'))")
 EMPTY_LIST = '[]'
+NAMING_CONVENTION = MappingProxyType(
+    {
+        'ix': 'ix_%(column_0_label)s',
+        'uq': 'uq_%(table_name)s_%(column_0_name)s',
+        'ck': 'ck_%(table_name)s_%(constraint_name)s',
+        'fk': 'fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s',
+        'pk': 'pk_%(table_name)s',
+    }
+)
 
 type Models = dict[str, str | None]
 type Weights = dict[str, float]
@@ -78,6 +93,7 @@ type Timestamp = Annotated[
 
 
 class Base(DeclarativeBase):
+    metadata = sql.MetaData(naming_convention=NAMING_CONVENTION)
     type_annotation_map = MappingProxyType({Models: sql.JSON, Texts: sql.JSON, Weights: sql.JSON})
 
 
