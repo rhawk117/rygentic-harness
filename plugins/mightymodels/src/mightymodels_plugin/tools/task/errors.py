@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.tools.task.schema import Status
 
 

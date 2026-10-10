@@ -7,9 +7,10 @@ all of them. A `Database` is that file as one repository sees it: it carries the
 and each domain's repository writes and reads rows under that key and no other. Deleting the file
 resets the state of every repository.
 
-`open_database` is the only way to a `Database`, and it creates the table of every row type in
-`ROW_TYPES` by name, whatever else the owner has imported. So no owner opens a database with a
-table missing, and a domain's `tables.py` adds a table only by adding its row type here.
+`open_database` is the only way to a `Database`, and it creates the table of every row type its
+owner hands in, by name, whatever else the owner has imported. This module names no row type:
+every owner hands in `ROW_TYPES` from `tools/row_types.py`, so none opens a database with a
+table missing, and a domain's `tables.py` adds a table only by adding its row type there.
 The FTS5 index over the similarity table is created by DDL that its `tables.py` registers on the
 same `create_all`, so it too waits for the stamp check.
 
@@ -58,22 +59,11 @@ from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
-from mightymodels_plugin.declarative import Base
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.tools.close.tables import ClosingRow
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
-from mightymodels_plugin.tools.crashout.tables import CrashoutRow
-from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
-from mightymodels_plugin.tools.review.tables import (
-    ReviewDispositionRow,
-    ReviewFindingRow,
-    ReviewOutcomeRow,
-    ReviewRunRow,
-)
-from mightymodels_plugin.tools.similarity.tables import ScoutReportRow, SimilarityRow
-from mightymodels_plugin.tools.task.tables import AttemptRow, FailedFixRow, TaskRow, TransitionRow
-from mightymodels_plugin.tools.ticket.tables import TicketRow
+from mightymodels_plugin.core.declarative import Base
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.repository_key import RepositoryKey
+
+type RowTypes = tuple[type[Base], ...]
 
 DATABASE_NAME = 'mightymodels.db'
 SCHEMA_VERSION = 5
@@ -84,24 +74,6 @@ STORED_OBJECTS = 'SELECT count(*) FROM sqlite_master'
 ENFORCE_FOREIGN_KEYS = 'PRAGMA foreign_keys = ON'
 KEEP_A_WRITE_AHEAD_LOG = 'PRAGMA journal_mode = WAL'
 BUSY_TIMEOUT = timedelta(seconds=10)
-ROW_TYPES: tuple[type[Base], ...] = (
-    TicketRow,
-    TaskRow,
-    AttemptRow,
-    FailedFixRow,
-    TransitionRow,
-    CommandRow,
-    ReceiptRow,
-    ReviewRunRow,
-    ReviewFindingRow,
-    ReviewDispositionRow,
-    ReviewOutcomeRow,
-    ClosingRow,
-    LedgerEntryRow,
-    CrashoutRow,
-    SimilarityRow,
-    ScoutReportRow,
-)
 
 
 class SchemaVersionError(StateError):
@@ -201,14 +173,16 @@ def schema_version_error(connection: Connection, database_file: Path) -> SchemaV
 
 
 @contextmanager
-def open_database(database_file: Path, repository_key: RepositoryKey) -> Generator[Database]:
+def open_database(
+    database_file: Path, repository_key: RepositoryKey, row_types: RowTypes
+) -> Generator[Database]:
     database_file.parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(
         URL.create('sqlite', database=str(database_file)),
         connect_args={'timeout': BUSY_TIMEOUT.total_seconds()},
     )
     event.listen(engine, 'connect', enforce_foreign_keys)
-    tables = [Base.metadata.tables[row_type.__tablename__] for row_type in ROW_TYPES]
+    tables = [Base.metadata.tables[row_type.__tablename__] for row_type in row_types]
     try:
         with engine.begin() as connection:
             stamp_a_file_that_holds_nothing(connection)

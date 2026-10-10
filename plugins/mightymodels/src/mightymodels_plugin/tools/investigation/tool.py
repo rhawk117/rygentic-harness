@@ -21,7 +21,7 @@ from typing import Annotated
 from mcp.server.elicitation import ElicitationResult
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.asking import chosen, needs_input_text
 from mightymodels_plugin.tools.investigation.questions import AskedKind, KindAnswer, kind_question
 from mightymodels_plugin.tools.investigation.schema import (

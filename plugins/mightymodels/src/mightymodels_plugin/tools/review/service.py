@@ -29,13 +29,14 @@ from datetime import datetime
 from types import MappingProxyType
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.declarative import NAME_LIMIT, PROSE_LIMIT
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.routing import EFFORT, OVERRIDE_MODEL, Depth, Worker, reviewer_model
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import Workspace, revision_error
 from mightymodels_plugin.redaction import redact_within
-from mightymodels_plugin.routing import EFFORT, OVERRIDE_MODEL, Depth, Worker, reviewer_model
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.review.errors import (
     BaseRequiredError,
     CommitRequiredError,
@@ -84,7 +85,6 @@ from mightymodels_plugin.tools.review.schema import (
 )
 from mightymodels_plugin.tools.review.tables import ReviewFindingRow, ReviewRunRow
 from mightymodels_plugin.tools.similarity.rendering import duplicates_text
-from mightymodels_plugin.workspace import Workspace, revision_error
 
 STANDARD_THRESHOLD = 0.25
 WEIGHT_TOLERANCE = 0.001

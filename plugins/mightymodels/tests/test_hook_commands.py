@@ -22,11 +22,12 @@ from types import MappingProxyType
 import pytest
 from mightymodels_plugin.cli import build_parser, main
 from mightymodels_plugin.commands.session_start import ENV_FILE_VARIABLE
-from mightymodels_plugin.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
-from mightymodels_plugin.database import DATABASE_NAME, Database
-from mightymodels_plugin.declarative import REPORT_LIMIT
-from mightymodels_plugin.repository_key import spool_file_prefix
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
+from mightymodels_plugin.core.database import DATABASE_NAME, Database
+from mightymodels_plugin.core.declarative import REPORT_LIMIT
+from mightymodels_plugin.core.repository_key import spool_file_prefix
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE, Workspace
 from mightymodels_plugin.tools.similarity.schema import SimilarityKind
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY, SPOOL_FILE_BYTES
 from mightymodels_plugin.tools.similarity.tables import ScoutReportRow
@@ -40,7 +41,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-from mightymodels_plugin.workspace import PROJECT_DIR_VARIABLE, Workspace
 from sqlalchemy import select
 
 PLUGIN = Path(__file__).parent.parent

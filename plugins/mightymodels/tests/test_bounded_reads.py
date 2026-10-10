@@ -11,17 +11,18 @@ from types import MappingProxyType
 
 import pytest
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import (
+from mightymodels_plugin.core.database import (
     Database,
     Latest,
     ReadLimit,
     ReadLimitError,
     WriteLimitError,
 )
-from mightymodels_plugin.declarative import Base
-from mightymodels_plugin.routing import Depth
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.declarative import Base
+from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.contract.repository import COMMANDS, contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand
 from mightymodels_plugin.tools.contract.service import ContractService
@@ -92,7 +93,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 from mightymodels_plugin.tools.ticket.repository import ticket_transaction
 from mightymodels_plugin.tools.ticket.tables import TicketRow
-from mightymodels_plugin.workspace import Workspace
 from sqlalchemy import insert
 
 type Read = Callable[[Database], object]

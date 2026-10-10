@@ -7,8 +7,8 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.schema import InvestigationStart, TargetKind
 from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskStart

@@ -14,7 +14,7 @@ from typing import Annotated
 
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.close.schema import CloseAction, CloseView, Closing
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.protocol import (

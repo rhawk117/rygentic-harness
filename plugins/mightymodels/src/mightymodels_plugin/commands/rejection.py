@@ -6,7 +6,7 @@ watches, so `skipped` gives the reason on standard error and exits 0.
 
 import sys
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 
 EXIT_PASSED = 0
 EXIT_REJECTED = 2

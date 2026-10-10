@@ -3,8 +3,8 @@
 from datetime import UTC, datetime
 
 import pytest
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.review.errors import OverrideSpentError
 from mightymodels_plugin.tools.review.schema import StartPayload
 from mightymodels_plugin.tools.review.service import ReviewService

@@ -19,10 +19,10 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.repository_key import RepositoryKey
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.repository import InvestigationRepository
 from mightymodels_plugin.tools.ticket.schema import TicketSection, TicketStatus
 from mightymodels_plugin.tools.ticket.tables import TicketRow

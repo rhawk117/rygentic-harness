@@ -16,7 +16,7 @@ import shlex
 from collections.abc import Mapping
 from pathlib import Path
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 
 PLUGIN_DATA_VARIABLE = 'CLAUDE_PLUGIN_DATA'
 SESSION_DATA_VARIABLE = 'MIGHTYMODELS_DATA_DIR'

@@ -16,12 +16,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from mightymodels_plugin.task_id import is_plan_task
+from mightymodels_plugin.core.task_id import is_plan_task
+from mightymodels_plugin.core.workspace import Git
 from mightymodels_plugin.tools.contract.schema import Outcome
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
 from mightymodels_plugin.tools.task.tables import TaskRow
-from mightymodels_plugin.workspace import Git
 
 DONE_HEADING = '## DONE'
 ASKED_CRITERION = re.compile(r'^\s*-\s*(AC-\d+)\s*:', re.MULTILINE)

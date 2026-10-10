@@ -23,10 +23,10 @@ from operator import attrgetter
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.declarative import NAME_LIMIT, REPORT_LIMIT
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.declarative import NAME_LIMIT, REPORT_LIMIT
+from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.redaction import redact, redact_within
-from mightymodels_plugin.repository_key import RepositoryKey
 from mightymodels_plugin.tools.similarity.matching import (
     CANDIDATE_CAP,
     MATCH_OVERLAP,

@@ -17,8 +17,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.repository_key import RepositoryKey
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.tools.close.schema import ArchiveRecord
 from mightymodels_plugin.tools.close.tables import ClosingRow
 from mightymodels_plugin.tools.snapshot.repository import SnapshotRepository, snapshot_transaction

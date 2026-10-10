@@ -10,8 +10,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from mightymodels_plugin.declarative import PROSE_LIMIT
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.request import NameText, RequestModel
 
 type NotBlank = Annotated[str, StringConstraints(pattern=r'\S', max_length=PROSE_LIMIT)]

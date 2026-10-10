@@ -9,9 +9,18 @@ from pathlib import Path
 import pytest
 from mcp.types import CallToolResult
 from mightymodels_plugin.cli import main
-from mightymodels_plugin.data_directory import SESSION_DATA_VARIABLE
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import (
+    PROJECT_DIR_VARIABLE,
+    OutsideStateDirectoryError,
+    RecordFiles,
+    UnsafeRevisionError,
+    Workspace,
+    revision_error,
+    workspace_at,
+)
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.task.tables import TransitionRow
 from mightymodels_plugin.tools.tests.support import (
@@ -20,15 +29,6 @@ from mightymodels_plugin.tools.tests.support import (
     text_of,
     tree,
     workspace_database,
-)
-from mightymodels_plugin.workspace import (
-    PROJECT_DIR_VARIABLE,
-    OutsideStateDirectoryError,
-    RecordFiles,
-    UnsafeRevisionError,
-    Workspace,
-    revision_error,
-    workspace_at,
 )
 from sqlalchemy import select
 

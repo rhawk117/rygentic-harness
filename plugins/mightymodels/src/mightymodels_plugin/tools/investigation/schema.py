@@ -16,7 +16,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from mightymodels_plugin.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.tools.request import ProseText, RequestModel
 
 DEFAULT_KNOWNS_LIMIT = 40

@@ -39,10 +39,10 @@ from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.repository_key import RepositoryKey, local_key, origin_key
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import ARCHIVES_DIRECTORY, Slug
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.repository_key import RepositoryKey, local_key, origin_key
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import ARCHIVES_DIRECTORY, Slug
 
 PROJECT_DIR_VARIABLE = 'CLAUDE_PROJECT_DIR'
 STATE_DIRECTORY = '.mightymodels'

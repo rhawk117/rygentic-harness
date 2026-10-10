@@ -16,13 +16,14 @@ import sys
 from pathlib import Path
 
 from mightymodels_plugin.commands.rejection import rejected
-from mightymodels_plugin.data_directory import SESSION_DATA_VARIABLE, data_directory_from
-from mightymodels_plugin.edge import open_state
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.slug import InvalidSlugError, parsed_slug
+from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE, data_directory_from
+from mightymodels_plugin.core.edge import open_state
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.slug import InvalidSlugError, parsed_slug
+from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.contract.schema import Phase
 from mightymodels_plugin.tools.contract.service import ContractService, RunRequest
-from mightymodels_plugin.workspace import find_root
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 
 EXIT_FAILED = 1
 
@@ -36,7 +37,7 @@ def verify_run(arguments: argparse.Namespace) -> int:
     start = find_root(os.environ, Path.cwd())
     data_directory = data_directory_from(os.environ, SESSION_DATA_VARIABLE)
     try:
-        with open_state(start, data_directory) as state:
+        with open_state(start, data_directory, ROW_TYPES) as state:
             contracts = ContractService(workspace=state.workspace, database=state.database)
             result = contracts.run_approved(slug, request)
     except StateError as error:

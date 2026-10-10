@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from mightymodels_plugin.task_id import TASK_ID_PATTERN
+from mightymodels_plugin.core.task_id import TASK_ID_PATTERN
 from mightymodels_plugin.tools.request import NameText, ProseText, RequestModel
 
 type TaskId = Annotated[str, StringConstraints(pattern=TASK_ID_PATTERN)]

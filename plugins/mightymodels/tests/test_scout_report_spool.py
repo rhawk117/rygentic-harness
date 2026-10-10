@@ -7,13 +7,14 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
-from mightymodels_plugin.database import DATABASE_NAME, SCHEMA_VERSION, Database
-from mightymodels_plugin.declarative import NAME_LIMIT, REPORT_LIMIT
-from mightymodels_plugin.repository_key import (
+from mightymodels_plugin.core.database import DATABASE_NAME, SCHEMA_VERSION, Database
+from mightymodels_plugin.core.declarative import NAME_LIMIT, REPORT_LIMIT
+from mightymodels_plugin.core.repository_key import (
     REPOSITORY_KEY_LIMIT,
     RepositoryKey,
     spool_file_prefix,
 )
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.similarity.schema import SimilarityKind
 from mightymodels_plugin.tools.similarity.spool import (
     CLOSING_PART,
@@ -31,7 +32,6 @@ from mightymodels_plugin.tools.tests.support import (
     text_of,
     tree,
 )
-from mightymodels_plugin.workspace import Workspace
 from sqlalchemy import select
 
 type Report = Mapping[str, object]

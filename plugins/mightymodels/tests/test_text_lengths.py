@@ -21,12 +21,12 @@ from typing import TypeAliasType, get_args
 
 import pytest
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.declarative import NAME_LIMIT, PROSE_LIMIT, Base
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT, Base
+from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import SLUG_LIMIT, Slug
 from mightymodels_plugin.redaction import RedactedTextTooLongError, redact_within
-from mightymodels_plugin.routing import Depth
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import SLUG_LIMIT, Slug
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.tables import ClosingRow
 from mightymodels_plugin.tools.contract.repository import contract_transaction

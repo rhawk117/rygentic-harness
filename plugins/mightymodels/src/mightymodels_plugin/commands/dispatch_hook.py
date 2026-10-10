@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import TextIO
 
-from mightymodels_plugin.routing import Worker
+from mightymodels_plugin.core.routing import Worker
 
 PLUGIN_PREFIX = 'mightymodels:'
 AGENT_TYPE_KEY = 'agent_type'

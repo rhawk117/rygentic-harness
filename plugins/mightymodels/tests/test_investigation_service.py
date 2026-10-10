@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.errors import (
     RoundRegressionError,
     UnknownInvestigationError,

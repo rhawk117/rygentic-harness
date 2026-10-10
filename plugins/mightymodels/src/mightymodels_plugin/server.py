@@ -28,13 +28,14 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.tools import Tool
 from pydantic import create_model
 
-from mightymodels_plugin.data_directory import (
+from mightymodels_plugin.core.data_directory import (
     PLUGIN_DATA_VARIABLE,
     DataDirectory,
     data_directory_from,
 )
-from mightymodels_plugin.edge import open_state
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.edge import open_state
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tool import close_tool
 from mightymodels_plugin.tools.contract.service import ContractService
@@ -47,6 +48,7 @@ from mightymodels_plugin.tools.investigation.tool import investigation_tool
 from mightymodels_plugin.tools.protocol import ServedState, StartRefusal
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.review.tool import review_tool
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 from mightymodels_plugin.tools.similarity.tool import similarity_tool
@@ -56,7 +58,6 @@ from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.task.tool import task_tool
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tool import ticket_tool
-from mightymodels_plugin.workspace import find_root
 
 SERVER_NAME = 'state'
 TOOLS = (
@@ -105,7 +106,7 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
     async def lifespan(_: MCPServer[ServedState]) -> AsyncGenerator[ServedState]:
         with ExitStack() as opened:
             try:
-                state = opened.enter_context(open_state(start, data_directory))
+                state = opened.enter_context(open_state(start, data_directory, ROW_TYPES))
             except StateError as error:
                 yield StartRefusal(error=error)
                 return

@@ -1,7 +1,7 @@
 """What every table of the state database is declared from.
 
 A domain declares its rows in its own `tables.py` from this base and these column types, and
-`database.py` names every row type it creates a table for.
+`tools/row_types.py` names every row type `database.py` creates a table for.
 
 Every row type has a `repository_key` column, because one database holds the rows of every
 repository. It leads the primary key of a table keyed by names, so the same slug, task id, run id
@@ -42,8 +42,8 @@ from typing import Annotated
 from sqlalchemy import JSON, ForeignKeyConstraint, String, text
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 
-from mightymodels_plugin.repository_key import REPOSITORY_KEY_LIMIT
-from mightymodels_plugin.slug import SLUG_LIMIT
+from mightymodels_plugin.core.repository_key import REPOSITORY_KEY_LIMIT
+from mightymodels_plugin.core.slug import SLUG_LIMIT
 
 TASK_ID_LIMIT = 7
 WORD_LIMIT = 32

@@ -33,7 +33,7 @@ from mcp.server.elicitation import (
 )
 from pydantic import BaseModel, StringConstraints, WithJsonSchema
 
-from mightymodels_plugin.declarative import NAME_LIMIT, PROSE_LIMIT
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
 from mightymodels_plugin.tools.request import RequestModel
 
 AnswerName = Annotated[str, StringConstraints(max_length=NAME_LIMIT)]

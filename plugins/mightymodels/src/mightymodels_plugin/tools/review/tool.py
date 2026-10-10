@@ -20,7 +20,7 @@ from typing import Annotated
 from mcp.server.elicitation import ElicitationResult
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.run_id import RunId
+from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.tools.asking import answer_of, chosen, needs_input_text
 from mightymodels_plugin.tools.protocol import (
     ActionTool,

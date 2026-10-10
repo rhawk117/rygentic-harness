@@ -42,8 +42,8 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from mightymodels_plugin.declarative import NAME_LIMIT, REPORT_LIMIT
-from mightymodels_plugin.repository_key import REPOSITORY_KEY_LIMIT
+from mightymodels_plugin.core.declarative import NAME_LIMIT, REPORT_LIMIT
+from mightymodels_plugin.core.repository_key import REPOSITORY_KEY_LIMIT
 from mightymodels_plugin.tools.similarity.schema import SpooledReport
 
 SPOOL_DIRECTORY = 'scout-spool'

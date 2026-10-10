@@ -24,14 +24,14 @@ from mcp.types import (
     ElicitResult,
     InputRequiredResult,
 )
-from mightymodels_plugin.declarative import NAME_LIMIT, PROSE_LIMIT, Base
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT, Base
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import workspace_at
 from mightymodels_plugin.server import build_server
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.contract.tables import CommandRow
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
 from mightymodels_plugin.tools.review.tables import ReviewDispositionRow, ReviewRunRow
 from mightymodels_plugin.tools.tests.support import StateServer, text_of, workspace_database
-from mightymodels_plugin.workspace import workspace_at
 from sqlalchemy import select
 
 if TYPE_CHECKING:

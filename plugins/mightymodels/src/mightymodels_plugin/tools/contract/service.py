@@ -17,10 +17,11 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.head import SHORT_SHA, short_head
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.contract.executor import receipt_for
 from mightymodels_plugin.tools.contract.repository import Approval, contract_transaction
 from mightymodels_plugin.tools.contract.schema import (
@@ -33,7 +34,6 @@ from mightymodels_plugin.tools.contract.schema import (
     Receipt,
 )
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
-from mightymodels_plugin.workspace import Workspace
 
 type ArgvById = Mapping[str, tuple[str, ...]]
 

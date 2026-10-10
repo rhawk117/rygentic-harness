@@ -6,13 +6,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from mightymodels_plugin.database import DATABASE_NAME, Database, open_database
-from mightymodels_plugin.declarative import REPORT_LIMIT
+from mightymodels_plugin.core.database import DATABASE_NAME, Database, open_database
+from mightymodels_plugin.core.declarative import REPORT_LIMIT
+from mightymodels_plugin.core.repository_key import RepositoryKey
+from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.redaction import RedactedTextTooLongError
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.routing import Depth
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.crashout.schema import CrashoutEntry, Severity, Verdict
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.investigation.schema import (
@@ -31,6 +31,7 @@ from mightymodels_plugin.tools.review.schema import (
     StartPayload,
 )
 from mightymodels_plugin.tools.review.service import ReviewService
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.similarity.matching import (
     CANDIDATE_CAP,
     MATCH_OVERLAP,
@@ -151,7 +152,7 @@ def services(
 
 @pytest.fixture
 def another_repository(data_directory: Path, spool: Path) -> Generator[SimilarityService]:
-    with open_database(data_directory.joinpath(DATABASE_NAME), OTHER_KEY) as database:
+    with open_database(data_directory.joinpath(DATABASE_NAME), OTHER_KEY, ROW_TYPES) as database:
         yield SimilarityService(database=database, spool=spool)
 
 

@@ -6,7 +6,7 @@ A closing belongs to the ticket it closes, and its archive file is its own.
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     Base,
     Name,
     Prose,

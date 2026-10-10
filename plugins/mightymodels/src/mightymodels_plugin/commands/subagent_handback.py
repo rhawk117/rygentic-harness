@@ -21,7 +21,7 @@ from mightymodels_plugin.commands.subagent_record import (
     scout_report_of,
     spool_report,
 )
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.tools.similarity.spool import HANDBACK_PART
 
 TOOL_INPUT_KEY = 'tool_input'

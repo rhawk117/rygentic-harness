@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.run_id import RunId
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.tools.review.schema import (
     DisposePayload,
     Persona,

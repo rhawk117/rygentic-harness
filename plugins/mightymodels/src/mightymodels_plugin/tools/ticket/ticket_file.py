@@ -10,9 +10,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.routing import models_at
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.routing import models_at
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 
 type Node = Tree | list[Node] | str | int | bool | None

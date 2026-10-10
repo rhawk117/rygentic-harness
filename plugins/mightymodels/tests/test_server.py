@@ -10,8 +10,8 @@ from typing import get_args, get_type_hints
 import pytest
 from jsonschema import Draft202012Validator
 from mcp.types import CallToolResult
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.server import SERVER_NAME, TOOLS, AppState
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.crashout.service import CrashoutService

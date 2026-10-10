@@ -33,7 +33,7 @@ from typing import Protocol, runtime_checkable
 from mcp.server.mcpserver import Context
 from mcp.server.mcpserver.exceptions import ToolError
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.crashout.service import CrashoutService

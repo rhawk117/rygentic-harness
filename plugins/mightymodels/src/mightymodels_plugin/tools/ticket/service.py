@@ -23,10 +23,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.routing import FIXED_WORKERS, Scope, Worker, fixed_model
-from mightymodels_plugin.slug import InvalidSlugError, Slug, parsed_slug
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.routing import FIXED_WORKERS, Scope, Worker, fixed_model
+from mightymodels_plugin.core.slug import InvalidSlugError, Slug, parsed_slug
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.ticket.repository import TicketRepository, ticket_transaction
 from mightymodels_plugin.tools.ticket.schema import (
     BranchChoice,
@@ -48,7 +49,6 @@ from mightymodels_plugin.tools.ticket.ticket_file import (
     ticket_text,
     with_context,
 )
-from mightymodels_plugin.workspace import Workspace
 
 CONTEXT_LIMIT = 6
 TOP_LEVEL_KEYS = frozenset(

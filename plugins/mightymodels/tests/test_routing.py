@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from mightymodels_plugin.routing import (
+from mightymodels_plugin.core.routing import (
     EFFORT,
     FIXED_WORKERS,
     OVERRIDE_MODEL,

@@ -8,7 +8,7 @@ from typing import Annotated
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     Base,
     Name,
     Prose,
@@ -18,7 +18,7 @@ from mightymodels_plugin.declarative import (
     Timestamp,
     Word,
 )
-from mightymodels_plugin.repository_key import REPOSITORY_KEY_LIMIT
+from mightymodels_plugin.core.repository_key import REPOSITORY_KEY_LIMIT
 
 type IndexedRepositoryName = Annotated[str, mapped_column(String(REPOSITORY_KEY_LIMIT), index=True)]
 

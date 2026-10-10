@@ -11,7 +11,7 @@ import re
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 
-from mightymodels_plugin.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.redaction import redact_within
 from mightymodels_plugin.tools.review.errors import (
     FieldRequiredError,

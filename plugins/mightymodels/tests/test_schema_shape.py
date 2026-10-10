@@ -12,25 +12,24 @@ from pathlib import Path
 
 import pytest
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import (
+from mightymodels_plugin.core.database import (
     DATABASE_NAME,
-    ROW_TYPES,
     SCHEMA_VERSION,
     Database,
     SchemaVersionError,
     open_database,
 )
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     SHA_LIMIT,
     TASK_ID_LIMIT,
     TIMESTAMP_LIMIT,
     WORD_LIMIT,
     Base,
 )
-from mightymodels_plugin.repository_key import local_key
-from mightymodels_plugin.routing import Depth, Scope
-from mightymodels_plugin.run_id import RUN_ID_PATTERN
-from mightymodels_plugin.task_id import TASK_ID_PATTERN
+from mightymodels_plugin.core.repository_key import local_key
+from mightymodels_plugin.core.routing import Depth, Scope
+from mightymodels_plugin.core.run_id import RUN_ID_PATTERN
+from mightymodels_plugin.core.task_id import TASK_ID_PATTERN
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.tables import ClosingRow
 from mightymodels_plugin.tools.contract.executor import TAIL_CHARS, tail
@@ -60,6 +59,7 @@ from mightymodels_plugin.tools.review.tables import (
     ReviewOutcomeRow,
     ReviewRunRow,
 )
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.similarity.schema import Scout, SimilarityKind
 from mightymodels_plugin.tools.similarity.tables import ScoutReportRow, SimilarityRow
 from mightymodels_plugin.tools.task.schema import ArchitectMode, Implementer, Status
@@ -483,7 +483,7 @@ class TestAFileStampedByThePreviousSchema:
     ) -> None:
         with (
             pytest.raises(SchemaVersionError) as refused,
-            open_database(stamped_by_the_previous_schema, local_key(tmp_path)),
+            open_database(stamped_by_the_previous_schema, local_key(tmp_path), ROW_TYPES),
         ):
             pass
 

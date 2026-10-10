@@ -9,16 +9,16 @@ from pathlib import Path
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from mightymodels_plugin.database import DATABASE_NAME
-from mightymodels_plugin.repository_key import (
+from mightymodels_plugin.core.database import DATABASE_NAME
+from mightymodels_plugin.core.repository_key import (
     LOCAL_PREFIX,
     REPOSITORY_KEY_LIMIT,
     RepositoryKey,
     local_key,
     origin_key,
 )
+from mightymodels_plugin.core.workspace import STATE_DIRECTORY, Checkout, git_at
 from mightymodels_plugin.tools.tests.support import StateServer, ToolCall, text_of, tree
-from mightymodels_plugin.workspace import STATE_DIRECTORY, Checkout, git_at
 
 type GitRunner = Callable[..., str]
 

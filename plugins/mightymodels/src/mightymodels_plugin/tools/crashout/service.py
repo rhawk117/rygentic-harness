@@ -18,8 +18,8 @@ Everything above the class reads no service state.
 from dataclasses import dataclass
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.declarative import NAME_LIMIT, PROSE_LIMIT
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
 from mightymodels_plugin.redaction import redact_within
 from mightymodels_plugin.tools.crashout.rendering import crashout_text, patterns_text
 from mightymodels_plugin.tools.crashout.repository import JOURNAL_WINDOW, crashout_transaction

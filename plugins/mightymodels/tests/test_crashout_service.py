@@ -4,7 +4,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import STATE_DIRECTORY
 from mightymodels_plugin.tools.crashout.repository import crashout_transaction
 from mightymodels_plugin.tools.crashout.schema import (
     CrashoutEntry,
@@ -22,7 +23,6 @@ from mightymodels_plugin.tools.tests.support import (
     text_of,
     tree,
 )
-from mightymodels_plugin.workspace import STATE_DIRECTORY
 from pydantic import ValidationError
 
 FAKE_TOKEN = 'ghp_' + 'a' * 36

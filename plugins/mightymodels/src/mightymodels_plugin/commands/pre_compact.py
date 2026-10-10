@@ -15,11 +15,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from mightymodels_plugin.commands.branch_ticket import ticket_on_branch
 from mightymodels_plugin.commands.hook_context import HookContext
 from mightymodels_plugin.commands.rejection import skipped
-from mightymodels_plugin.edge import OpenState, open_state
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.edge import OpenState, open_state
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.workspace import find_root
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.snapshot.schema import DEFAULT_LIMIT
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
-from mightymodels_plugin.workspace import find_root
 
 
 def write_snapshot(state: OpenState) -> None:
@@ -37,7 +38,9 @@ def write_snapshot(state: OpenState) -> None:
 
 def run_hook(context: HookContext) -> int:
     try:
-        with open_state(find_root(context.environ, context.cwd), context.data_directory()) as state:
+        with open_state(
+            find_root(context.environ, context.cwd), context.data_directory(), ROW_TYPES
+        ) as state:
             write_snapshot(state)
     except (StateError, SQLAlchemyError, OSError) as error:
         return skipped(error)

@@ -8,7 +8,7 @@ from typing import Annotated, override
 
 from pydantic import ConfigDict, RootModel, StringConstraints, ValidationError
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 
 RUN_ID_PATTERN = r'^[0-9]{8}-[0-9]{6}$'
 

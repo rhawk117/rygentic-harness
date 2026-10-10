@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mightymodels_plugin.clock import now
+from mightymodels_plugin.core.workspace import Git, Workspace
 from mightymodels_plugin.tools.contract.schema import ApprovedCommand, Outcome, Phase, Receipt
-from mightymodels_plugin.workspace import Git, Workspace
 
 TAIL_LINES = 40
 TAIL_CHARS = 4000

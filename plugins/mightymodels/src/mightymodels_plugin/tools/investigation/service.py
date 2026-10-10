@@ -27,11 +27,12 @@ from itertools import count
 from types import MappingProxyType
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.declarative import PROSE_LIMIT
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.redaction import redact_within, redaction_within
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.investigation.errors import (
     CiteRequiredError,
     EmptyTextError,
@@ -59,7 +60,6 @@ from mightymodels_plugin.tools.investigation.schema import (
     Source,
 )
 from mightymodels_plugin.tools.similarity.rendering import duplicates_text
-from mightymodels_plugin.workspace import Workspace
 
 DAY_FORMAT = '%Y%m%d'
 TARGET_NAME_LIMIT = 40

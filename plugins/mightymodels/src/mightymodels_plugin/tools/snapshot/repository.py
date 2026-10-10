@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database
+from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.tools.contract.repository import ContractRepository
 from mightymodels_plugin.tools.investigation.repository import InvestigationRepository
 from mightymodels_plugin.tools.review.repository import DecisionRepository, ReviewRepository

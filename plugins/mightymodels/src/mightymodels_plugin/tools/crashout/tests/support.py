@@ -1,6 +1,6 @@
 import pytest
 
-from mightymodels_plugin.database import Database
+from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 
 

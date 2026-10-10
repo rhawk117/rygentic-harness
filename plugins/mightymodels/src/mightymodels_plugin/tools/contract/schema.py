@@ -10,7 +10,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
-from mightymodels_plugin.declarative import NAME_LIMIT
+from mightymodels_plugin.core.declarative import NAME_LIMIT
 from mightymodels_plugin.tools.request import NameText, ProseText, RequestModel
 
 COMMAND_ID_PATTERN = r'^[A-Za-z0-9._-]+$'

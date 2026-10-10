@@ -6,8 +6,8 @@ branch. A detached HEAD, no match and more than one match mean no ticket, and th
 
 from sqlalchemy import select
 
-from mightymodels_plugin.database import Database
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.ticket.schema import TicketStatus
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 

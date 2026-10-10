@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.database import ROW_TYPES, Database
-from mightymodels_plugin.declarative import Base
-from mightymodels_plugin.edge import OpenState, open_state
-from mightymodels_plugin.routing import Depth
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.declarative import Base
+from mightymodels_plugin.core.edge import OpenState, open_state
+from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tables import ClosingRow
@@ -55,6 +55,7 @@ from mightymodels_plugin.tools.review.tables import (
     ReviewOutcomeRow,
     ReviewRunRow,
 )
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.similarity.repository import similarity_transaction
 from mightymodels_plugin.tools.similarity.schema import Scout, SimilarityKind, SpooledReport
 from mightymodels_plugin.tools.similarity.service import SimilarityService
@@ -381,13 +382,13 @@ def second_checkout(tmp_path: Path, git: GitRunner) -> Path:
 
 @pytest.fixture
 def first(first_checkout: Path, data_directory: Path) -> Generator[Clone]:
-    with open_state(first_checkout, data_directory) as state:
+    with open_state(first_checkout, data_directory, ROW_TYPES) as state:
         yield clone_of(state)
 
 
 @pytest.fixture
 def second(second_checkout: Path, data_directory: Path) -> Generator[Clone]:
-    with open_state(second_checkout, data_directory) as state:
+    with open_state(second_checkout, data_directory, ROW_TYPES) as state:
         yield clone_of(state)
 
 

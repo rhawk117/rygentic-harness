@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 from mightymodels_plugin.cli import build_parser, main
-from mightymodels_plugin.data_directory import SESSION_DATA_VARIABLE
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE
 from mightymodels_plugin.tools.contract.schema import ContractCommand
 from mightymodels_plugin.tools.contract.service import ContractService
-from mightymodels_plugin.workspace import PROJECT_DIR_VARIABLE
 from pytest_mock import MockerFixture
 
 SLUG = 'retry-queue'

@@ -8,9 +8,10 @@ from types import MappingProxyType
 
 import pytest
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.routing import Depth
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import workspace_at
 from mightymodels_plugin.tools.contract.repository import contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
@@ -42,7 +43,6 @@ from mightymodels_plugin.tools.tests.support import StateServer, text_of
 from mightymodels_plugin.tools.ticket.repository import NotStagedError, ticket_transaction
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService, unit_of
-from mightymodels_plugin.workspace import workspace_at
 
 type GitRunner = Callable[..., str]
 

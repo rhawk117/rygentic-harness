@@ -12,13 +12,13 @@ from pathlib import Path
 from typing import TextIO
 
 from mightymodels_plugin.commands.dispatch_hook import PLUGIN_PREFIX, decoded_object, worker_named
-from mightymodels_plugin.data_directory import (
+from mightymodels_plugin.core.data_directory import (
     PLUGIN_DATA_VARIABLE,
     DataDirectory,
     data_directory_from,
 )
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.routing import Worker
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.routing import Worker
 
 AGENT_TYPE_KEY = 'agent_type'
 

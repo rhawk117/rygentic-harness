@@ -33,10 +33,10 @@ from dataclasses import dataclass
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database, Latest, ReadLimit, WriteLimitError
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.run_id import RunId
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.database import Database, Latest, ReadLimit, WriteLimitError
+from mightymodels_plugin.core.repository_key import RepositoryKey
+from mightymodels_plugin.core.run_id import RunId
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.review.errors import RunNotFoundError
 from mightymodels_plugin.tools.review.schema import Decision, Finding, Result, ReviewRun
 from mightymodels_plugin.tools.review.tables import (

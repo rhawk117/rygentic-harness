@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from mightymodels_plugin.database import Database
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.workspace import Workspace, workspace_at
 from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.tests.support import workspace_database
-from mightymodels_plugin.workspace import Workspace, workspace_at
 
 
 @contextmanager

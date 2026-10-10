@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 
 SECRET_PATTERNS: Mapping[str, re.Pattern[str]] = MappingProxyType(
     {

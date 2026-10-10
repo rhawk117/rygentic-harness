@@ -6,7 +6,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from mightymodels_plugin.routing import EFFORT, Worker, fixed_model
+from mightymodels_plugin.core.routing import EFFORT, Worker, fixed_model
 
 AGENTS = Path(__file__).parent.parent.joinpath('agents')
 FRONTMATTER = re.compile(r'\A---\n(?P<head>.*?)\n---\n(?P<body>.*)\Z', re.DOTALL)

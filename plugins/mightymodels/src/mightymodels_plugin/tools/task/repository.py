@@ -32,9 +32,9 @@ from dataclasses import dataclass
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database, ReadLimit
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.database import Database, ReadLimit
+from mightymodels_plugin.core.repository_key import RepositoryKey
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.contract.repository import ContractRepository
 from mightymodels_plugin.tools.task.schema import ArchitectMode, Implementer, Status
 from mightymodels_plugin.tools.task.tables import AttemptRow, FailedFixRow, TaskRow, TransitionRow

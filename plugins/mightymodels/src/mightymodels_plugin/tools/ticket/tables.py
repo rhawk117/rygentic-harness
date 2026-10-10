@@ -9,7 +9,7 @@ from typing import Annotated
 from sqlalchemy import String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     WORD_LIMIT,
     Base,
     Models,

@@ -13,7 +13,7 @@ from typing import Annotated
 from mcp.server.elicitation import ElicitationResult
 from mcp.server.mcpserver import Elicit, Resolve
 
-from mightymodels_plugin.routing import Scope
+from mightymodels_plugin.core.routing import Scope
 from mightymodels_plugin.tools.asking import AnswerName, Choice, Question, enumerated
 from mightymodels_plugin.tools.ticket.schema import (
     BranchChoice,

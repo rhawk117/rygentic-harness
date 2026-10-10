@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.commands.dispatch_hook import DISPATCH_RULES, check_dispatch
-from mightymodels_plugin.routing import Worker
+from mightymodels_plugin.core.routing import Worker
 
 AGENTS = Path(__file__).parent.parent.joinpath('agents')
 ROW_LINE = re.compile(r'^- (?:Delegate|Dispatch) only (?:to )?(?P<names>[^.]*)\.', re.MULTILINE)

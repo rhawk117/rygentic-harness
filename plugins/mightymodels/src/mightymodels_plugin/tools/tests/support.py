@@ -13,12 +13,18 @@ from mcp.types import CallToolResult, TextContent, Tool
 from sqlalchemy import Engine, Table, event
 from sqlalchemy.orm import Session, SessionTransaction
 
-from mightymodels_plugin.data_directory import SESSION_DATA_VARIABLE, DataDirectory
-from mightymodels_plugin.database import DATABASE_NAME, Database, open_database
-from mightymodels_plugin.declarative import Base
-from mightymodels_plugin.repository_key import RepositoryKey, local_key
+from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE, DataDirectory
+from mightymodels_plugin.core.database import DATABASE_NAME, Database, open_database
+from mightymodels_plugin.core.declarative import Base
+from mightymodels_plugin.core.repository_key import RepositoryKey, local_key
+from mightymodels_plugin.core.workspace import (
+    PROJECT_DIR_VARIABLE,
+    Checkout,
+    Workspace,
+    workspace_at,
+)
 from mightymodels_plugin.server import build_server
-from mightymodels_plugin.workspace import PROJECT_DIR_VARIABLE, Checkout, Workspace, workspace_at
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 
 type ToolCall = tuple[str, dict[str, object]]
 type RowValues = Mapping[str, object]
@@ -180,7 +186,7 @@ def repository_key_of(workspace: Workspace) -> RepositoryKey:
 @contextmanager
 def workspace_database(workspace: Workspace, data_directory: Path) -> Generator[Database]:
     database_file = data_directory.joinpath(DATABASE_NAME)
-    with open_database(database_file, repository_key_of(workspace)) as database:
+    with open_database(database_file, repository_key_of(workspace), ROW_TYPES) as database:
         yield database
 
 

@@ -13,7 +13,7 @@ from typing import Annotated
 from sqlalchemy import Index, String, false
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     NAME_LIMIT,
     PROSE_LIMIT,
     WORD_LIMIT,

@@ -1,8 +1,8 @@
 import pytest
 
-from mightymodels_plugin.database import Database
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.contract.service import ContractService
-from mightymodels_plugin.workspace import Workspace
 
 
 @pytest.fixture

@@ -21,11 +21,12 @@ from uuid import uuid4
 
 from mightymodels_plugin.commands.hook_context import HookContext, plugin_worker
 from mightymodels_plugin.commands.rejection import skipped
-from mightymodels_plugin.data_directory import DataDirectoryMissingError
-from mightymodels_plugin.declarative import NAME_LIMIT
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.repository_key import RepositoryKey, spool_file_prefix
-from mightymodels_plugin.routing import Worker
+from mightymodels_plugin.core.data_directory import DataDirectoryMissingError
+from mightymodels_plugin.core.declarative import NAME_LIMIT
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.repository_key import RepositoryKey, spool_file_prefix
+from mightymodels_plugin.core.routing import Worker
+from mightymodels_plugin.core.workspace import Checkout, find_root, git_at
 from mightymodels_plugin.tools.similarity.schema import Scout
 from mightymodels_plugin.tools.similarity.spool import (
     CLOSING_PART,
@@ -33,7 +34,6 @@ from mightymodels_plugin.tools.similarity.spool import (
     SPOOL_DIRECTORY,
     SPOOL_FILE_BYTES,
 )
-from mightymodels_plugin.workspace import Checkout, find_root, git_at
 
 SCOUTS = frozenset({Worker.CODE_SCOUT, Worker.WEB_SCOUT})
 UNFINISHED_SUFFIX = '.part'

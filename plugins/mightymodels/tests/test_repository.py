@@ -4,16 +4,17 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from mightymodels_plugin.database import DATABASE_NAME, open_database
-from mightymodels_plugin.repository_key import local_key
-from mightymodels_plugin.tools.tests.support import StateServer
-from mightymodels_plugin.workspace import (
+from mightymodels_plugin.core.database import DATABASE_NAME, open_database
+from mightymodels_plugin.core.repository_key import local_key
+from mightymodels_plugin.core.workspace import (
     EXCLUDE_LINE,
     STATE_DIRECTORY,
     NotARepositoryError,
     find_root,
     workspace_at,
 )
+from mightymodels_plugin.tools.row_types import ROW_TYPES
+from mightymodels_plugin.tools.tests.support import StateServer
 from sqlalchemy import text
 
 type GitRunner = Callable[..., str]
@@ -127,7 +128,7 @@ class TestOpenDatabase:
     @pytest.fixture
     def master_rows_of_a_fresh_database(self, tmp_path: Path) -> list[MasterRow]:
         database_file = tmp_path.joinpath('fresh', DATABASE_NAME)
-        opening = open_database(database_file, local_key(tmp_path))
+        opening = open_database(database_file, local_key(tmp_path), ROW_TYPES)
         with opening as opened, opened.engine.connect() as connection:
             return [dict(row) for row in connection.execute(self.MASTER_ROWS).mappings()]
 
@@ -140,7 +141,7 @@ class TestOpenDatabase:
     ) -> None:
         database = data_directory_with_url_characters.joinpath(DATABASE_NAME)
 
-        with open_database(database, local_key(tmp_path)) as opened:
+        with open_database(database, local_key(tmp_path), ROW_TYPES) as opened:
             located = opened.engine.url.database
 
         assert located == str(database)

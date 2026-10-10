@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from mightymodels_plugin.database import Database
+from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 

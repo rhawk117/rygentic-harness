@@ -11,8 +11,8 @@ from enum import StrEnum, auto
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from mightymodels_plugin.routing import Depth
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.request import ProseText, RequestModel
 from mightymodels_plugin.tools.snapshot.schema import NotYetRecorded
 from mightymodels_plugin.tools.task.schema import Status

@@ -2,8 +2,8 @@
 
 from collections.abc import Sequence
 
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.run_id import RunId
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.tools.review.schema import Decision, Persona, Result, ReviewScope
 
 

@@ -10,7 +10,7 @@ from typing import Annotated
 from sqlalchemy import Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     TASK_ID_LIMIT,
     Base,
     Name,

@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
-from mightymodels_plugin.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.workspace import workspace_at
 from mightymodels_plugin.redaction import RedactedTextTooLongError
-from mightymodels_plugin.slug import Slug
 from mightymodels_plugin.tools.failed_fix.schema import (
     FailedFixAction,
     FailedFixPayload,
@@ -26,7 +27,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-from mightymodels_plugin.workspace import workspace_at
 
 type GitRunner = Callable[..., str]
 

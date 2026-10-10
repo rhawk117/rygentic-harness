@@ -19,9 +19,9 @@ from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
-from mightymodels_plugin.database import Database
+from mightymodels_plugin.core.database import Database
+from mightymodels_plugin.core.repository_key import spool_file_prefix
 from mightymodels_plugin.redaction import RedactedTextTooLongError
-from mightymodels_plugin.repository_key import spool_file_prefix
 from mightymodels_plugin.tools.similarity.rendering import matches_text
 from mightymodels_plugin.tools.similarity.repository import similarity_transaction
 from mightymodels_plugin.tools.similarity.schema import (

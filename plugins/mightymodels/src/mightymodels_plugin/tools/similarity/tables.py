@@ -22,7 +22,7 @@ from typing import Annotated
 from sqlalchemy import DDL, String, UniqueConstraint, event
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     Base,
     Name,
     ReportProse,
@@ -31,7 +31,7 @@ from mightymodels_plugin.declarative import (
     Timestamp,
     Word,
 )
-from mightymodels_plugin.repository_key import REPOSITORY_KEY_LIMIT
+from mightymodels_plugin.core.repository_key import REPOSITORY_KEY_LIMIT
 
 INDEX_STATEMENTS = (
     """CREATE VIRTUAL TABLE IF NOT EXISTS similarity_index

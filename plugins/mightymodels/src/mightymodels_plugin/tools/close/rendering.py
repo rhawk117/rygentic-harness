@@ -9,6 +9,7 @@ longest archive is well under `ARCHIVE_LINES`.
 from collections.abc import Mapping, Sequence
 from itertools import islice
 
+from mightymodels_plugin.core.workspace import ARCHIVES_DIRECTORY
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.tools.close.schema import (
     ArchivedCommand,
@@ -20,7 +21,6 @@ from mightymodels_plugin.tools.close.schema import (
 from mightymodels_plugin.tools.contract.schema import Outcome
 from mightymodels_plugin.tools.snapshot.rendering import bullet_lines
 from mightymodels_plugin.tools.ticket.schema import Tracker
-from mightymodels_plugin.workspace import ARCHIVES_DIRECTORY
 
 ARCHIVE_LINES = 30
 DECISION_LIMIT = 4

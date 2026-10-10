@@ -9,7 +9,7 @@ from typing import Annotated, override
 
 from pydantic import AfterValidator, ConfigDict, RootModel, StringConstraints, ValidationError
 
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 
 SLUG_PATTERN = r'^[A-Za-z0-9][A-Za-z0-9_-]*$'
 SLUG_LIMIT = 64

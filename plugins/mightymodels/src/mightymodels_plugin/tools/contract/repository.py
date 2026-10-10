@@ -23,10 +23,10 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database, ReadLimit
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.slug import Slug
-from mightymodels_plugin.task_id import TASK_ID_PATTERN
+from mightymodels_plugin.core.database import Database, ReadLimit
+from mightymodels_plugin.core.repository_key import RepositoryKey
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.task_id import TASK_ID_PATTERN
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Receipt
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 

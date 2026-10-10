@@ -7,8 +7,8 @@ from types import MappingProxyType
 
 import pytest
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.contract.repository import contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Phase, Receipt
 from mightymodels_plugin.tools.contract.schema import Outcome as ReceiptOutcome

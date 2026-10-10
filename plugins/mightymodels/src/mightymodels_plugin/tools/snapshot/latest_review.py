@@ -7,7 +7,7 @@ number order and every list below keeps that order.
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.review.rendering import Standing
 from mightymodels_plugin.tools.review.repository import ReviewRepository
 from mightymodels_plugin.tools.review.schema import Decision, Disposition, Finding, Result

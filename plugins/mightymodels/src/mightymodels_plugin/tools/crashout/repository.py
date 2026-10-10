@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database, Latest, ReadLimit
-from mightymodels_plugin.repository_key import RepositoryKey
+from mightymodels_plugin.core.database import Database, Latest, ReadLimit
+from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.tools.crashout.schema import JournaledCrashout
 from mightymodels_plugin.tools.crashout.tables import CrashoutRow
 from mightymodels_plugin.tools.similarity.repository import SimilarityRepository, Written

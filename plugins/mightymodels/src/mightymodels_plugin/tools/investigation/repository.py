@@ -29,9 +29,9 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.database import Database, Latest, ReadLimit
-from mightymodels_plugin.repository_key import RepositoryKey
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.database import Database, Latest, ReadLimit
+from mightymodels_plugin.core.repository_key import RepositoryKey
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.schema import EntryKind, Source
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
 from mightymodels_plugin.tools.similarity.repository import SimilarityRepository, Written

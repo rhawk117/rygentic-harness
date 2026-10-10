@@ -24,15 +24,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from mightymodels_plugin.commands.branch_ticket import ticket_on_branch
 from mightymodels_plugin.commands.hook_context import HookContext, plugin_worker
 from mightymodels_plugin.commands.rejection import skipped
-from mightymodels_plugin.edge import OpenState, open_state
-from mightymodels_plugin.errors import StateError
-from mightymodels_plugin.routing import Worker
-from mightymodels_plugin.slug import Slug
-from mightymodels_plugin.task_id import is_plan_task, task_number
+from mightymodels_plugin.core.edge import OpenState, open_state
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.routing import Worker
+from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.task_id import is_plan_task, task_number
+from mightymodels_plugin.core.workspace import find_root
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.task.gates import done_commit
 from mightymodels_plugin.tools.task.repository import in_progress_started_by, task_transaction
 from mightymodels_plugin.tools.task.schema import Implementer
-from mightymodels_plugin.workspace import find_root
 
 IMPLEMENTERS = frozenset({Worker.ENGINEER, Worker.ARCHITECT})
 STOP_HOOK_ACTIVE_KEY = 'stop_hook_active'
@@ -81,7 +82,9 @@ def run_hook(context: HookContext) -> int:
     if worker not in IMPLEMENTERS or fields.get(STOP_HOOK_ACTIVE_KEY) is True:
         return 0
     try:
-        with open_state(find_root(context.environ, context.cwd), context.data_directory()) as state:
+        with open_state(
+            find_root(context.environ, context.cwd), context.data_directory(), ROW_TYPES
+        ) as state:
             reason = unfinished_reason(state, Implementer(worker))
     except (StateError, SQLAlchemyError) as error:
         return skipped(error)

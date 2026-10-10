@@ -13,13 +13,13 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from mightymodels_plugin.commands.rejection import skipped
-from mightymodels_plugin.data_directory import (
+from mightymodels_plugin.core.data_directory import (
     PLUGIN_DATA_VARIABLE,
     DataDirectoryMissingError,
     data_directory_from,
     export_line,
 )
-from mightymodels_plugin.errors import StateError
+from mightymodels_plugin.core.errors import StateError
 
 ENV_FILE_VARIABLE = 'CLAUDE_ENV_FILE'
 

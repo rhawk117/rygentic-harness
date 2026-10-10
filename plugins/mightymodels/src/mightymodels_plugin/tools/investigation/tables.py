@@ -8,7 +8,7 @@ from typing import Annotated
 from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mightymodels_plugin.declarative import (
+from mightymodels_plugin.core.declarative import (
     EMPTY_LIST,
     Base,
     Prose,

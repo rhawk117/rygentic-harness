@@ -19,12 +19,12 @@ import pytest
 from mcp.types import CallToolResult
 from mightymodels_plugin.cli import build_parser, main
 from mightymodels_plugin.commands.session_start import ENV_FILE_VARIABLE
-from mightymodels_plugin.data_directory import (
+from mightymodels_plugin.core.data_directory import (
     PLUGIN_DATA_VARIABLE,
     SESSION_DATA_VARIABLE,
     data_directory_from,
 )
-from mightymodels_plugin.database import (
+from mightymodels_plugin.core.database import (
     BUSY_TIMEOUT,
     DATABASE_NAME,
     SCHEMA_VERSION,
@@ -32,9 +32,10 @@ from mightymodels_plugin.database import (
     SchemaVersionError,
     open_database,
 )
-from mightymodels_plugin.repository_key import local_key
+from mightymodels_plugin.core.repository_key import local_key
+from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE, STATE_DIRECTORY
+from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.tests.support import StateServer, ToolCall, text_of, tree
-from mightymodels_plugin.workspace import PROJECT_DIR_VARIABLE, STATE_DIRECTORY
 
 type GitRunner = Callable[..., str]
 
@@ -331,7 +332,7 @@ class TestASchemaVersionMismatch:
     ) -> None:
         with (
             pytest.raises(SchemaVersionError) as refused,
-            open_database(mismatched.file, local_key(tmp_path)),
+            open_database(mismatched.file, local_key(tmp_path), ROW_TYPES),
         ):
             pass
 

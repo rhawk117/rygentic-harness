@@ -14,7 +14,7 @@ from typing import Annotated
 from mcp.server.elicitation import ElicitationResult
 from mcp.server.mcpserver import Elicit, Resolve
 
-from mightymodels_plugin.routing import Depth
+from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.tools.asking import AnswerProse, Choice, Question, enumerated
 from mightymodels_plugin.tools.review.schema import (
     Decision,

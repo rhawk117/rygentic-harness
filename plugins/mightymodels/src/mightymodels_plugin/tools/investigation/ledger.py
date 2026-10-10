@@ -12,7 +12,7 @@ every ledger a ticket links, in the order the ticket links them, and names the l
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from mightymodels_plugin.slug import Slug
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.errors import UnknownInvestigationError
 from mightymodels_plugin.tools.investigation.repository import (
     InvestigationRepository,

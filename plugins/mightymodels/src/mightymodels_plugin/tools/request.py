@@ -16,7 +16,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-from mightymodels_plugin.declarative import NAME_LIMIT, PROSE_LIMIT
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
 
 type NameText = Annotated[str, StringConstraints(max_length=NAME_LIMIT)]
 type ProseText = Annotated[str, StringConstraints(max_length=PROSE_LIMIT)]

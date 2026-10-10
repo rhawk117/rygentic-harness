@@ -13,8 +13,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-from mightymodels_plugin.routing import Scope
-from mightymodels_plugin.slug import SLUG_LIMIT, Slug
+from mightymodels_plugin.core.routing import Scope
+from mightymodels_plugin.core.slug import SLUG_LIMIT, Slug
 from mightymodels_plugin.tools.request import NameText, ProseText, RequestModel
 
 type LinkedInvestigation = Annotated[str, StringConstraints(max_length=SLUG_LIMIT)]
