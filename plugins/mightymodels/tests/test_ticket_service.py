@@ -7,6 +7,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.schema import InvestigationStart, TargetKind
@@ -26,7 +27,6 @@ from mightymodels_plugin.tools.ticket.service import TicketService, unit_of
 from mightymodels_plugin.tools.ticket.tests.support import ticket_service_at
 from mightymodels_plugin.tools.ticket.ticket_file import parse
 from pydantic import ValidationError
-from sqlalchemy import update
 
 type GitRunner = Callable[..., str]
 type Command = Callable[[TicketService, object], TicketView]
@@ -110,7 +110,7 @@ class Workspace:
         change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
         self.task_service.start(TICKET, 'T1', change)
         with self.tickets.database.transaction() as session:
-            session.execute(update(TaskRow).values(status=Status.VERIFIED))
+            session.execute(sql.update(TaskRow).values(status=Status.VERIFIED))
 
     def edit(self, old: str, new: str) -> None:
         text = self.ticket.read_text(encoding='utf-8')

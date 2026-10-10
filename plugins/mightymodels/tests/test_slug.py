@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels_plugin.core.database import Database
@@ -33,7 +34,6 @@ from mightymodels_plugin.tools.tests.support import (
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import InvalidTicketError, TicketService
 from pydantic import ValidationError
-from sqlalchemy import select
 
 type GitRunner = Callable[..., str]
 
@@ -472,7 +472,7 @@ class TestReviewConfinement:
         )
 
         with repository_database.transaction() as session:
-            rows = session.scalars(select(ReviewFindingRow)).all()
+            rows = session.scalars(sql.select(ReviewFindingRow)).all()
             stored = ' '.join(
                 str(getattr(row, column.name)) for row in rows for column in row.__table__.columns
             )

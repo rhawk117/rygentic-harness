@@ -54,7 +54,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
-from sqlalchemy import URL, Connection, Engine, create_engine, event
+import sqlalchemy as sql
+from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
 from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
@@ -143,7 +144,7 @@ class ReadLimit:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Database:
-    engine: Engine
+    engine: sql.Engine
     sessions: sessionmaker[Session]
     repository_key: RepositoryKey
 
@@ -159,7 +160,7 @@ def enforce_foreign_keys(connection: DBAPIConnection, _entry: ConnectionPoolEntr
     cursor.close()
 
 
-def stamp_a_file_that_holds_nothing(connection: Connection) -> None:
+def stamp_a_file_that_holds_nothing(connection: sql.Connection) -> None:
     is_stamped = connection.exec_driver_sql(STORED_VERSION).scalar_one() != UNSTAMPED
     holds_something = connection.exec_driver_sql(STORED_OBJECTS).scalar_one() > 0
     if is_stamped or holds_something:
@@ -167,7 +168,9 @@ def stamp_a_file_that_holds_nothing(connection: Connection) -> None:
     connection.exec_driver_sql(STAMP)
 
 
-def schema_version_error(connection: Connection, database_file: Path) -> SchemaVersionError | None:
+def schema_version_error(
+    connection: sql.Connection, database_file: Path
+) -> SchemaVersionError | None:
     found = connection.exec_driver_sql(STORED_VERSION).scalar_one()
     return None if found == SCHEMA_VERSION else SchemaVersionError(database_file, found)
 
@@ -177,8 +180,8 @@ def open_database(
     database_file: Path, repository_key: RepositoryKey, row_types: RowTypes
 ) -> Generator[Database]:
     database_file.parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(
-        URL.create('sqlite', database=str(database_file)),
+    engine = sql.create_engine(
+        sql.URL.create('sqlite', database=str(database_file)),
         connect_args={'timeout': BUSY_TIMEOUT.total_seconds()},
     )
     event.listen(engine, 'connect', enforce_foreign_keys)

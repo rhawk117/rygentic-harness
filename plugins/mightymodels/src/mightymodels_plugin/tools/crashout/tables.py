@@ -5,7 +5,7 @@ A crashout may name a ticket, staged or not, so it has no parent row.
 
 from typing import Annotated
 
-from sqlalchemy import String
+import sqlalchemy as sql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -20,7 +20,9 @@ from mightymodels_plugin.core.declarative import (
 )
 from mightymodels_plugin.core.repository_key import REPOSITORY_KEY_LIMIT
 
-type IndexedRepositoryName = Annotated[str, mapped_column(String(REPOSITORY_KEY_LIMIT), index=True)]
+type IndexedRepositoryName = Annotated[
+    str, mapped_column(sql.String(REPOSITORY_KEY_LIMIT), index=True)
+]
 
 
 class CrashoutRow(Base):

@@ -4,7 +4,7 @@ A hook's ticket is the one ticket of this repository, not closed, whose `branch`
 branch. A detached HEAD, no match and more than one match mean no ticket, and the hook does nothing.
 """
 
-from sqlalchemy import select
+import sqlalchemy as sql
 
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.slug import Slug
@@ -16,7 +16,7 @@ def ticket_on_branch(database: Database, branch: str | None) -> Slug | None:
     if branch is None:
         return None
     query = (
-        select(TicketRow.slug)
+        sql.select(TicketRow.slug)
         .where(
             TicketRow.repository_key == database.repository_key.root,
             TicketRow.branch == branch,

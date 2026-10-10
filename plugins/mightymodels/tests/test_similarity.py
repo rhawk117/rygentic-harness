@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.core.database import DATABASE_NAME, Database, open_database
 from mightymodels_plugin.core.declarative import REPORT_LIMIT
 from mightymodels_plugin.core.repository_key import RepositoryKey
@@ -49,7 +50,6 @@ from mightymodels_plugin.tools.similarity.schema import (
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.tables import SimilarityRow
 from mightymodels_plugin.tools.tests.support import StateServer, selects_sent_to, text_of
-from sqlalchemy import delete, select
 
 type Write = Callable[['Services', str, int], str]
 
@@ -196,7 +196,7 @@ class TestTheTypeColumn:
             write(services, THE_DRAIN_LOOP, 1)
         store_scout_report(repository_database, self.SPOOLED)
         with repository_database.transaction() as session:
-            return sorted(session.scalars(select(SimilarityRow.kind).distinct()))
+            return sorted(session.scalars(sql.select(SimilarityRow.kind).distinct()))
 
     def test_it_covers_ledger_entries_scout_reports_review_findings_and_crashouts(
         self, every_kind_written: list[str]
@@ -360,7 +360,7 @@ class TestStoredText:
                 Written(kind=SimilarityKind.CRASHOUT, reference='#1', text=self.LEAKING)
             )
         with repository_database.transaction() as session:
-            return session.scalars(select(SimilarityRow.text)).one()
+            return session.scalars(sql.select(SimilarityRow.text)).one()
 
     def test_is_redacted(self, stored_text: str) -> None:
         assert 'hunter2' not in stored_text
@@ -406,7 +406,7 @@ class TestTheIndexFollowsTheTable:
         self, stored_then_replaced: SimilarityService
     ) -> None:
         with stored_then_replaced.database.transaction() as session:
-            session.execute(delete(SimilarityRow))
+            session.execute(sql.delete(SimilarityRow))
 
         assert references_found(stored_then_replaced, 'replacement cache') == []
 

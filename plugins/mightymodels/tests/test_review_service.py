@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.run_id import InvalidRunIdError, RunId, parsed_run_id
 from mightymodels_plugin.tools.review.schema import (
@@ -28,7 +29,6 @@ from mightymodels_plugin.tools.review.tables import (
 )
 from mightymodels_plugin.tools.ticket.service import TicketService
 from pydantic import ValidationError
-from sqlalchemy import select
 
 type GitRunner = Callable[..., str]
 type DecisionRowType = type[ReviewDispositionRow | ReviewOutcomeRow]
@@ -128,14 +128,14 @@ def run_state(workspace: Workspace, run: RunId) -> dict[str, object]:
 
 
 def stored_texts(workspace: Workspace, run: RunId) -> list[str]:
-    query = select(ReviewFindingRow).where(ReviewFindingRow.run_id == run.root)
+    query = sql.select(ReviewFindingRow).where(ReviewFindingRow.run_id == run.root)
     with workspace.reviews.database.transaction() as session:
         rows = session.scalars(query).all()
         return [str(getattr(row, c.name)) for row in rows for c in row.__table__.columns]
 
 
 def stored_ids(workspace: Workspace, run: RunId, row_type: DecisionRowType) -> list[str]:
-    query = select(row_type.finding_id).where(row_type.run_id == run.root)
+    query = sql.select(row_type.finding_id).where(row_type.run_id == run.root)
     with workspace.reviews.database.transaction() as session:
         return sorted(session.scalars(query))
 

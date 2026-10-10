@@ -20,7 +20,7 @@ from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database, ReadLimit
@@ -87,7 +87,7 @@ class ContractRepository:
 
     def commands(self, slug: Slug) -> list[CommandRow]:
         query = (
-            select(CommandRow)
+            sql.select(CommandRow)
             .where(
                 CommandRow.repository_key == self.repository_key.root,
                 CommandRow.slug == slug.root,
@@ -102,7 +102,7 @@ class ContractRepository:
 
     def latest_receipts(self, slug: Slug) -> dict[str, ReceiptRow]:
         latest_of_each_command = (
-            select(func.max(ReceiptRow.id))
+            sql.select(sql.func.max(ReceiptRow.id))
             .where(
                 ReceiptRow.repository_key == self.repository_key.root,
                 ReceiptRow.slug == slug.root,
@@ -110,7 +110,7 @@ class ContractRepository:
             .group_by(ReceiptRow.command_id)
         )
         query = (
-            select(ReceiptRow)
+            sql.select(ReceiptRow)
             .where(ReceiptRow.id.in_(latest_of_each_command))
             .limit(COMMANDS.fetched)
         )
@@ -126,7 +126,7 @@ class ContractRepository:
         )
         self.session.flush()
         held = (
-            select(func.count())
+            sql.select(sql.func.count())
             .select_from(CommandRow)
             .where(
                 CommandRow.repository_key == self.repository_key.root,

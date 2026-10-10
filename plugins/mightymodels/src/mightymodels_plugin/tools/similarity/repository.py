@@ -20,7 +20,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from operator import attrgetter
 
-from sqlalchemy import select, text
+import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database
@@ -84,7 +84,7 @@ class SimilarityRepository:
     ) -> list[SimilarityRow]:
         if not words:
             return []
-        statement = text(CANDIDATES).bindparams(
+        statement = sql.text(CANDIDATES).bindparams(
             query=index_query(words),
             repository_key=self.repository_key.root,
             kind=kind,
@@ -92,7 +92,7 @@ class SimilarityRepository:
             excluded_reference=None if excluding is None else excluding.reference,
             cap=CANDIDATE_CAP,
         )
-        return list(self.session.scalars(select(SimilarityRow).from_statement(statement)))
+        return list(self.session.scalars(sql.select(SimilarityRow).from_statement(statement)))
 
     def search(self, query: str, *, kind: SimilarityKind | None) -> list[Match]:
         words = content_words(query)
@@ -100,7 +100,7 @@ class SimilarityRepository:
         return [match_of(row, words) for row in rows]
 
     def stored_row(self, written: Written) -> SimilarityRow | None:
-        query = select(SimilarityRow).where(
+        query = sql.select(SimilarityRow).where(
             SimilarityRow.repository_key == self.repository_key.root,
             SimilarityRow.kind == written.kind,
             SimilarityRow.reference == written.reference,
@@ -131,7 +131,7 @@ class SimilarityRepository:
         return [duplicate for duplicate in duplicates if duplicate is not None]
 
     def has_scout_report(self, report: SpooledReport) -> bool:
-        query = select(ScoutReportRow.id).where(
+        query = sql.select(ScoutReportRow.id).where(
             ScoutReportRow.repository_key == self.repository_key.root,
             ScoutReportRow.scout == report.scout,
             ScoutReportRow.target == redact(report.target),

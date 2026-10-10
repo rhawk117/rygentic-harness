@@ -7,6 +7,7 @@ from operator import methodcaller
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mcp.types import CallToolResult
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
@@ -31,7 +32,6 @@ from mightymodels_plugin.tools.tests.support import (
     tree,
     workspace_database,
 )
-from sqlalchemy import select
 
 type PathRequest = Callable[[Workspace], object]
 
@@ -129,7 +129,7 @@ class Project:
         return verified
 
     def transitions(self) -> list[tuple[str, str]]:
-        query = select(TransitionRow).order_by(TransitionRow.id)
+        query = sql.select(TransitionRow).order_by(TransitionRow.id)
         workspace = workspace_at(self.server.root)
         with (
             workspace_database(workspace, self.data_directory) as database,

@@ -29,7 +29,7 @@ from collections.abc import Collection, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from sqlalchemy import and_, func, select
+import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database, ReadLimit
@@ -92,7 +92,7 @@ class TaskRepository:
 
     def rows(self, slug: Slug) -> list[TaskRow]:
         query = (
-            select(TaskRow)
+            sql.select(TaskRow)
             .where(TaskRow.repository_key == self.repository_key.root, TaskRow.slug == slug.root)
             .limit(TASKS.fetched)
         )
@@ -103,13 +103,13 @@ class TaskRepository:
 
     def attempts_by_worker(self, slug: Slug) -> AttemptCounts:
         query = (
-            select(AttemptRow.task_id, AttemptRow.worker, func.count())
+            sql.select(AttemptRow.task_id, AttemptRow.worker, sql.func.count())
             .where(
                 AttemptRow.repository_key == self.repository_key.root,
                 AttemptRow.slug == slug.root,
             )
             .group_by(AttemptRow.task_id, AttemptRow.worker)
-            .order_by(func.min(AttemptRow.id))
+            .order_by(sql.func.min(AttemptRow.id))
             .limit(ATTEMPT_COUNTS.fetched)
         )
         rows = self.session.execute(query).all()
@@ -122,7 +122,7 @@ class TaskRepository:
 
     def attempts_in_modes(self, slug: Slug, task_id: str, modes: Collection[ArchitectMode]) -> int:
         query = (
-            select(func.count())
+            sql.select(sql.func.count())
             .select_from(AttemptRow)
             .where(
                 AttemptRow.repository_key == self.repository_key.root,
@@ -135,7 +135,7 @@ class TaskRepository:
 
     def failed_fixes(self, slug: Slug, task_id: str) -> list[str]:
         query = (
-            select(FailedFixRow.hypothesis)
+            sql.select(FailedFixRow.hypothesis)
             .where(
                 FailedFixRow.repository_key == self.repository_key.root,
                 FailedFixRow.slug == slug.root,
@@ -154,7 +154,7 @@ class TaskRepository:
         self, slug: Slug, statuses: Collection[Status], limit: int
     ) -> list[TransitionRow]:
         query = (
-            select(TransitionRow)
+            sql.select(TransitionRow)
             .where(
                 TransitionRow.repository_key == self.repository_key.root,
                 TransitionRow.slug == slug.root,
@@ -194,7 +194,7 @@ class TaskRepository:
         self.session.add(transition_row(slug, transition, repository_key=self.repository_key))
         self.session.flush()
         held = (
-            select(func.count())
+            sql.select(sql.func.count())
             .select_from(TaskRow)
             .where(TaskRow.repository_key == self.repository_key.root, TaskRow.slug == slug.root)
         )
@@ -237,7 +237,7 @@ def in_progress_started_by(
     repository: TaskRepository, slug: Slug, worker: Implementer
 ) -> list[str]:
     latest_attempts = (
-        select(func.max(AttemptRow.id))
+        sql.select(sql.func.max(AttemptRow.id))
         .where(
             AttemptRow.repository_key == repository.repository_key.root,
             AttemptRow.slug == slug.root,
@@ -245,10 +245,10 @@ def in_progress_started_by(
         .group_by(AttemptRow.task_id)
     )
     query = (
-        select(TaskRow.task_id)
+        sql.select(TaskRow.task_id)
         .join(
             AttemptRow,
-            and_(
+            sql.and_(
                 AttemptRow.repository_key == TaskRow.repository_key,
                 AttemptRow.slug == TaskRow.slug,
                 AttemptRow.task_id == TaskRow.task_id,

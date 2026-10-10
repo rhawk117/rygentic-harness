@@ -4,6 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.core.database import DATABASE_NAME, open_database
 from mightymodels_plugin.core.repository_key import local_key
 from mightymodels_plugin.core.workspace import (
@@ -15,7 +16,6 @@ from mightymodels_plugin.core.workspace import (
 )
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.tests.support import StateServer
-from sqlalchemy import text
 
 type GitRunner = Callable[..., str]
 type MasterRow = dict[str, str | None]
@@ -123,7 +123,7 @@ class TestOpenRepository:
 
 class TestOpenDatabase:
     TABLES_SNAPSHOT = Path(__file__).parent.joinpath('fixtures', 'database-tables.json')
-    MASTER_ROWS = text('SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY name')
+    MASTER_ROWS = sql.text('SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY name')
 
     @pytest.fixture
     def master_rows_of_a_fresh_database(self, tmp_path: Path) -> list[MasterRow]:

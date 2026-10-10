@@ -15,6 +15,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal
 
 import pytest
+import sqlalchemy as sql
 from mcp import Client
 from mcp.client.context import ClientRequestContext
 from mcp.types import (
@@ -32,7 +33,6 @@ from mightymodels_plugin.tools.contract.tables import CommandRow
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
 from mightymodels_plugin.tools.review.tables import ReviewDispositionRow, ReviewRunRow
 from mightymodels_plugin.tools.tests.support import StateServer, text_of, workspace_database
-from sqlalchemy import select
 
 if TYPE_CHECKING:
     from mcp.types import (
@@ -64,7 +64,7 @@ def rows_read[Stored: Base, Value](
         workspace_database(workspace_at(server.root), server.data_directory) as database,
         database.transaction() as session,
     ):
-        return [project(row) for row in session.scalars(select(row_type)).all()]
+        return [project(row) for row in session.scalars(sql.select(row_type)).all()]
 
 
 def contract_rows(server: StateServer) -> object:

@@ -100,6 +100,10 @@ check-typed-exception = true
 [lint.flake8-builtins]
 strict-checking = true
 
+[lint.flake8-import-conventions]
+extend-aliases = { sqlalchemy = "sql" }
+banned-from = ["sqlalchemy"]
+
 [lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false

@@ -7,6 +7,7 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.core.database import DATABASE_NAME, SCHEMA_VERSION, Database
 from mightymodels_plugin.core.declarative import NAME_LIMIT, REPORT_LIMIT
 from mightymodels_plugin.core.repository_key import (
@@ -32,7 +33,6 @@ from mightymodels_plugin.tools.tests.support import (
     text_of,
     tree,
 )
-from sqlalchemy import select
 
 type Report = Mapping[str, object]
 type GitRunner = Callable[..., str]
@@ -74,14 +74,14 @@ def rejected_files(spool: Path) -> list[Path]:
 
 def scout_reports(database: Database) -> list[ScoutReportRow]:
     with database.transaction() as session:
-        rows = list(session.scalars(select(ScoutReportRow)))
+        rows = list(session.scalars(sql.select(ScoutReportRow)))
         session.expunge_all()
     return rows
 
 
 def similarity_kinds(database: Database) -> list[str]:
     with database.transaction() as session:
-        return list(session.scalars(select(SimilarityRow.kind)))
+        return list(session.scalars(sql.select(SimilarityRow.kind)))
 
 
 @pytest.fixture

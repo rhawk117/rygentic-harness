@@ -20,6 +20,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.cli import build_parser, main
 from mightymodels_plugin.commands.session_start import ENV_FILE_VARIABLE
 from mightymodels_plugin.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
@@ -41,7 +42,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-from sqlalchemy import select
 
 PLUGIN = Path(__file__).parent.parent
 HOOKS = PLUGIN.joinpath('hooks', 'hooks.json')
@@ -264,7 +264,7 @@ class TestSubagentRecorder:
     ) -> None:
         (searched,) = state_server.call(SEARCH)
         with repository_database.transaction() as session:
-            stored = session.execute(select(ScoutReportRow.report, ScoutReportRow.target)).one()
+            stored = session.execute(sql.select(ScoutReportRow.report, ScoutReportRow.target)).one()
 
         assert SimilarityKind.SCOUT_REPORT in text_of(searched)
         assert stored.report == REPORT
@@ -362,7 +362,7 @@ class TestSubagentHandback:
 
         state_server.call(SEARCH)
         with repository_database.transaction() as session:
-            (stored,) = session.scalars(select(ScoutReportRow.report))
+            (stored,) = session.scalars(sql.select(ScoutReportRow.report))
 
         assert stored == REPORT
         assert list(spool.iterdir()) == []

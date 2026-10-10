@@ -11,6 +11,7 @@ from enum import StrEnum
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import (
     DATABASE_NAME,
@@ -67,7 +68,6 @@ from mightymodels_plugin.tools.task.tables import AttemptRow, FailedFixRow, Task
 from mightymodels_plugin.tools.tests.support import RowValues, filled_row, table_of
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers, TicketStatus
 from mightymodels_plugin.tools.ticket.tables import TicketRow
-from sqlalchemy import Column, String, UniqueConstraint, insert, select
 from sqlalchemy.exc import IntegrityError
 
 type Columns = tuple[str, ...]
@@ -230,14 +230,16 @@ TIMESTAMPS = [
 ]
 
 
-def names_of(columns: Iterable[Column[object]]) -> Columns:
+def names_of(columns: Iterable[sql.Column[object]]) -> Columns:
     return tuple(column.name for column in columns)
 
 
 def indexed_columns(row_type: type[Base]) -> list[Columns]:
     table = table_of(row_type)
     unique = (
-        constraint for constraint in table.constraints if isinstance(constraint, UniqueConstraint)
+        constraint
+        for constraint in table.constraints
+        if isinstance(constraint, sql.UniqueConstraint)
     )
     return [
         names_of(table.primary_key.columns),
@@ -262,7 +264,7 @@ def lineage(shape: Shape) -> list[type[Base]]:
 
 def stored_alone(database: Database, row_type: type[Base], **given: object) -> None:
     with database.transaction() as session:
-        session.execute(insert(table_of(row_type)).values(filled_row(row_type, **given)))
+        session.execute(sql.insert(table_of(row_type)).values(filled_row(row_type, **given)))
 
 
 class TestTheDeclaredShapes:
@@ -305,7 +307,7 @@ class TestStringColumns:
         unbounded = [
             column.name
             for column in table_of(shape.row_type).columns
-            if isinstance(column.type, String) and not column.type.length
+            if isinstance(column.type, sql.String) and not column.type.length
         ]
 
         assert unbounded == []
@@ -334,7 +336,7 @@ class TestStringColumns:
     def test_a_receipt_keeps_a_tail_no_longer_than_the_declared_length(self) -> None:
         declared = table_of(ReceiptRow).columns['stdout_tail'].type
 
-        assert isinstance(declared, String)
+        assert isinstance(declared, sql.String)
         assert len(tail('x' * 2 * TAIL_CHARS)) == declared.length
 
 
@@ -345,8 +347,8 @@ class TestServerDefaults:
     def row_left_to_the_database(self, shape: Shape, repository_database: Database) -> RowValues:
         table = table_of(shape.row_type)
         with repository_database.engine.connect() as connection:
-            connection.execute(insert(table).values(filled_row(shape.row_type)))
-            return dict(connection.execute(select(table)).mappings().one())
+            connection.execute(sql.insert(table).values(filled_row(shape.row_type)))
+            return dict(connection.execute(sql.select(table)).mappings().one())
 
     @pytest.mark.parametrize('shape', EVERY_TABLE)
     def test_no_default_is_known_to_the_application_alone(self, shape: Shape) -> None:
@@ -407,9 +409,9 @@ class TestForeignKeys:
     ) -> None:
         with repository_database.transaction() as session:
             for row_type in lineage(shape):
-                session.execute(insert(table_of(row_type)).values(filled_row(row_type)))
+                session.execute(sql.insert(table_of(row_type)).values(filled_row(row_type)))
         with repository_database.transaction() as session:
-            kept = session.execute(select(table_of(shape.row_type))).all()
+            kept = session.execute(sql.select(table_of(shape.row_type))).all()
 
         assert len(kept) == 1
 
@@ -427,7 +429,7 @@ class TestNaturalKeys:
         declared = [
             names_of(constraint.columns)
             for constraint in table_of(shape.row_type).constraints
-            if isinstance(constraint, UniqueConstraint)
+            if isinstance(constraint, sql.UniqueConstraint)
         ]
 
         assert declared == list(shape.unique)
@@ -441,7 +443,7 @@ class TestNaturalKeys:
             repository_database.transaction() as session,
         ):
             session.execute(
-                insert(table_of(shape.row_type)),
+                sql.insert(table_of(shape.row_type)),
                 [filled_row(shape.row_type, slug=slug) for slug in ('first', 'second')],
             )
 

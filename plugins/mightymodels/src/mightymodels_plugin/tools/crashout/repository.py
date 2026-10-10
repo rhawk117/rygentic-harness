@@ -18,7 +18,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database, Latest, ReadLimit
@@ -60,7 +60,7 @@ class CrashoutRepository:
 
     def latest_rows(self) -> Latest[CrashoutRow]:
         query = (
-            select(CrashoutRow)
+            sql.select(CrashoutRow)
             .where(CrashoutRow.repository_key == self.repository_key.root)
             .order_by(CrashoutRow.id.desc())
             .limit(JOURNAL_WINDOW.fetched)
@@ -69,7 +69,7 @@ class CrashoutRepository:
 
     def latest_row(self) -> CrashoutRow | None:
         query = (
-            select(CrashoutRow)
+            sql.select(CrashoutRow)
             .where(CrashoutRow.repository_key == self.repository_key.root)
             .order_by(CrashoutRow.id.desc())
             .limit(1)
@@ -79,7 +79,7 @@ class CrashoutRepository:
     def journal(self, crashout: JournaledCrashout) -> Journaled:
         self.session.add(crashout_row(crashout, repository_key=self.repository_key))
         journaled = (
-            select(func.count())
+            sql.select(sql.func.count())
             .select_from(CrashoutRow)
             .where(CrashoutRow.repository_key == self.repository_key.root)
         )

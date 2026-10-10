@@ -39,7 +39,7 @@ commits, so a parent and its child are written in one transaction in either orde
 from types import MappingProxyType
 from typing import Annotated
 
-from sqlalchemy import JSON, ForeignKeyConstraint, String, text
+import sqlalchemy as sql
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 
 from mightymodels_plugin.core.repository_key import REPOSITORY_KEY_LIMIT
@@ -52,38 +52,38 @@ SHA_LIMIT = 64
 NAME_LIMIT = 255
 PROSE_LIMIT = 4000
 REPORT_LIMIT = 60_000
-TIME_OF_THE_WRITE = text("(strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'))")
+TIME_OF_THE_WRITE = sql.text("(strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'))")
 EMPTY_LIST = '[]'
 
 type Models = dict[str, str | None]
 type Weights = dict[str, float]
 type Texts = list[str]
-type TextsIfAny = Annotated[list[str], mapped_column(JSON, server_default=EMPTY_LIST)]
+type TextsIfAny = Annotated[list[str], mapped_column(sql.JSON, server_default=EMPTY_LIST)]
 type Serial = Annotated[int, mapped_column(primary_key=True)]
 type RepositoryKeyPart = Annotated[
-    str, mapped_column(String(REPOSITORY_KEY_LIMIT), primary_key=True)
+    str, mapped_column(sql.String(REPOSITORY_KEY_LIMIT), primary_key=True)
 ]
-type RepositoryName = Annotated[str, mapped_column(String(REPOSITORY_KEY_LIMIT))]
-type SlugKeyPart = Annotated[str, mapped_column(String(SLUG_LIMIT), primary_key=True)]
-type SlugName = Annotated[str, mapped_column(String(SLUG_LIMIT))]
-type TaskName = Annotated[str, mapped_column(String(TASK_ID_LIMIT))]
-type Word = Annotated[str, mapped_column(String(WORD_LIMIT))]
-type Sha = Annotated[str, mapped_column(String(SHA_LIMIT))]
-type Name = Annotated[str, mapped_column(String(NAME_LIMIT))]
-type Prose = Annotated[str, mapped_column(String(PROSE_LIMIT))]
-type ReportProse = Annotated[str, mapped_column(String(REPORT_LIMIT))]
+type RepositoryName = Annotated[str, mapped_column(sql.String(REPOSITORY_KEY_LIMIT))]
+type SlugKeyPart = Annotated[str, mapped_column(sql.String(SLUG_LIMIT), primary_key=True)]
+type SlugName = Annotated[str, mapped_column(sql.String(SLUG_LIMIT))]
+type TaskName = Annotated[str, mapped_column(sql.String(TASK_ID_LIMIT))]
+type Word = Annotated[str, mapped_column(sql.String(WORD_LIMIT))]
+type Sha = Annotated[str, mapped_column(sql.String(SHA_LIMIT))]
+type Name = Annotated[str, mapped_column(sql.String(NAME_LIMIT))]
+type Prose = Annotated[str, mapped_column(sql.String(PROSE_LIMIT))]
+type ReportProse = Annotated[str, mapped_column(sql.String(REPORT_LIMIT))]
 type Timestamp = Annotated[
-    str, mapped_column(String(TIMESTAMP_LIMIT), server_default=TIME_OF_THE_WRITE)
+    str, mapped_column(sql.String(TIMESTAMP_LIMIT), server_default=TIME_OF_THE_WRITE)
 ]
 
 
 class Base(DeclarativeBase):
-    type_annotation_map = MappingProxyType({Models: JSON, Texts: JSON, Weights: JSON})
+    type_annotation_map = MappingProxyType({Models: sql.JSON, Texts: sql.JSON, Weights: sql.JSON})
 
 
-def child_of(parent: type[Base]) -> ForeignKeyConstraint:
+def child_of(parent: type[Base]) -> sql.ForeignKeyConstraint:
     parent_key = list(parent.__table__.primary_key)
-    return ForeignKeyConstraint(
+    return sql.ForeignKeyConstraint(
         [column.name for column in parent_key],
         parent_key,
         deferrable=True,

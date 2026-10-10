@@ -26,7 +26,7 @@ from collections.abc import Collection, Generator, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database, Latest, ReadLimit
@@ -94,7 +94,7 @@ class InvestigationRepository:
 
     def entry_rows(self, investigation: Slug) -> list[LedgerEntryRow]:
         query = (
-            select(LedgerEntryRow)
+            sql.select(LedgerEntryRow)
             .where(
                 LedgerEntryRow.repository_key == self.repository_key.root,
                 LedgerEntryRow.investigation_id == investigation.root,
@@ -109,7 +109,7 @@ class InvestigationRepository:
 
     def unrecorded(self, investigations: Collection[Slug]) -> list[Slug]:
         query = (
-            select(LedgerEntryRow.investigation_id)
+            sql.select(LedgerEntryRow.investigation_id)
             .where(
                 LedgerEntryRow.repository_key == self.repository_key.root,
                 LedgerEntryRow.investigation_id.in_([slug.root for slug in investigations]),
@@ -122,7 +122,7 @@ class InvestigationRepository:
 
     def latest_rounds(self) -> Latest[LatestRound]:
         query = (
-            select(LedgerEntryRow.investigation_id, func.max(LedgerEntryRow.round))
+            sql.select(LedgerEntryRow.investigation_id, sql.func.max(LedgerEntryRow.round))
             .where(LedgerEntryRow.repository_key == self.repository_key.root)
             .group_by(LedgerEntryRow.investigation_id)
             .order_by(LedgerEntryRow.investigation_id.desc())
@@ -141,7 +141,7 @@ class InvestigationRepository:
         )
         self.session.flush()
         held = (
-            select(func.count())
+            sql.select(sql.func.count())
             .select_from(LedgerEntryRow)
             .where(
                 LedgerEntryRow.repository_key == self.repository_key.root,

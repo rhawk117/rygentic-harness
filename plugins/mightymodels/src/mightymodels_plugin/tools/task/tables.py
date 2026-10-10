@@ -7,7 +7,7 @@ A task belongs to a staged ticket, and an attempt, a failed fix and a transition
 
 from typing import Annotated
 
-from sqlalchemy import Index, String
+import sqlalchemy as sql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -30,7 +30,7 @@ from mightymodels_plugin.core.declarative import (
 )
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 
-type TaskKeyPart = Annotated[str, mapped_column(String(TASK_ID_LIMIT), primary_key=True)]
+type TaskKeyPart = Annotated[str, mapped_column(sql.String(TASK_ID_LIMIT), primary_key=True)]
 
 
 class TaskRow(Base):
@@ -52,7 +52,7 @@ class AttemptRow(Base):
     __tablename__ = 'task_attempts'
     __table_args__ = (
         child_of(TaskRow),
-        Index('ix_task_attempts_task_mode', 'repository_key', 'slug', 'task_id', 'mode'),
+        sql.Index('ix_task_attempts_task_mode', 'repository_key', 'slug', 'task_id', 'mode'),
     )
 
     id: Mapped[Serial]
@@ -68,7 +68,7 @@ class FailedFixRow(Base):
     __tablename__ = 'task_failed_fixes'
     __table_args__ = (
         child_of(TaskRow),
-        Index('ix_task_failed_fixes_task', 'repository_key', 'slug', 'task_id'),
+        sql.Index('ix_task_failed_fixes_task', 'repository_key', 'slug', 'task_id'),
     )
 
     id: Mapped[Serial]
@@ -83,7 +83,7 @@ class TransitionRow(Base):
     __tablename__ = 'task_transitions'
     __table_args__ = (
         child_of(TaskRow),
-        Index('ix_task_transitions_after', 'repository_key', 'slug', 'after'),
+        sql.Index('ix_task_transitions_after', 'repository_key', 'slug', 'after'),
     )
 
     id: Mapped[Serial]

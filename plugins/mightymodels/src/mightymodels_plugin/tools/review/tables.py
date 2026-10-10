@@ -10,7 +10,7 @@ A finding's id is `F` and a number the server counts up, so `FINDING_ID_LIMIT` h
 
 from typing import Annotated
 
-from sqlalchemy import Index, String, false
+import sqlalchemy as sql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -34,17 +34,19 @@ from mightymodels_plugin.tools.review.schema import FINDING_ID_LIMIT, Kind
 
 RUN_ID_LIMIT = 15
 
-type RunKeyPart = Annotated[str, mapped_column(String(RUN_ID_LIMIT), primary_key=True)]
-type FindingKeyPart = Annotated[str, mapped_column(String(FINDING_ID_LIMIT), primary_key=True)]
-type DefectAtFirst = Annotated[str, mapped_column(String(WORD_LIMIT), server_default=Kind.DEFECT)]
-type FalseAtFirst = Annotated[bool, mapped_column(server_default=false())]
-type ProseIfAny = Annotated[str, mapped_column(String(PROSE_LIMIT), server_default='')]
-type NameIfAny = Annotated[str, mapped_column(String(NAME_LIMIT), server_default='')]
+type RunKeyPart = Annotated[str, mapped_column(sql.String(RUN_ID_LIMIT), primary_key=True)]
+type FindingKeyPart = Annotated[str, mapped_column(sql.String(FINDING_ID_LIMIT), primary_key=True)]
+type DefectAtFirst = Annotated[
+    str, mapped_column(sql.String(WORD_LIMIT), server_default=Kind.DEFECT)
+]
+type FalseAtFirst = Annotated[bool, mapped_column(server_default=sql.false())]
+type ProseIfAny = Annotated[str, mapped_column(sql.String(PROSE_LIMIT), server_default='')]
+type NameIfAny = Annotated[str, mapped_column(sql.String(NAME_LIMIT), server_default='')]
 
 
 class ReviewRunRow(Base):
     __tablename__ = 'review_runs'
-    __table_args__ = (Index('ix_review_runs_slug', 'repository_key', 'slug', 'run_id'),)
+    __table_args__ = (sql.Index('ix_review_runs_slug', 'repository_key', 'slug', 'run_id'),)
 
     repository_key: Mapped[RepositoryKeyPart]
     run_id: Mapped[RunKeyPart]

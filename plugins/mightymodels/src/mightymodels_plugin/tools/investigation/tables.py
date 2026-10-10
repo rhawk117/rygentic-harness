@@ -5,7 +5,7 @@ An investigation has no row of its own, so an entry has no parent row.
 
 from typing import Annotated
 
-from sqlalchemy import JSON
+import sqlalchemy as sql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -20,7 +20,7 @@ from mightymodels_plugin.core.declarative import (
     Word,
 )
 
-type EntryNumbers = Annotated[list[int], mapped_column(JSON, server_default=EMPTY_LIST)]
+type EntryNumbers = Annotated[list[int], mapped_column(sql.JSON, server_default=EMPTY_LIST)]
 
 
 class LedgerEntryRow(Base):

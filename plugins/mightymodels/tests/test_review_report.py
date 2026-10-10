@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.tools.review.schema import (
@@ -15,7 +16,6 @@ from mightymodels_plugin.tools.review.schema import (
 )
 from mightymodels_plugin.tools.review.service import REPORT_FILES, ReviewService
 from mightymodels_plugin.tools.review.tables import ReviewFindingRow
-from sqlalchemy import select
 
 type Stored = tuple[str, str, str, str, bool, str, str, tuple[str, str | None] | None]
 
@@ -189,7 +189,7 @@ class Ingest:
         return str(error.value)
 
     def stored(self) -> list[Stored]:
-        query = select(ReviewFindingRow).order_by(ReviewFindingRow.finding_id)
+        query = sql.select(ReviewFindingRow).order_by(ReviewFindingRow.finding_id)
         with self.reviews.database.transaction() as session:
             return [
                 (
@@ -441,7 +441,7 @@ class TestWhereTheReportComesFrom:
         ingest.add(MERGE_VADER)
 
         with ingest.reviews.database.transaction() as session:
-            titles = [row.title for row in session.scalars(select(ReviewFindingRow))]
+            titles = [row.title for row in session.scalars(sql.select(ReviewFindingRow))]
         assert 'hunter22' not in ' '.join(titles)
         assert 'Hardcoded [REDACTED:assignment] in the store' in titles
 

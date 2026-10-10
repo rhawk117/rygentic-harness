@@ -30,7 +30,7 @@ from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from sqlalchemy import delete, func, select
+import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database, Latest, ReadLimit, WriteLimitError
@@ -151,7 +151,7 @@ def write_error(
 ) -> WriteLimitError | None:
     session.flush()
     held = (
-        select(func.count())
+        sql.select(sql.func.count())
         .select_from(row_type)
         .where(row_type.repository_key == repository_key.root, row_type.run_id == run.root)
     )
@@ -165,7 +165,7 @@ class DecisionRepository:
 
     def disposition_rows(self, run: RunId) -> list[ReviewDispositionRow]:
         query = (
-            select(ReviewDispositionRow)
+            sql.select(ReviewDispositionRow)
             .where(
                 ReviewDispositionRow.repository_key == self.repository_key.root,
                 ReviewDispositionRow.run_id == run.root,
@@ -179,7 +179,7 @@ class DecisionRepository:
 
     def outcome_rows(self, run: RunId) -> list[ReviewOutcomeRow]:
         query = (
-            select(ReviewOutcomeRow)
+            sql.select(ReviewOutcomeRow)
             .where(
                 ReviewOutcomeRow.repository_key == self.repository_key.root,
                 ReviewOutcomeRow.run_id == run.root,
@@ -210,7 +210,7 @@ class DecisionRepository:
 
     def reopen(self, run: RunId, finding_ids: Collection[str]) -> None:
         for row_type in (ReviewDispositionRow, ReviewOutcomeRow):
-            reopened = delete(row_type).where(
+            reopened = sql.delete(row_type).where(
                 row_type.repository_key == self.repository_key.root,
                 row_type.run_id == run.root,
                 row_type.finding_id.in_(finding_ids),
@@ -236,7 +236,7 @@ class ReviewRepository:
 
     def latest_run_rows(self) -> Latest[ReviewRunRow]:
         query = (
-            select(ReviewRunRow)
+            sql.select(ReviewRunRow)
             .where(ReviewRunRow.repository_key == self.repository_key.root)
             .order_by(ReviewRunRow.run_id.desc())
             .limit(RUNS_LISTED.fetched)
@@ -245,7 +245,7 @@ class ReviewRepository:
 
     def latest_run_row(self, slug: Slug) -> ReviewRunRow | None:
         query = (
-            select(ReviewRunRow)
+            sql.select(ReviewRunRow)
             .where(
                 ReviewRunRow.repository_key == self.repository_key.root,
                 ReviewRunRow.slug == slug.root,
@@ -257,12 +257,12 @@ class ReviewRepository:
 
     def finding_rows(self, run: RunId) -> list[ReviewFindingRow]:
         query = (
-            select(ReviewFindingRow)
+            sql.select(ReviewFindingRow)
             .where(
                 ReviewFindingRow.repository_key == self.repository_key.root,
                 ReviewFindingRow.run_id == run.root,
             )
-            .order_by(func.length(ReviewFindingRow.finding_id), ReviewFindingRow.finding_id)
+            .order_by(sql.func.length(ReviewFindingRow.finding_id), ReviewFindingRow.finding_id)
             .limit(FINDINGS.fetched)
         )
         rows = list(self.session.scalars(query))

@@ -20,6 +20,7 @@ from types import MappingProxyType
 from typing import TypeAliasType, get_args
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT, Base
@@ -97,7 +98,6 @@ from mightymodels_plugin.tools.ticket.schema import TicketAnswers, TicketContext
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 from pydantic import ValidationError
-from sqlalchemy import String, insert, select
 
 type Placed = Callable[[str], object]
 type Spelled = Callable[[int], str]
@@ -219,7 +219,7 @@ REPORTED: Mapping[str, str] = MappingProxyType(
 
 def length_of(row_type: type[Base], column: str) -> int:
     declared = table_of(row_type).columns[column].type
-    assert isinstance(declared, String)
+    assert isinstance(declared, sql.String)
     assert declared.length is not None
     return declared.length
 
@@ -285,7 +285,7 @@ def started_run_with(reviews: ReviewService, report: str) -> None:
 def rows_held(database: Database) -> dict[str, int]:
     with database.transaction() as session:
         return {
-            row_type.__tablename__: len(session.scalars(select(row_type)).all())
+            row_type.__tablename__: len(session.scalars(sql.select(row_type)).all())
             for row_type in REDACTED_ON_THE_WAY_TO_A_ROW
         }
 
@@ -800,7 +800,7 @@ class TestTextRedactionLengthensPastItsLimit:
             status=Status.VERIFIED,
         )
         with repository_database.transaction() as session:
-            session.execute(insert(table_of(TaskRow)).values(verified))
+            session.execute(sql.insert(table_of(TaskRow)).values(verified))
 
     @pytest.fixture
     def started_investigation(self, investigation_service: InvestigationService) -> None:

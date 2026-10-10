@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import (
     Database,
@@ -94,7 +95,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 from mightymodels_plugin.tools.ticket.repository import ticket_transaction
 from mightymodels_plugin.tools.ticket.tables import TicketRow
-from sqlalchemy import insert
 
 type Read = Callable[[Database], object]
 type SizedRead = Callable[[Database], Sized]
@@ -145,7 +145,7 @@ def store(database: Database, row_type: type[Base], rows: Iterable[RowValues]) -
     key = database.repository_key.root
     filled = [filled_row(row_type, **row, repository_key=key) for row in rows]
     with database.transaction() as session:
-        session.execute(insert(table_of(row_type)), filled)
+        session.execute(sql.insert(table_of(row_type)), filled)
 
 
 def ticket_row(database: Database) -> None:

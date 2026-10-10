@@ -6,6 +6,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
@@ -28,7 +29,6 @@ from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import delete, func, select
 
 type GitRunner = Callable[..., str]
 
@@ -133,7 +133,7 @@ class Repo:
             return records_of(repository, TICKET)[task_id]
 
     def transitions(self) -> list[tuple[str, str]]:
-        query = select(TransitionRow).order_by(TransitionRow.id)
+        query = sql.select(TransitionRow).order_by(TransitionRow.id)
         with self.tasks.database.transaction() as session:
             return [(row.before, row.after) for row in session.scalars(query)]
 
@@ -292,7 +292,7 @@ def test_option_shaped_revisions_are_refused(repo: Repo) -> None:
 
 def test_an_unstaged_ticket_is_refused(repo: Repo) -> None:
     with repo.tasks.database.transaction() as session:
-        session.execute(delete(TicketRow))
+        session.execute(sql.delete(TicketRow))
     outcome = start(repo)
     assert 'stage the ticket with open-ticket first' in outcome.err
 
@@ -642,7 +642,7 @@ def ticket_status(repo: Repo) -> str:
 
 
 def task_row_counts(repo: Repo) -> list[int | None]:
-    queries = [select(func.count()).select_from(table) for table in TASK_TABLES]
+    queries = [sql.select(sql.func.count()).select_from(table) for table in TASK_TABLES]
     with repo.tasks.database.transaction() as session:
         return [session.scalar(query) for query in queries]
 

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels_plugin.core.errors import StateError
@@ -14,7 +15,6 @@ from mightymodels_plugin.tools.contract.schema import ContractCommand
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from pydantic import ValidationError
-from sqlalchemy import select
 
 SLUG = 'retry-queue'
 OTHER_SLUG = 'cache-warmup'
@@ -79,7 +79,7 @@ class Workspace:
         return Outcome(code=PASSED if view.passing else FAILED, out=view.text, err='')
 
     def receipts(self) -> list[Recorded]:
-        query = select(ReceiptRow).order_by(ReceiptRow.id)
+        query = sql.select(ReceiptRow).order_by(ReceiptRow.id)
         with self.contracts.database.transaction() as session:
             return [
                 Recorded(
@@ -97,7 +97,7 @@ class Workspace:
             ]
 
     def planned(self) -> dict[str, str | None]:
-        query = select(CommandRow).order_by(CommandRow.command_id)
+        query = sql.select(CommandRow).order_by(CommandRow.command_id)
         with self.contracts.database.transaction() as session:
             return {row.command_id: row.task_id for row in session.scalars(query)}
 

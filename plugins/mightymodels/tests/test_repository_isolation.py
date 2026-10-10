@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sql
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import Base
@@ -76,7 +77,6 @@ from mightymodels_plugin.tools.ticket.repository import ticket_transaction
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tables import TicketRow
-from sqlalchemy import select
 
 type GitRunner = Callable[..., str]
 type RowsRead = Callable[[Database], int]
@@ -252,7 +252,7 @@ def answers_of(server: StateServer) -> list[str]:
 def keys_stored(database: Database, row_type: type[Base]) -> Counter[str]:
     table = Base.metadata.tables[row_type.__tablename__]
     with database.transaction() as session:
-        return Counter(session.scalars(select(table.c.repository_key)))
+        return Counter(session.scalars(sql.select(table.c.repository_key)))
 
 
 READS = (

@@ -3,7 +3,7 @@
 A closing belongs to the ticket it closes, and its archive file is its own.
 """
 
-from sqlalchemy import UniqueConstraint
+import sqlalchemy as sql
 from sqlalchemy.orm import Mapped
 
 from mightymodels_plugin.core.declarative import (
@@ -22,7 +22,7 @@ from mightymodels_plugin.tools.ticket.tables import TicketRow
 
 class ClosingRow(Base):
     __tablename__ = 'closings'
-    __table_args__ = (child_of(TicketRow), UniqueConstraint('repository_key', 'archive'))
+    __table_args__ = (child_of(TicketRow), sql.UniqueConstraint('repository_key', 'archive'))
 
     repository_key: Mapped[RepositoryKeyPart]
     slug: Mapped[SlugKeyPart]

@@ -6,7 +6,7 @@ its slug alone, staged or not, so no ticket row stands behind it.
 
 from typing import Annotated
 
-from sqlalchemy import Index, String, text
+import sqlalchemy as sql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -28,12 +28,12 @@ from mightymodels_plugin.core.declarative import (
 from mightymodels_plugin.tools.contract.executor import TAIL_CHARS
 from mightymodels_plugin.tools.contract.schema import DEFAULT_TIMEOUT
 
-type CommandKeyPart = Annotated[str, mapped_column(String(NAME_LIMIT), primary_key=True)]
-type ExitZeroAtFirst = Annotated[int, mapped_column(server_default=text('0'))]
+type CommandKeyPart = Annotated[str, mapped_column(sql.String(NAME_LIMIT), primary_key=True)]
+type ExitZeroAtFirst = Annotated[int, mapped_column(server_default=sql.text('0'))]
 type DefaultTimeoutAtFirst = Annotated[
-    int, mapped_column(server_default=text(str(DEFAULT_TIMEOUT)))
+    int, mapped_column(server_default=sql.text(str(DEFAULT_TIMEOUT)))
 ]
-type Tail = Annotated[str, mapped_column(String(TAIL_CHARS))]
+type Tail = Annotated[str, mapped_column(sql.String(TAIL_CHARS))]
 
 
 class CommandRow(Base):
@@ -55,7 +55,7 @@ class ReceiptRow(Base):
     __tablename__ = 'receipts'
     __table_args__ = (
         child_of(CommandRow),
-        Index('ix_receipts_command', 'repository_key', 'slug', 'command_id'),
+        sql.Index('ix_receipts_command', 'repository_key', 'slug', 'command_id'),
     )
 
     id: Mapped[Serial]

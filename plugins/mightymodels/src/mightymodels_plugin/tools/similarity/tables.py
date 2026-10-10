@@ -19,7 +19,8 @@ repository, so every read of it joins `similarity` and filters on the repository
 
 from typing import Annotated
 
-from sqlalchemy import DDL, String, UniqueConstraint, event
+import sqlalchemy as sql
+from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -48,12 +49,14 @@ END""",
 END""",
 )
 
-type IndexedRepositoryName = Annotated[str, mapped_column(String(REPOSITORY_KEY_LIMIT), index=True)]
+type IndexedRepositoryName = Annotated[
+    str, mapped_column(sql.String(REPOSITORY_KEY_LIMIT), index=True)
+]
 
 
 class SimilarityRow(Base):
     __tablename__ = 'similarity'
-    __table_args__ = (UniqueConstraint('repository_key', 'kind', 'reference'),)
+    __table_args__ = (sql.UniqueConstraint('repository_key', 'kind', 'reference'),)
 
     id: Mapped[Serial]
     repository_key: Mapped[RepositoryName]
@@ -75,4 +78,4 @@ class ScoutReportRow(Base):
 
 
 for statement in INDEX_STATEMENTS:
-    event.listen(Base.metadata, 'after_create', DDL(statement))
+    event.listen(Base.metadata, 'after_create', sql.DDL(statement))
