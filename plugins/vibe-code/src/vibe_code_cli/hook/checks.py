@@ -74,14 +74,17 @@ def handler_findings(handler: Handler, hooks_file: HooksFile) -> list[Finding]:
     hook = handler.hook
     if isinstance(hook, CommandHook):
         findings.extend(command_findings(handler.where, hook))
+
     if isinstance(hook, HttpHook):
         findings.extend(http_findings(handler.where, hook))
+
     return findings
 
 
 def command_findings(where: str, hook: CommandHook) -> list[Finding]:
     if not hook.command.strip():
         return [error(f'{where}: command must not be empty')]
+
     return []
 
 
@@ -89,11 +92,13 @@ def http_findings(where: str, hook: HttpHook) -> list[Finding]:
     findings = []
     if hook.url.strip() and urlparse(hook.url).scheme.lower() not in WEB_SCHEMES:
         findings.append(error(f'{where}: url must use http:// or https://'))
+
     findings.extend(
         error(f'{where}: allowedEnvVars[{index}] must be a non-empty string')
         for index, name in enumerate(hook.allowed_env_vars)
         if not name.strip()
     )
+
     return findings
 
 
@@ -101,10 +106,12 @@ def timeout_findings(handler: Handler) -> list[Finding]:
     hook = handler.hook
     if not isinstance(hook, CommandHook | HttpHook) or runs_in_background(hook):
         return []
+
     if hook.timeout is UNSET:
         default = TimeoutDefaults().lowered.get(handler.event, DEFAULT_TIMEOUT_SECONDS)
         message = f'no timeout set; Claude Code applies its default of {default:g} s'
         return [warning(f'{handler.where}: {message}')]
+
     return slow_timeout_findings(handler, hook.timeout)
 
 

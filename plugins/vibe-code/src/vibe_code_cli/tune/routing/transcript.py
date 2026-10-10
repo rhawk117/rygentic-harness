@@ -24,9 +24,11 @@ class ContentBlock(msgspec.Struct, frozen=True):
     def invoked_skill(self) -> str | None:
         if self.type != 'tool_use' or self.name != SKILL_TOOL:
             return None
+
         skill = self.input.get('skill')
         if not isinstance(skill, str):
             return None
+
         return skill
 
 

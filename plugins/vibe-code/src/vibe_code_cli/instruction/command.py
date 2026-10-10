@@ -45,6 +45,7 @@ def check_rule_file(path: Path) -> list[Finding]:
     if not path.is_file():
         message = f'{path} is not a file or a directory'
         raise CannotCheckError(message)
+
     rule = parse_skill_text(read_text(path))
     return [*check_frontmatter(rule), *check_body(rule.body)]
 

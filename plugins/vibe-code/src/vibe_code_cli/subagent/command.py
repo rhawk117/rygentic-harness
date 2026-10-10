@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import shutil
 import sys
 import tempfile
@@ -39,13 +40,15 @@ def validate_command(arguments: argparse.Namespace, services: Services) -> int:
     except CannotCheckError as problem:
         print(f'error: {problem}', file=sys.stderr)
         return 2
+
     return report(path.name, findings, strict=arguments.strict)
 
 
 def read_agent_file(path: Path) -> str:
-    if path.suffix != '.md' or not path.is_file():
-        message = f'{path} is not a .md file'
+    if path.suffix != ".md" or not path.is_file():
+        message = f"{path} is not a .md file"
         raise CannotCheckError(message)
+
     try:
         return path.read_text(encoding='utf-8')
     except (OSError, UnicodeError) as problem:
@@ -63,7 +66,7 @@ def validate_findings(path: Path, text: str, runner: BuiltinRunner) -> list[Find
     builtin_findings = run_agent_builtin(path, runner, plugin=plugin)
     builtin_errored = any(finding.level == 'error' for finding in builtin_findings)
     own_findings = check_agent(text, plugin=plugin, builtin_errored=builtin_errored)
-    return [*builtin_findings, *own_findings]
+    return list(itertools.chain(builtin_findings, own_findings))
 
 
 def run_agent_builtin(path: Path, runner: BuiltinRunner, *, plugin: bool) -> list[Finding]:
@@ -74,20 +77,22 @@ def run_agent_builtin(path: Path, runner: BuiltinRunner, *, plugin: bool) -> lis
         except OSError as problem:
             message = f'could not stage {path} for claude: {problem}'
             raise CannotCheckError(message) from problem
+
         return runner(target, include_manifest=False)
 
 
 def stage_agent(path: Path, root: Path, *, plugin: bool) -> Path:
-    agents = root / '.claude' / 'agents'
+    agents = root.joinpath(".claude", "agents")
     target = agents
     if plugin:
-        manifest = root / '.claude-plugin' / 'plugin.json'
+        manifest = root.joinpath(".claude-plugin", "plugin.json")
         manifest.parent.mkdir()
-        manifest.write_text('{"name": "staged"}', encoding='utf-8')
-        agents = root / 'agents'
+        manifest.write_text('{"name": "staged"}', encoding="utf-8")
+        agents = root.joinpath("agents")
         target = root
+
     agents.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(path, agents / path.name)
+    shutil.copyfile(path, agents.joinpath(path.name))
     return target
 
 
@@ -95,13 +100,14 @@ def check_agent(text: str, *, plugin: bool, builtin_errored: bool) -> list[Findi
     agent = parse_agent_text(text)
     if not agent.has_block:
         return [] if plugin else [error(NO_FRONTMATTER_BLOCK)]
-    if agent.yaml_problem is not None and not builtin_errored:
-        message = (
-            f'frontmatter is not valid YAML ({agent.yaml_problem}); the field checks could not run'
-        )
+
+    if agent.yaml_problem and not builtin_errored:
+        message = f"frontmatter is not valid YAML ({agent.yaml_problem}); the field checks could not run"
         raise CannotCheckError(message)
+
     findings: list[Finding] = [error(agent.key_problem)] if agent.key_problem else []
-    if agent.fields is not None:
+
+    if agent.fields:
         findings.extend(
             check_fields(
                 agent.fields,
@@ -110,4 +116,5 @@ def check_agent(text: str, *, plugin: bool, builtin_errored: bool) -> list[Findi
                 builtin_errored=builtin_errored,
             )
         )
-    return [*findings, *check_body(agent.body)]
+
+    return list(itertools.chain(findings, check_body(agent.body)))

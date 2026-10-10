@@ -40,11 +40,14 @@ def parse_skill_text(text: str) -> SkillText:
     raw, body = split_frontmatter(text)
     if raw is None:
         return SkillText(fields=None, key_problem=None, body=body)
+
     try:
         fields = msgspec.yaml.decode(raw)
     except msgspec.DecodeError as problem:
         first_line = (str(problem).splitlines() or [type(problem).__name__])[0]
         return SkillText(fields=None, key_problem=None, body=body, yaml_problem=first_line)
+
     if fields is None:
         fields = {}
+        
     return SkillText(fields=as_object(fields), key_problem=key_problem_of(fields), body=body)

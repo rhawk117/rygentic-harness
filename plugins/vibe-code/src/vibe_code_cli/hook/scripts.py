@@ -24,11 +24,13 @@ def script_findings(handler: Handler, hooks_file: HooksFile) -> list[Finding]:
     hook = handler.hook
     if not isinstance(hook, CommandHook):
         return []
+
     references = (
         shell_references(hook.command)
         if hook.args is UNSET
         else exec_form_references(hook.command, hook.args)
     )
+
     findings = (script_finding(handler, reference, hooks_file) for reference in references)
     return [finding for finding in findings if finding is not None]
 

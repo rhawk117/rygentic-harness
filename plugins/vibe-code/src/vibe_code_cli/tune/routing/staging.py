@@ -21,16 +21,18 @@ def routing_frontmatter(skill: Skill) -> str:
     }
     if skill.when_to_use:
         routing['when_to_use'] = skill.when_to_use
+
     if not routing:
-        return ''
+        return ""
+
     return msgspec.yaml.encode(routing).decode()
 
 
 def render_stub(skill: Skill, description: str) -> str:
     quoted = msgspec.json.encode(description).decode()
     extra = routing_frontmatter(skill)
-    header = f'name: {skill.name}\ndescription: {quoted}\n{extra}'
-    return f'---\n{header}---\n# {skill.name}\n'
+    header = f"name: {skill.name}\ndescription: {quoted}\n{extra}"
+    return f"---\n{header}---\n# {skill.name}\n"
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -50,10 +52,12 @@ class StubProject:
         target = self.skills_root.joinpath(skill.name, SKILL_FILE).resolve()
         if not target.is_relative_to(self.skills_root):
             raise UnsafeSkillNameError(skill.name)
+
         return target
 
     def stage(self, descriptions: Mapping[str, str]) -> None:
         for skill in self.skills:
             target = self.stub_path(skill)
             target.parent.mkdir(parents=True)
-            target.write_text(render_stub(skill, descriptions[skill.name]), encoding='utf-8')
+            stub = render_stub(skill, descriptions[skill.name])
+            target.write_text(stub, encoding='utf-8')
