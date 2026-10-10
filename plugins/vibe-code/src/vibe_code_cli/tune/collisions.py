@@ -9,7 +9,7 @@ from typing import Protocol, runtime_checkable
 
 DEFAULT_THRESHOLD = 0.25
 PAIR = 2
-TOKEN_PATTERN = re.compile(r"(?u)\b\w\w+\b")
+TOKEN_PATTERN = re.compile(r'(?u)\b\w\w+\b')
 STOPWORDS = frozenset({
     'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it',
     'no', 'not', 'of', 'on', 'or', 'such', 'that', 'the', 'their', 'then', 'there', 'these',
@@ -30,8 +30,8 @@ class Collision:
     shared_terms: tuple[str, ...]
 
     def describe(self) -> str:
-        terms = ", ".join(self.shared_terms)
-        return f"{self.first} <-> {self.second}: overlap {self.overlap:.2f} ({terms})"
+        terms = ', '.join(self.shared_terms)
+        return f'{self.first} <-> {self.second}: overlap {self.overlap:.2f} ({terms})'
 
     def involves(self, skill: str) -> bool:
         return skill in {self.first, self.second}
@@ -72,12 +72,8 @@ class Bm25Index:
             return 0.0
 
         relative_length = document.total() / self.average_length
-        damping = self.options.k1 * (
-            1 - self.options.b + self.options.b * relative_length
-        )
-        return (
-            self.idf(term) * frequency * (self.options.k1 + 1) / (frequency + damping)
-        )
+        damping = self.options.k1 * (1 - self.options.b + self.options.b * relative_length)
+        return self.idf(term) * frequency * (self.options.k1 + 1) / (frequency + damping)
 
     def score(self, query: Sequence[str], position: int) -> float:
         document = self.documents[position]
@@ -134,7 +130,5 @@ class Bm25CollisionDetector:
         matrix = build_overlap_matrix(descriptions)
         pairs = combinations(range(len(matrix.names)), PAIR)
         found = [matrix.collision(row, column) for row, column in pairs]
-        ranked = sorted(found, key=attrgetter("overlap"), reverse=True)
-        return [
-            collision for collision in ranked if collision.overlap >= self.threshold
-        ]
+        ranked = sorted(found, key=attrgetter('overlap'), reverse=True)
+        return [collision for collision in ranked if collision.overlap >= self.threshold]

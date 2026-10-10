@@ -8,7 +8,7 @@ from vibe_code_cli.tune.routing import ClaudeCodeRouterFactory
 from vibe_code_cli.tune.services import PublishingService, RoutingService, TuningService
 from vibe_code_cli.tune.store import FilePacketPublisher, JsonLoopStore, StateCodec
 
-PACKET_FOLDER = "packets"
+PACKET_FOLDER = 'packets'
 STATE_CODEC = StateCodec(state_type=LoopState)
 
 
@@ -29,9 +29,7 @@ class TuneServices:
 def build_services(settings: Settings) -> TuneServices:
     store = JsonLoopStore(path=settings.state, codec=STATE_CODEC)
     collisions = Bm25CollisionDetector(threshold=settings.collision_threshold)
-    packets = FilePacketPublisher(
-        directory=settings.state.parent.joinpath(PACKET_FOLDER)
-    )
+    packets = FilePacketPublisher(directory=settings.state.parent.joinpath(PACKET_FOLDER))
     routers = {Judge.CLAUDE_CODE: ClaudeCodeRouterFactory(executable=settings.claude)}
 
     tuner = TuningService(

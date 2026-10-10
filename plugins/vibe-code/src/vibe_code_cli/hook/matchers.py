@@ -43,15 +43,15 @@ def invalid_regex_findings(group: Group, matcher: str) -> list[Finding]:
     if problem is None:
         return []
 
-    message = f"matcher {matcher!r} is not a valid regular expression ({problem})"
-    return [error(f"{group.where}: {message}")]
+    message = f'matcher {matcher!r} is not a valid regular expression ({problem})'
+    return [error(f'{group.where}: {message}')]
 
 
 def missing_matcher_findings(group: Group) -> list[Finding]:
     if group.event not in EVERY_TOOL_CALL_EVENTS:
         return []
 
-    return [warning(f"{group.where}: no matcher, so this runs on every tool call")]
+    return [warning(f'{group.where}: no matcher, so this runs on every tool call')]
 
 
 def regex_problem(matcher: str, event: str) -> str | None:
@@ -66,7 +66,7 @@ def regex_problem(matcher: str, event: str) -> str | None:
 
     try:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.simplefilter('ignore')
             re.compile(pattern)
     except re.error as problem:
         return None if problem.msg.startswith(TOLERATED_REGEX_ERRORS) else problem.msg

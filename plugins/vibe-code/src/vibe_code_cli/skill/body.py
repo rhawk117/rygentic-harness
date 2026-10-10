@@ -61,30 +61,26 @@ def check_resources(skill_dir: Path, body: str) -> list[Finding]:
 
 def reference_problem(skill_dir: Path, reference: str) -> Finding | None:
     pure = PurePosixPath(reference)
-    if pure.is_absolute() or ".." in pure.parts:
-        return error(f"reference escapes the skill directory: {reference}")
+    if pure.is_absolute() or '..' in pure.parts:
+        return error(f'reference escapes the skill directory: {reference}')
 
     path = skill_dir.joinpath(*pure.parts)
     if not path.resolve(strict=False).is_relative_to(skill_dir.resolve()):
-        return error(
-            f"reference escapes the skill directory through a symlink: {reference}"
-        )
+        return error(f'reference escapes the skill directory through a symlink: {reference}')
 
     if not path.exists():
-        return error(f"body references {reference} but it does not exist")
+        return error(f'body references {reference} but it does not exist')
 
     return None
 
 
-def scan_directory(
-    skill_dir: Path, subdirectory: str, referenced: Referenced
-) -> list[Finding]:
+def scan_directory(skill_dir: Path, subdirectory: str, referenced: Referenced) -> list[Finding]:
     directory = skill_dir.joinpath(subdirectory)
     if not directory.is_dir():
         return []
 
     if not any(directory.iterdir()):
-        return [warning(f"{subdirectory}/ is empty")]
+        return [warning(f'{subdirectory}/ is empty')]
 
     entries = (scan_entry(skill_dir, path, referenced) for path in directory.rglob('*'))
     return [finding for finding in entries if finding is not None]
@@ -93,16 +89,14 @@ def scan_directory(
 def scan_entry(skill_dir: Path, path: Path, referenced: Referenced) -> Finding | None:
     relative = path.relative_to(skill_dir).as_posix()
 
-    if path.is_symlink() and not path.resolve(strict=False).is_relative_to(
-        skill_dir.resolve()
-    ):
-        return error(f"{relative} is a symlink outside the skill directory")
+    if path.is_symlink() and not path.resolve(strict=False).is_relative_to(skill_dir.resolve()):
+        return error(f'{relative} is a symlink outside the skill directory')
 
     if not path.is_file() or path.suffix == '.pyc' or '__pycache__' in path.parts:
         return None
 
     if relative in referenced.files or any(
-        relative.startswith(f"{directory}/") for directory in referenced.directories
+        relative.startswith(f'{directory}/') for directory in referenced.directories
     ):
         return None
 
@@ -118,7 +112,7 @@ def referenced_files(body: str) -> set[str]:
         for match in MARKDOWN_LINK.finditer(body)
     ]
     candidates.extend(
-        normalized_reference(match.group(1), resource_only=False)
+        normalized_reference(match.group(1), resource_only=True)
         for match in RESOURCE_REFERENCE.finditer(body)
     )
     candidates = filter(None, candidates)

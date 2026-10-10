@@ -45,8 +45,8 @@ def validate_command(arguments: argparse.Namespace, services: Services) -> int:
 
 
 def read_agent_file(path: Path) -> str:
-    if path.suffix != ".md" or not path.is_file():
-        message = f"{path} is not a .md file"
+    if path.suffix != '.md' or not path.is_file():
+        message = f'{path} is not a .md file'
         raise CannotCheckError(message)
 
     try:
@@ -82,13 +82,13 @@ def run_agent_builtin(path: Path, runner: BuiltinRunner, *, plugin: bool) -> lis
 
 
 def stage_agent(path: Path, root: Path, *, plugin: bool) -> Path:
-    agents = root.joinpath(".claude", "agents")
+    agents = root.joinpath('.claude', 'agents')
     target = agents
     if plugin:
-        manifest = root.joinpath(".claude-plugin", "plugin.json")
+        manifest = root.joinpath('.claude-plugin', 'plugin.json')
         manifest.parent.mkdir()
-        manifest.write_text('{"name": "staged"}', encoding="utf-8")
-        agents = root.joinpath("agents")
+        manifest.write_text('{"name": "staged"}', encoding='utf-8')
+        agents = root.joinpath('agents')
         target = root
 
     agents.mkdir(parents=True, exist_ok=True)
@@ -101,13 +101,15 @@ def check_agent(text: str, *, plugin: bool, builtin_errored: bool) -> list[Findi
     if not agent.has_block:
         return [] if plugin else [error(NO_FRONTMATTER_BLOCK)]
 
-    if agent.yaml_problem and not builtin_errored:
-        message = f"frontmatter is not valid YAML ({agent.yaml_problem}); the field checks could not run"
+    if agent.yaml_problem is not None and not builtin_errored:
+        message = (
+            f'frontmatter is not valid YAML ({agent.yaml_problem}); the field checks could not run'
+        )
         raise CannotCheckError(message)
 
     findings: list[Finding] = [error(agent.key_problem)] if agent.key_problem else []
 
-    if agent.fields:
+    if agent.fields is not None:
         findings.extend(
             check_fields(
                 agent.fields,

@@ -44,13 +44,13 @@ class DecodedHooks:
 
 
 def decode_hooks(config: JsonObject | None) -> DecodedHooks:
-    if config is None or "hooks" not in config:
+    if config is None or 'hooks' not in config:
         return DecodedHooks(events=None, findings=())
 
     try:
-        entries_by_event = msgspec.convert(config["hooks"], dict[str, object])
+        entries_by_event = msgspec.convert(config['hooks'], dict[str, object])
     except msgspec.ValidationError as problem:
-        findings = (schema_finding("hooks", problem),)
+        findings = (schema_finding('hooks', problem),)
         return DecodedHooks(events=None, findings=findings)
 
     events = []
@@ -66,12 +66,12 @@ def decode_hooks(config: JsonObject | None) -> DecodedHooks:
 def schema_finding(where: str, problem: msgspec.ValidationError) -> SchemaFinding:
     return SchemaFinding(
         where=where,
-        finding=error(f"{where}: {problem}"),
+        finding=error(f'{where}: {problem}'),
     )
 
 
 def decode_event(name: str, entries: object) -> tuple[Event, list[SchemaFinding]]:
-    where = f"hooks.{name}"
+    where = f'hooks.{name}'
     findings = event_name_findings(name, where)
     try:
         raw_groups = msgspec.convert(entries, list[object])
@@ -83,7 +83,7 @@ def decode_event(name: str, entries: object) -> tuple[Event, list[SchemaFinding]
 
     groups = []
     for index, raw_group in enumerate(raw_groups):
-        group, group_findings = decode_group(name, f"{where}.{index}", raw_group)
+        group, group_findings = decode_group(name, f'{where}.{index}', raw_group)
         findings.extend(group_findings)
         if group is not None:
             groups.append(group)
@@ -97,9 +97,9 @@ def event_name_findings(name: str, where: str) -> list[SchemaFinding]:
     except msgspec.ValidationError as problem:
         pascal_case = name[:1].upper() + name[1:]
         if pascal_case not in get_args(EventName):
-            return [SchemaFinding(where=where, finding=warning(f"{where}: {problem}"))]
+            return [SchemaFinding(where=where, finding=warning(f'{where}: {problem}'))]
 
-        message = f"{where}: event names are PascalCase; spell it {pascal_case}"
+        message = f'{where}: event names are PascalCase; spell it {pascal_case}'
         return [SchemaFinding(where=where, finding=error(message))]
 
     return []
@@ -118,7 +118,7 @@ def decode_group(
     handlers = []
     findings = []
     for index, raw_handler in enumerate(group.hooks):
-        handler_where = f"{where}.hooks.{index}"
+        handler_where = f'{where}.hooks.{index}'
 
         try:
             hook = msgspec.convert(raw_handler, HookHandler)
@@ -135,7 +135,10 @@ def decode_group(
         )
 
     group = Group(
-        event=event, where=where, matcher=group.matcher, handlers=tuple(handlers),
+        event=event,
+        where=where,
+        matcher=group.matcher,
+        handlers=tuple(handlers),
     )
 
     return group, findings

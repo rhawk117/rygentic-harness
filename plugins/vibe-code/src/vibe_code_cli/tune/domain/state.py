@@ -50,21 +50,17 @@ class RunSetup(msgspec.Struct, frozen=True, kw_only=True):
         return {example.request_id: example.request for example in self.examples}
 
     def packet_id(self, kind: str, number: int) -> str:
-        return f"{kind}{number}-{self.run_id}"
+        return f'{kind}{number}-{self.run_id}'
 
     def plan_record(self, number: int, batch: tuple[str, ...]) -> JudgeRecord:
-        rng = seeded_rng(self.options.seed, f"judge{number}")
+        rng = seeded_rng(self.options.seed, f'judge{number}')
         skill_order = shuffled(sorted(self.skill_names), rng)
-        packet_id = self.packet_id("j", number)
-        return JudgeRecord(
-            packet_id=packet_id, request_ids=batch, skill_order=skill_order
-        )
+        packet_id = self.packet_id('j', number)
+        return JudgeRecord(packet_id=packet_id, request_ids=batch, skill_order=skill_order)
 
-    def plan_records(
-        self, first: int, request_ids: Sequence[str]
-    ) -> tuple[JudgeRecord, ...]:
+    def plan_records(self, first: int, request_ids: Sequence[str]) -> tuple[JudgeRecord, ...]:
         size = self.options.batch_size
-        rng = seeded_rng(self.options.seed, f"batch{first}")
+        rng = seeded_rng(self.options.seed, f'batch{first}')
         order = shuffled(request_ids, rng)
         batches = [order[start : start + size] for start in range(0, len(order), size)]
         numbered = enumerate(batches, start=first)
@@ -72,9 +68,7 @@ class RunSetup(msgspec.Struct, frozen=True, kw_only=True):
 
     def changed(self, descriptions: Mapping[str, str]) -> tuple[Skill, ...]:
         return tuple(
-            skill
-            for skill in self.skills
-            if descriptions[skill.name] != skill.description
+            skill for skill in self.skills if descriptions[skill.name] != skill.description
         )
 
 
@@ -88,9 +82,7 @@ class Judging(msgspec.Struct, frozen=True, kw_only=True):
 
     @property
     def assigned_ids(self) -> frozenset[str]:
-        pending = (
-            request_id for record in self.pending for request_id in record.request_ids
-        )
+        pending = (request_id for record in self.pending for request_id in record.request_ids)
         return self.judged_ids | frozenset(pending)
 
     def record(self, packet_id: str) -> JudgeRecord | None:
@@ -100,9 +92,7 @@ class Judging(msgspec.Struct, frozen=True, kw_only=True):
     def with_records(self, records: Sequence[JudgeRecord]) -> Self:
         return replace(self, pending=(*self.pending, *records))
 
-    def with_answer(
-        self, record: JudgeRecord, verdicts: Mapping[str, frozenset[str]]
-    ) -> Self:
+    def with_answer(self, record: JudgeRecord, verdicts: Mapping[str, frozenset[str]]) -> Self:
         merged = {**self.evaluation.verdicts, **verdicts}
         evaluation = replace(self.evaluation, verdicts=merged)
         pending = tuple(entry for entry in self.pending if entry is not record)
@@ -142,9 +132,7 @@ class History(msgspec.Struct, frozen=True, kw_only=True):
     def with_baseline(self, evaluation: Evaluation) -> Self:
         return replace(self, baseline=evaluation, accepted=evaluation)
 
-    def with_candidate(
-        self, candidate: Evaluation, setup: RunSetup, policy: RoundPolicy
-    ) -> Self:
+    def with_candidate(self, candidate: Evaluation, setup: RunSetup, policy: RoundPolicy) -> Self:
         if self.accepted is None or candidate.tuned_skill is None:
             return self.with_baseline(candidate)
 
@@ -180,7 +168,7 @@ class History(msgspec.Struct, frozen=True, kw_only=True):
             for item in failures
             if item.count
         ]
-        best = min(ranked, key=attrgetter("priority"), default=None)
+        best = min(ranked, key=attrgetter('priority'), default=None)
         if best is None:
             return None
         return best.failures.skill
@@ -294,7 +282,7 @@ class LoopState(msgspec.Struct, frozen=True, kw_only=True):
 
         number = self.packet_counter + 1
         record = ProposalRecord(
-            packet_id=self.setup.packet_id("p", number),
+            packet_id=self.setup.packet_id('p', number),
             skill=target,
         )
 
@@ -321,9 +309,7 @@ class LoopState(msgspec.Struct, frozen=True, kw_only=True):
 
         rules = policies or TransitionPolicies()
         proposal = self.proposal_for(record, description)
-        if problem := rules.proposals.get_proposal_problem(
-            proposal, self.setup.options
-        ):
+        if problem := rules.proposals.get_proposal_problem(proposal, self.setup.options):
             raise problem
 
         descriptions = {**self.accepted.descriptions, record.skill: proposal.text}

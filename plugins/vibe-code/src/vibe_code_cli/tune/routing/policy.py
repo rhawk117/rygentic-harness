@@ -9,7 +9,7 @@ class SessionPolicy:
     def summarize_stderr(self, stderr: str) -> str:
         lines = [line.strip() for line in stderr.splitlines() if line.strip()]
         if not lines:
-            return ""
+            return ''
 
         return lines[-1]
 
@@ -28,8 +28,8 @@ class SessionPolicy:
         if not (missing := transcript.unlisted(team)):
             return None
 
-        names = ", ".join(missing)
-        return RoutingFailedError(request, f"staged skills were not listed: {names}")
+        names = ', '.join(missing)
+        return RoutingFailedError(request, f'staged skills were not listed: {names}')
 
     def get_outcome_problem(
         self,

@@ -50,8 +50,8 @@ from vibe_code_cli.tune.store import (
     decode_answer,
 )
 
-FINISHED = DoneWork(message="tuning finished; run `report`, then `apply`")
-NOTHING_LEFT = DoneWork(message="no training failures remain; tuning finished")
+FINISHED = DoneWork(message='tuning finished; run `report`, then `apply`')
+NOTHING_LEFT = DoneWork(message='no training failures remain; tuning finished')
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -95,7 +95,7 @@ class TuningService:
         if problem := self.names.get_skill_name_problem(skills):
             raise problem
 
-        names = frozenset(map(attrgetter("name"), skills))
+        names = frozenset(map(attrgetter('name'), skills))
 
         if problem := self.trigger_sets.get_trigger_set_problem(examples, names):
             raise problem
@@ -246,9 +246,7 @@ class PublishingService:
         state = self.store.read()
         final = state.accepted.descriptions
         targets = state.setup.changed(final)
-        planned = [
-            self.skills.plan_write(skill, final[skill.name]) for skill in targets
-        ]
+        planned = [self.skills.plan_write(skill, final[skill.name]) for skill in targets]
         if not dry_run:
             for write in planned:
                 write.commit()
@@ -262,6 +260,4 @@ class PublishingService:
     def lint(self, locations: Sequence[Path]) -> list[str]:
         skills = self.skills.discover(locations)
         descriptions = {skill.name: skill.description for skill in skills}
-        return [
-            collision.describe() for collision in self.collisions.find(descriptions)
-        ]
+        return [collision.describe() for collision in self.collisions.find(descriptions)]

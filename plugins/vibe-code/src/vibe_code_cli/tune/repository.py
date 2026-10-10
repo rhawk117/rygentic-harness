@@ -86,7 +86,7 @@ class SkillDocument:
         values = (
             value
             for key, value in root.value
-            if isinstance(value, yaml.Node) and key.value == "description"
+            if isinstance(value, yaml.Node) and key.value == 'description'
         )
         return next(values, None)
 
@@ -107,8 +107,8 @@ class SkillDocument:
 
 
 def parse_skill_document(path: Path, text: str) -> SkillDocument:
-    normalized = text.replace("\r\n", "\n")
-    if not normalized.startswith(f"{FENCE}\n"):
+    normalized = text.replace('\r\n', '\n')
+    if not normalized.startswith(f'{FENCE}\n'):
         raise MissingFrontmatterError(path)
 
     remainder = normalized.removeprefix(f'{FENCE}\n')
@@ -116,11 +116,11 @@ def parse_skill_document(path: Path, text: str) -> SkillDocument:
     if not fence:
         raise MissingFrontmatterError(path)
 
-    return SkillDocument(frontmatter=f"{frontmatter}\n", body=body)
+    return SkillDocument(frontmatter=f'{frontmatter}\n', body=body)
 
 
 def read_skill(path: Path) -> Skill:
-    document = parse_skill_document(path, path.read_text(encoding="utf-8"))
+    document = parse_skill_document(path, path.read_text(encoding='utf-8'))
     try:
         frontmatter = msgspec.yaml.decode(document.frontmatter, type=Frontmatter)
     except (msgspec.ValidationError, msgspec.DecodeError) as problem:
@@ -136,7 +136,7 @@ def read_skill(path: Path) -> Skill:
 
 def skill_paths_at(location: Path) -> list[Path]:
     if location.is_dir():
-        return sorted(location.glob(f"*/{SKILL_FILE}"))
+        return sorted(location.glob(f'*/{SKILL_FILE}'))
 
     return [location]
 
@@ -147,7 +147,7 @@ class PlannedWrite:
     content: str
 
     def commit(self) -> None:
-        write_atomically(self.path, self.content.encode("utf-8"))
+        write_atomically(self.path, self.content.encode('utf-8'))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -165,7 +165,7 @@ class FileSkillRepository:
 
     def plan_write(self, skill: Skill, description: str) -> PlannedWrite:
         path = Path(skill.path)
-        original = path.read_bytes().decode("utf-8")
+        original = path.read_bytes().decode('utf-8')
 
         document = parse_skill_document(path, original)
         before = document.mapping()
@@ -184,8 +184,8 @@ class FileSkillRepository:
             raise problem
 
         rendered = after.render()
-        if "\r\n" in original:
-            rendered = rendered.replace("\n", "\r\n")
+        if '\r\n' in original:
+            rendered = rendered.replace('\n', '\r\n')
 
         return PlannedWrite(path=path, content=rendered)
 
@@ -205,24 +205,20 @@ class StratifiedSplitter:
 
         validation_count = round(len(ranked) * self.options.validation_fraction)
 
-        held_out = {
-            entry.request: Split.VALIDATION for entry in ranked[:validation_count]
-        }
+        held_out = {entry.request: Split.VALIDATION for entry in ranked[:validation_count]}
         training = {entry.request: Split.TRAIN for entry in ranked[validation_count:]}
         splitted = ChainMap(held_out, training)
         return dict(splitted)
 
     def assign(self, entries: Sequence[TriggerEntry]) -> tuple[TriggerExample, ...]:
-        by_stratum = sorted(entries, key=attrgetter("stratum"))
-        grouped_strata = groupby(by_stratum, key=attrgetter("stratum"))
-        grouped_splits = tuple(
-            self.split_stratum(list(group)) for _, group in grouped_strata
-        )
+        by_stratum = sorted(entries, key=attrgetter('stratum'))
+        grouped_strata = groupby(by_stratum, key=attrgetter('stratum'))
+        grouped_splits = tuple(self.split_stratum(list(group)) for _, group in grouped_strata)
         split_mapping = ChainMap(*grouped_splits)
 
         return tuple(
             TriggerExample(
-                request_id=f"r{index:03d}",
+                request_id=f'r{index:03d}',
                 request=entry.request,
                 expected=frozenset(entry.skills),
                 split=split_mapping[entry.request],
@@ -239,9 +235,7 @@ def plain_request_nodes(root: yaml.Node | None) -> list[yaml.ScalarNode]:
         for item in root.value
         if isinstance(item, yaml.MappingNode)
         for key, value in item.value
-        if key.value == "request"
-        and isinstance(value, yaml.ScalarNode)
-        and value.style is None
+        if key.value == 'request' and isinstance(value, yaml.ScalarNode) and value.style is None
     ]
 
 
@@ -250,7 +244,7 @@ def ends_before_comment(node: yaml.ScalarNode, lines: Sequence[str]) -> bool:
     if mark is None:
         return False
 
-    return "#" in lines[mark.line][mark.column :]
+    return '#' in lines[mark.line][mark.column :]
 
 
 def comment_truncated_requests(root: yaml.Node | None, text: str) -> list[str]:
@@ -262,7 +256,7 @@ def comment_truncated_requests(root: yaml.Node | None, text: str) -> list[str]:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class YamlTriggerSetReader:
     def read(self, path: Path, options: LoopOptions) -> tuple[TriggerExample, ...]:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding='utf-8')
         if problem := self.get_text_problem(path, text):
             raise problem
 

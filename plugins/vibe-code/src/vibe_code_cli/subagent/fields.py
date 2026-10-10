@@ -9,37 +9,37 @@ from vibe_code_cli.subagent.tools import is_known_tool, tool_entries, tool_name
 
 KNOWN_KEYS = frozenset(
     {
-        "name",
-        "description",
-        "tools",
-        "disallowedTools",
-        "model",
-        "permissionMode",
-        "maxTurns",
-        "skills",
-        "mcpServers",
-        "hooks",
-        "memory",
-        "background",
-        "omitClaudeMd",
-        "effort",
-        "isolation",
-        "color",
-        "initialPrompt",
-        "experimental",
+        'name',
+        'description',
+        'tools',
+        'disallowedTools',
+        'model',
+        'permissionMode',
+        'maxTurns',
+        'skills',
+        'mcpServers',
+        'hooks',
+        'memory',
+        'background',
+        'omitClaudeMd',
+        'effort',
+        'isolation',
+        'color',
+        'initialPrompt',
+        'experimental',
     }
 )
-PLUGIN_IGNORED_KEYS = ("permissionMode", "hooks", "mcpServers", "initialPrompt")
-NAME_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-MODEL_PATTERN = re.compile(r"(?:sonnet|opus|haiku|fable)(?:\[1m\])?|inherit")
+PLUGIN_IGNORED_KEYS = ('permissionMode', 'hooks', 'mcpServers', 'initialPrompt')
+NAME_PATTERN = re.compile(r'[a-z0-9]+(?:-[a-z0-9]+)*')
+MODEL_PATTERN = re.compile(r'(?:sonnet|opus|haiku|fable)(?:\[1m\])?|inherit')
 TRIGGER_PATTERN = re.compile(
-    r"\b(use (this )?(skill |agent )?(when|after|proactively)|trigger when|"
-    r"invoke when|call (this|it) when)\b",
+    r'\b(use (this )?(skill |agent )?(when|after|proactively)|trigger when|'
+    r'invoke when|call (this|it) when)\b',
     re.IGNORECASE,
 )
 
 
-class AgentFrontmatter(msgspec.Struct, rename="camel", frozen=True, kw_only=True):
+class AgentFrontmatter(msgspec.Struct, rename='camel', frozen=True, kw_only=True):
     name: str | None = None
     description: str | None = None
     tools: str | list[str] | None = None
@@ -78,13 +78,9 @@ def check_name(frontmatter: AgentFrontmatter, *, plugin: bool) -> list[Finding]:
     if name is not None and name.strip():
         return check_name_value(name)
     if plugin:
-        return [
-            warning("name is missing or empty; a plugin agent loads under its filename")
-        ]
+        return [warning('name is missing or empty; a plugin agent loads under its filename')]
 
-    return [
-        error("name is missing or empty; Claude Code skips the file as documentation")
-    ]
+    return [error('name is missing or empty; Claude Code skips the file as documentation')]
 
 
 def check_name_value(name: str) -> list[Finding]:
@@ -92,7 +88,7 @@ def check_name_value(name: str) -> list[Finding]:
         return []
     return [
         error(
-            f"name {name!r} must be lowercase letters, digits and single hyphens, with no "
+            f'name {name!r} must be lowercase letters, digits and single hyphens, with no '
             "':' (reserved for plugin-scoped names) and no leading hyphen"
         )
     ]
@@ -111,7 +107,7 @@ def check_description(
     if not TRIGGER_PATTERN.search(description):
         findings.append(
             warning(
-                "description states a capability but no trigger condition; add "
+                'description states a capability but no trigger condition; add '
                 "'Use when ...' so Claude knows when to delegate to this agent"
             )
         )
@@ -120,7 +116,7 @@ def check_description(
         findings.append(
             warning(
                 "description contains ':' and is not quoted in the source; quote it "
-                "so a YAML reader cannot misparse it"
+                'so a YAML reader cannot misparse it'
             )
         )
     return findings
@@ -132,7 +128,7 @@ def check_tools(frontmatter: AgentFrontmatter) -> list[Finding]:
         return [
             warning(
                 "no 'tools' list, so the agent inherits every tool the session has; "
-                "list the tools it needs"
+                'list the tools it needs'
             )
         ]
     if not entries:
@@ -150,8 +146,8 @@ def check_tools(frontmatter: AgentFrontmatter) -> list[Finding]:
 def check_tool_names(entries: list[str]) -> list[Finding]:
     return [
         error(
-            f"{entry!r} is not a Claude Code tool name or an mcp__<server> or "
-            "mcp__<server>__<tool> reference"
+            f'{entry!r} is not a Claude Code tool name or an mcp__<server> or '
+            'mcp__<server>__<tool> reference'
         )
         for entry in entries
         if not is_known_tool(entry)
@@ -165,8 +161,8 @@ def check_denylist(frontmatter: AgentFrontmatter) -> list[Finding]:
     return [
         warning(
             "'disallowedTools' is applied first and 'tools' is then resolved against the "
-            "remaining pool, so a tool in both is removed; setting both rarely does what it "
-            "looks like"
+            'remaining pool, so a tool in both is removed; setting both rarely does what it '
+            'looks like'
         )
     ]
 
@@ -175,26 +171,22 @@ def check_turn_budget(
     entries: list[str],
     frontmatter: AgentFrontmatter,
 ) -> list[Finding]:
-    if "Bash" not in map(tool_name, entries) or not isinstance(
-        frontmatter.max_turns, UnsetType
-    ):
+    if 'Bash' not in map(tool_name, entries) or not isinstance(frontmatter.max_turns, UnsetType):
         return []
 
     return [
-        warning(
-            "agent can run commands but sets no maxTurns; a runaway delegation has no stop"
-        )
+        warning('agent can run commands but sets no maxTurns; a runaway delegation has no stop')
     ]
 
 
 def check_model(frontmatter: AgentFrontmatter) -> list[Finding]:
     model = frontmatter.model
-    if model is None or MODEL_PATTERN.fullmatch(model) or "-" in model:
+    if model is None or MODEL_PATTERN.fullmatch(model) or '-' in model:
         return []
 
     return [
         error(
-            f"model {model!r} is not a Claude Code alias (sonnet, opus, haiku, fable), "
+            f'model {model!r} is not a Claude Code alias (sonnet, opus, haiku, fable), '
             "'inherit', or a full model ID"
         )
     ]
@@ -202,7 +194,7 @@ def check_model(frontmatter: AgentFrontmatter) -> list[Finding]:
 
 def check_unknown_keys(fields: dict[str, object]) -> list[Finding]:
     return [
-        warning(f"{key!r} is not a documented frontmatter key; Claude Code ignores it")
+        warning(f'{key!r} is not a documented frontmatter key; Claude Code ignores it')
         for key in sorted(set(fields) - KNOWN_KEYS)
     ]
 
@@ -215,19 +207,17 @@ def check_permission_mode(
 ) -> list[Finding]:
     if plugin:
         return [
-            warning(
-                f"{key!r} is ignored in a plugin agents/ directory; Claude Code drops it"
-            )
+            warning(f'{key!r} is ignored in a plugin agents/ directory; Claude Code drops it')
             for key in PLUGIN_IGNORED_KEYS
             if key in fields
         ]
 
-    if frontmatter.permission_mode != "bypassPermissions":
+    if frontmatter.permission_mode != 'bypassPermissions':
         return []
 
     return [
         warning(
             "a subagent that declares bypassPermissions keeps the main conversation's "
-            "permission mode instead (v2.1.267 or later), so the setting does not skip prompts"
+            'permission mode instead (v2.1.267 or later), so the setting does not skip prompts'
         )
     ]

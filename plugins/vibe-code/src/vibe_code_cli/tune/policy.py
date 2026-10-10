@@ -1,4 +1,3 @@
-import re
 import string
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field
@@ -29,8 +28,8 @@ from vibe_code_cli.tune.errors import (
     UnknownSkillError,
 )
 
-FORBIDDEN_DESCRIPTION_CHARACTERS = frozenset("<>")
-SKILL_NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "-")
+FORBIDDEN_DESCRIPTION_CHARACTERS = frozenset('<>')
+SKILL_NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + '-')
 
 type FrontmatterMapping = dict[str, object]
 type TriggerSetProblem = UnknownSkillError | DuplicateRequestError | EmptySplitError
@@ -56,19 +55,11 @@ class SkillPolicy:
     name_characters: frozenset[str] = SKILL_NAME_CHARACTERS
 
     def is_valid_skill_name(self, name: str) -> bool:
-        return (
-            bool(name)
-            and set(name) <= self.name_characters
-            and not name.startswith("-")
-        )
+        return bool(name) and set(name) <= self.name_characters and not name.startswith('-')
 
-    def get_skill_name_problem(
-        self, skills: Sequence[Skill]
-    ) -> InvalidSkillNameError | None:
-        invalid = (
-            skill.name for skill in skills if not self.is_valid_skill_name(skill.name)
-        )
-        if not (name := next(invalid, None)):
+    def get_skill_name_problem(self, skills: Sequence[Skill]) -> InvalidSkillNameError | None:
+        invalid = (skill.name for skill in skills if not self.is_valid_skill_name(skill.name))
+        if (name := next(invalid, None)) is None:
             return None
 
         return InvalidSkillNameError(name)
@@ -104,7 +95,7 @@ class TriggerSetPolicy:
         self,
         examples: Sequence[TriggerExample],
     ) -> DuplicateRequestError | None:
-        if not (duplicate := self.find_duplicate_request(examples)):
+        if (duplicate := self.find_duplicate_request(examples)) is None:
             return None
 
         return DuplicateRequestError(duplicate)
@@ -159,7 +150,7 @@ class RunStagePolicy:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class AnswerPolicy:
     def expected_answer_keys(self, size: int) -> set[str]:
-        return {f"q{index}" for index in range(1, size + 1)}
+        return {f'q{index}' for index in range(1, size + 1)}
 
     def find_stray_skills(
         self,
@@ -180,7 +171,7 @@ class AnswerPolicy:
             return None
 
         ordered = sorted(expected)
-        return InvalidVerdictError(packet_id, f"answer keys must be exactly {ordered}")
+        return InvalidVerdictError(packet_id, f'answer keys must be exactly {ordered}')
 
     def get_verdict_problem(
         self,
@@ -190,11 +181,11 @@ class AnswerPolicy:
         expected = len(record.request_ids)
         received = len(verdicts)
         if received != expected:
-            reason = f"expected {expected} verdicts, got {received}"
+            reason = f'expected {expected} verdicts, got {received}'
             return InvalidVerdictError(record.packet_id, reason)
 
         if stray := self.find_stray_skills(record, verdicts):
-            return InvalidVerdictError(record.packet_id, f"unknown skill names {stray}")
+            return InvalidVerdictError(record.packet_id, f'unknown skill names {stray}')
 
         return None
 
@@ -220,7 +211,7 @@ class ProposalPolicy:
     forbidden_characters: frozenset[str] = FORBIDDEN_DESCRIPTION_CHARACTERS
 
     def is_printable(self, text: str) -> bool:
-        return all(character.isprintable() or character == "\n" for character in text)
+        return all(character.isprintable() or character == '\n' for character in text)
 
     def has_forbidden_characters(self, text: str) -> bool:
         return bool(self.forbidden_characters & set(text))
@@ -231,27 +222,27 @@ class ProposalPolicy:
         return (
             (
                 len(proposal.text) > description_limit,
-                f"longer than {description_limit} characters",
+                f'longer than {description_limit} characters',
             ),
             (
                 proposal.listing_chars > listing_limit,
-                f"with when_to_use it passes the {listing_limit}-character listing limit",
+                f'with when_to_use it passes the {listing_limit}-character listing limit',
             ),
         )
 
     def text_checks(self, proposal: Proposal) -> Checks:
         text = proposal.text
         return (
-            (not text, "the description is empty"),
+            (not text, 'the description is empty'),
             (
                 self.has_forbidden_characters(text),
-                "angle brackets are not allowed in descriptions",
+                'angle brackets are not allowed in descriptions',
             ),
-            (not self.is_printable(text), "control characters are not allowed"),
-            (text == proposal.current.strip(), "identical to the current description"),
+            (not self.is_printable(text), 'control characters are not allowed'),
+            (text == proposal.current.strip(), 'identical to the current description'),
             (
                 text in proposal.rejected,
-                "this exact description was already tried and rejected",
+                'this exact description was already tried and rejected',
             ),
         )
 
@@ -286,18 +277,18 @@ class LoopOptionsPolicy:
     def option_checks(self, options: LoopOptions) -> Checks:
         routing = options.routing
         return (
-            (options.batch_size < 1, "--batch-size must be at least 1"),
-            (options.max_rounds < 1, "--max-rounds must be at least 1"),
-            (options.patience < 1, "--patience must be at least 1"),
+            (options.batch_size < 1, '--batch-size must be at least 1'),
+            (options.max_rounds < 1, '--max-rounds must be at least 1'),
+            (options.patience < 1, '--patience must be at least 1'),
             (
                 not 0 < options.validation_fraction < 1,
-                "--validation-fraction must be between 0 and 1",
+                '--validation-fraction must be between 0 and 1',
             ),
-            (routing.concurrency < 1, "--concurrency must be at least 1"),
-            (routing.timeout_seconds <= 0, "--timeout must be positive"),
+            (routing.concurrency < 1, '--concurrency must be at least 1'),
+            (routing.timeout_seconds <= 0, '--timeout must be positive'),
             (
                 options.max_description_chars < 1,
-                "max description length must be positive",
+                'max description length must be positive',
             ),
         )
 
@@ -309,7 +300,7 @@ class LoopOptionsPolicy:
 
 
 def without_description(mapping: FrontmatterMapping) -> FrontmatterMapping:
-    return {key: value for key, value in mapping.items() if key != "description"}
+    return {key: value for key, value in mapping.items() if key != 'description'}
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -327,7 +318,7 @@ class SkillFilePolicy:
         skill: Skill,
         original: FrontmatterMapping,
     ) -> bool:
-        current = str(original.get("description", "")).strip()
+        current = str(original.get('description', '')).strip()
         return current == skill.description
 
     def get_stale_skill_problem(
@@ -347,18 +338,18 @@ class SkillFilePolicy:
         kept = without_description(rewrite.original)
         return (
             (
-                rewritten.get("description") != rewrite.description,
-                "the description would not read back intact",
+                rewritten.get('description') != rewrite.description,
+                'the description would not read back intact',
             ),
             (
                 without_description(rewritten) != kept,
-                "other frontmatter keys would change",
+                'other frontmatter keys would change',
             ),
         )
 
     def get_rewrite_problem(self, rewrite: Rewrite) -> RewriteMismatchError | None:
-        if not (rewritten := rewrite.rewritten):
-            return RewriteMismatchError(rewrite.path, "the frontmatter would not parse")
+        if (rewritten := rewrite.rewritten) is None:
+            return RewriteMismatchError(rewrite.path, 'the frontmatter would not parse')
 
         rewrite_checks = self.rewrite_checks(rewrite, rewritten)
         if reason := first_failure(rewrite_checks):

@@ -33,9 +33,7 @@ def jaccard(expected: frozenset[str], chosen: frozenset[str]) -> float:
     return len(expected & chosen) / len(union)
 
 
-def score_split(
-    examples: Iterable[TriggerExample], verdicts: Verdicts, split: Split
-) -> float:
+def score_split(examples: Iterable[TriggerExample], verdicts: Verdicts, split: Split) -> float:
     scores = [
         jaccard(example.expected, verdicts[example.request_id])
         for example in examples
@@ -45,9 +43,7 @@ def score_split(
     return fmean(scores)
 
 
-def score_verdicts(
-    examples: tuple[TriggerExample, ...], verdicts: Verdicts
-) -> Scorecard:
+def score_verdicts(examples: tuple[TriggerExample, ...], verdicts: Verdicts) -> Scorecard:
     return Scorecard(
         train=score_split(examples, verdicts, Split.TRAIN),
         validation=score_split(examples, verdicts, Split.VALIDATION),
@@ -72,9 +68,7 @@ def skill_failures(
     chosen = [example for example in train if skill in verdicts[example.request_id]]
     missed = tuple(example.request for example in expected if example not in chosen)
 
-    false_triggers = tuple(
-        example.request for example in chosen if example not in expected
-    )
+    false_triggers = tuple(example.request for example in chosen if example not in expected)
     hits = len(expected) - len(missed)
     f1 = f1_score(hits, len(false_triggers), len(missed))
     return SkillFailures(

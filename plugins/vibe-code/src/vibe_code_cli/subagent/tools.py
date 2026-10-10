@@ -58,7 +58,7 @@ COMMA_OUTSIDE_PARENTHESES = re.compile(r'(?:[^,(]|\([^)]*\))+')
 def tool_entries(value: str | list[str] | None) -> list[str] | None:
     if value is None:
         return None
-    
+
     entries = COMMA_OUTSIDE_PARENTHESES.findall(value) if isinstance(value, str) else value
     return [entry.strip() for entry in entries if entry.strip()]
 

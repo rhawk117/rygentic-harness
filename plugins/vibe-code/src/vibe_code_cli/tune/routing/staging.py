@@ -23,7 +23,7 @@ def routing_frontmatter(skill: Skill) -> str:
         routing['when_to_use'] = skill.when_to_use
 
     if not routing:
-        return ""
+        return ''
 
     return msgspec.yaml.encode(routing).decode()
 
@@ -31,8 +31,8 @@ def routing_frontmatter(skill: Skill) -> str:
 def render_stub(skill: Skill, description: str) -> str:
     quoted = msgspec.json.encode(description).decode()
     extra = routing_frontmatter(skill)
-    header = f"name: {skill.name}\ndescription: {quoted}\n{extra}"
-    return f"---\n{header}---\n# {skill.name}\n"
+    header = f'name: {skill.name}\ndescription: {quoted}\n{extra}'
+    return f'---\n{header}---\n# {skill.name}\n'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

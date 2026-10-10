@@ -104,8 +104,8 @@ def check_size(always_on: list[InstructionFile]) -> list[Finding]:
         if count >= TARGET_LINES:
             findings.append(
                 warning(
-                    f"{entry.relative}: {count} lines, at or over the {TARGET_LINES}-line target; "
-                    "move what matters for only part of the codebase into path-scoped rules"
+                    f'{entry.relative}: {count} lines, at or over the {TARGET_LINES}-line target; '
+                    'move what matters for only part of the codebase into path-scoped rules'
                 )
             )
 
@@ -252,8 +252,8 @@ def check_single_commit(always_on: list[InstructionFile], root: Path) -> list[Fi
 
 def commit_count(root: Path, relative: str) -> int | None:
     try:
-        completed = subprocess.run(
-            ["git", "log", "--follow", "--format=%H", "--", relative],
+        completed = subprocess.run(  # noqa: S603 - fixed argument list, no shell
+            ['git', 'log', '--follow', '--format=%H', '--', relative],  # noqa: S607 - git is resolved from PATH on purpose
             cwd=root,
             capture_output=True,
             text=True,

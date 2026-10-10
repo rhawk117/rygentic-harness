@@ -1,12 +1,12 @@
 import shutil
 import sys
+import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import IO
 
-if sys.platform == "win32":
+if sys.platform == 'win32':
     import msvcrt
 
     def lock_handle(handle: IO[bytes]) -> None:
@@ -27,7 +27,7 @@ else:
 
 @contextmanager
 def exclusive_lock(path: Path) -> Generator[None]:
-    with path.open("a+b") as handle:
+    with path.open('a+b') as handle:
         lock_handle(handle)
         try:
             yield
@@ -35,11 +35,10 @@ def exclusive_lock(path: Path) -> Generator[None]:
             unlock_handle(handle)
 
 
-def write_atomically(path: Path, data: bytes, *, suffix: str = ".tmp") -> None:
-    prefix = f".{path.name}."
-    suffix = ".tmp"
+def write_atomically(path: Path, data: bytes, *, suffix: str = '.tmp') -> None:
+    prefix = f'.{path.name}.'
 
-    with NamedTemporaryFile(
+    with tempfile.NamedTemporaryFile(
         dir=path.parent,
         prefix=prefix,
         suffix=suffix,
@@ -50,6 +49,5 @@ def write_atomically(path: Path, data: bytes, *, suffix: str = ".tmp") -> None:
         staging.close()
         if path.exists():
             shutil.copymode(path, staging.name)
-
 
         Path(staging.name).replace(path)

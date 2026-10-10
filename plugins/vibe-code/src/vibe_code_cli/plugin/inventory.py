@@ -40,11 +40,7 @@ class Plugin:
     def override_paths(self, key: str) -> list[Path]:
         value = self.manifest.get(key)
         entries = value if isinstance(value, list) else [value]
-        paths = [
-            self.directory.joinpath(entry)
-            for entry in entries
-            if isinstance(entry, str)
-        ]
+        paths = [self.directory.joinpath(entry) for entry in entries if isinstance(entry, str)]
         return [path for path in paths if self.inside(path)]
 
     def config_documents(self, key: str, default: str) -> list[tuple[str, JsonObject]]:

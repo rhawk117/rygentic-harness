@@ -14,7 +14,7 @@ from vibe_code_cli.tune.services import StartRequest
 from vibe_code_cli.tune.store import encode_json
 from vibe_code_cli.tune.wiring import Settings, TuneServices, build_services
 
-DEFAULT_STATE = Path(".skill-tuning/state.json")
+DEFAULT_STATE = Path('.skill-tuning/state.json')
 DEFAULTS = LoopOptions()
 REFUSED = 1
 COULD_NOT_RUN = 2
@@ -123,10 +123,10 @@ class TuneHandler:
         try:
             output = self.run(arguments)
         except TuneError as problem:
-            print(f"error: {problem}", file=sys.stderr)
+            print(f'error: {problem}', file=sys.stderr)
             return REFUSED
         except OSError as problem:
-            print(f"error: {problem}", file=sys.stderr)
+            print(f'error: {problem}', file=sys.stderr)
             return COULD_NOT_RUN
 
         sys.stdout.write(output)
@@ -134,59 +134,53 @@ class TuneHandler:
 
 
 def configure_init(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--skills", type=Path, nargs="+", required=True, metavar="PATH")
-    parser.add_argument("--triggers", type=Path, required=True, metavar="FILE")
-    parser.add_argument("--force", action="store_true", help="replace an existing run")
-    parser.add_argument(
-        "--judge", type=Judge, choices=list(Judge), default=DEFAULTS.judge
-    )
-    parser.add_argument("--model", default=DEFAULTS.routing.model, help="routing model")
-    parser.add_argument("--concurrency", type=int, default=DEFAULTS.routing.concurrency)
-    parser.add_argument(
-        "--timeout", type=float, default=DEFAULTS.routing.timeout_seconds
-    )
-    parser.add_argument(
-        "--validation-fraction", type=float, default=DEFAULTS.validation_fraction
-    )
-    parser.add_argument("--batch-size", type=int, default=DEFAULTS.batch_size)
-    parser.add_argument("--max-rounds", type=int, default=DEFAULTS.max_rounds)
-    parser.add_argument("--patience", type=int, default=DEFAULTS.patience)
-    parser.add_argument("--seed", type=int, default=DEFAULTS.seed)
+    parser.add_argument('--skills', type=Path, nargs='+', required=True, metavar='PATH')
+    parser.add_argument('--triggers', type=Path, required=True, metavar='FILE')
+    parser.add_argument('--force', action='store_true', help='replace an existing run')
+    parser.add_argument('--judge', type=Judge, choices=list(Judge), default=DEFAULTS.judge)
+    parser.add_argument('--model', default=DEFAULTS.routing.model, help='routing model')
+    parser.add_argument('--concurrency', type=int, default=DEFAULTS.routing.concurrency)
+    parser.add_argument('--timeout', type=float, default=DEFAULTS.routing.timeout_seconds)
+    parser.add_argument('--validation-fraction', type=float, default=DEFAULTS.validation_fraction)
+    parser.add_argument('--batch-size', type=int, default=DEFAULTS.batch_size)
+    parser.add_argument('--max-rounds', type=int, default=DEFAULTS.max_rounds)
+    parser.add_argument('--patience', type=int, default=DEFAULTS.patience)
+    parser.add_argument('--seed', type=int, default=DEFAULTS.seed)
 
 
 def configure_submit(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--packet", required=True)
+    parser.add_argument('--packet', required=True)
     parser.add_argument(
-        "--answer",
+        '--answer',
         type=Path,
         required=True,
-        metavar="FILE",
-        help="answer JSON file",
+        metavar='FILE',
+        help='answer JSON file',
     )
 
 
 def configure_route(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--claude", help="path to the claude executable")
+    parser.add_argument('--claude', help='path to the claude executable')
 
 
 def configure_lint(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--skills", type=Path, nargs="+", required=True, metavar="PATH")
-    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    parser.add_argument('--skills', type=Path, nargs='+', required=True, metavar='PATH')
+    parser.add_argument('--threshold', type=float, default=DEFAULT_THRESHOLD)
 
 
 def configure_apply(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument('--dry-run', action='store_true')
 
 
 COMMAND_HELP = {
-    TuneCommand.INIT: "load skills and a trigger set",
-    TuneCommand.NEXT: "print the next piece of work",
-    TuneCommand.ROUTE: "judge by real Claude Code routing",
-    TuneCommand.SUBMIT: "answer one packet",
-    TuneCommand.STATUS: "print the stage and scores",
-    TuneCommand.LINT: "find competing descriptions",
-    TuneCommand.REPORT: "print the Markdown report",
-    TuneCommand.APPLY: "write the tuned descriptions",
+    TuneCommand.INIT: 'load skills and a trigger set',
+    TuneCommand.NEXT: 'print the next piece of work',
+    TuneCommand.ROUTE: 'judge by real Claude Code routing',
+    TuneCommand.SUBMIT: 'answer one packet',
+    TuneCommand.STATUS: 'print the stage and scores',
+    TuneCommand.LINT: 'find competing descriptions',
+    TuneCommand.REPORT: 'print the Markdown report',
+    TuneCommand.APPLY: 'write the tuned descriptions',
 }
 CONFIGURERS: dict[TuneCommand, Callable[[argparse.ArgumentParser], None]] = {
     TuneCommand.INIT: configure_init,
@@ -198,9 +192,9 @@ CONFIGURERS: dict[TuneCommand, Callable[[argparse.ArgumentParser], None]] = {
 
 
 def build(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--state", type=Path, default=DEFAULT_STATE, metavar="FILE")
+    parser.add_argument('--state', type=Path, default=DEFAULT_STATE, metavar='FILE')
     parser.set_defaults(claude=None, threshold=DEFAULT_THRESHOLD)
-    commands = parser.add_subparsers(dest="command", metavar="COMMAND")
+    commands = parser.add_subparsers(dest='command', metavar='COMMAND')
     for command, summary in COMMAND_HELP.items():
         subparser = commands.add_parser(
             command.value,

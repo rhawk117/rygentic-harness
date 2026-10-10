@@ -49,5 +49,5 @@ def parse_skill_text(text: str) -> SkillText:
 
     if fields is None:
         fields = {}
-        
+
     return SkillText(fields=as_object(fields), key_problem=key_problem_of(fields), body=body)

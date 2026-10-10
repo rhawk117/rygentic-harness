@@ -16,24 +16,24 @@ from vibe_code_cli.tune.policy import AnswerPolicy
 from vibe_code_cli.tune.store import PacketFile, decode_answer
 
 JUDGE_MESSAGE = (
-    "give each packet file to its own fresh subagent; do not open the files yourself, "
-    "they hold validation requests that must stay hidden from you"
+    'give each packet file to its own fresh subagent; do not open the files yourself, '
+    'they hold validation requests that must stay hidden from you'
 )
 ROUTE_MESSAGE = (
-    "run `vibe-code tune route`: one headless claude session per request, saved after each "
-    "packet; rerun it if it is interrupted"
+    'run `vibe-code tune route`: one headless claude session per request, saved after each '
+    'packet; rerun it if it is interrupted'
 )
 
 
 class JudgePacket(msgspec.Struct, frozen=True, kw_only=True):
-    kind: Literal["judge"] = "judge"
+    kind: Literal['judge'] = 'judge'
     packet_id: str
     skills: dict[str, str]
     requests: dict[str, str]
 
 
 class ProposePacket(msgspec.Struct, frozen=True, kw_only=True):
-    kind: Literal["propose"] = "propose"
+    kind: Literal['propose'] = 'propose'
     packet_id: str
     skill: str
     current: str
@@ -47,19 +47,19 @@ class ProposePacket(msgspec.Struct, frozen=True, kw_only=True):
 
 
 class JudgeWork(msgspec.Struct, frozen=True, kw_only=True):
-    kind: Literal["judge"] = "judge"
+    kind: Literal['judge'] = 'judge'
     packets: tuple[PacketFile, ...]
     message: str = JUDGE_MESSAGE
 
 
 class RouteWork(msgspec.Struct, frozen=True, kw_only=True):
-    kind: Literal["route"] = "route"
+    kind: Literal['route'] = 'route'
     requests: int
     message: str = ROUTE_MESSAGE
 
 
 class DoneWork(msgspec.Struct, frozen=True, kw_only=True):
-    kind: Literal["done"] = "done"
+    kind: Literal['done'] = 'done'
     message: str
 
 
@@ -100,7 +100,7 @@ class StatusSummary(msgspec.Struct, frozen=True, kw_only=True):
 def listing_text(description: str, when_to_use: str) -> str:
     if not when_to_use:
         return description
-    return f"{description}\n{when_to_use}"
+    return f'{description}\n{when_to_use}'
 
 
 def listed_skills(
@@ -114,11 +114,9 @@ def listed_skills(
     }
 
 
-def numbered_requests(
-    record: JudgeRecord, requests_by_id: Mapping[str, str]
-) -> dict[str, str]:
+def numbered_requests(record: JudgeRecord, requests_by_id: Mapping[str, str]) -> dict[str, str]:
     numbered = enumerate(record.request_ids, start=1)
-    return {f"q{index}": requests_by_id[request_id] for index, request_id in numbered}
+    return {f'q{index}': requests_by_id[request_id] for index, request_id in numbered}
 
 
 def judge_packet(record: JudgeRecord, state: LoopState) -> JudgePacket:
@@ -131,9 +129,7 @@ def judge_packets(state: LoopState) -> list[JudgePacket]:
     return [judge_packet(record, state) for record in state.pending_judge_records]
 
 
-def propose_packet(
-    state: LoopState, collisions: Sequence[Collision]
-) -> ProposePacket | None:
+def propose_packet(state: LoopState, collisions: Sequence[Collision]) -> ProposePacket | None:
     record = state.pending_proposal
     if record is None:
         return None
@@ -143,9 +139,7 @@ def propose_packet(
     failures = state.failures_for(skill)
     others = {name: text for name, text in descriptions.items() if name != skill}
 
-    involved = tuple(
-        collision.describe() for collision in collisions if collision.involves(skill)
-    )
+    involved = tuple(collision.describe() for collision in collisions if collision.involves(skill))
     return ProposePacket(
         packet_id=record.packet_id,
         skill=skill,
@@ -172,7 +166,7 @@ def verdicts_from_answer(
     if problem := policy.get_answer_keys_problem(packet_id, answer, size):
         raise problem
 
-    return tuple(frozenset(answer[f"q{index}"]) for index in range(1, size + 1))
+    return tuple(frozenset(answer[f'q{index}']) for index in range(1, size + 1))
 
 
 def applied_change(skill: Skill, description: str) -> AppliedChange:

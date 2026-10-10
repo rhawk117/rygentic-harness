@@ -88,7 +88,7 @@ def check_hook(hook_test: HookTest) -> list[Finding]:
     stdin_text = MALFORMED_PAYLOAD if hook_test.malformed else payload_text
 
     try:
-        completed = subprocess.run(  # argument list with no shell; running the script is the point
+        completed = subprocess.run(  # noqa: S603  # argument list with no shell; running the script is the point
             command,
             input=stdin_text,
             capture_output=True,
@@ -112,9 +112,9 @@ def check_hook(hook_test: HookTest) -> list[Finding]:
 
 def read_payload(payload: Path) -> str:
     try:
-        return payload.read_text(encoding="utf-8")
+        return payload.read_text(encoding='utf-8')
     except (OSError, UnicodeError) as problem:
-        message = f"could not read payload {payload}: {problem}"
+        message = f'could not read payload {payload}: {problem}'
         raise CannotCheckError(message) from problem
 
 
@@ -122,7 +122,7 @@ def payload_event(payload_text: str, payload: Path) -> str | None:
     try:
         value = msgspec.json.decode(payload_text)
     except msgspec.DecodeError as problem:
-        message = f"payload {payload} is not JSON: {problem}"
+        message = f'payload {payload} is not JSON: {problem}'
         raise CannotCheckError(message) from problem
 
     event = value.get('hook_event_name') if isinstance(value, dict) else None
@@ -141,10 +141,9 @@ def hook_command(script: Path) -> list[str]:
 
     bin_candidates = map(shutil.which, interpreter.candidates)
     bin_candidates = filter(None, bin_candidates)
-    executable = next(bin_candidates, None)
 
     if not (executable := next(bin_candidates, None)):
-        message = f"{' or '.join(interpreter.candidates)} is not on PATH, so {script} cannot run"
+        message = f'{" or ".join(interpreter.candidates)} is not on PATH, so {script} cannot run'
         raise CannotCheckError(message)
 
     return [executable, *interpreter.arguments, str(script.resolve())]
@@ -175,41 +174,37 @@ def exit_findings(
             hint = ' (any exit other than 0 or 2 is a non-blocking error; only exit 2 blocks)'
 
         stderr = completed.stderr.strip()[:EXCERPT_CHARACTERS]
-        findings.append(
-            error(f"exit {actual}, expected {expected}{hint}; stderr: {stderr}")
-        )
+        findings.append(error(f'exit {actual}, expected {expected}{hint}; stderr: {stderr}'))
 
     if actual == BLOCKING_EXIT_CODE and event in EXIT_2_IGNORED_EVENTS:
-        findings.append(
-            error(f"exit 2 does not block on {event}; the exit code is ignored there")
-        )
+        findings.append(error(f'exit 2 does not block on {event}; the exit code is ignored there'))
 
     return findings
 
 
-type Stdout = Literal["empty", "json", "text", "broken"]
+type Stdout = Literal['empty', 'json', 'text', 'broken']
 
 
 def classify_stdout(raw: str) -> tuple[Stdout, dict[str, object] | None]:
     text = raw.strip()
     if not text:
-        return "empty", None
+        return 'empty', None
 
     if not (text.startswith('{') and text.endswith('}')):
         return 'text', None
 
     try:
-        return "json", as_object(msgspec.json.decode(text))
+        return 'json', as_object(msgspec.json.decode(text))
     except msgspec.DecodeError:
-        return "broken", None
+        return 'broken', None
 
 
 def stdout_findings(kind: Stdout, event: str | None) -> list[Finding]:
-    if kind == "broken":
+    if kind == 'broken':
         return [
             error(
-                "stdout starts with { and ends with } but is not one JSON object; "
-                "Claude Code reports a hook error"
+                'stdout starts with { and ends with } but is not one JSON object; '
+                'Claude Code reports a hook error'
             )
         ]
 
@@ -225,20 +220,16 @@ def stdout_findings(kind: Stdout, event: str | None) -> list[Finding]:
 
 
 def silent_findings(kind: Stdout, expectations: Expectations) -> list[Finding]:
-    if expectations.silent and kind != "empty":
-        return [error("expected empty stdout, got output")]
+    if expectations.silent and kind != 'empty':
+        return [error('expected empty stdout, got output')]
 
     return []
 
 
 def field_findings(output: dict[str, object] | None, expectations: Expectations) -> list[Finding]:
-    findings = []
     output = output or {}
-    for expectation in expectations.fields:
-        if problem := field_problem(output, expectation):
-            findings.append(error(problem))
-
-    return findings
+    problems = (field_problem(output, expectation) for expectation in expectations.fields)
+    return list(map(error, filter(None, problems)))
 
 
 def field_problem(output: dict[str, object], expectation: FieldExpectation) -> str | None:
@@ -262,6 +253,6 @@ def matches(value: object, expected: str) -> bool:
     except msgspec.DecodeError:
         wanted = expected
 
-    encoder = msgspec.json.Encoder(order="deterministic")
+    encoder = msgspec.json.Encoder(order='deterministic')
     current, wanted = encoder.encode(value), encoder.encode(wanted)
     return current == wanted
