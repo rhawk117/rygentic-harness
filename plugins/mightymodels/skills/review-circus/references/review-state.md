@@ -18,7 +18,7 @@ With a ticket: `.mightymodels/SLUG/review/RUN/`. Without one: `.mightymodels/.ru
 | File                                           | Written by                                                   | Holds                      |
 | ---------------------------------------------- | ------------------------------------------------------------ | -------------------------- |
 | `MERGE-VADER-REPORT.md`, `UNCLE-BOB-REPORT.md` | the primary, from the persona's response unchanged           | the reports `add` reads    |
-| `uncle-bob-metrics.json`                       | `metrics.py`                                                 | the structure measurements |
+| `uncle-bob-metrics.json`                       | `mightymodels review-metrics`                                | the structure measurements |
 | `report.md`                                    | the primary, from the `report` answer                        | the full report            |
 | `pr-comment.md`                                | the primary, from the `report` answer with `shape` `comment` | the abridged PR comment    |
 

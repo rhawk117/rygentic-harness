@@ -1,5 +1,5 @@
-"""Command line entry point shared by the MCP server start mode, the hooks, `verify run` and
-`review-signals`.
+"""Command line entry point shared by the MCP server start mode, the hooks, `verify run`,
+`review-signals` and `review-metrics`.
 """
 
 import argparse
@@ -31,6 +31,9 @@ DEFAULT_MAX_COMMITS = 500
 DEFAULT_LIMIT = 25
 DEFAULT_MIN_SHARED = 3
 DEFAULT_MAX_CHANGESET = 50
+REVIEW_METRICS_COMMAND = 'review-metrics'
+DEFAULT_MAX_LISTED = 50
+DEFAULT_PACKAGE_DEPTH = 1
 PHASES = ('planning', 'task', 'review', 'landing')
 DEFAULT_PHASE = 'task'
 HOOK_MODULES = MappingProxyType(
@@ -91,6 +94,22 @@ def add_review_signals(commands: argparse._SubParsersAction[argparse.ArgumentPar
         add_window(sub)
 
 
+def add_review_metrics(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    metrics = commands.add_parser(
+        REVIEW_METRICS_COMMAND,
+        help='measure code structure for a review: sizes, fan-in, fan-out, cycles',
+    )
+    metrics.add_argument('root', type=Path)
+    metrics.add_argument('--out', type=Path, default=None)
+    metrics.add_argument('--max-listed', type=int, default=DEFAULT_MAX_LISTED)
+    metrics.add_argument(
+        '--package-depth',
+        type=int,
+        default=DEFAULT_PACKAGE_DEPTH,
+        help='path components per component rollup; use 2+ for single-package repos',
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='mightymodels', description='mightymodels state server and command line tools.'
@@ -123,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_verify_run(commands)
     add_review_signals(commands)
+    add_review_metrics(commands)
     return parser
 
 
@@ -137,14 +157,24 @@ def run_hook_command(arguments: argparse.Namespace) -> int | None:
     return int(hook.run_hook(HookContext(stdin=sys.stdin, environ=os.environ, cwd=Path.cwd())))
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    arguments = build_parser().parse_args(argv)
-    if (code := run_hook_command(arguments)) is not None:
-        return code
+def run_review_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == REVIEW_SIGNALS_COMMAND:
         from mightymodels_plugin.commands.review_signals import review_signals  # noqa: PLC0415 - importing commands.review_signals (core.workspace and Pydantic) took 0.13 s measured with -X importtime and every hook and `--help` must not pay it
 
         return review_signals(arguments)
+    if arguments.command == REVIEW_METRICS_COMMAND:
+        from mightymodels_plugin.commands.review_metrics import review_metrics  # noqa: PLC0415 - importing commands.review_metrics (msgspec and ast) took 0.07 s measured with -X importtime and every hook and `--help` must not pay it
+
+        return review_metrics(arguments)
+    return None
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = build_parser().parse_args(argv)
+    if (code := run_hook_command(arguments)) is not None:
+        return code
+    if (code := run_review_command(arguments)) is not None:
+        return code
     if arguments.command == VERIFY_COMMAND:
         from mightymodels_plugin.commands.verify import verify_run  # noqa: PLC0415 - importing commands.verify (SQLAlchemy and Pydantic) took 0.37 s measured with -X importtime and `--help` must not pay it
 

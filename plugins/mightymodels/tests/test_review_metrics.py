@@ -1,15 +1,13 @@
-"""Characterization tests for scripts/metrics.py: a fixed tree and its recorded output."""
-
-from __future__ import annotations
+"""`mightymodels review-metrics` against a fixed tree and its recorded output."""
 
 import json
-import runpy
 from pathlib import Path
 
 import pytest
+from mightymodels_plugin.cli import main
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'metrics.py'
-GOLDEN = Path(__file__).resolve().parent / 'fixtures'
+COMMAND = 'review-metrics'
+GOLDEN = Path(__file__).resolve().parent.joinpath('fixtures')
 LONG = 'x = "' + 'a' * 130 + '"'
 FAILED_ROOT = 2
 CORE_PY = [
@@ -95,9 +93,9 @@ SAMPLE: dict[str, list[str]] = {
 
 @pytest.fixture
 def sample(tmp_path: Path) -> Path:
-    root = tmp_path / 'sample'
+    root = tmp_path.joinpath('sample')
     for name, lines in SAMPLE.items():
-        path = root / name
+        path = root.joinpath(name)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return root
@@ -107,12 +105,11 @@ def sample(tmp_path: Path) -> Path:
 def test_output_matches_the_recorded_report(
     sample: Path, capsys: pytest.CaptureFixture[str], depth: int
 ) -> None:
-    out = sample.parent / 'metrics.json'
-    main = runpy.run_path(str(SCRIPT))['main']
-    code = main([str(sample), '--out', str(out), '--package-depth', str(depth)])
+    out = sample.parent.joinpath('metrics.json')
+    code = main([COMMAND, str(sample), '--out', str(out), '--package-depth', str(depth)])
     printed = capsys.readouterr().out
     report = json.loads(out.read_text(encoding='utf-8'))
-    golden = GOLDEN / f'metrics-depth-{depth}'
+    golden = GOLDEN.joinpath(f'metrics-depth-{depth}')
     assert code == 0
     expected = json.loads(golden.with_suffix('.json').read_text(encoding='utf-8'))
     assert report == expected
@@ -121,7 +118,7 @@ def test_output_matches_the_recorded_report(
 
 
 def test_a_missing_root_is_refused(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    main = runpy.run_path(str(SCRIPT))['main']
-    code = main([str(tmp_path / 'absent')])
+    absent = tmp_path.joinpath('absent')
+    code = main([COMMAND, str(absent)])
     assert code == FAILED_ROOT
-    assert 'is not a directory' in capsys.readouterr().err
+    assert capsys.readouterr().err == f'error: {absent.resolve()} is not a directory\n'

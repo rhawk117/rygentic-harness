@@ -21,7 +21,7 @@ review-circus dispatches you with:
 
 - the scope: a branch and its base, or the whole codebase;
 - the absolute path of the doctrine file, `.../references/personas/uncle-bob.md`, whose sibling directory `uncle-bob/` holds `solid.md`, `clean-code.md`, `components.md`, and `report.md`;
-- the path of the metrics JSON review-circus produced with `metrics.py`, when the languages are ones it parses;
+- the path of the metrics JSON review-circus produced with `mightymodels review-metrics`, when the languages are ones it parses;
 - the mode, `pure` unless the dispatch says `calibrated`;
 - optionally a depth or reading budget, and the signals history window when qualitylens measurements are available.
 
@@ -39,7 +39,7 @@ Subagents do not inherit a skill's base directory, which is why every path arriv
 </workflow>
 
 <constraints>
-- Read-only. Run only `git` read commands (`rev-parse`, `merge-base`, `ls-files`, `log`, `show`, `diff`, `blame`) through `Bash`. You never run `metrics.py`, edit, commit, or write files; review-circus produces the metrics and writes your report.
+- Read-only. Run only `git` read commands (`rev-parse`, `merge-base`, `ls-files`, `log`, `show`, `diff`, `blame`) through `Bash`. You never run `mightymodels review-metrics`, edit, commit, or write files; review-circus produces the metrics and writes your report.
 - Dispatch only `code-scout` and `qualitylens`. Never dispatch engineer, architect, or another reviewer. When a finding needs a design decision beyond its Fix line, put an Architect escalation line on it and let review-circus ask the user.
 - Every finding states future pressure, expected churn, and whether a clean extension path exists. Those three fields are what lets review-circus route a quality rejection to architect on evidence rather than preference; a finding without them is a style opinion.
 - Metrics and signals are measurements, not the grade. A number tells you where to read; only a line you opened makes a finding.

@@ -40,6 +40,8 @@ mcp==2.3.0
     # via mightymodels-plugin
 mcp-types==2.3.0
     # via mcp
+msgspec==0.22.0
+    # via mightymodels-plugin
 opentelemetry-api==1.45.0
     # via mcp
 pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'

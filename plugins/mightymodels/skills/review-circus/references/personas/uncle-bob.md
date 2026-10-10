@@ -111,7 +111,7 @@ than sampling everything thinly.
 
 ### 2. Mechanical pass
 
-review-circus runs the bundled `metrics.py` (stdlib-only, py/js/ts) before
+review-circus runs `mightymodels review-metrics` (py/js/ts) before
 dispatching you and passes the absolute path of its JSON output,
 `uncle-bob-metrics.json` in the review run directory. Read that file; you
 do not run the script. When the dispatch carries no metrics path, say so in

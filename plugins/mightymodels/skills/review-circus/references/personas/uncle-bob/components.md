@@ -4,7 +4,7 @@ Sources: *Agile PPP* (2002) package-design chapters, "Granularity" (1996),
 "Stability" (1997), *Clean Architecture* (2017) chs. 12–14, 17–23, 26, and
 the 2011–2012 blog posts. A "component" = unit of release/deployment; in
 analysis practice, a top-level package/directory with a public surface.
-`scripts/metrics.py` computes everything in §2 — your job is interpreting
+`mightymodels review-metrics` computes everything in §2 — your job is interpreting
 it and doing §3–§5 by reading code.
 
 ## 1. Component cohesion — which files belong together
@@ -47,7 +47,7 @@ app for imperfect reuse granularity, do ding a shared library.
   - **Zone of Uselessness** (I≈1, A≈1): abstractions nobody implements —
     dead speculation, delete-grade.
 
-Granularity caveats: metrics.py counts dependencies at module level rolled
+Granularity caveats: mightymodels review-metrics counts dependencies at module level rolled
 into top-level packages (use --package-depth 2 for single-package repos);
 in dynamic languages A is a proxy (ABC/Protocol/interface counts) — treat A
 and D as low-confidence there and lean on cycles + dependency direction,

@@ -121,3 +121,15 @@ class TestReviewSignals:
         shown = capsys.readouterr().out
         assert exit_info.value.code == 0
         assert [option in shown for option in self.WINDOW_OPTIONS] == [True] * 5
+
+
+class TestReviewMetrics:
+    OPTIONS = ('--out', '--max-listed', '--package-depth')
+
+    def test_help_shows_its_options(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exit_info:
+            main(['review-metrics', '--help'])
+
+        shown = capsys.readouterr().out
+        assert exit_info.value.code == 0
+        assert [option in shown for option in self.OPTIONS] == [True] * 3
