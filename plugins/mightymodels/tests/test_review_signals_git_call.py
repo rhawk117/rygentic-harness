@@ -190,6 +190,32 @@ class TestStandardOutput:
         assert json.loads(document)['target'] == self.TARGET
 
 
+class TestTargetThatIsNotUnicode:
+    NAME = 'caf\udce9'
+    LINK = 'link'
+    REASON = "--target resolves to 'caf\\udce9', which is not valid Unicode"
+
+    @pytest.fixture
+    def linked(self, checkout: Checkout) -> Checkout:
+        checkout.root.joinpath(self.NAME).mkdir()
+        checkout.root.joinpath(self.LINK).symlink_to(self.NAME, target_is_directory=True)
+        return checkout
+
+    @pytest.mark.parametrize(
+        'target',
+        [
+            pytest.param(NAME, id='lone-surrogate'),
+            pytest.param(LINK, id='symlink-to-a-name-that-is-not-utf8'),
+        ],
+    )
+    def test_it_is_rejected_before_git_runs(self, linked: Checkout, target: str) -> None:
+        reported = linked.report(Analysis.CHURN, '--target', target)
+
+        assert reported == Reported(
+            code=EXIT_REJECTED, vectors=[], out='', err=f'error: {self.REASON}\n'
+        )
+
+
 class TestRefusedValues:
     @pytest.mark.parametrize(
         ('flags', 'reason'),

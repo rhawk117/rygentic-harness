@@ -14,11 +14,12 @@ WINDOW is any of --since DATE, --baseline-ref REF, and --max-commits N or --all-
 
 The command is its own edge: `review_signals` opens git at the working directory and
 `write_report` does the work over the `Git` it is handed. The date and the revision are held to
-a plain-value pattern and the target has to resolve inside the repository before git is
-launched. Each value then reaches git as one argument, the target after `--`. The launch goes
-through the process runner under the timeout that `Git` carries. A value that is refused, a git
-that is missing or does not answer, and a git that exits non-zero each end the command with the
-reason on standard error and the exit code that says refused. The parser is in `cli`.
+a plain-value pattern and the target has to resolve inside the repository, to a path that is
+valid Unicode, before git is launched. Each value then reaches git as one argument, the target
+after `--`. The launch goes through the process runner under the timeout that `Git` carries. A
+value that is refused, a git that is missing or does not answer, and a git that exits non-zero
+each end the command with the reason on standard error and the exit code that says refused. The
+parser is in `cli`.
 """
 
 import argparse
@@ -72,6 +73,11 @@ class UnsafeValueError(SignalsError):
 class TargetOutsideError(SignalsError):
     def __init__(self, target: str) -> None:
         super().__init__(f'--target {target!r} is outside the repository')
+
+
+class TargetNotUnicodeError(SignalsError):
+    def __init__(self, path: str) -> None:
+        super().__init__(f'--target resolves to {path!r}, which is not valid Unicode')
 
 
 class GitMissingError(SignalsError):
@@ -179,7 +185,12 @@ def checked_target(root: Path, target: str | None) -> str:
     resolved = root.joinpath(target).resolve()
     if not resolved.is_relative_to(root.resolve()):
         raise TargetOutsideError(target)
-    return resolved.relative_to(root.resolve()).as_posix()
+    path = resolved.relative_to(root.resolve()).as_posix()
+    try:
+        path.encode()
+    except UnicodeEncodeError as error:
+        raise TargetNotUnicodeError(path) from error
+    return path
 
 
 def window_from(options: argparse.Namespace) -> Window:

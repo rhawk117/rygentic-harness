@@ -163,7 +163,7 @@ def run_review_command(arguments: argparse.Namespace) -> int | None:
 
         return review_signals(arguments)
     if arguments.command == REVIEW_METRICS_COMMAND:
-        from mightymodels_plugin.commands.review_metrics import review_metrics  # noqa: PLC0415 - importing commands.review_metrics (msgspec and ast) took 0.07 s measured with -X importtime and every hook and `--help` must not pay it
+        from mightymodels_plugin.commands.review_metrics import review_metrics  # noqa: PLC0415 - importing commands.review_metrics (the four review_metrics modules and logging) took 0.024 s on top of cli, the lowest of 15 runs measured with -X importtime, and every hook and `--help` must not pay it
 
         return review_metrics(arguments)
     return None
