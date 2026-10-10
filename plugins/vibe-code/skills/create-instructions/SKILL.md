@@ -1,7 +1,9 @@
 ---
 name: create-instructions
-description: Interactive builder for Claude Code rule files (Markdown files under .claude/rules/ with optional paths frontmatter and an XML-sectioned body). Use it to create, add, write or scaffold a rule, a set of coding conventions or a style guide for Claude, or to ask how paths scoping works, even when the user only describes the behavior ("make Claude always do X in these files"). It asks where the rule lives (project or personal), which files it governs, takes the conventions from chat or a file, routes each one away from the file when a linter, hook, skill or CLAUDE.md would do the job better, shows a steering preview and iterates until accepted, then writes a file validated with vibe-code instruction validate and proves Claude Code loads it.
-when_to_use: Use when the user says "add a rule for ...", "write conventions for these files", "make Claude stop doing X in src/", "split my CLAUDE.md", "why does Claude ignore my rule", or asks how .claude/rules, paths globs, CLAUDE.md or AGENTS.md loading work, even without the word "instructions".
+description: >-
+  Interactive builder for Claude Code rule files (Markdown files under .claude/rules/ with optional paths frontmatter and an XML-sectioned body). Use it to create, add, write or scaffold a rule, a set of coding conventions or a style guide for Claude, or to ask how paths scoping works, even when the user only describes the behavior ("make Claude always do X in these files"). It asks where the rule lives (project or personal), which files it governs, takes the conventions from chat or a file, routes each one away from the file when a linter, hook, skill or CLAUDE.md would do the job better, shows a steering preview and iterates until accepted, then writes a file validated with vibe-code instruction validate and proves Claude Code loads it.
+when_to_use: >-
+  Use when the user says "add a rule for ...", "write conventions for these files", "make Claude stop doing X in src/", "split my CLAUDE.md", "why does Claude ignore my rule", or asks how .claude/rules, paths globs, CLAUDE.md or AGENTS.md loading work, even without the word "instructions".
 ---
 
 # Create a Claude Code rule file

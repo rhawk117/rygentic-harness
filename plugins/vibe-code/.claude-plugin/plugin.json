@@ -3,7 +3,7 @@
   "name": "vibe-code",
   "displayName": "vibe-code",
   "version": "0.4.0",
-  "description": "Eleven skills for building, hardening and tuning Claude Code agents, skills, hooks, instructions, MCP servers, and loops, plus a vibe-code CLI that needs uv on PATH.",
+  "description": "Skills for building, hardening and tuning Claude Code agents, skills, hooks, instructions, MCP servers, and loops, plus a vibe-code CLI that needs uv on PATH.",
   "author": {
     "name": "rhawk117"
   },

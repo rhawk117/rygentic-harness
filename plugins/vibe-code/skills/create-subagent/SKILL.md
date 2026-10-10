@@ -1,7 +1,9 @@
 ---
 name: create-subagent
-description: Interactive builder for Claude Code subagents (agent files with YAML frontmatter and an XML-sectioned Markdown body). Use it to create, scaffold, design or add a subagent, specialist agent, reviewer agent or persona, or to ask how to write an agent file, even when the user only describes the job ("I want an agent that triages CI failures"). It asks where the agent ships (plugin, project, personal), scans what already exists, checks that a subagent is the right mechanism, drives the tool, model and frontmatter choices by question, writes the file after a preview, proves it with vibe-code subagent validate, and ends with a dispatch snippet for the caller.
-when_to_use: Use when the user says "make me a subagent that ...", "add a reviewer agent", "write an agent file", "why does my agent never load or get chosen", or asks how agent frontmatter, tools, models or plugin agents work, even without the word "subagent".
+when_to_use: >-
+  Use when the user says "make me a subagent that ...", "add a reviewer agent", "write an agent file", "why does my agent never load or get chosen", or asks how agent frontmatter, tools, models or plugin agents work, even without the word "subagent".
+description: >-
+  Interactive builder for Claude Code subagents (agent files with YAML frontmatter and an XML-sectioned Markdown body). Use it to create, scaffold, design or add a subagent, specialist agent, reviewer agent or persona, or to ask how to write an agent file, even when the user only describes the job ("I want an agent that triages CI failures"). It asks where the agent ships (plugin, project, personal), scans what already exists, checks that a subagent is the right mechanism, drives the tool, model and frontmatter choices by question, writes the file after a preview, proves it with vibe-code subagent validate, and ends with a dispatch snippet for the caller.
 ---
 
 # Create a Claude Code subagent

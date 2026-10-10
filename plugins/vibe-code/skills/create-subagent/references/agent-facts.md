@@ -15,13 +15,13 @@ Checked on 2026-10-03 against https://code.claude.com/docs/en/sub-agents and htt
 
 ## Scopes and precedence
 
-| Priority | Location                        | Scope                   |
-| -------- | ------------------------------- | ----------------------- |
-| 1        | managed settings `.claude/agents/` | organization         |
-| 2        | `--agents` CLI flag             | current session         |
-| 3        | `.claude/agents/`               | current project         |
-| 4        | `~/.claude/agents/`             | all your projects       |
-| 5        | plugin `agents/`                | where the plugin is enabled |
+| Priority | Location                           | Scope                       |
+| -------- | ---------------------------------- | --------------------------- |
+| 1        | managed settings `.claude/agents/` | organization                |
+| 2        | `--agents` CLI flag                | current session             |
+| 3        | `.claude/agents/`                  | current project             |
+| 4        | `~/.claude/agents/`                | all your projects           |
+| 5        | plugin `agents/`                   | where the plugin is enabled |
 
 When several agents share a name, the higher priority wins. Project agents are found by walking up from the working directory, so every `.claude/agents/` between there and the repository root is scanned, and the definition closest to the working directory wins. `.claude/agents/` and `~/.claude/agents/` are scanned recursively; a subfolder is organisational only, because identity comes from the `name` key. Two files under one `.claude/agents/` that declare the same `name`: one loads, chosen by filesystem read order, with no error; `/doctor` reports the duplicates.
 
@@ -31,26 +31,26 @@ A plugin `agents/` directory is also scanned recursively, but there a subfolder 
 
 Only `name` and `description` are required. Field names are camelCase and must match exactly; Claude Code ignores a field it does not recognise without reporting an error.
 
-| Key               | Notes                                                                                                                                                       |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`            | Unique identifier; the filename need not match. No `:` and no leading `-`. Hooks see it as `agent_type`.                                                    |
-| `description`     | When Claude should delegate to this agent.                                                                                                                  |
-| `tools`           | Comma-separated string or YAML list. Inherits every tool available to subagents if omitted. Accepts `mcp__SERVER`, `mcp__SERVER__*` and `Agent(a, b)`.       |
-| `disallowedTools` | Denylist, applied before `tools`. A specifier such as `Bash(git push *)` still removes the whole tool.                                                      |
+| Key               | Notes                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`            | Unique identifier; the filename need not match. No `:` and no leading `-`. Hooks see it as `agent_type`.                                                  |
+| `description`     | When Claude should delegate to this agent.                                                                                                                |
+| `tools`           | Comma-separated string or YAML list. Inherits every tool available to subagents if omitted. Accepts `mcp__SERVER`, `mcp__SERVER__*` and `Agent(a, b)`.    |
+| `disallowedTools` | Denylist, applied before `tools`. A specifier such as `Bash(git push *)` still removes the whole tool.                                                    |
 | `model`           | `sonnet`, `opus`, `haiku`, `fable`, a full model ID such as `claude-opus-5-5`, or `inherit`. When omitted, resolved as under Model resolution.            |
-| `permissionMode`  | `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`, or `manual` (alias for `default`, v2.1.200 or later). Ignored in plugin agents.   |
-| `maxTurns`        | Turn budget; output is marked partial at the limit (v2.1.246 or later).                                                                                     |
-| `skills`          | Skills whose full content is injected at startup.                                                                                                           |
-| `mcpServers`      | A server name already configured, or an inline definition keyed by server name. Ignored in plugin agents.                                                   |
-| `hooks`           | Lifecycle hooks scoped to this agent. Ignored in plugin agents.                                                                                             |
-| `memory`          | `user`, `project` or `local`: a persistent directory for the agent.                                                                                         |
-| `background`      | Keeps the agent in the background even when Claude asks for the foreground.                                                                                 |
-| `omitClaudeMd`    | `true` launches the agent without the user, project and local `CLAUDE.md` files; managed policy files still load. v2.1.271 or later.                        |
-| `effort`          | `low`, `medium`, `high`, `xhigh` or `max`; overrides the session level.                                                                                     |
-| `isolation`       | `worktree` runs the agent in a temporary git worktree.                                                                                                      |
-| `color`           | Display colour in the task list: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink` or `cyan`.                                                    |
-| `initialPrompt`   | First user turn when the agent runs as the main session through `--agent`. Ignored in plugin agents.                                                        |
-| `experimental`    | Map of experimental options; read from subagent files only (v2.1.248 or later).                                                                             |
+| `permissionMode`  | `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`, or `manual` (alias for `default`, v2.1.200 or later). Ignored in plugin agents. |
+| `maxTurns`        | Turn budget; output is marked partial at the limit (v2.1.246 or later).                                                                                   |
+| `skills`          | Skills whose full content is injected at startup.                                                                                                         |
+| `mcpServers`      | A server name already configured, or an inline definition keyed by server name. Ignored in plugin agents.                                                 |
+| `hooks`           | Lifecycle hooks scoped to this agent. Ignored in plugin agents.                                                                                           |
+| `memory`          | `user`, `project` or `local`: a persistent directory for the agent.                                                                                       |
+| `background`      | Keeps the agent in the background even when Claude asks for the foreground.                                                                               |
+| `omitClaudeMd`    | `true` launches the agent without the user, project and local `CLAUDE.md` files; managed policy files still load. v2.1.271 or later.                      |
+| `effort`          | `low`, `medium`, `high`, `xhigh` or `max`; overrides the session level.                                                                                   |
+| `isolation`       | `worktree` runs the agent in a temporary git worktree.                                                                                                    |
+| `color`           | Display colour in the task list: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink` or `cyan`.                                                  |
+| `initialPrompt`   | First user turn when the agent runs as the main session through `--agent`. Ignored in plugin agents.                                                      |
+| `experimental`    | Map of experimental options; read from subagent files only (v2.1.248 or later).                                                                           |
 
 The plugins page lists the keys a plugin agent drops as `permissionMode`, `hooks`, `mcpServers` and `initialPrompt`; the sub-agents page note names only the first three.
 
@@ -80,10 +80,10 @@ Claude Code picks the model in this order: the per-invocation `model` parameter,
 
 ## Runtime caps
 
-| Cap                  | Default | Override                                |
-| -------------------- | ------- | --------------------------------------- |
+| Cap                  | Default                              | Override                               |
+| -------------------- | ------------------------------------ | -------------------------------------- |
 | Spawn depth          | 3 layers below the main conversation | `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` |
-| Concurrent subagents | 20      | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`  |
+| Concurrent subagents | 20                                   | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` |
 
 There is no limit on the total number of subagents spawned over a session. At the depth limit Claude Code withholds the `Agent` tool from the subagent. Do not write these numbers into an agent body; cite this file.
 
