@@ -80,7 +80,7 @@ targeted `noqa` or `ty: ignore` needs a comment with the reason.
 
 `plugins/vibe-code` is also a uv workspace member, the `vibe-code-plugin` package. Its source
 is `plugins/vibe-code/src/vibe_code_cli`, with one sub-package per concept (`skill`, `hook`,
-`subagent`, `instruction`, `mcp`, `plugin`) and the shared modules beside them. Its tests are in
+`subagent`, `instruction`, `mcp`, `plugin`, `tune`) and the shared modules beside them. Its tests are in
 `plugins/vibe-code/tests`. The plugin's skills run the CLI through the `bin/vibe-code` launcher,
 which needs `uv` on `PATH`. Its first line is a shebang that runs `uv tool run` with the runtime
 dependencies pinned by version, and `bin/vibe-code.cmd` runs the same command for `cmd.exe`.
@@ -90,7 +90,7 @@ Tests are methods of `Test...` classes in `plugins/vibe-code/tests`. The fixture
 uses are in `plugins/vibe-code/tests/conftest.py`: `fake_services`, `unavailable_services`,
 `assert_error`, `assert_warning`, `sections` and `fill`. Each concept has a support module at
 `plugins/vibe-code/src/vibe_code_cli/<concept>/tests/support.py`, which holds the fixtures only
-that concept's tests use. The `pytest_configure` hook in the conftest registers the six modules
+that concept's tests use. The `pytest_configure` hook in the conftest registers the seven modules
 through `config.pluginmanager.import_plugin`, looping over its `CONCEPTS` tuple.
 
 A registered fixture is visible to every test, and when two support modules define the same

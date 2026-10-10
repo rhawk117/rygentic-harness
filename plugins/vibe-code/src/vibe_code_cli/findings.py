@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from itertools import groupby
+from operator import attrgetter
 from typing import Literal
 
 import msgspec
@@ -32,15 +34,21 @@ def decode_problem(problem: msgspec.ValidationError, *, builtin_errored: bool) -
 
 
 def report(label: str, findings: list[Finding], *, strict: bool) -> int:
-    errors = [finding for finding in findings if finding.level == 'error']
-    warnings = [finding for finding in findings if finding.level == 'warning']
-    infos = [finding for finding in findings if finding.level == 'info']
+    level_getter = attrgetter('level')
+    grouped = {level: list(group) for level, group in groupby(findings, key=level_getter)}
+
+    errors = grouped.get('error', [])
+    warnings = grouped.get('warning', [])
+    infos = grouped.get('info', [])
+
     for finding in findings:
         print(f'{finding.level}: {finding.message}')
+
     failed = bool(errors) or (strict and bool(warnings))
     verdict = 'FAIL' if failed else 'PASS'
     counts = f'{len(errors)} error(s), {len(warnings)} warning(s)'
     if infos:
         counts += f', {len(infos)} info'
+
     print(f'{verdict} {label}: {counts}')
     return 1 if failed else 0

@@ -100,6 +100,7 @@ def check_size(always_on: list[InstructionFile]) -> list[Finding]:
                 error(f'{entry.relative}: over 4 MiB, so Claude Code skips the file entirely')
             )
             continue
+
         if count >= TARGET_LINES:
             findings.append(
                 warning(
@@ -107,6 +108,7 @@ def check_size(always_on: list[InstructionFile]) -> list[Finding]:
                     'move what matters for only part of the codebase into path-scoped rules'
                 )
             )
+
     return findings
 
 

@@ -51,6 +51,8 @@ def strip_code_fences(lines: list[str]) -> list[tuple[int, str]]:
         if line.lstrip().startswith('```'):
             inside = not inside
             continue
+
         if not inside:
             kept.append((number, line))
+
     return kept

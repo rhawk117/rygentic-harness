@@ -145,7 +145,7 @@ Each run with at least one case writes `evals/results/<timestamp>/report.html` a
 
 After each run read the report and the transcripts, not just the scoreboard. A failing grader usually has one of four causes, each with a different fix:
 
-1. The skill never loaded (`Δ` near zero and the `Skill` grader failing): rewrite the description to name the situations in the case prompts; do not touch the body.
+1. The skill never loaded (`Δ` near zero and the `Skill` grader failing): rewrite the description to name the situations in the case prompts; do not touch the body. When the skill competes with neighbors, or the first rewrite does not fix it, hand off to the `tune-skill-descriptions` skill: it measures the description against real Claude Code routing on a labeled trigger set and keeps a rewrite only when held-out requests improve.
 2. The skill loaded and Claude ignored an instruction: explain why the instruction matters, put a rule that must always hold in a hook, or move the step into a script the body tells Claude to run.
 3. Every run did the same repeated work: look for logic each run rebuilt from scratch (the same tool sequence across runs, three runs each writing their own helper script) and bundle it as a script. A script encoding a judgment call makes the skill worse; bundle only deterministic work.
 4. The grader was wrong: change it, say why in the hand-off, and note it, because silently editing graders to match outputs is the failure the record exists to prevent.

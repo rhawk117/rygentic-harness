@@ -1,3 +1,4 @@
+import itertools
 import re
 
 import msgspec
@@ -49,21 +50,27 @@ class AgentFrontmatter(msgspec.Struct, rename='camel', frozen=True, kw_only=True
 
 
 def check_fields(
-    fields: dict[str, object], *, plugin: bool, unquoted_colon: bool, builtin_errored: bool
+    fields: dict[str, object],
+    *,
+    plugin: bool,
+    unquoted_colon: bool,
+    builtin_errored: bool,
 ) -> list[Finding]:
     unknown = check_unknown_keys(fields)
     try:
         frontmatter = msgspec.convert(fields, AgentFrontmatter)
     except msgspec.ValidationError as problem:
         return [*unknown, *decode_problem(problem, builtin_errored=builtin_errored)]
-    return [
-        *check_name(frontmatter, plugin=plugin),
-        *check_description(frontmatter, unquoted_colon=unquoted_colon),
-        *check_tools(frontmatter),
-        *check_model(frontmatter),
-        *unknown,
-        *check_permission_mode(frontmatter, fields, plugin=plugin),
-    ]
+
+    field_checks = itertools.chain(
+        check_name(frontmatter, plugin=plugin),
+        check_description(frontmatter, unquoted_colon=unquoted_colon),
+        check_tools(frontmatter),
+        check_model(frontmatter),
+        unknown,
+        check_permission_mode(frontmatter, fields, plugin=plugin),
+    )
+    return list(field_checks)
 
 
 def check_name(frontmatter: AgentFrontmatter, *, plugin: bool) -> list[Finding]:
@@ -72,6 +79,7 @@ def check_name(frontmatter: AgentFrontmatter, *, plugin: bool) -> list[Finding]:
         return check_name_value(name)
     if plugin:
         return [warning('name is missing or empty; a plugin agent loads under its filename')]
+
     return [error('name is missing or empty; Claude Code skips the file as documentation')]
 
 
@@ -86,10 +94,15 @@ def check_name_value(name: str) -> list[Finding]:
     ]
 
 
-def check_description(frontmatter: AgentFrontmatter, *, unquoted_colon: bool) -> list[Finding]:
+def check_description(
+    frontmatter: AgentFrontmatter,
+    *,
+    unquoted_colon: bool,
+) -> list[Finding]:
     description = frontmatter.description
     if description is None or not description.strip():
         return []
+
     findings: list[Finding] = []
     if not TRIGGER_PATTERN.search(description):
         findings.append(
@@ -98,6 +111,7 @@ def check_description(frontmatter: AgentFrontmatter, *, unquoted_colon: bool) ->
                 "'Use when ...' so Claude knows when to delegate to this agent"
             )
         )
+
     if unquoted_colon:
         findings.append(
             warning(
@@ -119,11 +133,14 @@ def check_tools(frontmatter: AgentFrontmatter) -> list[Finding]:
         ]
     if not entries:
         return []
-    return [
-        *check_tool_names(entries),
-        *check_denylist(frontmatter),
-        *check_turn_budget(entries, frontmatter),
-    ]
+
+    tool_checks = itertools.chain(
+        check_tool_names(entries),
+        check_denylist(frontmatter),
+        check_turn_budget(entries, frontmatter),
+    )
+
+    return list(tool_checks)
 
 
 def check_tool_names(entries: list[str]) -> list[Finding]:
@@ -140,6 +157,7 @@ def check_tool_names(entries: list[str]) -> list[Finding]:
 def check_denylist(frontmatter: AgentFrontmatter) -> list[Finding]:
     if isinstance(frontmatter.disallowed_tools, UnsetType):
         return []
+
     return [
         warning(
             "'disallowedTools' is applied first and 'tools' is then resolved against the "
@@ -149,9 +167,13 @@ def check_denylist(frontmatter: AgentFrontmatter) -> list[Finding]:
     ]
 
 
-def check_turn_budget(entries: list[str], frontmatter: AgentFrontmatter) -> list[Finding]:
+def check_turn_budget(
+    entries: list[str],
+    frontmatter: AgentFrontmatter,
+) -> list[Finding]:
     if 'Bash' not in map(tool_name, entries) or not isinstance(frontmatter.max_turns, UnsetType):
         return []
+
     return [
         warning('agent can run commands but sets no maxTurns; a runaway delegation has no stop')
     ]
@@ -161,6 +183,7 @@ def check_model(frontmatter: AgentFrontmatter) -> list[Finding]:
     model = frontmatter.model
     if model is None or MODEL_PATTERN.fullmatch(model) or '-' in model:
         return []
+
     return [
         error(
             f'model {model!r} is not a Claude Code alias (sonnet, opus, haiku, fable), '
@@ -177,7 +200,10 @@ def check_unknown_keys(fields: dict[str, object]) -> list[Finding]:
 
 
 def check_permission_mode(
-    frontmatter: AgentFrontmatter, fields: dict[str, object], *, plugin: bool
+    frontmatter: AgentFrontmatter,
+    fields: dict[str, object],
+    *,
+    plugin: bool,
 ) -> list[Finding]:
     if plugin:
         return [
@@ -185,8 +211,10 @@ def check_permission_mode(
             for key in PLUGIN_IGNORED_KEYS
             if key in fields
         ]
+
     if frontmatter.permission_mode != 'bypassPermissions':
         return []
+
     return [
         warning(
             "a subagent that declares bypassPermissions keeps the main conversation's "

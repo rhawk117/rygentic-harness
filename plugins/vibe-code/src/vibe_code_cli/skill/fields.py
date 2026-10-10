@@ -1,3 +1,4 @@
+import itertools
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -55,21 +56,27 @@ class SkillFrontmatter(msgspec.Struct, rename='kebab', frozen=True, kw_only=True
 
 
 def check_fields(
-    fields: dict[str, object], directory_name: str, *, builtin_errored: bool
+    fields: dict[str, object],
+    directory_name: str,
+    *,
+    builtin_errored: bool,
 ) -> list[Finding]:
     unknown = check_unknown_keys(fields)
     try:
         frontmatter = msgspec.convert(fields, SkillFrontmatter)
     except msgspec.ValidationError as problem:
         return [*unknown, *decode_problem(problem, builtin_errored=builtin_errored)]
-    return [
-        *unknown,
-        *check_name(frontmatter, directory_name),
-        *check_description(frontmatter),
-        *check_optional_strings(frontmatter),
-        *check_invocation(frontmatter),
-        *check_allowed_tools(frontmatter),
-    ]
+
+    field_checks = itertools.chain(
+        unknown,
+        check_name(frontmatter, directory_name),
+        check_description(frontmatter),
+        check_optional_strings(frontmatter),
+        check_invocation(frontmatter),
+        check_allowed_tools(frontmatter),
+    )
+
+    return list(field_checks)
 
 
 def check_unknown_keys(fields: dict[str, object]) -> list[Finding]:
@@ -85,6 +92,7 @@ def check_name(frontmatter: SkillFrontmatter, directory_name: str) -> list[Findi
 def check_name_value(name: str, directory_name: str) -> list[Finding]:
     if not name.strip():
         return [error('name must not be empty')]
+
     if len(name) > NAME_MAX or NAME_PATTERN.fullmatch(name) is None:
         return [
             error(
@@ -92,22 +100,26 @@ def check_name_value(name: str, directory_name: str) -> list[Finding]:
                 'and single hyphens, without leading or trailing hyphens'
             )
         ]
+
     if name != directory_name:
         return [error(f'name {name!r} must equal the directory name {directory_name!r}')]
+
     return []
 
 
 def check_description(frontmatter: SkillFrontmatter) -> list[Finding]:
-    description = frontmatter.description
-    if description is None:
+    if (description := frontmatter.description) is None:
         return []
+
     if not description.strip():
         return [error('description must not be empty')]
+
     findings = []
     if len(description) > DESCRIPTION_MAX:
         findings.append(
             error(f'description is {len(description)} chars; the limit is {DESCRIPTION_MAX}')
         )
+
     listing_length = len(description) + len(frontmatter.when_to_use or '')
     if listing_length > LISTING_MAX:
         findings.append(
@@ -116,24 +128,30 @@ def check_description(frontmatter: SkillFrontmatter) -> list[Finding]:
                 f'Claude Code truncates the skill listing at {LISTING_MAX}'
             )
         )
+
     return findings
 
 
 def check_optional_strings(frontmatter: SkillFrontmatter) -> list[Finding]:
-    return [
-        *optional_string('license', frontmatter.license, None),
-        *optional_string('compatibility', frontmatter.compatibility, COMPATIBILITY_MAX),
-        *optional_string('argument-hint', frontmatter.argument_hint, None),
-    ]
+    optional_strs = itertools.chain(
+        optional_string('license', frontmatter.license, None),
+        optional_string('compatibility', frontmatter.compatibility, COMPATIBILITY_MAX),
+        optional_string('argument-hint', frontmatter.argument_hint, None),
+    )
+    return list(optional_strs)
 
 
 def optional_string(key: str, value: str | UnsetType, max_length: int | None) -> list[Finding]:
     if isinstance(value, UnsetType):
         return []
+
     if not value.strip():
         return [error(f'{key} must not be empty when provided')]
-    if max_length is not None and len(value) > max_length:
-        return [error(f'{key} is {len(value)} chars; the limit is {max_length}')]
+
+    value_length = len(value)
+    if max_length is not None and value_length > max_length:
+        return [error(f'{key} is {value_length} chars; the limit is {max_length}')]
+
     return []
 
 
@@ -171,6 +189,7 @@ def check_invocation(frontmatter: SkillFrontmatter) -> list[Finding]:
         findings.append(
             warning('human-only skill has no argument-hint for the slash-command picker')
         )
+
     return findings
 
 
@@ -182,7 +201,9 @@ def split_outside_parens(text: str, is_separator: Callable[[str], bool]) -> list
         if depth == 0 and is_separator(char):
             pieces.append('')
             continue
+
         pieces[-1] += char
+
     return pieces
 
 
@@ -195,6 +216,7 @@ def split_tool_string(text: str) -> list[str]:
     for segment in split_outside_parens(text, is_comma):
         words = [word for word in split_outside_parens(segment, str.isspace) if word]
         entries.extend(words or [''])
+
     return entries
 
 
@@ -202,8 +224,10 @@ def check_allowed_tools(frontmatter: SkillFrontmatter) -> list[Finding]:
     value = frontmatter.allowed_tools
     if isinstance(value, str):
         return check_tool_string(value)
+
     if isinstance(value, list):
         return check_tool_list([item.strip() for item in value])
+
     return []
 
 
@@ -216,6 +240,7 @@ def check_tool_string(value: str) -> list[Finding]:
 def check_tool_list(value: list[str]) -> list[Finding]:
     if not value:
         return [error('allowed-tools must not be an empty list')]
+
     return check_tool_entries(value)
 
 
@@ -225,12 +250,15 @@ def check_tool_entries(entries: list[str]) -> list[Finding]:
         for entry in entries
         if entry and TOOL_RULE.fullmatch(entry) is None
     ]
+
     if '' in entries:
         findings.append(error('allowed-tools contains an empty entry'))
+
     if '*' in entries and len(entries) > 1:
         findings.append(
             warning("allowed-tools contains '*' plus other entries; the others are redundant")
         )
+
     return findings
 
 

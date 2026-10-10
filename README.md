@@ -23,7 +23,7 @@ discovery, and validation.
 | Plugin | What it does |
 | ------------ | --------------------------------------------------------------------------- |
 | mightymodels | Ticket-scoped agent dev loop: per-ticket state, model routing, review stack |
-| vibe-code | Skills for building and hardening Claude Code agents, skills, and loops |
+| vibe-code | Skills for building, hardening and tuning Claude Code agents, skills, and loops |
 | python-harness | Python review skill, read-only fact agent, toolchain hooks, CLI, MCP server |
 
 ### mightymodels
@@ -59,8 +59,8 @@ and a contract disagree, the contract wins and the skill gets fixed.
 
 ### vibe-code
 
-Ten skills for building and hardening the agents, skills, hooks, and loops that other plugins are
-made of, plus a `vibe-code` CLI that the skills call to validate what they write. The plugin
+Eleven skills for building, hardening and tuning the agents, skills, hooks, and loops that other
+plugins are made of, plus a `vibe-code` CLI that the skills call to validate what they write. The plugin
 ships no agents. It was called `ai-engineer` before 0.3.0; an install under the old name has to be
 removed and reinstalled as `vibe-code`.
 
@@ -76,6 +76,7 @@ removed and reinstalled as `vibe-code`.
 | `humanizer` | Removes signs of AI-generated writing from prose |
 | `plan-plugin` | Interviews you and writes a phased plugin plan and an empty plugin shell |
 | `promptlint` | Reviews and improves a coding-agent prompt for Claude Code |
+| `tune-skill-descriptions` | Tunes skill descriptions against real Claude Code routing on a trigger set |
 
 The CLI needs [uv](https://docs.astral.sh/uv/) on your `PATH` and a Claude Code whose
 `claude plugin validate` accepts `--json`. The plugin's `bin/vibe-code` launcher starts the CLI
@@ -110,7 +111,7 @@ the server, the launcher and the known limitations.
 ```text
 plugins/         one directory per plugin; each carries its own manifest and skills
   mightymodels/  the dev loop: twenty skills, seven worker agents
-  vibe-code/     authoring skills and the `vibe-code` CLI: ten skills, no agents,
+  vibe-code/     authoring skills and the `vibe-code` CLI: eleven skills, no agents,
                  with its own tests and eval cases
   python-harness/ Python review: one skill, one agent, hooks, the `python-harness` CLI
                  and an MCP server, with its own tests
@@ -149,7 +150,7 @@ a change has to pass: `make check`, which syncs the locked environment, runs pre
 
 ## Status
 
-vibe-code is at 0.3.0. python-harness is at 0.1.0. mightymodels is at 0.8.0 and is the
+vibe-code is at 0.4.0. python-harness is at 0.1.0. mightymodels is at 0.8.0 and is the
 marketplace's first plugin. Its hook layer (session covenant injection, verification gates at
 Stop, PreCompact ticket snapshots) and the team/personal overlay split are designed but not yet
 shipped. CHANGELOG.md has the full trail.

@@ -13,6 +13,10 @@ repos:
 
       - id: check-json
 
+      # ruff does not enforce EXE001 on WSL; this reads the mode from the git index instead.
+      - id: check-shebang-scripts-are-executable
+        types: [python]
+
       - id: check-toml
 
       - id: end-of-file-fixer
