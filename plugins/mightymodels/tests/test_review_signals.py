@@ -1,21 +1,16 @@
-"""Behavioral tests for scripts/review_signals.py against a real git repository."""
-
-from __future__ import annotations
+"""Behavioral tests for `mightymodels review-signals` against a real git repository."""
 
 import json
-import runpy
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
+from mightymodels_plugin.cli import main
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'review_signals.py'
+COMMAND = 'review-signals'
 REJECTED = 2
 CAPPED = 2
 GIT = shutil.which('git') or 'git'
@@ -26,7 +21,6 @@ IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
 class Repo:
     root: Path
     capsys: pytest.CaptureFixture[str]
-    main: Callable[[list[str]], int]
 
     def git(self, *args: str) -> str:
         completed = subprocess.run(  # noqa: S603 - fixed git argv built by the test itself
@@ -48,13 +42,13 @@ class Repo:
         return self.git('rev-parse', 'HEAD')
 
     def signals(self, *argv: str) -> dict[str, Any]:
-        code = self.main(list(argv))
+        code = main([COMMAND, *argv])
         captured = self.capsys.readouterr()
         assert code == 0, captured.err
         return json.loads(captured.out)
 
     def refused(self, *argv: str) -> str:
-        code = self.main(list(argv))
+        code = main([COMMAND, *argv])
         assert code == REJECTED
         return self.capsys.readouterr().err
 
@@ -64,8 +58,7 @@ def repo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> Repo:
     monkeypatch.chdir(tmp_path)
-    main = runpy.run_path(str(SCRIPT))['main']
-    space = Repo(root=tmp_path, capsys=capsys, main=main)
+    space = Repo(root=tmp_path, capsys=capsys)
     space.git('init', '-q')
     return space
 
@@ -173,6 +166,6 @@ def test_outside_a_repository_is_refused(
     lone = tmp_path / 'lone'
     lone.mkdir()
     monkeypatch.chdir(lone)
-    code = runpy.run_path(str(SCRIPT))['main'](['code-churn'])
+    code = main([COMMAND, 'code-churn'])
     assert code == REJECTED
     assert 'not inside a git repository' in capsys.readouterr().err

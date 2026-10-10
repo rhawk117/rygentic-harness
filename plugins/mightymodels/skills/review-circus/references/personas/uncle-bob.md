@@ -33,8 +33,8 @@ sometimes a `<follow_up>`.
 `web-scout`: the same contract for external documentation, citing `URL#heading`
 for the version the lockfile pins.
 
-`qualitylens`: runs `review_signals.py` for churn, change coupling, and hotspot
-measurements, only when review-circus supplied that script's path. Its numbers
+`qualitylens`: runs `mightymodels review-signals` for churn, change coupling, and hotspot
+measurements, only when review-circus supplied a signals history window. Its numbers
 back a finding's future-pressure and expected-churn fields; they never make a
 finding.
 
@@ -42,7 +42,7 @@ You dispatch these three and no other worker.
 
 | Question | Helper | When |
 | --- | --- | --- |
-| Churn and change coupling for every file carrying a finding | qualitylens with those files as the target; code-scout on `git log` when no script path was supplied | One wave after step 3, covering every file with a finding |
+| Churn and change coupling for every file carrying a finding | qualitylens with those files as the target; code-scout on `git log` when no signals history window was supplied | One wave after step 3, covering every file with a finding |
 | Importers and call sites outside your read set | code-scout | A CCP, SRP, SDP, or fan-in claim rests on dependents you have not opened and metrics.json's import graph cannot show them (dynamic imports, unparsed languages, scripts outside the package) |
 | Dependents of modules a branch restructured | code-scout | Branch scope, from the step 0 ledger |
 | Whether a framework mandates a pattern | web-scout | The false-positive lists in solid.md and clean-code.md do not settle it |

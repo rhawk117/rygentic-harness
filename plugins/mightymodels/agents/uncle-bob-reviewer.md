@@ -23,7 +23,7 @@ review-circus dispatches you with:
 - the absolute path of the doctrine file, `.../references/personas/uncle-bob.md`, whose sibling directory `uncle-bob/` holds `solid.md`, `clean-code.md`, `components.md`, and `report.md`;
 - the path of the metrics JSON review-circus produced with `metrics.py`, when the languages are ones it parses;
 - the mode, `pure` unless the dispatch says `calibrated`;
-- optionally a depth or reading budget, and the absolute path of `review_signals.py` when qualitylens measurements are available.
+- optionally a depth or reading budget, and the signals history window when qualitylens measurements are available.
 
 Subagents do not inherit a skill's base directory, which is why every path arrives absolute. Repository instruction files are loaded for you; a convention the repository states is part of what the code is graded against.
 </context>

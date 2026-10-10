@@ -1,42 +1,42 @@
-"""Git-history risk signals for review-circus and qualitylens: churn, coupling, hotspots.
+"""The `mightymodels review-signals` command: churn, change coupling and hotspots from git history.
 
-Every analysis reads `git log` for a bounded history window and prints one JSON document:
-the analysis, the target, the window actually scanned, the signals, and the limitations
-that apply. Nothing is interpreted; a high value is evidence for a reviewer to weigh.
-Dependency structure (fan-in, fan-out, cycles) is metrics.py's job, not this script's.
+Every report reads `git log` once for a bounded history window and prints one JSON document: the
+analysis, the target, the window actually scanned, the signals, and the limitations that apply.
+Nothing is interpreted; a high value is evidence for a reviewer to weigh. Dependency structure
+(fan-in, fan-out, cycles) belongs to the review metrics, not to this command.
 
-Usage:
-    python3 review_signals.py code-churn [--target PATH] [WINDOW] [--limit N]
-    python3 review_signals.py change-coupling [--target PATH] [WINDOW] [--min-shared N]
+    mightymodels review-signals code-churn [--target PATH] [WINDOW] [--limit N]
+    mightymodels review-signals change-coupling [--target PATH] [WINDOW] [--min-shared N]
         [--max-changeset N] [--limit N]
-    python3 review_signals.py code-hotspots [--target PATH] [WINDOW] [--limit N]
+    mightymodels review-signals code-hotspots [--target PATH] [WINDOW] [--limit N]
 
 WINDOW is any of --since DATE, --baseline-ref REF, and --max-commits N or --all-history.
-"""
 
-from __future__ import annotations
+The command is its own edge: `review_signals` opens git at the working directory and
+`write_report` does the work over the `Git` it is handed. The date and the revision are held to
+a plain-value pattern and the target has to resolve inside the repository before git is
+launched. Each value then reaches git as one argument, the target after `--`. The launch goes
+through the process runner under the timeout that `Git` carries. A value that is refused, a git
+that is missing or does not answer, and a git that exits non-zero each end the command with the
+reason on standard error and the exit code that says refused. The parser is in `cli`.
+"""
 
 import argparse
 import json
 import re
-import shutil
-import subprocess
 import sys
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from itertools import combinations
 from pathlib import Path
-from typing import TYPE_CHECKING
+from types import MappingProxyType
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from mightymodels_plugin.commands.rejection import rejected
+from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.process import FailedRun
+from mightymodels_plugin.core.workspace import Git, git_at
 
-EXIT_REJECTED = 2
-DEFAULT_MAX_COMMITS = 500
-DEFAULT_LIMIT = 25
-DEFAULT_MIN_SHARED = 3
-DEFAULT_MAX_CHANGESET = 50
 INDENT_WIDTH = 4
 TAB_WIDTH = 4
 MAX_FILE_BYTES = 2_000_000
@@ -53,7 +53,7 @@ class Analysis(StrEnum):
     HOTSPOTS = 'code-hotspots'
 
 
-class SignalsError(Exception):
+class SignalsError(StateError):
     pass
 
 
@@ -82,20 +82,20 @@ class GitFailedError(SignalsError):
         super().__init__(f'git log failed: {detail}')
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Window:
     since: str | None
     baseline_ref: str | None
     max_commits: int | None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Commit:
     sha: str
-    changes: dict[str, tuple[int, int]] = field(default_factory=dict)
+    changes: dict[str, tuple[int, int]]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True, kw_only=True, frozen=True)
 class History:
     root: Path
     target: str
@@ -136,10 +136,13 @@ class History:
 
 
 def repository_root(start: Path) -> Path:
-    for candidate in (start, *start.parents):
-        if (candidate / '.git').exists():
-            return candidate
-    raise NoRepositoryError(start)
+    candidates = (start, *start.parents)
+    root = next(
+        (candidate for candidate in candidates if candidate.joinpath('.git').exists()), None
+    )
+    if root is None:
+        raise NoRepositoryError(start)
+    return root
 
 
 def checked(flag: str, value: str | None, pattern: re.Pattern[str]) -> str | None:
@@ -151,7 +154,7 @@ def checked(flag: str, value: str | None, pattern: re.Pattern[str]) -> str | Non
 def checked_target(root: Path, target: str | None) -> str:
     if not target:
         return ''
-    resolved = (root / target).resolve()
+    resolved = root.joinpath(target).resolve()
     if not resolved.is_relative_to(root.resolve()):
         raise TargetOutsideError(target)
     return resolved.relative_to(root.resolve()).as_posix()
@@ -187,11 +190,12 @@ def parse_commit(block: str) -> Commit | None:
     lines = block.strip().splitlines()
     if not lines:
         return None
-    commit = Commit(sha=lines[0].strip())
     rows = (line.split('\t') for line in lines[1:])
-    for added, deleted, path in (row for row in rows if len(row) == NUMSTAT_FIELDS):
-        commit.changes[path] = (count(added), count(deleted))
-    return commit
+    changes = {
+        path: (count(added), count(deleted))
+        for added, deleted, path in (row for row in rows if len(row) == NUMSTAT_FIELDS)
+    }
+    return Commit(sha=lines[0].strip(), changes=changes)
 
 
 def parse_log(output: str) -> list[Commit]:
@@ -199,31 +203,29 @@ def parse_log(output: str) -> list[Commit]:
     return [commit for commit in parsed if commit is not None]
 
 
-def load_history(options: argparse.Namespace) -> History:
-    root = repository_root(Path.cwd())
-    git = shutil.which('git')
-    if git is None:
+def without_deleted_files(root: Path, commit: Commit) -> Commit:
+    present = {
+        path: change for path, change in commit.changes.items() if root.joinpath(path).exists()
+    }
+    return replace(commit, changes=present)
+
+
+def load_history(options: argparse.Namespace, git: Git) -> History:
+    root = repository_root(git.root)
+    if git.executable is None:
         raise GitMissingError
     target = checked_target(root, options.target)
     window = window_from(options)
-    completed = subprocess.run(  # noqa: S603 - fixed git argv; revision and date are validated, the target follows --
-        log_argv(git, target, window),
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise GitFailedError(completed.stderr.strip())
-    commits = parse_log(completed.stdout)
-    for commit in commits:
-        commit.changes = {
-            path: change for path, change in commit.changes.items() if (root / path).exists()
-        }
-    return History(root, target, window, commits)
+    run = git.processes.run(log_argv(git.executable, target, window), timeout=git.timeout, cwd=root)
+    if isinstance(run, FailedRun):
+        raise GitFailedError(run.detail)
+    if run.exit != 0:
+        raise GitFailedError(run.stderr.strip())
+    commits = [without_deleted_files(root, commit) for commit in parse_log(run.stdout)]
+    return History(root=root, target=target, window=window, commits=commits)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Churn:
     commits: int = 0
     added: int = 0
@@ -234,10 +236,12 @@ def churn_by_file(history: History) -> dict[str, Churn]:
     totals: dict[str, Churn] = {}
     for commit in history.commits:
         for path, (added, deleted) in commit.changes.items():
-            entry = totals.setdefault(path, Churn())
-            entry.commits += 1
-            entry.added += added
-            entry.deleted += deleted
+            before = totals.get(path, Churn())
+            totals[path] = Churn(
+                commits=before.commits + 1,
+                added=before.added + added,
+                deleted=before.deleted + deleted,
+            )
     return totals
 
 
@@ -306,7 +310,7 @@ def coupling_order(pair: dict[str, object]) -> tuple[int, float, str]:
     )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Shape:
     loc: int
     indentation: int
@@ -335,7 +339,7 @@ def hotspot_order(signal: dict[str, object]) -> tuple[int, str]:
 def code_hotspots(history: History, options: argparse.Namespace) -> dict[str, object]:
     signals: list[dict[str, object]] = []
     for path, churn in churn_by_file(history).items():
-        shape = shape_of(history.root / path)
+        shape = shape_of(history.root.joinpath(path))
         if shape is None:
             continue
         signals.append(
@@ -362,57 +366,24 @@ def code_hotspots(history: History, options: argparse.Namespace) -> dict[str, ob
     return {**header, 'signals': signals[: options.limit], 'limitations': limitations}
 
 
-HANDLERS: dict[Analysis, Callable[[History, argparse.Namespace], dict[str, object]]] = {
-    Analysis.CHURN: code_churn,
-    Analysis.COUPLING: change_coupling,
-    Analysis.HOTSPOTS: code_hotspots,
-}
+REPORTS = MappingProxyType(
+    {
+        Analysis.CHURN: code_churn,
+        Analysis.COUPLING: change_coupling,
+        Analysis.HOTSPOTS: code_hotspots,
+    }
+)
 
 
-def positive(text: str) -> int:
-    value = int(text)
-    if value < 1:
-        message = 'must be at least 1'
-        raise argparse.ArgumentTypeError(message)
-    return value
-
-
-def add_window(sub: argparse.ArgumentParser) -> None:
-    sub.add_argument('--target', help='file or directory, relative to the repository')
-    sub.add_argument('--since', help='git date, e.g. 2026-01-01 or "6 months ago"')
-    sub.add_argument('--baseline-ref', help='only commits after this ref, up to HEAD')
-    size = sub.add_mutually_exclusive_group()
-    size.add_argument('--max-commits', type=positive, default=DEFAULT_MAX_COMMITS)
-    size.add_argument('--all-history', action='store_true')
-    sub.add_argument('--limit', type=positive, default=DEFAULT_LIMIT)
-
-
-def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(prog='review_signals.py', description=__doc__.splitlines()[0])
-    commands = root.add_subparsers(dest='analysis', required=True)
-    churn = commands.add_parser(Analysis.CHURN, help='commits and lines changed per file')
-    coupling = commands.add_parser(Analysis.COUPLING, help='files that change in the same commits')
-    coupling.add_argument('--min-shared', type=positive, default=DEFAULT_MIN_SHARED)
-    coupling.add_argument('--max-changeset', type=positive, default=DEFAULT_MAX_CHANGESET)
-    hotspots = commands.add_parser(
-        Analysis.HOTSPOTS, help='churn weighted by indentation complexity'
-    )
-    for sub in (churn, coupling, hotspots):
-        add_window(sub)
-    return root
-
-
-def main(argv: list[str] | None = None) -> int:
-    options = parser().parse_args(argv)
+def write_report(arguments: argparse.Namespace, git: Git) -> int:
     try:
-        history = load_history(options)
+        history = load_history(arguments, git)
     except SignalsError as error:
-        sys.stderr.write(f'error: {error}\n')
-        return EXIT_REJECTED
-    report = HANDLERS[Analysis(options.analysis)](history, options)
+        return rejected(error)
+    report = REPORTS[Analysis(arguments.analysis)](history, arguments)
     sys.stdout.write(json.dumps(report, indent=2) + '\n')
     return 0
 
 
-if __name__ == '__main__':
-    raise SystemExit(main())
+def review_signals(arguments: argparse.Namespace) -> int:
+    return write_report(arguments, git_at(Path.cwd()))

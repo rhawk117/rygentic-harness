@@ -1,4 +1,6 @@
-"""Command line entry point shared by the MCP server start mode, the hooks and `verify run`."""
+"""Command line entry point shared by the MCP server start mode, the hooks, `verify run` and
+`review-signals`.
+"""
 
 import argparse
 import os
@@ -21,6 +23,14 @@ COMPLETION_GATE_COMMAND = 'completion-gate'
 PRE_COMPACT_COMMAND = 'pre-compact'
 VERIFY_COMMAND = 'verify'
 RUN_COMMAND = 'run'
+REVIEW_SIGNALS_COMMAND = 'review-signals'
+CODE_CHURN_REPORT = 'code-churn'
+CHANGE_COUPLING_REPORT = 'change-coupling'
+CODE_HOTSPOTS_REPORT = 'code-hotspots'
+DEFAULT_MAX_COMMITS = 500
+DEFAULT_LIMIT = 25
+DEFAULT_MIN_SHARED = 3
+DEFAULT_MAX_CHANGESET = 50
 PHASES = ('planning', 'task', 'review', 'landing')
 DEFAULT_PHASE = 'task'
 HOOK_MODULES = MappingProxyType(
@@ -42,6 +52,43 @@ def add_verify_run(commands: argparse._SubParsersAction[argparse.ArgumentParser]
     chosen.add_argument('--id', action='append', help='an approved command id; repeatable')
     chosen.add_argument('--all', action='store_true', help='every approved command')
     run.add_argument('--phase', choices=PHASES, default=DEFAULT_PHASE)
+
+
+def positive(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        message = 'must be at least 1'
+        raise argparse.ArgumentTypeError(message)
+    return value
+
+
+def add_window(sub: argparse.ArgumentParser) -> None:
+    sub.add_argument('--target', help='file or directory, relative to the repository')
+    sub.add_argument('--since', help='git date, e.g. 2026-01-01 or "6 months ago"')
+    sub.add_argument('--baseline-ref', help='only commits after this ref, up to HEAD')
+    size = sub.add_mutually_exclusive_group()
+    size.add_argument('--max-commits', type=positive, default=DEFAULT_MAX_COMMITS)
+    size.add_argument('--all-history', action='store_true')
+    sub.add_argument('--limit', type=positive, default=DEFAULT_LIMIT)
+
+
+def add_review_signals(commands: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    signals = commands.add_parser(
+        REVIEW_SIGNALS_COMMAND,
+        help='measure git history for a review: churn, change coupling, hotspots',
+    )
+    reports = signals.add_subparsers(dest='analysis', required=True)
+    churn = reports.add_parser(CODE_CHURN_REPORT, help='commits and lines changed per file')
+    coupling = reports.add_parser(
+        CHANGE_COUPLING_REPORT, help='files that change in the same commits'
+    )
+    coupling.add_argument('--min-shared', type=positive, default=DEFAULT_MIN_SHARED)
+    coupling.add_argument('--max-changeset', type=positive, default=DEFAULT_MAX_CHANGESET)
+    hotspots = reports.add_parser(
+        CODE_HOTSPOTS_REPORT, help='churn weighted by indentation complexity'
+    )
+    for sub in (churn, coupling, hotspots):
+        add_window(sub)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
         help='write the snapshot of the ticket on the checked-out branch; the PreCompact hook',
     )
     add_verify_run(commands)
+    add_review_signals(commands)
     return parser
 
 
@@ -93,6 +141,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
     if (code := run_hook_command(arguments)) is not None:
         return code
+    if arguments.command == REVIEW_SIGNALS_COMMAND:
+        from mightymodels_plugin.commands.review_signals import review_signals  # noqa: PLC0415 - importing commands.review_signals (core.workspace and Pydantic) took 0.13 s measured with -X importtime and every hook and `--help` must not pay it
+
+        return review_signals(arguments)
     if arguments.command == VERIFY_COMMAND:
         from mightymodels_plugin.commands.verify import verify_run  # noqa: PLC0415 - importing commands.verify (SQLAlchemy and Pydantic) took 0.37 s measured with -X importtime and `--help` must not pay it
 

@@ -15,7 +15,7 @@ You: read the diff, build the question ledger, dispatch scouts, judge severity, 
 
 `web-scout`: the same contract for external documentation, citing `URL#heading` for the version the lockfile pins. Dispatch it only when a finding turns on documented language or framework behavior (a changed default, a deprecation, a security advisory); most merge reviews need none.
 
-`qualitylens`: runs `review_signals.py` for churn, coupling, and hotspot measurements, and only when review-circus supplied that script's path. Its numbers can support a finding's evidence; they are never the finding.
+`qualitylens`: runs `mightymodels review-signals` for churn, coupling, and hotspot measurements, and only when review-circus supplied a signals history window. Its numbers can support a finding's evidence; they are never the finding.
 
 You dispatch these three and no other worker. The "scout" below means code-scout unless a question is about documentation.
 

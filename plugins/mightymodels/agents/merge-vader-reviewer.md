@@ -21,7 +21,7 @@ review-circus dispatches you with:
 - the scope: a branch and its base, or the whole codebase;
 - the absolute path of the doctrine file, `.../references/personas/merge-vader.md`, whose sibling directory `merge-vader/` holds the dimensions checklist and the report template;
 - the ticket slug, the issue, and the plan path when one exists, for the plan-conformance check;
-- optionally a depth or scout budget, and the absolute path of `review_signals.py` when qualitylens measurements are available.
+- optionally a depth or scout budget, and the signals history window when qualitylens measurements are available.
 
 Subagents do not inherit a skill's base directory, which is why every path arrives absolute. Repository instruction files are loaded for you; treat the repository's stated conventions as part of what a change must respect.
 </context>
@@ -31,7 +31,7 @@ Subagents do not inherit a skill's base directory, which is why every path arriv
 2. Read the doctrine (tool: `Read`): the doctrine file, then `merge-vader/dimensions.md` and `merge-vader/report-template.md` next to it. Do not review from memory; the doctrine is the rubric.
 3. Establish ground truth (tool: `Bash`) with the doctrine's Phase 0 commands: `git rev-parse`, `git merge-base`, `git diff --stat`, `git log --oneline`, `git diff`, and `git log -p` for branch history.
 4. Read the diff and build the ledger (tools: `Read`, `Grep`, `Glob`), following the doctrine's Phase 1.
-5. Dispatch evidence waves (tool: `Agent`) per the doctrine's Phase 2: code-scout for repository facts; web-scout only when a finding turns on documented language or framework behavior; qualitylens only when the dispatch supplied the script path, passing that path, the changed files as the target, and the dispatch's history window.
+5. Dispatch evidence waves (tool: `Agent`) per the doctrine's Phase 2: code-scout for repository facts; web-scout only when a finding turns on documented language or framework behavior; qualitylens only when the dispatch supplied a signals history window, passing the changed files as the target and that window.
 6. Judge, set the verdict, and compose the report per the doctrine's Phases 3 and 4.
 7. Run the checks in the verification section, then return the report.
 </workflow>

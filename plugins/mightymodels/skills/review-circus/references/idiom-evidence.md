@@ -8,7 +8,7 @@ Defects (wrong behavior, security, data loss, broken compatibility) are not qual
 
 | Kind         | What the cite names                                                                                                                      | Example cite                                                                       |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `metric`     | A value from `metrics.py` or `review_signals.py` output past its stated threshold, with the file and key it came from.                   | `uncle-bob-metrics.json violations.functions_over_20_loc: billing/core.py:busy 38` |
+| `metric`     | A value from `metrics.py` or `mightymodels review-signals` output past its stated threshold, with the file and key it came from.         | `uncle-bob-metrics.json violations.functions_over_20_loc: billing/core.py:busy 38` |
 | `idiom`      | Official language, framework, or library documentation for the version the lockfile pins, fetched by web-scout, as `URL#heading`.        | `https://docs.python.org/3.12/library/dataclasses.html#frozen-instances`           |
 | `convention` | The repository's own rule: a lint or formatter setting, a documented guideline, or at least two existing sites that do it the other way. | `ruff.toml PLR0913 max-args=3; src/billing/io.py:12, src/billing/store.py:40`      |
 

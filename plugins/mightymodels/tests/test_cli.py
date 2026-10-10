@@ -106,3 +106,18 @@ class TestVerifyRun:
         loaded = loaded_packages(repository, data_directory, *arguments)
 
         assert loaded == "0 ['pydantic', 'sqlalchemy']"
+
+
+class TestReviewSignals:
+    WINDOW_OPTIONS = ('--target', '--since', '--baseline-ref', '--max-commits', '--all-history')
+
+    @pytest.mark.parametrize('report', ['code-churn', 'change-coupling', 'code-hotspots'])
+    def test_help_shows_the_window_options_of_each_report(
+        self, report: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exit_info:
+            main(['review-signals', report, '--help'])
+
+        shown = capsys.readouterr().out
+        assert exit_info.value.code == 0
+        assert [option in shown for option in self.WINDOW_OPTIONS] == [True] * 5

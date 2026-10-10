@@ -3,7 +3,7 @@ name: review-circus
 description: >-
   Review a diff, branch, ticket, or whole codebase with the mightymodels persona reviewers. One
   AskUserQuestion gate sets depth (quick runs its reviewers on sonnet, standard and deep on opus), persona
-  emphasis, and scope; the `review` tool records the run, metrics.py and review_signals.py
+  emphasis, and scope; the `review` tool records the run, metrics.py and mightymodels review-signals
   measure, merge-vader-reviewer and uncle-bob-reviewer report, and the tool reads their reports
   and merges overlapping findings, presented by id through AskUserQuestion. Only the findings
   the user picks go to remediation, risk first, through the `task` tool; an abridged PR comment
@@ -27,7 +27,7 @@ path a dispatch carries is absolute.
 
 - `mcp__plugin_mightymodels_state__review` records the run, the findings, and the decisions.
 - `python3 "${CLAUDE_SKILL_DIR}/scripts/metrics.py"` measures structure (fan-in, fan-out, cycles, sizes).
-- `python3 "${CLAUDE_SKILL_DIR}/scripts/review_signals.py"` measures git history (churn, coupling, hotspots).
+- `mightymodels review-signals` measures git history (churn, coupling, hotspots); it is a bare Bash command (the plugin's `bin/` is on the Bash PATH).
 
 Read `references/profiles.md` and `references/review-state.md` before the first run in a
 session, and `agents-assemble/references/contracts.md` for the severity table. Dispatch every
@@ -75,7 +75,7 @@ Add `--package-depth 2` when the repository is one top-level package. When the l
 ones it does not parse (it reads Python, JavaScript, and TypeScript), skip it and say so in
 the dispatch.
 
-At standard and deep, pick the history window for review_signals.py per profiles.md
+At standard and deep, pick the history window for `mightymodels review-signals` per profiles.md
 (`--baseline-ref BASE_REF` for branch and ticket scope). At standard and deep, a code-scout
 surface triage also runs first: diff stat, risk hotspots (auth, input handling, CI config,
 dependency manifests), tests covering the changed area. Quick skips both unless the persona
@@ -88,8 +88,8 @@ and the model the run recorded. The packet carries the doctrine
 (`${CLAUDE_SKILL_DIR}/references/personas/merge-vader.md` or `uncle-bob.md`),
 `${CLAUDE_SKILL_DIR}/references/profiles.md`, `${CLAUDE_SKILL_DIR}/references/idiom-evidence.md`,
 the run directory, the depth and the persona's role (the heavier weight leads), the metrics
-path, the signals script path (`${CLAUDE_SKILL_DIR}/scripts/review_signals.py`, which the persona
-hands qualitylens) and window, and for a ticket, ticket.yml, the issue, and the plan
+path, the signals history window (which the persona hands qualitylens), and for a ticket,
+ticket.yml, the issue, and the plan
 (merge-vader's conformance check needs them). The `${CLAUDE_SKILL_DIR}` paths are absolute once substituted.
 
 Personas gather their own evidence through code-scout, web-scout, and qualitylens, and
