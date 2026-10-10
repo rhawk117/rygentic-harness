@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Required, TypedDict
 
 import pytest
 from mightymodels_plugin.cli import main
@@ -15,6 +15,34 @@ REJECTED = 2
 CAPPED = 2
 GIT = shutil.which('git') or 'git'
 IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
+
+
+class ScannedHistory(TypedDict):
+    since: str | None
+    baseline_ref: str | None
+    max_commits: int | None
+    commits_scanned: int
+    truncated: bool
+
+
+class Signal(TypedDict, total=False):
+    subject: Required[str]
+    commits: int
+    lines_added: int
+    lines_deleted: int
+    shared_commits: int
+    degree: float
+    loc: int
+    indentation: int
+    hotspot: int
+
+
+class Report(TypedDict):
+    analysis: str
+    target: str
+    history: ScannedHistory
+    signals: list[Signal]
+    limitations: list[str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,7 +69,7 @@ class Repo:
         self.git('commit', '-q', '-m', 'change')
         return self.git('rev-parse', 'HEAD')
 
-    def signals(self, *argv: str) -> dict[str, Any]:
+    def signals(self, *argv: str) -> Report:
         code = main([COMMAND, *argv])
         captured = self.capsys.readouterr()
         assert code == 0, captured.err
@@ -63,7 +91,7 @@ def repo(
     return space
 
 
-def subjects(report: dict[str, Any]) -> list[str]:
+def subjects(report: Report) -> list[str]:
     return [signal['subject'] for signal in report['signals']]
 
 
