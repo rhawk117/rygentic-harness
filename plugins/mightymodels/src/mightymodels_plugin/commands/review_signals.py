@@ -22,7 +22,6 @@ reason on standard error and the exit code that says refused. The parser is in `
 """
 
 import argparse
-import json
 import re
 import sys
 from collections import Counter
@@ -32,7 +31,10 @@ from itertools import combinations
 from pathlib import Path
 from types import MappingProxyType
 
+import msgspec
+
 from mightymodels_plugin.commands.rejection import rejected
+from mightymodels_plugin.core.codec import encode_indented
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.process import FailedRun
 from mightymodels_plugin.core.workspace import Git, git_at
@@ -95,6 +97,22 @@ class Commit:
     changes: dict[str, tuple[int, int]]
 
 
+class ScannedHistory(msgspec.Struct, frozen=True, kw_only=True):
+    since: str | None
+    baseline_ref: str | None
+    max_commits: int | None
+    commits_scanned: int
+    truncated: bool
+
+
+class Report[Signal](msgspec.Struct, frozen=True, kw_only=True):
+    analysis: Analysis
+    target: str
+    history: ScannedHistory
+    signals: list[Signal]
+    limitations: list[str]
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class History:
     root: Path
@@ -107,18 +125,22 @@ class History:
         limit = self.window.max_commits
         return limit is not None and len(self.commits) >= limit
 
-    def header(self, analysis: Analysis) -> dict[str, object]:
-        return {
-            'analysis': str(analysis),
-            'target': self.target or '.',
-            'history': {
-                'since': self.window.since,
-                'baseline_ref': self.window.baseline_ref,
-                'max_commits': self.window.max_commits,
-                'commits_scanned': len(self.commits),
-                'truncated': self.truncated,
-            },
-        }
+    def report[Signal](
+        self, analysis: Analysis, signals: list[Signal], limitations: list[str]
+    ) -> Report[Signal]:
+        return Report(
+            analysis=analysis,
+            target=self.target or '.',
+            history=ScannedHistory(
+                since=self.window.since,
+                baseline_ref=self.window.baseline_ref,
+                max_commits=self.window.max_commits,
+                commits_scanned=len(self.commits),
+                truncated=self.truncated,
+            ),
+            signals=signals,
+            limitations=limitations,
+        )
 
     def base_limitations(self) -> list[str]:
         notes = [
@@ -250,27 +272,36 @@ def churn_order(item: tuple[str, Churn]) -> tuple[int, int, str]:
     return -churn.commits, -(churn.added + churn.deleted), path
 
 
-def code_churn(history: History, options: argparse.Namespace) -> dict[str, object]:
+class ChurnSignal(msgspec.Struct, frozen=True, kw_only=True):
+    subject: str
+    commits: int
+    lines_added: int
+    lines_deleted: int
+
+
+def code_churn(history: History, options: argparse.Namespace) -> Report[ChurnSignal]:
     ranked = sorted(churn_by_file(history).items(), key=churn_order)
     signals = [
-        {
-            'subject': path,
-            'commits': churn.commits,
-            'lines_added': churn.added,
-            'lines_deleted': churn.deleted,
-        }
+        ChurnSignal(
+            subject=path,
+            commits=churn.commits,
+            lines_added=churn.added,
+            lines_deleted=churn.deleted,
+        )
         for path, churn in ranked[: options.limit]
     ]
     limitations = history.base_limitations()
     limitations.append('binary files count commits but no lines')
-    return {
-        **history.header(Analysis.CHURN),
-        'signals': signals,
-        'limitations': limitations,
-    }
+    return history.report(Analysis.CHURN, signals, limitations)
 
 
-def change_coupling(history: History, options: argparse.Namespace) -> dict[str, object]:
+class CouplingSignal(msgspec.Struct, frozen=True, kw_only=True):
+    subject: str
+    shared_commits: int
+    degree: float
+
+
+def change_coupling(history: History, options: argparse.Namespace) -> Report[CouplingSignal]:
     revisions: Counter[str] = Counter()
     shared: Counter[tuple[str, str]] = Counter()
     skipped = 0
@@ -281,12 +312,12 @@ def change_coupling(history: History, options: argparse.Namespace) -> dict[str, 
             skipped += 1
             continue
         shared.update(combinations(paths, 2))
-    pairs: list[dict[str, object]] = [
-        {
-            'subject': f'{left} <-> {right}',
-            'shared_commits': together,
-            'degree': round(together / min(revisions[left], revisions[right]), 2),
-        }
+    pairs = [
+        CouplingSignal(
+            subject=f'{left} <-> {right}',
+            shared_commits=together,
+            degree=round(together / min(revisions[left], revisions[right]), 2),
+        )
         for (left, right), together in shared.items()
         if together >= options.min_shared
     ]
@@ -298,16 +329,11 @@ def change_coupling(history: History, options: argparse.Namespace) -> dict[str, 
             f'{skipped} commits touching more than {options.max_changeset} files '
             'were left out of pairing'
         )
-    header = history.header(Analysis.COUPLING)
-    return {**header, 'signals': pairs[: options.limit], 'limitations': limitations}
+    return history.report(Analysis.COUPLING, pairs[: options.limit], limitations)
 
 
-def coupling_order(pair: dict[str, object]) -> tuple[int, float, str]:
-    return (
-        -int(str(pair['shared_commits'])),
-        -float(str(pair['degree'])),
-        str(pair['subject']),
-    )
+def coupling_order(pair: CouplingSignal) -> tuple[int, float, str]:
+    return -pair.shared_commits, -pair.degree, pair.subject
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -332,24 +358,32 @@ def shape_of(path: Path) -> Shape | None:
     return Shape(loc=len(lines), indentation=sum(map(indent_level, lines)))
 
 
-def hotspot_order(signal: dict[str, object]) -> tuple[int, str]:
-    return -int(str(signal['hotspot'])), str(signal['subject'])
+class HotspotSignal(msgspec.Struct, frozen=True, kw_only=True):
+    subject: str
+    commits: int
+    loc: int
+    indentation: int
+    hotspot: int
 
 
-def code_hotspots(history: History, options: argparse.Namespace) -> dict[str, object]:
-    signals: list[dict[str, object]] = []
+def hotspot_order(signal: HotspotSignal) -> tuple[int, str]:
+    return -signal.hotspot, signal.subject
+
+
+def code_hotspots(history: History, options: argparse.Namespace) -> Report[HotspotSignal]:
+    signals: list[HotspotSignal] = []
     for path, churn in churn_by_file(history).items():
         shape = shape_of(history.root.joinpath(path))
         if shape is None:
             continue
         signals.append(
-            {
-                'subject': path,
-                'commits': churn.commits,
-                'loc': shape.loc,
-                'indentation': shape.indentation,
-                'hotspot': churn.commits * shape.indentation,
-            }
+            HotspotSignal(
+                subject=path,
+                commits=churn.commits,
+                loc=shape.loc,
+                indentation=shape.indentation,
+                hotspot=churn.commits * shape.indentation,
+            )
         )
     signals.sort(key=hotspot_order)
     limitations = history.base_limitations()
@@ -362,8 +396,7 @@ def code_hotspots(history: History, options: argparse.Namespace) -> dict[str, ob
             'binary files and files over 2 MB are skipped',
         ]
     )
-    header = history.header(Analysis.HOTSPOTS)
-    return {**header, 'signals': signals[: options.limit], 'limitations': limitations}
+    return history.report(Analysis.HOTSPOTS, signals[: options.limit], limitations)
 
 
 REPORTS = MappingProxyType(
@@ -381,7 +414,7 @@ def write_report(arguments: argparse.Namespace, git: Git) -> int:
     except SignalsError as error:
         return rejected(error)
     report = REPORTS[Analysis(arguments.analysis)](history, arguments)
-    sys.stdout.write(json.dumps(report, indent=2) + '\n')
+    sys.stdout.buffer.write(encode_indented(report) + b'\n')
     return 0
 
 

@@ -10,6 +10,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from mightymodels_plugin.core.codec import encode_compact
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import models_at
 from mightymodels_plugin.core.slug import Slug
@@ -43,7 +44,7 @@ class Line:
 
 
 def quoted(value: str) -> str:
-    return json.dumps(value, ensure_ascii=False)
+    return encode_compact(value).decode()
 
 
 def scalar_text(*, value: Scalar) -> str:

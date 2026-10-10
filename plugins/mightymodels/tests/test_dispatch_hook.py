@@ -38,7 +38,7 @@ def hook_input(caller: str | None, target: str | None) -> str:
 
 
 def run_hook(text: str) -> Verdict:
-    stdout = io.StringIO()
+    stdout = io.BytesIO()
     assert check_dispatch(io.StringIO(text), stdout) == 0
     printed = stdout.getvalue()
     if not printed:
@@ -202,6 +202,62 @@ class TestUnexpectedInput:
     )
     def test_input_naming_no_plugin_worker_gets_no_decision(self, text: str) -> None:
         assert run_hook(text) == Verdict(decision=None, reason='')
+
+
+class TestInputTheCodecRefuses:
+    VALUES = (
+        pytest.param('NaN', id='nan'),
+        pytest.param('Infinity', id='infinity'),
+        pytest.param('1e400', id='number-out-of-range'),
+        pytest.param('"\\ud800"', id='escaped-lone-surrogate'),
+        pytest.param('"\ud800"', id='raw-lone-surrogate'),
+    )
+    UNREADABLE = Verdict(
+        decision='deny', reason='a dispatch was refused: the hook input is not the expected JSON'
+    )
+
+    def verdict_on(self, caller: str | None, value: str) -> Verdict:
+        allowed = hook_input(caller, 'code-scout')
+        return run_hook(f'{allowed.removesuffix("}")}, "elapsed": {value}}}')
+
+    @pytest.mark.parametrize('value', VALUES)
+    def test_a_plugin_workers_allowed_dispatch_holding_it_is_denied_as_unreadable(
+        self, value: str
+    ) -> None:
+        assert self.verdict_on(f'{PREFIX}engineer', value) == self.UNREADABLE
+
+    @pytest.mark.parametrize('value', VALUES)
+    @pytest.mark.parametrize(
+        'caller',
+        [
+            pytest.param(None, id='main-conversation'),
+            pytest.param('general-purpose', id='built-in'),
+        ],
+    )
+    def test_with_no_plugin_caller_input_holding_it_gets_no_decision(
+        self, caller: str | None, value: str
+    ) -> None:
+        assert self.verdict_on(caller, value) == Verdict(decision=None, reason='')
+
+
+class TestWrittenBytes:
+    TARGET = 'café'
+    DENIAL = (
+        b'{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny",'
+        b'"permissionDecisionReason":"mightymodels:engineer may not dispatch caf\xc3\xa9; '
+        b'it may dispatch: code-scout"}}\n'
+    )
+
+    @pytest.fixture
+    def written(self) -> bytes:
+        output = io.BytesIO()
+        check_dispatch(io.StringIO(hook_input(f'{PREFIX}engineer', self.TARGET)), output)
+        return output.getvalue()
+
+    def test_a_denial_is_one_compact_line_with_a_character_outside_ascii_as_utf8(
+        self, written: bytes
+    ) -> None:
+        assert written == self.DENIAL
 
 
 class TestCommand:

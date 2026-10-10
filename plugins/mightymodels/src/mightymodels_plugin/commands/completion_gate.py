@@ -15,7 +15,6 @@ directory, no git work tree or a refused database print nothing and exit 0; the 
 on standard error.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from mightymodels_plugin.commands.branch_ticket import ticket_on_branch
 from mightymodels_plugin.commands.hook_context import HookContext, plugin_worker
 from mightymodels_plugin.commands.rejection import skipped
+from mightymodels_plugin.core.codec import encode_compact
 from mightymodels_plugin.core.edge import OpenState, open_state
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import Worker
@@ -89,5 +89,5 @@ def run_hook(context: HookContext) -> int:
     except (StateError, SQLAlchemyError) as error:
         return skipped(error)
     if reason is not None:
-        sys.stdout.write(f'{json.dumps({"decision": "block", "reason": reason})}\n')
+        sys.stdout.buffer.write(encode_compact({'decision': 'block', 'reason': reason}) + b'\n')
     return 0

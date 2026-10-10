@@ -10,12 +10,12 @@ caller (a built-in subagent, another plugin's agent, a main thread started with 
 input without `agent_type` get no decision, as if the plugin were not installed.
 """
 
-import json
 import re
 from collections.abc import Mapping
 from types import MappingProxyType
-from typing import TextIO
+from typing import BinaryIO, TextIO
 
+from mightymodels_plugin.core.codec import UnreadableJsonError, decode_text, encode_compact
 from mightymodels_plugin.core.routing import Worker
 
 PLUGIN_PREFIX = 'mightymodels:'
@@ -49,8 +49,8 @@ def worker_named(name: str) -> Worker | None:
 
 def decoded_object(text: str) -> dict[str, object] | None:
     try:
-        decoded: object = json.loads(text)
-    except json.JSONDecodeError:
+        decoded = decode_text(text)
+    except UnreadableJsonError:
         return None
     if not isinstance(decoded, dict):
         return None
@@ -91,7 +91,7 @@ def dispatch_denial(text: str) -> str | None:
     return denial_for_worker(caller, target_of(fields))
 
 
-def check_dispatch(stdin: TextIO, stdout: TextIO) -> int:
+def check_dispatch(stdin: TextIO, output: BinaryIO) -> int:
     reason = dispatch_denial(stdin.read())
     if reason is None:
         return 0
@@ -102,5 +102,5 @@ def check_dispatch(stdin: TextIO, stdout: TextIO) -> int:
             'permissionDecisionReason': reason,
         }
     }
-    stdout.write(json.dumps(decision) + '\n')
+    output.write(encode_compact(decision) + b'\n')
     return 0

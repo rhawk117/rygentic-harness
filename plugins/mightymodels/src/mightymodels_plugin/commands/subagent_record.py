@@ -14,13 +14,13 @@ whose file would pass `SPOOL_FILE_BYTES` is not written, because the server coul
 Every failure is said on standard error with exit 0, and nothing is written.
 """
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
 from mightymodels_plugin.commands.hook_context import HookContext, plugin_worker
 from mightymodels_plugin.commands.rejection import skipped
+from mightymodels_plugin.core.codec import encode_compact
 from mightymodels_plugin.core.data_directory import DataDirectoryMissingError
 from mightymodels_plugin.core.declarative import NAME_LIMIT
 from mightymodels_plugin.core.errors import StateError
@@ -70,7 +70,7 @@ class ScoutStop:
             'target': self.target,
             'report': self.report,
         }
-        return json.dumps(document).encode()
+        return encode_compact(document)
 
 
 def scout_report_of(fields: dict[str, object], report: object) -> ScoutStop | NoReportError | None:

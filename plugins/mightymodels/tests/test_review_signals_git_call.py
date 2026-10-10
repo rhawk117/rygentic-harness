@@ -1,3 +1,6 @@
+import io
+import json
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -163,6 +166,28 @@ class TestGitLogArgumentVector:
         assert [(run.timeout, run.cwd) for run in checkout.runner.runs] == [
             (GIT_TIMEOUT_SECONDS, checkout.root)
         ]
+
+
+class TestStandardOutput:
+    TARGET = 'café'
+
+    @pytest.fixture
+    def written(self, checkout: Checkout, monkeypatch: pytest.MonkeyPatch) -> tuple[int, bytes]:
+        underneath = io.BytesIO()
+        monkeypatch.setattr(sys, 'stdout', io.TextIOWrapper(underneath, encoding='ascii'))
+        git = replace(
+            git_at(checkout.root), executable=checkout.executable, processes=checkout.runner
+        )
+        arguments = build_parser().parse_args([COMMAND, Analysis.CHURN, '--target', self.TARGET])
+        return write_report(arguments, git), underneath.getvalue()
+
+    def test_a_target_outside_ascii_is_written_as_utf8_whatever_the_text_stream_encodes(
+        self, written: tuple[int, bytes]
+    ) -> None:
+        code, document = written
+
+        assert code == 0
+        assert json.loads(document)['target'] == self.TARGET
 
 
 class TestRefusedValues:

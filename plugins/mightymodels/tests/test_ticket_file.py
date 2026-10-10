@@ -1,5 +1,15 @@
+import json
+
 import pytest
-from mightymodels_plugin.tools.ticket.ticket_file import SubsetError, parse, with_context
+from hypothesis import given
+from hypothesis import strategies as st
+from mightymodels_plugin.tools.ticket.ticket_file import SubsetError, parse, quoted, with_context
+
+
+class TestQuoted:
+    @given(value=st.text())
+    def test_text_is_quoted_as_the_standard_library_writes_it_unescaped(self, value: str) -> None:
+        assert quoted(value) == json.dumps(value, ensure_ascii=False)
 
 
 class TestParse:

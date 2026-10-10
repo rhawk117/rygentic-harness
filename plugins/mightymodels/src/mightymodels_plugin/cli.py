@@ -150,7 +150,7 @@ def run_hook_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == SESSION_START_COMMAND:
         return export_data_directory(os.environ)
     if arguments.command == DISPATCH_HOOK_COMMAND:
-        return check_dispatch(sys.stdin, sys.stdout)
+        return check_dispatch(sys.stdin, sys.stdout.buffer)
     if arguments.command not in HOOK_MODULES:
         return None
     hook = import_module(HOOK_MODULES[arguments.command])

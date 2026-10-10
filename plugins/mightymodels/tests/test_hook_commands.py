@@ -80,10 +80,16 @@ ANSWERS = TicketAnswers.model_validate(
 )
 DONE_WITH_A_COMMIT = '## ASKED\nobjective: drain\n\n## DONE\ncommit: 0123abc\n'
 DONE_WITHOUT_A_COMMIT = '## ASKED\nobjective: drain\n\n## DONE\nI did it.\n'
+ENGINEER_STOP_HOLDING = '{{"agent_type": "mightymodels:engineer", "elapsed": {value}}}'
 UNREADABLE_INPUTS = (
     pytest.param('', id='empty'),
     pytest.param('not json', id='not-json'),
     pytest.param('[]', id='not-an-object'),
+    pytest.param(ENGINEER_STOP_HOLDING.format(value='NaN'), id='nan'),
+    pytest.param(ENGINEER_STOP_HOLDING.format(value='Infinity'), id='infinity'),
+    pytest.param(ENGINEER_STOP_HOLDING.format(value='1e400'), id='number-out-of-range'),
+    pytest.param(ENGINEER_STOP_HOLDING.format(value='"\\ud800"'), id='escaped-lone-surrogate'),
+    pytest.param(ENGINEER_STOP_HOLDING.format(value='"\ud800"'), id='raw-lone-surrogate'),
 )
 
 
