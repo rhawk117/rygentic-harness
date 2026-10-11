@@ -1,10 +1,12 @@
 """Running gate commands: outcomes, output tails, environment, timeouts and leftovers."""
 
+import gc
 import os
 import signal
 import stat
 import sys
 import time
+import warnings
 from contextlib import suppress
 from types import MappingProxyType
 
@@ -262,6 +264,51 @@ class TestNormalExit:
         finally:
             with suppress(ProcessLookupError):
                 os.kill(grandchild, signal.SIGTERM)
+
+
+class TestOutputPipeRelease:
+    OPTIONS = GateOptions(timeout_seconds=0.5)
+    HOLD_SECONDS = 2
+    DETACHED_HOLDER = (
+        'import subprocess, sys; '
+        'subprocess.Popen([sys.executable, "-c", sys.argv[1]], start_new_session=True)'
+    )
+    HOLD_THE_PIPE = f'import time; time.sleep({HOLD_SECONDS})'
+    GROUP_HOLDER = (
+        'import subprocess, sys; '
+        'subprocess.run([sys.executable, "-c", "import time; time.sleep(60)"])'
+    )
+
+    def resource_warnings_after(
+        self, workspace: Workspace, plan: GatePlan, options: GateOptions | None = None
+    ) -> list[str]:
+        gc.collect()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            run_gate(workspace, plan, options, environment=NO_ENVIRONMENT)
+            gc.collect()
+        return [str(item.message) for item in caught if issubclass(item.category, ResourceWarning)]
+
+    def test_a_descendant_that_left_the_group_and_holds_the_pipe_leaks_nothing(
+        self, workspace: Workspace
+    ) -> None:
+        plan = plan_of(
+            python_command(GateTool.PYTEST, self.DETACHED_HOLDER, self.HOLD_THE_PIPE),
+        )
+
+        assert self.resource_warnings_after(workspace, plan, self.OPTIONS) == []
+
+    def test_a_timed_out_command_with_a_child_in_its_group_leaks_nothing(
+        self, workspace: Workspace
+    ) -> None:
+        plan = plan_of(python_command(GateTool.PYTEST, self.GROUP_HOLDER))
+
+        assert self.resource_warnings_after(workspace, plan, self.OPTIONS) == []
+
+    def test_a_command_that_exits_normally_leaks_nothing(self, workspace: Workspace) -> None:
+        plan = plan_of(python_command(GateTool.PYTEST, 'print("done")'))
+
+        assert self.resource_warnings_after(workspace, plan) == []
 
 
 class TestConcurrency:
