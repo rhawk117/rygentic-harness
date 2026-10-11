@@ -201,8 +201,10 @@ class ProjectTools:
             summary_truncated=facts_output.facts_summary_is_truncated,
         )
         with tool_errors():
-            workspace, index = self.open_indexed_project()
-            report = facts_use_case.run(workspace, request)
+            workspace = open_project(self.environment, self.uv_runner)
+            target = facts_use_case.target_for(workspace, request)
+            index = load_project_index(workspace)
+            report = facts_use_case.run(workspace, index, target)
             diagnostics = workspace_diagnostics(workspace, index.graph)
             return render_budgeted_project_document(report, diagnostics, output)
 
@@ -239,8 +241,9 @@ class ProjectTools:
         """
         request = CitationsRequest(path=path or None, text=text or None)
         with tool_errors():
-            workspace, index = self.open_indexed_project()
+            workspace = open_project(self.environment, self.uv_runner)
             report = citations_use_case.run(workspace, request)
+            index = load_project_index(workspace)
             return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
     def survey(self) -> str:

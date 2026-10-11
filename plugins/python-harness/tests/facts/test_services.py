@@ -3,6 +3,7 @@
 from types import MappingProxyType
 
 import pytest
+from python_harness.core.sources import LoadedSources, load_sources
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.facts.domain import FactKind, FactsReport
@@ -11,6 +12,8 @@ from python_harness.facts.services import (
     build_full_catalog,
     build_review_catalog,
     collect_facts,
+    collect_facts_from,
+    load_sources_reusing,
 )
 from python_harness.facts.tests.support import build_detector_catalog
 from python_harness.facts.util.comments import (
@@ -101,6 +104,40 @@ class TestCollectFacts:
         report = collect_facts(workspace, ('pkg', 'pkg/loader.py'))
 
         assert tuple(module.path for module in report.modules) == ('pkg/loader.py',)
+
+
+class TestSourcesAlreadyLoaded:
+    FILES = TestCollectFacts.FILES
+
+    @pytest.fixture
+    def workspace(self, project_builder: ProjectBuilder) -> Workspace:
+        return project_builder.write(self.FILES)
+
+    def test_a_loaded_file_is_not_read_again(self, workspace: Workspace) -> None:
+        files = workspace.python_files('pkg')
+        loaded = load_sources(workspace, files)
+        for file in files:
+            file.unlink()
+
+        assert load_sources_reusing(workspace, files, loaded) == loaded
+
+    def test_a_file_not_yet_loaded_is_read(self, workspace: Workspace) -> None:
+        files = workspace.python_files('pkg')
+
+        sources = load_sources_reusing(workspace, files, LoadedSources((), ()))
+
+        parsed = tuple(module.source.path for module in sources.modules)
+        unparsable = tuple(item.path for item in sources.unparsable)
+        assert (parsed, unparsable) == (('pkg/loader.py',), ('pkg/broken.py',))
+
+    def test_facts_from_partly_loaded_sources_match_a_direct_read(
+        self, workspace: Workspace
+    ) -> None:
+        loaded = load_sources(workspace, workspace.python_files('pkg/loader.py'))
+
+        sources = load_sources_reusing(workspace, workspace.python_files('pkg'), loaded)
+
+        assert collect_facts_from(sources, FactCatalog()) == collect_facts(workspace, ('pkg',))
 
 
 class TestCatalogs:

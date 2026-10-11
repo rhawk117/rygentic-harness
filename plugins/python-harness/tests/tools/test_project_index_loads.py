@@ -21,6 +21,25 @@ PROJECT_TOOL_CALLS = (
     pytest.param('map_python_calls', {'paths': ['src/shop/pricing.py']}, id='map-python-calls'),
     pytest.param('check_citations', {'path': 'REVIEW.md'}, id='check-citations'),
 )
+REQUESTS_REJECTED_WITHOUT_THE_INDEX = (
+    pytest.param(
+        'collect_python_facts', {'paths': ['../outside.py']}, id='facts-path-outside-the-root'
+    ),
+    pytest.param(
+        'collect_python_facts', {'paths': ['src/shop/absent.py']}, id='facts-missing-path'
+    ),
+    pytest.param(
+        'collect_python_facts',
+        {'paths': ['src/shop/pricing.py', 'src/shop/absent.py']},
+        id='facts-missing-path-beside-a-file',
+    ),
+    pytest.param('check_citations', {'path': '../REVIEW.md'}, id='citations-path-outside-the-root'),
+    pytest.param('check_citations', {'path': 'ABSENT.md'}, id='citations-missing-document'),
+    pytest.param(
+        'check_citations', {'path': 'REVIEW.md', 'text': 'text'}, id='citations-path-and-text'
+    ),
+    pytest.param('check_citations', {}, id='citations-neither-path-nor-text'),
+)
 
 
 @pytest.fixture
@@ -56,3 +75,19 @@ class TestProjectIndexLoads:
         result = await project_client.call_tool(tool, arguments)
 
         assert (result.is_error, len(index_loads) <= 1) == (False, True)
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures('shop')
+class TestRequestsRejectedWithoutTheIndex:
+    @pytest.mark.parametrize(('tool', 'arguments'), REQUESTS_REJECTED_WITHOUT_THE_INDEX)
+    async def test_a_rejected_request_loads_no_index(
+        self,
+        project_client: Client,
+        index_loads: list[LoadedSources],
+        tool: str,
+        arguments: dict[str, object],
+    ) -> None:
+        result = await project_client.call_tool(tool, arguments)
+
+        assert (result.is_error, len(index_loads)) == (True, 0)

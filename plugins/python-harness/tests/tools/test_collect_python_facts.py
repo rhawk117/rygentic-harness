@@ -10,7 +10,7 @@ from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.facts.services import build_review_catalog, collect_facts
 from python_harness.tools.envelope import MINIMUM_BUDGET
-from python_harness.tools.tests.support import document_of, text_of
+from python_harness.tools.tests.support import SHOP_PROJECT, document_of, text_of
 
 TOOL = 'collect_python_facts'
 
@@ -74,6 +74,94 @@ class TestCollectPythonFacts:
         facts = document_of(await project_client.call_tool(TOOL, arguments))['result']
 
         assert ('function_shape' in facts['modules'][0]['counts']) is reported
+
+
+@pytest.mark.anyio
+class TestFilesInAnExcludedDirectory:
+    GENERATED = 'build/generated.py'
+    BROKEN = 'build/broken.py'
+    PRICING = 'src/shop/pricing.py'
+    GENERATED_FACTS = MappingProxyType(
+        {
+            'modules': [
+                {
+                    'path': GENERATED,
+                    'line_count': 6,
+                    'facts': [
+                        {
+                            'line': 1,
+                            'symbol': None,
+                            'detail': {'text': 'generated', 'kind': 'comment'},
+                        },
+                        {'line': 6, 'symbol': None, 'detail': {'kind': 'del_statement'}},
+                    ],
+                    'counts': {'comment': 1, 'del_statement': 1},
+                }
+            ],
+            'unparsable': [],
+        }
+    )
+
+    @pytest.fixture
+    def shop(self, project_builder: ProjectBuilder) -> Workspace:
+        return project_builder.write(
+            {
+                **SHOP_PROJECT,
+                self.GENERATED: """
+                    # generated
+                    def load(items=[]):
+                        return items
+
+
+                    del load
+                """,
+                self.BROKEN: 'class (:\n',
+            }
+        )
+
+    @pytest.mark.usefixtures('shop')
+    async def test_a_file_named_inside_an_excluded_directory_is_reported(
+        self, project_client: Client
+    ) -> None:
+        result = await project_client.call_tool(TOOL, {'paths': [self.GENERATED], 'detail': 'full'})
+
+        assert (result.is_error, document_of(result)['result']) == (
+            False,
+            dict(self.GENERATED_FACTS),
+        )
+
+    @pytest.mark.parametrize(
+        ('paths', 'parsed', 'unparsable'),
+        [
+            pytest.param(['build'], [GENERATED], [BROKEN], id='the-excluded-directory'),
+            pytest.param(
+                [PRICING, GENERATED], [GENERATED, PRICING], [], id='beside-an-indexed-file'
+            ),
+            pytest.param(
+                ['.', 'build'],
+                [GENERATED, 'src/shop/__init__.py', 'src/shop/cli.py', PRICING],
+                [BROKEN],
+                id='beside-the-whole-project',
+            ),
+        ],
+    )
+    async def test_excluded_and_indexed_files_are_reported_as_a_direct_read_reports_them(
+        self,
+        project_client: Client,
+        shop: Workspace,
+        paths: list[str],
+        parsed: list[str],
+        unparsable: list[str],
+    ) -> None:
+        result = await project_client.call_tool(TOOL, {'paths': paths, 'detail': 'full'})
+        facts = document_of(result)['result']
+
+        expected = collect_facts(shop, paths, build_review_catalog())
+        reported = (
+            [module['path'] for module in facts['modules']],
+            [item['path'] for item in facts['unparsable']],
+        )
+        assert (reported, facts) == ((parsed, unparsable), to_json_value(expected))
 
 
 @pytest.mark.anyio
