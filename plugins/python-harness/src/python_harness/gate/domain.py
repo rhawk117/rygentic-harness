@@ -18,6 +18,11 @@ class GateTool(StrEnum):
     PYTEST = auto()
 
 
+class ConfigKind(StrEnum):
+    RUFF = auto()
+    TY = auto()
+
+
 class RuffConfigSource(StrEnum):
     REPOSITORY = auto()
     FALLBACK = auto()
@@ -28,8 +33,7 @@ class RuffConfigSource(StrEnum):
 class ToolInvocation:
     distribution: str
     arguments: tuple[str, ...]
-    reads_ruff_config: bool = False
-    reads_ty_config: bool = False
+    config: ConfigKind | None = None
     runs_in_project_environment: bool = False
     required_domain: Domain | None = None
 
@@ -43,17 +47,17 @@ def default_tool_invocations() -> ToolInvocations:
             GateTool.RUFF_CHECK: ToolInvocation(
                 'ruff',
                 ('ruff', 'check', '--statistics', '--no-cache'),
-                reads_ruff_config=True,
+                config=ConfigKind.RUFF,
             ),
             GateTool.RUFF_FORMAT: ToolInvocation(
                 'ruff',
                 ('ruff', 'format', '--check', '--no-cache'),
-                reads_ruff_config=True,
+                config=ConfigKind.RUFF,
             ),
             GateTool.TY: ToolInvocation(
                 'ty',
                 ('ty', 'check'),
-                reads_ty_config=True,
+                config=ConfigKind.TY,
                 runs_in_project_environment=True,
             ),
             GateTool.PYTEST: ToolInvocation(
@@ -114,15 +118,7 @@ class RuffConfigSelection:
     arguments: tuple[str, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class TyConfigSelection:
-    arguments: tuple[str, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class GateConfigSelections:
-    ruff: RuffConfigSelection
-    ty: TyConfigSelection
+type ConfigArguments = Mapping[ConfigKind, tuple[str, ...]]
 
 
 @dataclass(frozen=True, slots=True)

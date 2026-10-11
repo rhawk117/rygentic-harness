@@ -5,8 +5,9 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from python_harness.gate.domain import (
+    ConfigArguments,
+    ConfigKind,
     GateCommand,
-    GateConfigSelections,
     GateInputs,
     GateOptions,
     GatePlan,
@@ -15,7 +16,6 @@ from python_harness.gate.domain import (
     RuffConfigSelection,
     RuffConfigSource,
     ToolInvocation,
-    TyConfigSelection,
 )
 
 
@@ -46,13 +46,11 @@ def select_ruff_config(
     return RuffConfigSelection(RuffConfigSource.FALLBACK, arguments)
 
 
-def select_ty_config(inputs: GateInputs, options: GateOptions) -> TyConfigSelection:
-    if inputs.has_ty_config:
-        return TyConfigSelection(())
+def select_ty_config(inputs: GateInputs, options: GateOptions) -> tuple[str, ...]:
     fallback = options.fallback_ty_config
-    if fallback is None:
-        return TyConfigSelection(())
-    return TyConfigSelection(('--config-file', fallback.as_posix()))
+    if inputs.has_ty_config or fallback is None:
+        return ()
+    return ('--config-file', fallback.as_posix())
 
 
 def project_launcher(inputs: GateInputs) -> Launcher:
@@ -74,18 +72,13 @@ def choose_launcher(invocation: ToolInvocation, inputs: GateInputs) -> Launcher:
 def build_command(
     tool: GateTool,
     inputs: GateInputs,
-    configs: GateConfigSelections,
+    configs: ConfigArguments,
     *,
     options: GateOptions,
 ) -> GateCommand:
     invocation = options.tools[tool]
     launcher = choose_launcher(invocation, inputs)
-    if invocation.reads_ruff_config:
-        config = configs.ruff.arguments
-    elif invocation.reads_ty_config:
-        config = configs.ty.arguments
-    else:
-        config = ()
+    config = () if invocation.config is None else configs[invocation.config]
     arguments = (*launcher.arguments, *invocation.arguments, *config)
     return GateCommand(tool, launcher.program, arguments)
 
@@ -102,8 +95,10 @@ def plan_gate(
 ) -> GatePlan:
     chosen = GateOptions() if options is None else options
     ruff_config = select_ruff_config(inputs, workspace_root, chosen)
-    ty_config = select_ty_config(inputs, chosen)
-    configs = GateConfigSelections(ruff_config, ty_config)
+    configs = {
+        ConfigKind.RUFF: ruff_config.arguments,
+        ConfigKind.TY: select_ty_config(inputs, chosen),
+    }
     planned = (tool for tool in chosen.tools if is_tool_planned(tool, inputs, chosen))
     commands = tuple(build_command(tool, inputs, configs, options=chosen) for tool in planned)
     return GatePlan(commands, ruff_config.source)
