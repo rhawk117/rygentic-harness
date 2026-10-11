@@ -90,16 +90,14 @@ def list_paths_created_since(workspace: Workspace, before: UntrackedBaseline) ->
 
 
 def kill_process_group(process: Process) -> None:
-    if not (hasattr(os, 'killpg') and hasattr(signal, 'SIGKILL')):
-        process.kill()
-        return
     with suppress(ProcessLookupError):
-        os.killpg(process.pid, signal.SIGKILL)
+        if hasattr(os, 'killpg') and hasattr(signal, 'SIGKILL'):
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
 
 
 async def stop_process_group(process: Process) -> None:
-    if process.returncode is not None:
-        return
     kill_process_group(process)
     await process.wait()
 

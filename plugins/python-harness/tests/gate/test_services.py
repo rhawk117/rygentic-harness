@@ -223,6 +223,44 @@ class TestTimeout:
                 os.kill(grandchild, signal.SIGTERM)
 
 
+class TestNormalExit:
+    DEADLINE_SECONDS = 15.0
+    START_DETACHED_GRANDCHILD = (
+        'import pathlib, subprocess, sys, time\n'
+        'subprocess.Popen(\n'
+        '    [sys.executable, "-c", sys.argv[1], sys.argv[2]],\n'
+        '    stdout=subprocess.DEVNULL,\n'
+        '    stderr=subprocess.DEVNULL,\n'
+        ')\n'
+        'pid_file = pathlib.Path(sys.argv[2])\n'
+        'while not (pid_file.exists() and pid_file.read_text()):\n'
+        '    time.sleep(0.05)\n'
+    )
+
+    def test_a_grandchild_started_by_a_passing_check_is_gone_after_the_gate_returns(
+        self, workspace: Workspace
+    ) -> None:
+        pid_file = workspace.root.joinpath('grandchild.pid')
+        plan = plan_of(
+            python_command(
+                GateTool.PYTEST,
+                self.START_DETACHED_GRANDCHILD,
+                RECORD_PID_AND_SLEEP,
+                str(pid_file),
+            )
+        )
+
+        report = run_gate(workspace, plan, environment=NO_ENVIRONMENT)
+
+        grandchild = int(pid_file.read_text(encoding='utf-8'))
+        try:
+            assert report.results[0].outcome == Exited(0)
+            assert is_gone_within(grandchild, self.DEADLINE_SECONDS)
+        finally:
+            with suppress(ProcessLookupError):
+                os.kill(grandchild, signal.SIGTERM)
+
+
 class TestConcurrency:
     OPTIONS = GateOptions(timeout_seconds=15.0)
     RENDEZVOUS = (
