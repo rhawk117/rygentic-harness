@@ -6,7 +6,7 @@ in test_task_revisions.py.
 """
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 
@@ -15,6 +15,7 @@ from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
+from mightymodels_plugin.core.workspace import NotARepositoryError
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Phase, Receipt
 from mightymodels_plugin.tools.contract.schema import Outcome as ReceiptOutcome
 from mightymodels_plugin.tools.contract.service import ContractService
@@ -210,6 +211,17 @@ def test_a_task_with_passing_receipts_and_owned_changes_verifies(repo: Repo) -> 
     outcome = repo.run('verify', 'T1', commit=head)
     assert (outcome.code, outcome.out.strip()) == (ADVANCED, 'T1 verified')
     assert [after for _, after in repo.transitions()] == ['in-progress', 'verified']
+
+
+def test_verify_raises_the_refusal_when_git_cannot_answer(repo: Repo) -> None:
+    repo.approve('T1.AC-1')
+    start(repo)
+    refusal = NotARepositoryError(repo.root, 'no .git directory')
+    refused = replace(repo.tasks, git=InMemoryGit(refused=refusal))
+    with pytest.raises(NotARepositoryError) as raised:
+        refused.verify(TICKET, 'T1', TaskVerification(commit=repo.head()))
+    assert raised.value is refusal
+    assert str(raised.value) == f'{repo.root} is not inside a git repository: no .git directory'
 
 
 def test_changes_outside_the_owned_set_block_the_task(repo: Repo) -> None:

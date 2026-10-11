@@ -4,24 +4,26 @@ The tests that need a real checkout are in test_ticket_in_a_repository.py.
 """
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.task.store import Transition
 from mightymodels_plugin.tools.ticket.schema import (
+    BranchChoice,
     TicketAnswers,
     TicketContext,
     TicketView,
     Tracker,
     WorkUnit,
 )
-from mightymodels_plugin.tools.ticket.service import TicketService
+from mightymodels_plugin.tools.ticket.service import DetachedHeadError, TicketService
 from mightymodels_plugin.tools.ticket.tests.in_memory import InMemoryTicketStore
 from mightymodels_plugin.tools.ticket.ticket_file import parse
 from pydantic import ValidationError
@@ -160,6 +162,15 @@ def test_write_refuses_to_overwrite_a_tweaked_ticket(workspace: Workspace) -> No
     outcome = workspace.run('write', ANSWERS)
     assert outcome.code == REJECTED
     assert 'edit it by hand' in outcome.err
+
+
+def test_the_current_branch_cannot_be_named_on_a_detached_head(workspace: Workspace) -> None:
+    detached = replace(workspace.tickets, git=InMemoryGit(branch=None))
+    with pytest.raises(DetachedHeadError) as raised:
+        detached.branch_named(BranchChoice.CURRENT, '')
+    assert str(raised.value) == (
+        'HEAD is detached, so there is no current branch; ask for a branch name'
+    )
 
 
 def test_write_rejects_incomplete_answers(workspace: Workspace) -> None:
