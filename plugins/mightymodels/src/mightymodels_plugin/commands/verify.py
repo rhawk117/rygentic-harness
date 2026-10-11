@@ -43,7 +43,7 @@ def verify_run(arguments: argparse.Namespace) -> int:
             contracts = ContractService(
                 workspace=state.workspace,
                 store=contract_store(state.database),
-                git=state.workspace.git,
+                git=state.git,
                 processes=process_runner(),
             )
             result = contracts.run_approved(slug, request)

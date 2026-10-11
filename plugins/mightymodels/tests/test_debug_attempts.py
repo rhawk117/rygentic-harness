@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.edge import exclude_state_from_git
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import workspace_at
+from mightymodels_plugin.core.workspace import git_at, workspace_at
 from mightymodels_plugin.redaction import RedactedTextTooLongError
 from mightymodels_plugin.tools.failed_fix.schema import (
     FailedFixAction,
@@ -92,14 +93,13 @@ def another_repository(
     root = tmp_path.joinpath('another')
     root.mkdir()
     git(root, 'init', '--quiet')
+    queries = git_at(root)
+    exclude_state_from_git(queries)
     workspace = workspace_at(root)
-    workspace.exclude_state_from_git()
     with workspace_database(workspace, data_directory) as database:
         yield AnotherRepository(
-            tasks=TaskService(workspace=workspace, store=task_store(database), git=workspace.git),
-            tickets=TicketService(
-                workspace=workspace, store=ticket_store(database), git=workspace.git
-            ),
+            tasks=TaskService(workspace=workspace, store=task_store(database), git=queries),
+            tickets=TicketService(workspace=workspace, store=ticket_store(database), git=queries),
         )
 
 

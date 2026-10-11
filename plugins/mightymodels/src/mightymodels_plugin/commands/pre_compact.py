@@ -26,11 +26,11 @@ from mightymodels_plugin.tools.ticket.repository import ticket_store
 
 
 def write_snapshot(state: OpenState) -> None:
-    slug = ticket_on_branch(ticket_store(state.database), state.workspace.git.current_branch())
+    slug = ticket_on_branch(ticket_store(state.database), state.git.current_branch())
     if slug is None:
         return
     snapshots = SnapshotService(
-        workspace=state.workspace, store=snapshot_store(state.database), git=state.workspace.git
+        workspace=state.workspace, store=snapshot_store(state.database), git=state.git
     )
     view = snapshots.take(slug, DEFAULT_LIMIT)
     files = state.workspace.handoffs.snapshot(slug)

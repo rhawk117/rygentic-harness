@@ -17,11 +17,14 @@ from sqlalchemy.orm import Session, SessionTransaction
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE, DataDirectory
 from mightymodels_plugin.core.database import DATABASE_NAME, Database, open_database
 from mightymodels_plugin.core.declarative import Base
+from mightymodels_plugin.core.edge import exclude_state_from_git
 from mightymodels_plugin.core.repository_key import RepositoryKey, local_key
 from mightymodels_plugin.core.workspace import (
     PROJECT_DIR_VARIABLE,
     Checkout,
+    Git,
     Workspace,
+    git_at,
     workspace_at,
 )
 from mightymodels_plugin.server import build_server
@@ -178,7 +181,7 @@ class StateServer:
 
 
 def repository_key_of(workspace: Workspace) -> RepositoryKey:
-    checkout = workspace.git.checkout()
+    checkout = git_at(workspace.root).checkout()
     if not isinstance(checkout, Checkout):
         return local_key(workspace.root)
     return checkout.repository_key()
@@ -197,10 +200,14 @@ def data_directory(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def repository_workspace(repository: Path) -> Workspace:
-    workspace = workspace_at(repository)
-    workspace.exclude_state_from_git()
-    return workspace
+def repository_git(repository: Path) -> Git:
+    return git_at(repository)
+
+
+@pytest.fixture
+def repository_workspace(repository: Path, repository_git: Git) -> Workspace:
+    exclude_state_from_git(repository_git)
+    return workspace_at(repository)
 
 
 @pytest.fixture

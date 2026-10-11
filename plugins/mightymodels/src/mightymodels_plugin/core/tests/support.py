@@ -1,12 +1,12 @@
 import json
 import sys
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
-from mightymodels_plugin.core.workspace import Workspace, git_at, workspace_of
+from mightymodels_plugin.core.workspace import Workspace, workspace_at
 
 RECORDER_SOURCE = """#!{python}
 import json
@@ -61,4 +61,4 @@ def in_memory_git() -> InMemoryGit:
 def gitless_workspace(tmp_path: Path) -> Workspace:
     directory = tmp_path.joinpath('gitless')
     directory.mkdir()
-    return workspace_of(replace(git_at(directory), executable=None))
+    return workspace_at(directory)

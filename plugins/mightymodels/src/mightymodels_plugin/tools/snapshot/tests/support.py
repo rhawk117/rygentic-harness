@@ -2,7 +2,7 @@ import pytest
 
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import Git, Workspace
 from mightymodels_plugin.tools.investigation.tests.in_memory import InMemoryInvestigationStore
 from mightymodels_plugin.tools.review.tests.in_memory import InMemoryReviewStore
 from mightymodels_plugin.tools.snapshot.repository import snapshot_store
@@ -13,12 +13,12 @@ from mightymodels_plugin.tools.task.tests.in_memory import InMemoryTaskStore
 
 @pytest.fixture
 def snapshot_service(
-    repository_workspace: Workspace, repository_database: Database
+    repository_workspace: Workspace, repository_database: Database, repository_git: Git
 ) -> SnapshotService:
     return SnapshotService(
         workspace=repository_workspace,
         store=snapshot_store(repository_database),
-        git=repository_workspace.git,
+        git=repository_git,
     )
 
 

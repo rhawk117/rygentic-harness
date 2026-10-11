@@ -63,7 +63,7 @@ def unfinished_lines(state: OpenState, slug: Slug, worker: Implementer) -> list[
 
 
 def unfinished_reason(state: OpenState, worker: Implementer) -> str | None:
-    slug = ticket_on_branch(ticket_store(state.database), state.workspace.git.current_branch())
+    slug = ticket_on_branch(ticket_store(state.database), state.git.current_branch())
     if slug is None:
         return None
     lines = unfinished_lines(state, slug, worker)

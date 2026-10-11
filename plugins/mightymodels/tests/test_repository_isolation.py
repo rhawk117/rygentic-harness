@@ -351,16 +351,16 @@ class Answers:
 def clone_of(state: OpenState) -> Clone:
     workspace, database = state.workspace, state.database
     return Clone(
-        tickets=TicketService(workspace=workspace, store=ticket_store(database), git=workspace.git),
+        tickets=TicketService(workspace=workspace, store=ticket_store(database), git=state.git),
         contracts=ContractService(
             workspace=workspace,
             store=contract_store(database),
-            git=workspace.git,
+            git=state.git,
             processes=process_runner(),
         ),
-        reviews=ReviewService(workspace=workspace, store=review_store(database), git=workspace.git),
-        closings=CloseService(workspace=workspace, store=close_store(database), git=workspace.git),
-        investigations=InvestigationService(store=investigation_store(database), git=workspace.git),
+        reviews=ReviewService(workspace=workspace, store=review_store(database), git=state.git),
+        closings=CloseService(workspace=workspace, store=close_store(database), git=state.git),
+        investigations=InvestigationService(store=investigation_store(database), git=state.git),
         crashouts=CrashoutService(store=crashout_store(database)),
         similarity=SimilarityService(
             store=similarity_store(database),

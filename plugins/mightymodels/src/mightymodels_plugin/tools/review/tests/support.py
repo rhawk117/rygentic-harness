@@ -2,7 +2,7 @@ import pytest
 
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import Git, Workspace
 from mightymodels_plugin.tools.review.repository import review_store
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.review.tests.in_memory import InMemoryReviewStore
@@ -10,11 +10,13 @@ from mightymodels_plugin.tools.similarity.tests.in_memory import InMemorySimilar
 
 
 @pytest.fixture
-def review_service(repository_workspace: Workspace, repository_database: Database) -> ReviewService:
+def review_service(
+    repository_workspace: Workspace, repository_database: Database, repository_git: Git
+) -> ReviewService:
     return ReviewService(
         workspace=repository_workspace,
         store=review_store(repository_database),
-        git=repository_workspace.git,
+        git=repository_git,
     )
 
 

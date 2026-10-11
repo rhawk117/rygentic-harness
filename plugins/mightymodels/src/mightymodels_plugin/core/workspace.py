@@ -25,7 +25,7 @@ that name is no symlink.
 
 Git runs in `Git._answer` and nowhere else, through the process runner and within the timeout
 that `git_at` gives it. `git_at` looks the executable up on PATH once, and every call of that
-`Git` and of the workspace built from it runs what was found. A missing git binary is an answer
+`Git` runs what was found. A missing git binary is an answer
 without an exit code, never an exception, and so is a git that could not be launched, did not
 finish in time or printed what is not text; HEAD is absent there as it is outside a repository or
 before the first commit. `Git.refusal` and `Git.checkout` tell the two apart: `GitMissingError`
@@ -330,7 +330,6 @@ class HandoffFiles:
 class Workspace:
     root: Path
     _state_directory: Path
-    git: Git
     handoffs: HandoffFiles
 
     def contained(self, *parts: str) -> Path:
@@ -360,12 +359,6 @@ class Workspace:
             file=None if is_symlink else self.contained(*parts),
         )
 
-    def exclude_state_from_git(self) -> None:
-        common_directory = self.git.common_directory()
-        if common_directory is None:
-            return
-        exclude_state(common_directory)
-
 
 def git_at(root: Path) -> Git:
     return Git(
@@ -376,15 +369,14 @@ def git_at(root: Path) -> Git:
     )
 
 
-def workspace_of(git: Git) -> Workspace:
-    state_directory = git.root.joinpath(STATE_DIRECTORY).resolve()
+def workspace_of(root: Path) -> Workspace:
+    state_directory = root.joinpath(STATE_DIRECTORY).resolve()
     return Workspace(
-        root=git.root,
+        root=root,
         _state_directory=state_directory,
-        git=git,
         handoffs=HandoffFiles(_state_directory=state_directory),
     )
 
 
 def workspace_at(root: Path) -> Workspace:
-    return workspace_of(git_at(root))
+    return workspace_of(root.resolve())

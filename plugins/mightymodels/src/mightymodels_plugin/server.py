@@ -120,33 +120,23 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
             except StateError as error:
                 yield StartRefusal(error=error)
                 return
-            workspace, database = state.workspace, state.database
+            workspace, git, database = state.workspace, state.git, state.database
             spool = state.data_directory.joinpath(SPOOL_DIRECTORY)
             yield AppState(
-                tickets=TicketService(
-                    workspace=workspace, store=ticket_store(database), git=workspace.git
-                ),
-                tasks=TaskService(
-                    workspace=workspace, store=task_store(database), git=workspace.git
-                ),
+                tickets=TicketService(workspace=workspace, store=ticket_store(database), git=git),
+                tasks=TaskService(workspace=workspace, store=task_store(database), git=git),
                 contracts=ContractService(
                     workspace=workspace,
                     store=contract_store(database),
-                    git=workspace.git,
+                    git=git,
                     processes=process_runner(),
                 ),
-                reviews=ReviewService(
-                    workspace=workspace, store=review_store(database), git=workspace.git
-                ),
+                reviews=ReviewService(workspace=workspace, store=review_store(database), git=git),
                 snapshots=SnapshotService(
-                    workspace=workspace, store=snapshot_store(database), git=workspace.git
+                    workspace=workspace, store=snapshot_store(database), git=git
                 ),
-                closings=CloseService(
-                    workspace=workspace, store=close_store(database), git=workspace.git
-                ),
-                investigations=InvestigationService(
-                    store=investigation_store(database), git=workspace.git
-                ),
+                closings=CloseService(workspace=workspace, store=close_store(database), git=git),
+                investigations=InvestigationService(store=investigation_store(database), git=git),
                 crashouts=CrashoutService(store=crashout_store(database)),
                 similarity=SimilarityService(
                     store=similarity_store(database),

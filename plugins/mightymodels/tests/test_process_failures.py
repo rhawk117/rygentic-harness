@@ -291,13 +291,11 @@ class TestExecuteFailures:
         )
 
     def test_a_command_that_outlives_its_timeout_keeps_what_it_printed_in_its_receipt(
-        self, failing: FailingPrograms, repository_workspace: Workspace
+        self, failing: FailingPrograms, repository_workspace: Workspace, repository_git: Git
     ) -> None:
         command = failing.command(FailureKind.TIMED_OUT, OUTPUT_TIMEOUT)
 
-        site = RunSite(
-            root=repository_workspace.root, git=repository_workspace.git, processes=failing.runner
-        )
+        site = RunSite(root=repository_workspace.root, git=repository_git, processes=failing.runner)
         receipt = receipt_for(command, site, Phase.TASK)
 
         assert (receipt.outcome, receipt.exit, receipt.stdout_tail, receipt.stderr_tail) == (

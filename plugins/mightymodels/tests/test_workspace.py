@@ -17,10 +17,12 @@ from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import (
     PROJECT_DIR_VARIABLE,
+    Git,
     OutsideStateDirectoryError,
     RecordFiles,
     UnsafeRevisionError,
     Workspace,
+    git_at,
     revision_error,
     workspace_at,
 )
@@ -151,7 +153,7 @@ class Project:
             status = ContractService(
                 workspace=workspace,
                 store=contract_store(database),
-                git=workspace.git,
+                git=git_at(self.server.root),
                 processes=process_runner(),
             ).status(TICKET)
         return [command.state for command in status.commands]
@@ -228,10 +230,10 @@ class TestSafeRevision:
         assert refusal.revision == 'HEAD\n'
 
     def test_safe_revision_keeps_an_option_out_of_the_unpushed_commit_count(
-        self, repository_workspace: Workspace
+        self, repository_git: Git
     ) -> None:
         with pytest.raises(UnsafeRevisionError) as refusal:
-            repository_workspace.git.commits_on_no_remote('--all')
+            repository_git.commits_on_no_remote('--all')
 
         assert refusal.value.revision == '--all'
 

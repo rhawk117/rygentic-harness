@@ -24,7 +24,7 @@ from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.routing import Depth, Scope
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import Workspace, git_at
 from mightymodels_plugin.tools.contract.repository import COMMANDS, contract_store
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase
 from mightymodels_plugin.tools.contract.service import ContractService
@@ -373,11 +373,13 @@ def start_investigations(database: Database, count: int) -> list[str]:
 
 
 def review_service(workspace: Workspace, database: Database) -> ReviewService:
-    return ReviewService(workspace=workspace, store=review_store(database), git=workspace.git)
+    return ReviewService(
+        workspace=workspace, store=review_store(database), git=git_at(workspace.root)
+    )
 
 
 def investigation_service(workspace: Workspace, database: Database) -> InvestigationService:
-    return InvestigationService(store=investigation_store(database), git=workspace.git)
+    return InvestigationService(store=investigation_store(database), git=git_at(workspace.root))
 
 
 def crashout_stats(_workspace: Workspace, database: Database) -> str:
@@ -897,13 +899,15 @@ def approve_commands(workspace: Workspace, database: Database, numbers: range) -
     ContractService(
         workspace=workspace,
         store=contract_store(database),
-        git=workspace.git,
+        git=git_at(workspace.root),
         processes=process_runner(),
     ).approve(TICKET, approved)
 
 
 def start_tasks(workspace: Workspace, database: Database, numbers: range) -> None:
-    service = TaskService(workspace=workspace, store=task_store(database), git=workspace.git)
+    service = TaskService(
+        workspace=workspace, store=task_store(database), git=git_at(workspace.root)
+    )
     change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
     for number in numbers:
         service.start(TICKET, f'T{number}', change)
@@ -963,7 +967,7 @@ def contract_status(workspace: Workspace, database: Database) -> str:
         ContractService(
             workspace=workspace,
             store=contract_store(database),
-            git=workspace.git,
+            git=git_at(workspace.root),
             processes=process_runner(),
         )
         .status(TICKET)
@@ -973,7 +977,7 @@ def contract_status(workspace: Workspace, database: Database) -> str:
 
 def task_listing(workspace: Workspace, database: Database) -> str:
     return (
-        TaskService(workspace=workspace, store=task_store(database), git=workspace.git)
+        TaskService(workspace=workspace, store=task_store(database), git=git_at(workspace.root))
         .show(TICKET)
         .text
     )

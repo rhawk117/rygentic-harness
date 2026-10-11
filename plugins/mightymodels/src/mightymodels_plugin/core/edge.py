@@ -2,9 +2,10 @@
 
 The server's lifespan and `verify run` start in whatever directory the session did. `open_state`
 takes that directory, the plugin data directory the edge read from its environment and the row
-types the database holds a table for, and hands out the workspace at the git toplevel with the
-database opened under that repository's key, and the data directory itself for the spool beside
-the database. So the two edges of one session open the same file and see the same rows.
+types the database holds a table for, and hands out the workspace at the git toplevel, the git
+that answers there, the database opened under that repository's key, and the data directory itself
+for the spool beside the database. So the two edges of one session open the same file and see the
+same rows.
 
 Every refusal comes before anything is created: no data directory, no git executable, no work
 tree, and a database file of another schema version. Each is a `StateError` naming what is
@@ -20,14 +21,29 @@ from pathlib import Path
 
 from mightymodels_plugin.core.data_directory import DataDirectory, DataDirectoryMissingError
 from mightymodels_plugin.core.database import DATABASE_NAME, Database, RowTypes, open_database
-from mightymodels_plugin.core.workspace import Checkout, Workspace, git_at, workspace_of
+from mightymodels_plugin.core.workspace import (
+    Checkout,
+    Git,
+    Workspace,
+    exclude_state,
+    git_at,
+    workspace_of,
+)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class OpenState:
     workspace: Workspace
+    git: Git
     database: Database
     data_directory: Path
+
+
+def exclude_state_from_git(git: Git) -> None:
+    common_directory = git.common_directory()
+    if common_directory is None:
+        return
+    exclude_state(common_directory)
 
 
 @contextmanager
@@ -36,13 +52,18 @@ def open_state(
 ) -> Generator[OpenState]:
     if isinstance(data_directory, DataDirectoryMissingError):
         raise data_directory
-    git = git_at(start)
-    checkout = git.checkout()
+    started = git_at(start)
+    checkout = started.checkout()
     if not isinstance(checkout, Checkout):
         raise checkout
     repository_key = checkout.repository_key()
-    workspace = workspace_of(replace(git, root=checkout.toplevel))
+    git = replace(started, root=checkout.toplevel)
     database_file = data_directory.joinpath(DATABASE_NAME)
     with open_database(database_file, repository_key, row_types) as database:
-        workspace.exclude_state_from_git()
-        yield OpenState(workspace=workspace, database=database, data_directory=data_directory)
+        exclude_state_from_git(git)
+        yield OpenState(
+            workspace=workspace_of(checkout.toplevel),
+            git=git,
+            database=database,
+            data_directory=data_directory,
+        )

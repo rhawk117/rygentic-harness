@@ -2,7 +2,7 @@ import pytest
 
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import Git, Workspace
 from mightymodels_plugin.tools.close.repository import close_store
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tests.in_memory import InMemoryCloseStore
@@ -10,11 +10,13 @@ from mightymodels_plugin.tools.snapshot.tests.in_memory import InMemorySnapshotS
 
 
 @pytest.fixture
-def close_service(repository_workspace: Workspace, repository_database: Database) -> CloseService:
+def close_service(
+    repository_workspace: Workspace, repository_database: Database, repository_git: Git
+) -> CloseService:
     return CloseService(
         workspace=repository_workspace,
         store=close_store(repository_database),
-        git=repository_workspace.git,
+        git=repository_git,
     )
 
 

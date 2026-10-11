@@ -12,7 +12,7 @@ from mightymodels_plugin.core.workspace import (
     STATE_DIRECTORY,
     NotARepositoryError,
     find_root,
-    workspace_at,
+    git_at,
 )
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.tests.support import StateServer
@@ -166,7 +166,7 @@ class TestOutsideARepository:
         return directory
 
     def test_refuses_a_directory_outside_a_repository(self, outside: Path) -> None:
-        refusal = workspace_at(outside).git.refusal()
+        refusal = git_at(outside).refusal()
 
         assert isinstance(refusal, NotARepositoryError)
         assert refusal.root == outside
