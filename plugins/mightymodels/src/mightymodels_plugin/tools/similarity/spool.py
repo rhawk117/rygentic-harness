@@ -7,10 +7,12 @@ object with exactly these keys:
     {"repository_key": "owner/name", "scout": "code-scout", "target": "...", "report": "..."}
 
 `scout` is `code-scout` or `web-scout`, `target` is at most `NAME_LIMIT` characters and `report`
-is non-blank text of at most `REPORT_LIMIT`. `SPOOL_FILE_BYTES` follows from those limits: a JSON
-writer that escapes non-ASCII text spells a character in at most `ESCAPED_CHARACTER_BYTES` bytes (a
-four-byte character as a surrogate pair of two six-byte escapes), so a file holds `REPORT_LIMIT`
-characters of report and the longest key and target, with `ENVELOPE_BYTES` for the rest. A writer
+is non-blank text of at most `REPORT_LIMIT`. `SPOOL_FILE_BYTES` follows from those limits and
+allows for the longest spelling a JSON writer gives a character, the escaped one: at most
+`ESCAPED_CHARACTER_BYTES` bytes (a four-byte character as a surrogate pair of two six-byte
+escapes), so a file holds `REPORT_LIMIT` characters of report and the longest key and target,
+with `ENVELOPE_BYTES` for the rest. The plugin's own writer, `encode_compact`, writes a character
+outside ASCII as itself in UTF-8, which never takes more bytes than the escape. A writer
 creates the file under a name that does not end in `.json` and renames it to one that does, so the
 server never reads half a report.
 
