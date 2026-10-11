@@ -40,6 +40,7 @@ run_linter() {
   run 'Ruff Format Check' uv run ruff format "${RUFF_CONFIG[@]}" --check .
   run 'Ruff Check' uv run ruff check "${RUFF_CONFIG[@]}" --no-fix .
   run 'Markdown Check' uv run mdformat --check "${MARKDOWN_GLOBS[@]}"
+  run 'Python Line Cap' scripts/check-python-line-cap.sh
 
   run 'ty (3.14)' uv run ty check --config-file .ty.toml
   run 'ty (3.12 skills)' uv run ty check --config-file .ty.toml \
