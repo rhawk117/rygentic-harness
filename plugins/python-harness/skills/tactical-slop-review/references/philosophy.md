@@ -1,10 +1,10 @@
-# Ryan's design philosophy: what the guide does not say
+# expert's design philosophy: what the guide does not say
 
-Read this with `review-guide.md` before judging anything. The guide is the review criteria; this file adds the principles Ryan applies on top of it and the decisions that override parts of it. When the two disagree, this file wins, because every override below is a decision Ryan made after the guide was written.
+Read this with `review-guide.md` before judging anything. The guide is the review criteria; this file adds the principles expert applies on top of it and the decisions that override parts of it. When the two disagree, this file wins, because every override below is a decision expert made after the guide was written.
 
 ## Overrides of the guide
 
-| Topic | Guide says | Ryan's decision |
+| Topic | Guide says | expert's decision |
 | --- | --- | --- |
 | Comments | not covered | No inline comments at all. A comment that explains behavior means the code failed to carry the meaning and must be restructured until names and shape do. Lint suppressions are the one exception and must carry a reason after the code. |
 | Docstrings | §6 asks for a `Raises` section | Only a module docstring. Function and class docstrings are acceptable only where a framework consumes them as metadata: FastAPI route handlers (OpenAPI description), MCP tool functions (tool description), CLI framework help text. This applies to libraries too. |
@@ -14,7 +14,7 @@ Read this with `review-guide.md` before judging anything. The guide is the revie
 
 ## The review spine: make the bug unwritable
 
-The strongest finding is one where the structure allows a class of bugs that a different structure would make impossible to express. Ryan's main lever is type cardinality: a type whose state space is wider than the domain admits illegal states, and every illegal state is a bug waiting for a caller. Two booleans whose combination is invalid, an optional field that is required in one mode, a status carried as a string compared against literals: each multiplies the states the code must defend against and the states a test suite must cover. The test space is the cardinality, so an oversized type can never be meaningfully tested.
+The strongest finding is one where the structure allows a class of bugs that a different structure would make impossible to express. expert's main lever is type cardinality: a type whose state space is wider than the domain admits illegal states, and every illegal state is a bug waiting for a caller. Two booleans whose combination is invalid, an optional field that is required in one mode, a status carried as a string compared against literals: each multiplies the states the code must defend against and the states a test suite must cover. The test space is the cardinality, so an oversized type can never be meaningfully tested.
 
 When a module handles errors verbosely (checks, guards, `if x is None` ladders, runtime "must call open() first" errors) that the design could have prevented, the finding is the design, not the missing check. Recommend the shape that removes the state: a union of small types, an enum, a type returned only by the operation that establishes the invariant, a context manager that is the only way to obtain the resource.
 
@@ -28,7 +28,7 @@ The best abstractions are boring and foundational: small, reused, valuable for t
 
 ## Lint limits are tripwires
 
-Ryan's ruff limits (4 arguments, 3 positional, 6 branches, 20 statements, 8 locals, nesting 2, 2 statements in a `try`, 8 public methods) are signals of latent decomposition, not size caps. When one trips, the function usually holds a cohesive subset of its dependencies that wants to be its own small, independently testable unit, or several parameters that belong in an options object. A finding names that subset. Never recommend a `noqa` for these.
+expert's ruff limits (4 arguments, 3 positional, 6 branches, 20 statements, 8 locals, nesting 2, 2 statements in a `try`, 8 public methods) are signals of latent decomposition, not size caps. When one trips, the function usually holds a cohesive subset of its dependencies that wants to be its own small, independently testable unit, or several parameters that belong in an options object. A finding names that subset. Never recommend a `noqa` for these.
 
 ## Exceptions
 
@@ -39,7 +39,7 @@ Ryan's ruff limits (4 arguments, 3 positional, 6 branches, 20 statements, 8 loca
 
 ## Classes, functions and visibility
 
-- Ryan's style is procedurally object-oriented: frozen, public, immutable classes, Protocols and dataclasses define the domain and the seams; behavior flows through functions that take those values and produce new ones; dependencies are prepared at the edge and injected; side effects are pushed outward.
+- expert's style is procedurally object-oriented: frozen, public, immutable classes, Protocols and dataclasses define the domain and the seams; behavior flows through functions that take those values and produce new ones; dependencies are prepared at the edge and injected; side effects are pushed outward.
 - Three kinds of class, built by different instincts: data classes (sparse methods and properties), logic or policy classes (a few constants plus methods enforcing an invariant), orchestration layers (coordinate logic through injected dependencies). Bad OO is coupling in the wrong places, not the presence of classes.
 - Visibility defaults to public. Public plus immutable is the baseline value type because it forces the caller to prepare and inject dependencies. Private needs a specific reason: bypassing it would break an invariant.
 - A free module-level factory beats a classmethod (it hides the concrete type from the consumer); `@staticmethod` bolts behavior onto a class that did not need to own it.
@@ -52,9 +52,9 @@ Decisions belong in the layer that has the information to make them. Configurati
 
 ## Library mode and application mode
 
-The skill infers the mode from `python-harness inspect survey` and the user can override it.
+The skill infers the mode from `survey` and the user can override it.
 
-- Library code is written for strangers who do not share Ryan's opinions: deliberately defensive, readable, with a narrow, sealed public surface (one entry point to import, configuration through builders or options with safe defaults and named presets, entry functions of about two arguments). Breadth of public surface is a finding here.
+- Library code is written for strangers who do not share expert's opinions: deliberately defensive, readable, with a narrow, sealed public surface (one entry point to import, configuration through builders or options with safe defaults and named presets, entry functions of about two arguments). Breadth of public surface is a finding here.
 - Application code is boring and conventional by design, because the reader shares the author's priors. Do not demand a sealed surface or defensive validation inside the application; demand conventional structure and explicit dependencies.
 
 ## The maintenance-cost verdict

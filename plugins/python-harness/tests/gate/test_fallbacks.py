@@ -7,9 +7,7 @@ import pytest
 import tomllib
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 
-SKILL_RUFF_CONFIG = (
-    Path(__file__).parents[2] / 'skills' / 'what-would-ryan-say' / 'assets' / 'ruff.toml'
-)
+SKILL_ASSETS = Path(__file__).parents[2] / 'skills' / 'tactical-slop-review' / 'assets'
 
 
 class TestPackagedFallbackConfigs:
@@ -23,8 +21,11 @@ class TestPackagedFallbackConfigs:
             path.read_text(encoding='utf-8')
         )
 
-    def test_ruff_fallback_matches_the_skill_asset(self) -> None:
-        assert RUFF_CONFIG.read_bytes() == SKILL_RUFF_CONFIG.read_bytes()
+    @pytest.mark.parametrize(
+        ('path', 'name'), [(RUFF_CONFIG, 'ruff.toml'), (TY_CONFIG, 'ty.toml')], ids=['ruff', 'ty']
+    )
+    def test_fallback_matches_the_skill_asset(self, path: Path, name: str) -> None:
+        assert path.read_bytes() == SKILL_ASSETS.joinpath(name).read_bytes()
 
     def test_ty_fallback_includes_python_files_in_any_layout(self) -> None:
         config = tomllib.loads(TY_CONFIG.read_text(encoding='utf-8'))

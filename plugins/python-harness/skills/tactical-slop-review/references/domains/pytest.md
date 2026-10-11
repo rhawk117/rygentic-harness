@@ -1,8 +1,8 @@
 # Domain: pytest and Hypothesis
 
-Load when `inspect survey` lists `pytest` or `hypothesis`. These extend guide §10; the guide's points still apply.
+Load when `survey` lists `pytest` or `hypothesis`. These extend guide §10; the guide's points still apply.
 
-## What bad pytest reads like to Ryan
+## What bad pytest reads like to expert
 
 - **Arrangement in the test body.** Arrangement belongs in fixtures. A test file with no fixtures is testing the current code rather than the behavior, which makes it brittle under refactoring.
 - **Badly scoped fixtures.** A fixture lives in the narrowest owner that uses it (inside the test class when only that class uses it). Visibility and lifetime are separate decisions: a fixture inside a class does not have to be class-scoped.
@@ -13,7 +13,7 @@ Load when `inspect survey` lists `pytest` or `hypothesis`. These extend guide §
 - **Side effects or races** between tests.
 - **Helpers used wrongly.** A repeated act-and-assert becomes a helper method on the class; a helper that only renames `pytest.raises` adds nothing.
 - **Comments in tests.** Excessive comments signal bad test design rather than explaining it.
-- **Mocking private steps.** Tests that patch private helpers or assert on internal calls mirror the implementation and break on every refactor. Ryan finds refactoring frequently breaks tests; this is the usual cause. Prefer fakes at real seams (the fake repository pattern) and assertions on observable outcomes.
+- **Mocking private steps.** Tests that patch private helpers or assert on internal calls mirror the implementation and break on every refactor. expert finds refactoring frequently breaks tests; this is the usual cause. Prefer fakes at real seams (the fake repository pattern) and assertions on observable outcomes.
 - **Too many fixture arguments.** His lint caps a test at 4 arguments, 3 positional; bundle collaborators into a frozen dataclass fixture.
 - **Unit and integration mixed.** Keep the separation strict.
 

@@ -1,6 +1,6 @@
 # Judging facts into findings
 
-You, the primary, hold the rules; pylens and the `python-harness` tools hold none. This file is how you turn their facts into findings Ryan would sign. Read it before the first finding.
+You, the primary, hold the rules; pylens and the `python-harness` tools hold none. This file is how you turn their facts into findings expert would sign. Read it before the first finding.
 
 ## The lenses
 
@@ -34,7 +34,7 @@ Every finding carries one kind and one certainty.
 | --- | --- |
 | correctness defect | Behavior is wrong or can be made wrong by a normal caller today |
 | maintenance problem | Behavior is right, but changing, testing or using the code correctly is costlier than it needs to be |
-| preference deviation | Departs from Ryan's conventions without a concrete cost beyond inconsistency |
+| preference deviation | Departs from expert's conventions without a concrete cost beyond inconsistency |
 
 | Certainty | Meaning |
 | --- | --- |

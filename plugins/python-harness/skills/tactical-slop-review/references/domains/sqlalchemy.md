@@ -1,6 +1,6 @@
 # Domain: SQLAlchemy 2.0
 
-Load when `inspect survey` lists `sqlalchemy`. Ryan corrected these conventions more than once; apply them exactly.
+Load when `survey` lists `sqlalchemy`. expert corrected these conventions more than once; apply them exactly.
 
 - **No `Annotated` column aliases on models.** Every column gets its own inline `mapped_column(...)`, with single-column CHECK constraints, indexes and foreign keys declared on that column, so the class reads top to bottom as the whole table. `__table_args__` holds only multi-column constraints.
 - **No registry `type_annotation_map`.**

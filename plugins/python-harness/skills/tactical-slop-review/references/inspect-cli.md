@@ -1,28 +1,21 @@
-# `python-harness` CLI and MCP tools reference
+# `python-harness` MCP inspection tools reference
 
-Two commands run on the CLI, and the `python-harness` MCP server has eight tools: two documentation tools and six that read the project. The four project tools below are the ones the review calls. Each command and tool returns one compact JSON document. Paths in output are relative to the project root and use `/`, except `survey.root` and the config paths inside the gate's argv, which are absolute.
+The `python-harness` MCP server has eight tools: two documentation tools and six that read the project. The six project tools below are the ones the review calls. Each returns one compact JSON document. Paths in output are relative to the project root and use `/`, except `survey.root` and the config paths inside the gate's argv, which are absolute.
 
-## CLI commands
-
-Each prints its document on stdout. Run it from the reviewed project's root (the directory holding its `pyproject.toml`), or pass `--root DIR`. A failure the CLI understands prints `python-harness: <message>` on stderr and exits 2.
-
-| Command | Exit code | Use |
-| --- | --- | --- |
-| `python-harness inspect survey` | 0 | Mode evidence, domains, ruff config, layout |
-| `python-harness inspect gate --fallback-ruff-config ${CLAUDE_SKILL_DIR}/assets/ruff.toml` | 0 passed, 1 a tool failed | Runs the project's own ruff check, ruff format check, ty and pytest |
-
-## MCP tools
+## Tools
 
 Claude Code names each tool `mcp__plugin_python-harness_python-harness__<tool>`. The document is the tool's text result. The project root is the session's project directory, `CLAUDE_PROJECT_DIR`, and nothing else: there is no root input. Every path input is relative to that root; an absolute path outside it, a `..` path that leaves it, or a symlink that points outside it is a tool error, and a directory input skips entries that resolve outside it. A failure the tool understands is a tool error whose text is the message, not a JSON document.
 
 | Tool | Inputs | Use |
 | --- | --- | --- |
+| `survey` | none | Mode evidence, domains, ruff and ty config, layout |
+| `gate` | none | Runs the project's own ruff check, ruff format check, ty and pytest and returns their report |
 | `plan_review_surface` | `paths` (list), or `diff_base` with optional `diff_head` | Review surface as import-graph clusters, one pylens dispatch each |
 | `collect_python_facts` | `paths` (list, required), `with_function_shapes` (boolean, default false), `detail`, `budget` | Mechanical AST facts per module |
 | `map_python_calls` | `paths` (list, required), `symbol` (optional), `detail`, `budget` | Per-module coupling metrics and reference tallies; `symbol` lists one symbol's call sites |
 | `check_citations` | exactly one of `path` and `text` | Checks every `path.py:line` citation and its quote in a Markdown document |
 
-`collect_python_facts` and `map_python_calls` answer inside a budgeted envelope; the other project tools return their plain document and take no `detail` or `budget`. Every project tool's document carries the workspace diagnostics under `workspace`, in the envelope of the two budgeted tools and at the top level of the others: `{source_roots[], fallback_diagnostics[], unindexed_packages: [{name, directory}]}`. Always pass `detail: full` and `budget: 20000` to the two budgeted tools and read the document under `result`: the default is a summary that leaves facts out. When `degraded` is true, `result` holds a smaller document than the one asked for; halve the `paths` list and call again.
+`collect_python_facts` and `map_python_calls` answer inside a budgeted envelope; the other four project tools return their plain document and take no `detail` or `budget`. Every project tool's document carries the workspace diagnostics under `workspace`, in the envelope of the two budgeted tools and at the top level of the others: `{source_roots[], fallback_diagnostics[], unindexed_packages: [{name, directory}]}`. Always pass `detail: full` and `budget: 20000` to the two budgeted tools and read the document under `result`: the default is a summary that leaves facts out. When `degraded` is true, `result` holds a smaller document than the one asked for; halve the `paths` list and call again.
 
 A missing target path is a tool error, never an empty result. Files that cannot be read or parsed (bad encoding, syntax errors) are listed under `unparsable` instead of stopping the tool. `check_citations` returns its report whether or not the citations hold; read `passed`.
 
@@ -53,7 +46,7 @@ A missing target path is a tool error, never an empty result. Files that cannot 
  passed}
 ```
 
-Declared tools run through `uv run --isolated` (plus `--frozen` when `uv.lock` exists), so the project's pinned versions apply without writing a lockfile, a `.venv` or caches. Undeclared ruff runs through `uvx ruff@<version>`, where the version is the plugin option `ruff_version` (default `0.16.9`, read by `inspect gate` from `PYTHON_HARNESS_RUFF_VERSION`); a project that declares ruff runs its own. Undeclared ty and pytest join the project environment with `--with`. pytest runs only when the survey found the pytest domain. `ruff check` runs with `--no-fix`, so a project config that sets `fix = true` does not change any file, and with `--statistics`, so its tail is a count per rule. Some build backends still write into the tree (setuptools writes `*.egg-info`): `created_paths.paths` lists every untracked or ignored path that appeared during the run; outside a git repository it is `{kind: "not_tracked"}`. Nothing is deleted. Options: `--skip TOOL` (repeatable), `--timeout SECONDS` (default 600). A `--fallback-ruff-config` path that does not exist is an error (exit 2); a relative one is resolved against the root. The fallback config's `src` is set to the roots the survey found, so first-party imports resolve for the reviewed project. `inspect gate` passes no ty fallback, so its `ty_config_source` is `repository` or `defaults`.
+Declared tools run through `uv run --isolated` (plus `--frozen` when `uv.lock` exists), so the project's pinned versions apply without writing a lockfile, a `.venv` or caches. Undeclared ruff runs through `uvx ruff@<version>`, where the version is the plugin option `ruff_version` (default `0.16.9`, read from `PYTHON_HARNESS_RUFF_VERSION`); a project that declares ruff runs its own. Undeclared ty and pytest join the project environment with `--with`. pytest runs only when the survey found the pytest domain. `ruff check` runs with `--no-fix`, so a project config that sets `fix = true` does not change any file, and with `--statistics`, so its tail is a count per rule. Some build backends still write into the tree (setuptools writes `*.egg-info`): `created_paths.paths` lists every untracked or ignored path that appeared during the run; outside a git repository it is `{kind: "not_tracked"}`. Nothing is deleted. The timeout is 600 seconds. The server supplies its bundled ruff and ty configs (byte-identical to `assets/ruff.toml` and `assets/ty.toml`) only when the project has none of its own; a project config always wins. The ruff fallback's `src` is set to the roots the survey found, so first-party imports resolve for the reviewed project. `ruff_config_source` and `ty_config_source` say which config each tool used.
 
 ## plan_review_surface
 

@@ -1,6 +1,6 @@
 # Domain: CLIs, logging and entry points
 
-Load when `inspect survey` lists `cli`, or the surface contains `__main__.py`, a `main()` function, or logging setup.
+Load when `survey` lists `cli`, or the surface contains `__main__.py`, a `main()` function, or logging setup.
 
 ## Entry points
 

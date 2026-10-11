@@ -1,6 +1,6 @@
 # Domain: frameworks (FastAPI, MCP, Pydantic, msgspec)
 
-Load when `inspect survey` lists `fastapi`, `mcp`, `pydantic` or `msgspec`.
+Load when `survey` lists `fastapi`, `mcp`, `pydantic` or `msgspec`.
 
 ## Use the framework's own idiom
 
@@ -19,5 +19,5 @@ Load when `inspect survey` lists `fastapi`, `mcp`, `pydantic` or `msgspec`.
 
 ## Structure
 
-- MCP servers follow Ryan's layout: `src/<name>/` with `__main__.py`, `cli.py` (argparse, `--transport stdio|http`, `--host`, `--port`, `--root`), `server.py` (server, context, registrations), `workspace.py` (root-contained paths, external binary dispatch), and `tools/<tool>/{schema.py, use_case.py}` with Pydantic input and output models plus a plain `run(workspace, params)` function registered centrally.
+- MCP servers follow expert's layout: `src/<name>/` with `__main__.py`, `cli.py` (argparse, `--transport stdio|http`, `--host`, `--port`, `--root`), `server.py` (server, context, registrations), `workspace.py` (root-contained paths, external binary dispatch), and `tools/<tool>/{schema.py, use_case.py}` with Pydantic input and output models plus a plain `run(workspace, params)` function registered centrally.
 - FastAPI performance work (msgspec responses, custom route classes, ASGI middleware) is welcome but is a complexity-budget question: it must not come before an airtight design.

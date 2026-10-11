@@ -11,7 +11,7 @@ TOOL_PREFIX = 'mcp__plugin_python-harness_python-harness__'
 TOOL_REFERENCE = re.compile(rf'{TOOL_PREFIX}(?P<tool>\w+)')
 REFERENCING_DIRECTORIES = ('skills', 'agents')
 PYLENS = PLUGIN_ROOT.joinpath('agents', 'pylens.md')
-SKILL = PLUGIN_ROOT.joinpath('skills', 'what-would-ryan-say', 'SKILL.md')
+SKILL = PLUGIN_ROOT.joinpath('skills', 'tactical-slop-review', 'SKILL.md')
 PYLENS_TOOLS = (
     'tools: Read, Grep, Glob,'
     f' {TOOL_PREFIX}collect_python_facts,'
@@ -21,11 +21,12 @@ PYLENS_TOOLS = (
 SKILL_TOOLS = [
     'check_citations',
     'collect_python_facts',
+    'gate',
     'map_python_calls',
     'plan_review_surface',
+    'survey',
 ]
 SKILL_BASH = [
-    'Bash(python-harness *)',
     'Bash(git rev-parse HEAD)',
     'Bash(git symbolic-ref --short refs/remotes/origin/HEAD)',
     'Bash(git fetch origin *)',
@@ -66,7 +67,7 @@ class TestFrontmatter:
 
         assert tools == [PYLENS_TOOLS]
 
-    def test_the_skill_allows_the_four_project_tools_and_keeps_its_bash_entries(self) -> None:
+    def test_the_skill_allows_the_six_project_tools_and_keeps_its_bash_entries(self) -> None:
         entries = [line.removeprefix('  - ') for line in frontmatter_lines(SKILL)]
         allowed = sorted(
             entry.removeprefix(TOOL_PREFIX) for entry in entries if entry.startswith(TOOL_PREFIX)
