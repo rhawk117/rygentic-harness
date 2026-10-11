@@ -1,5 +1,6 @@
 """Planned verification commands, how they ran, and what the run left behind."""
 
+import re
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -8,7 +9,12 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Literal
 
+from python_harness.gate.errors import InvalidRuffVersionError
 from python_harness.survey.domain import Domain
+
+RUFF_VERSION_OPTION = 'ruff_version'
+RUFF_VERSION_VARIABLE = 'PYTHON_HARNESS_RUFF_VERSION'
+RUFF_VERSION_PATTERN = re.compile(r'[0-9]+\.[0-9]+\.[0-9]+')
 
 
 class GateTool(StrEnum):
@@ -30,29 +36,44 @@ class ConfigSource(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class RuffVersion:
+    text: str
+
+    def __post_init__(self) -> None:
+        if RUFF_VERSION_PATTERN.fullmatch(self.text) is None:
+            raise InvalidRuffVersionError(RUFF_VERSION_OPTION, RUFF_VERSION_VARIABLE, self.text)
+
+
+DEFAULT_RUFF_VERSION = RuffVersion('0.16.9')
+
+
+@dataclass(frozen=True, slots=True)
 class ToolInvocation:
     distribution: str
     arguments: tuple[str, ...]
     config: ConfigKind | None = None
     runs_in_project_environment: bool = False
     required_domain: Domain | None = None
+    pinned_version: RuffVersion | None = None
 
 
 type ToolInvocations = Mapping[GateTool, ToolInvocation]
 
 
-def default_tool_invocations() -> ToolInvocations:
+def default_tool_invocations(ruff_version: RuffVersion = DEFAULT_RUFF_VERSION) -> ToolInvocations:
     return MappingProxyType(
         {
             GateTool.RUFF_CHECK: ToolInvocation(
                 'ruff',
                 ('ruff', 'check', '--statistics', '--no-cache'),
                 config=ConfigKind.RUFF,
+                pinned_version=ruff_version,
             ),
             GateTool.RUFF_FORMAT: ToolInvocation(
                 'ruff',
                 ('ruff', 'format', '--check', '--no-cache'),
                 config=ConfigKind.RUFF,
+                pinned_version=ruff_version,
             ),
             GateTool.TY: ToolInvocation(
                 'ty',
@@ -123,6 +144,7 @@ type ConfigArguments = Mapping[ConfigKind, tuple[str, ...]]
 class Launcher:
     program: str
     arguments: tuple[str, ...] = ()
+    pins_version: bool = False
 
 
 @dataclass(frozen=True, slots=True)

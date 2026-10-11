@@ -1,17 +1,39 @@
 """Pure helpers: gate inputs, child environments, output tails and git status entries."""
 
 import os
+import re
 import sys
 from collections.abc import Collection, Mapping
 from pathlib import Path
 
-from python_harness.gate.domain import ConfigKind, GateInputs, GateOptions
+from python_harness.gate.domain import (
+    DEFAULT_RUFF_VERSION,
+    RUFF_VERSION_VARIABLE,
+    ConfigKind,
+    GateInputs,
+    GateOptions,
+    RuffVersion,
+    ToolInvocations,
+    default_tool_invocations,
+)
 from python_harness.survey.domain import ProjectSurvey
 
+UNEXPANDED_OPTION = re.compile(r'\$\{[^{}]*\}')
 SEARCH_PATH = 'PATH'
 VIRTUAL_ENV = 'VIRTUAL_ENV'
 VIRTUALENV_SCRIPTS = 'Scripts' if sys.platform == 'win32' else 'bin'
 UNTRACKED_STATUS_CODES = frozenset({'??', '!!'})
+
+
+def ruff_version_from(environment: Mapping[str, str]) -> RuffVersion:
+    text = environment.get(RUFF_VERSION_VARIABLE, '')
+    if text == '' or UNEXPANDED_OPTION.fullmatch(text) is not None:
+        return DEFAULT_RUFF_VERSION
+    return RuffVersion(text)
+
+
+def tool_invocations_from(environment: Mapping[str, str]) -> ToolInvocations:
+    return default_tool_invocations(ruff_version_from(environment))
 
 
 def project_configs_from(survey: ProjectSurvey) -> frozenset[ConfigKind]:

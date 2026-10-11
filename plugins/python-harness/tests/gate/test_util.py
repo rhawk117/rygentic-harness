@@ -12,14 +12,26 @@ import pytest
 import tomllib
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
-from python_harness.gate.domain import ConfigKind, GateInputs, GateOptions, GateTool
+from python_harness.gate.domain import (
+    DEFAULT_RUFF_VERSION,
+    RUFF_VERSION_OPTION,
+    RUFF_VERSION_VARIABLE,
+    ConfigKind,
+    GateInputs,
+    GateOptions,
+    GateTool,
+    RuffVersion,
+)
+from python_harness.gate.errors import InvalidRuffVersionError
 from python_harness.gate.policy import plan_gate
 from python_harness.gate.tests.support import argv_for
 from python_harness.gate.util import (
     VIRTUALENV_SCRIPTS,
     build_child_environment,
     gate_inputs_from,
+    ruff_version_from,
     take_output_tail,
+    tool_invocations_from,
     untracked_paths_from_status,
 )
 from python_harness.survey.domain import (
@@ -301,3 +313,55 @@ class TestUntrackedPathsFromStatus:
     )
     def test_untracked_paths(self, status: str, prefix: str, expected: frozenset[str]) -> None:
         assert untracked_paths_from_status(status, prefix) == expected
+
+
+class TestRuffVersionOption:
+    @pytest.mark.parametrize(
+        'environment',
+        [
+            pytest.param({}, id='unset'),
+            pytest.param({RUFF_VERSION_VARIABLE: ''}, id='empty'),
+            pytest.param(
+                {RUFF_VERSION_VARIABLE: '${user_config.ruff_version}'}, id='unexpanded-literal'
+            ),
+        ],
+    )
+    def test_an_absent_value_is_the_default(self, environment: Mapping[str, str]) -> None:
+        assert ruff_version_from(environment) == DEFAULT_RUFF_VERSION
+
+    @pytest.mark.parametrize('text', ['0.15.2', '0.16.10', '1.0.0'])
+    def test_a_version_overrides_the_default(self, text: str) -> None:
+        assert ruff_version_from({RUFF_VERSION_VARIABLE: text}) == RuffVersion(text)
+
+    @pytest.mark.parametrize(
+        'text',
+        [
+            pytest.param('0.16 .9', id='space'),
+            pytest.param(' 0.16.9', id='leading-space'),
+            pytest.param('-0.16.9', id='leading-dash'),
+            pytest.param('--version', id='flag'),
+            pytest.param('ruff@0.16.9', id='at-sign'),
+            pytest.param('0.16.9@latest', id='trailing-at-sign'),
+            pytest.param('../0.16.9', id='slash'),
+            pytest.param('0.16', id='two-components'),
+            pytest.param('0.16.9rc1', id='pre-release'),
+            pytest.param('0.16.9\n', id='trailing-newline'),
+            pytest.param('latest', id='word'),
+            pytest.param('$(id)', id='command-substitution'),
+            pytest.param('${user_config.ruff_version', id='unterminated-literal'),
+            pytest.param('١.٢.٣', id='non-ascii-digits'),
+        ],
+    )
+    def test_any_other_value_is_refused_by_naming_the_option(self, text: str) -> None:
+        with pytest.raises(InvalidRuffVersionError, match=RUFF_VERSION_OPTION):
+            ruff_version_from({RUFF_VERSION_VARIABLE: text})
+
+    def test_the_environment_variable_sets_the_pin_of_both_ruff_commands(self) -> None:
+        tools = tool_invocations_from({RUFF_VERSION_VARIABLE: '0.15.2'})
+
+        assert [tools[tool].pinned_version for tool in GateTool] == [
+            RuffVersion('0.15.2'),
+            RuffVersion('0.15.2'),
+            None,
+            None,
+        ]

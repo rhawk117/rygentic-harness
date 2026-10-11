@@ -6,11 +6,14 @@ from pathlib import Path
 import pytest
 import tomllib
 from python_harness.gate.domain import (
+    DEFAULT_RUFF_VERSION,
     ConfigKind,
     ConfigSource,
     GateInputs,
     GateOptions,
     GateTool,
+    RuffVersion,
+    default_tool_invocations,
 )
 from python_harness.gate.policy import build_source_roots_override, plan_gate
 from python_harness.gate.tests.support import argv_for, command_for
@@ -294,8 +297,8 @@ class TestLaunchers:
             pytest.param(
                 replace(INPUTS, declared_distributions=frozenset()),
                 GateTool.RUFF_FORMAT,
-                ('uvx', 'ruff', 'format', '--check', '--no-cache'),
-                id='undeclared-ruff-runs-through-uvx',
+                ('uvx', 'ruff@0.16.9', 'format', '--check', '--no-cache'),
+                id='undeclared-ruff-runs-through-uvx-at-the-default-version',
             ),
             pytest.param(
                 INPUTS,
@@ -343,6 +346,49 @@ class TestLaunchers:
         plan = plan_gate(inputs, ROOT)
 
         assert command_for(plan, GateTool.RUFF_CHECK).program == expected
+
+
+class TestRuffVersion:
+    UNDECLARED = replace(INPUTS, declared_distributions=frozenset())
+    OPTIONS = GateOptions(tools=default_tool_invocations(RuffVersion('0.15.2')))
+
+    def test_both_ruff_commands_run_the_chosen_version_through_uvx(self) -> None:
+        plan = plan_gate(self.UNDECLARED, ROOT, self.OPTIONS)
+
+        check = argv_for(plan, GateTool.RUFF_CHECK)
+        format_check = argv_for(plan, GateTool.RUFF_FORMAT)
+        assert (check[:3], format_check[:3]) == (
+            ('uvx', 'ruff@0.15.2', 'check'),
+            ('uvx', 'ruff@0.15.2', 'format'),
+        )
+
+    def test_the_default_version_is_the_one_a_plain_options_object_runs(self) -> None:
+        plan = plan_gate(self.UNDECLARED, ROOT)
+
+        assert argv_for(plan, GateTool.RUFF_CHECK)[1] == f'ruff@{DEFAULT_RUFF_VERSION.text}'
+
+    def test_a_project_that_declares_ruff_keeps_its_own_ruff(self) -> None:
+        plan = plan_gate(INPUTS, ROOT, self.OPTIONS)
+
+        assert argv_for(plan, GateTool.RUFF_CHECK) == RUFF_CHECK_ARGV
+
+    def test_ty_and_pytest_carry_no_version_pin(self) -> None:
+        plan = plan_gate(self.UNDECLARED, ROOT, self.OPTIONS)
+
+        assert (argv_for(plan, GateTool.TY), argv_for(plan, GateTool.PYTEST)) == (
+            ('uv', 'run', '--isolated', '--with', 'ty', 'ty', 'check'),
+            (
+                'uv',
+                'run',
+                '--isolated',
+                '--with',
+                'pytest',
+                'pytest',
+                '-q',
+                '-p',
+                'no:cacheprovider',
+            ),
+        )
 
 
 class TestPlannedTools:

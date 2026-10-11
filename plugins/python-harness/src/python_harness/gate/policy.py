@@ -67,7 +67,14 @@ def choose_launcher(invocation: ToolInvocation, inputs: GateInputs) -> Launcher:
     if invocation.runs_in_project_environment:
         joined = (*project.arguments, '--with', invocation.distribution)
         return Launcher(project.program, joined)
-    return Launcher('uvx')
+    return Launcher('uvx', pins_version=True)
+
+
+def tool_arguments(invocation: ToolInvocation, launcher: Launcher) -> tuple[str, ...]:
+    version = invocation.pinned_version
+    if version is None or not launcher.pins_version:
+        return invocation.arguments
+    return (f'{invocation.distribution}@{version.text}', *invocation.arguments[1:])
 
 
 def build_command(
@@ -80,7 +87,7 @@ def build_command(
     invocation = options.tools[tool]
     launcher = choose_launcher(invocation, inputs)
     config = () if invocation.config is None else configs[invocation.config]
-    arguments = (*launcher.arguments, *invocation.arguments, *config)
+    arguments = (*launcher.arguments, *tool_arguments(invocation, launcher), *config)
     return GateCommand(tool, launcher.program, arguments)
 
 

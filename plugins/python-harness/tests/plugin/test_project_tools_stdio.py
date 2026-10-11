@@ -9,6 +9,7 @@ import anyio
 import pytest
 from mcp import Client, StdioServerParameters
 from python_harness.core.tests.support import JsonDocument
+from python_harness.gate.domain import DEFAULT_RUFF_VERSION
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.tools.tests.support import document_of
 
@@ -18,7 +19,7 @@ SERVER_NAME = 'python-harness'
 FIXTURE_PROJECT = {
     'pyproject.toml': '[project]\nname = "shop"\nversion = "0"\nrequires-python = ">=3.14"\n',
     'src/shop/__init__.py': 'def price(total: int) -> int:\n    return total\n',
-    'tests/test_price.py': 'def test_price() -> None:\n    assert True\n',
+    'tests/test_price.py': 'def test_price() -> None:\n    pass\n',
 }
 GATE_TOOLS = ['ruff_check', 'ruff_format', 'ty', 'pytest']
 
@@ -120,12 +121,33 @@ class TestGateOverStdio:
         assert RUFF_CONFIG.as_posix() in arguments['ruff_format']
         assert TY_CONFIG.as_posix() in arguments['ty']
 
+    def test_both_ruff_commands_run_the_default_version_through_uvx(
+        self, documents: ProjectDocuments
+    ) -> None:
+        commands = {item['command']['tool']: item['command'] for item in documents.gate['results']}
+        pinned = f'ruff@{DEFAULT_RUFF_VERSION.text}'
+
+        assert [
+            (commands[tool]['program'], commands[tool]['arguments'][0])
+            for tool in ('ruff_check', 'ruff_format')
+        ] == [('uvx', pinned), ('uvx', pinned)]
+
     def test_ty_accepts_the_packaged_fallback_config_and_exits_zero(
         self, documents: ProjectDocuments
     ) -> None:
         outcomes = {item['command']['tool']: item['outcome'] for item in documents.gate['results']}
 
         assert outcomes['ty'] == {'kind': 'exited', 'exit_code': 0}
+
+    def test_both_ruff_checks_accept_the_packaged_fallback_config_and_exit_zero(
+        self, documents: ProjectDocuments
+    ) -> None:
+        outcomes = {item['command']['tool']: item['outcome'] for item in documents.gate['results']}
+
+        assert (outcomes['ruff_check'], outcomes['ruff_format']) == (
+            {'kind': 'exited', 'exit_code': 0},
+            {'kind': 'exited', 'exit_code': 0},
+        )
 
     def test_the_gate_carries_the_workspace_diagnostics(self, documents: ProjectDocuments) -> None:
         assert documents.gate['workspace'] == {

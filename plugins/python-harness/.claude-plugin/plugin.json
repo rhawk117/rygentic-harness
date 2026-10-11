@@ -17,5 +17,13 @@
     "ty",
     "pytest",
     "hooks"
-  ]
+  ],
+  "userConfig": {
+    "ruff_version": {
+      "type": "string",
+      "title": "ruff version",
+      "description": "The ruff version the gate tool runs through uvx when the project does not declare ruff. Digits and dots only, like 0.16.9. Change it when the project's own ruff config needs a different ruff.",
+      "default": "0.16.9"
+    }
+  }
 }

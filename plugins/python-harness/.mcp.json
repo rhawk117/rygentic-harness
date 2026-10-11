@@ -37,7 +37,8 @@
         "${CLAUDE_PLUGIN_ROOT}/bin/python-harness-mcp"
       ],
       "env": {
-        "CLAUDE_PROJECT_DIR": "${CLAUDE_PROJECT_DIR}"
+        "CLAUDE_PROJECT_DIR": "${CLAUDE_PROJECT_DIR}",
+        "PYTHON_HARNESS_RUFF_VERSION": "${user_config.ruff_version}"
       }
     }
   }

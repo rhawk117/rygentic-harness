@@ -11,6 +11,9 @@ from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.gate import services as gate_services
 from python_harness.gate.domain import (
+    DEFAULT_RUFF_VERSION,
+    RUFF_VERSION_OPTION,
+    RUFF_VERSION_VARIABLE,
     ConfigKind,
     Exited,
     GateCommand,
@@ -20,6 +23,7 @@ from python_harness.gate.domain import (
     GateResult,
     GateTool,
     NotTracked,
+    RuffVersion,
 )
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.tools.envelope import (
@@ -28,7 +32,7 @@ from python_harness.tools.envelope import (
     ProjectOutput,
     render_budgeted_project_document,
 )
-from python_harness.tools.tests.support import SHOP_PROJECT, document_of
+from python_harness.tools.tests.support import SHOP_PROJECT, document_of, text_of
 
 
 @pytest.mark.anyio
@@ -116,6 +120,55 @@ class TestGate:
 
         (options,) = gate_options
         assert options.fallbacks == {ConfigKind.RUFF: RUFF_CONFIG, ConfigKind.TY: TY_CONFIG}
+
+    @pytest.mark.usefixtures('shop')
+    @pytest.mark.parametrize(
+        ('environment', 'expected'),
+        [
+            pytest.param({}, DEFAULT_RUFF_VERSION, id='unset'),
+            pytest.param({RUFF_VERSION_VARIABLE: ''}, DEFAULT_RUFF_VERSION, id='empty'),
+            pytest.param(
+                {RUFF_VERSION_VARIABLE: '${user_config.ruff_version}'},
+                DEFAULT_RUFF_VERSION,
+                id='unexpanded-literal',
+            ),
+            pytest.param({RUFF_VERSION_VARIABLE: '0.15.2'}, RuffVersion('0.15.2'), id='override'),
+        ],
+    )
+    async def test_both_ruff_checks_get_the_version_the_environment_names(
+        self,
+        project_client: Client,
+        project_environment: dict[str, str],
+        gate_options: list[GateOptions],
+        environment: dict[str, str],
+        expected: RuffVersion,
+    ) -> None:
+        project_environment.update(environment)
+
+        await project_client.call_tool('gate')
+
+        (options,) = gate_options
+        tools = (options.tools[GateTool.RUFF_CHECK], options.tools[GateTool.RUFF_FORMAT])
+        assert [tool.pinned_version for tool in tools] == [expected, expected]
+
+    @pytest.mark.usefixtures('shop')
+    @pytest.mark.parametrize('text', ['0.16 .9', '-0.16.9', 'ruff@0.16.9', '../0.16.9'])
+    async def test_an_invalid_ruff_version_is_a_tool_error_that_runs_no_check(
+        self,
+        project_client: Client,
+        project_environment: dict[str, str],
+        gate_options: list[GateOptions],
+        text: str,
+    ) -> None:
+        project_environment[RUFF_VERSION_VARIABLE] = text
+
+        result = await project_client.call_tool('gate')
+
+        assert (result.is_error, RUFF_VERSION_OPTION in text_of(result), gate_options) == (
+            True,
+            True,
+            [],
+        )
 
     @pytest.mark.usefixtures('shop')
     async def test_each_check_gets_a_600_second_timeout_like_the_cli_default(
