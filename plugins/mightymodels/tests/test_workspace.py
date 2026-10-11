@@ -5,7 +5,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from operator import methodcaller
 from pathlib import Path
-from typing import Protocol, runtime_checkable
 
 import pytest
 import sqlalchemy as sql
@@ -15,6 +14,7 @@ from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import (
     PROJECT_DIR_VARIABLE,
     Git,
@@ -38,11 +38,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 
 type PathRequest = Callable[[Workspace], object]
-
-
-@runtime_checkable
-class GitRunner(Protocol):
-    def __call__(self, directory: Path, /, *arguments: str) -> str: ...
 
 
 SLUG = 'retry-queue'

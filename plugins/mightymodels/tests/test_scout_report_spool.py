@@ -2,7 +2,7 @@
 
 import json
 import sqlite3
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from contextlib import closing
 from pathlib import Path
 
@@ -15,6 +15,7 @@ from mightymodels_plugin.core.repository_key import (
     RepositoryKey,
     spool_file_prefix,
 )
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.similarity.schema import SimilarityKind
 from mightymodels_plugin.tools.similarity.spool import (
@@ -35,7 +36,6 @@ from mightymodels_plugin.tools.tests.support import (
 )
 
 type Report = Mapping[str, object]
-type GitRunner = Callable[..., str]
 
 OTHER_KEY = 'acme/gadgets'
 REPORT_TEXT = 'the drain loop sleeps between every retry batch'

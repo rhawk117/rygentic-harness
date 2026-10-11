@@ -1,8 +1,11 @@
 import subprocess
-from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from mightymodels_plugin.core.tests.support import GitRunner
 
 CONCEPTS = (
     'core',
@@ -34,11 +37,8 @@ def run_git(directory: Path, *arguments: str) -> str:
     return completed.stdout
 
 
-type GitRunner = Callable[..., str]
-
-
 @pytest.fixture
-def git() -> GitRunner:
+def git() -> 'GitRunner':
     return run_git
 
 

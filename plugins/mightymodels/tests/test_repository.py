@@ -1,12 +1,12 @@
 import json
 import os
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 import sqlalchemy as sql
 from mightymodels_plugin.core.database import DATABASE_NAME, open_database
 from mightymodels_plugin.core.repository_key import local_key
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import (
     EXCLUDE_LINE,
     STATE_DIRECTORY,
@@ -17,7 +17,6 @@ from mightymodels_plugin.core.workspace import (
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.tests.support import StateServer
 
-type GitRunner = Callable[..., str]
 type MasterRow = dict[str, str | None]
 
 

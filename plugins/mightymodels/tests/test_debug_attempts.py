@@ -1,6 +1,6 @@
 """A stuck engineer's failed fixes: recorded per task, three accepted, the fourth refused."""
 
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +9,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.core.edge import exclude_state_from_git
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import git_at, workspace_at
 from mightymodels_plugin.redaction import RedactedTextTooLongError
 from mightymodels_plugin.tools.failed_fix.schema import (
@@ -29,8 +30,6 @@ from mightymodels_plugin.tools.tests.support import (
 from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-
-type GitRunner = Callable[..., str]
 
 TICKET = Slug('retry-queue')
 OTHER_TICKET = Slug('drain-loop')

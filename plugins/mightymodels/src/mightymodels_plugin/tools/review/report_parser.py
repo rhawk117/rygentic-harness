@@ -13,9 +13,10 @@ there, and the refusal names the finding and the field.
 """
 
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Protocol, runtime_checkable
 
 from pydantic import ValidationError
 
@@ -68,7 +69,6 @@ DIMENSIONS: Mapping[str, tuple[Kind, bool]] = MappingProxyType(
 type BulletKey = tuple[str, str]
 type Bullets = Mapping[BulletKey, str]
 type Pointer = tuple[int, str]
-type BasisReader = Callable[[Pointer, str, Bullets], Basis]
 
 LOCATION_KEY: BulletKey = ('evidence', '')
 FIX_KEY: BulletKey = ('fix', '')
@@ -88,6 +88,11 @@ class Basis:
     location: str
     kind: Kind
     security: bool
+
+
+@runtime_checkable
+class BasisReader(Protocol):
+    def __call__(self, at: Pointer, rest: str, bullets: Bullets, /) -> Basis: ...
 
 
 def findings_section(lines: Sequence[str]) -> Sequence[str]:

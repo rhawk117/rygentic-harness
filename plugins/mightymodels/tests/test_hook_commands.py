@@ -13,7 +13,6 @@ import os
 import shlex
 import sqlite3
 import sys
-from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +27,7 @@ from mightymodels_plugin.core.database import DATABASE_NAME, Database
 from mightymodels_plugin.core.declarative import REPORT_LIMIT
 from mightymodels_plugin.core.repository_key import spool_file_prefix
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE, Workspace
 from mightymodels_plugin.tools.similarity.schema import SimilarityKind
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY, SPOOL_FILE_BYTES
@@ -448,7 +448,7 @@ class TestTheStateOfATicket:
         self,
         in_the_repository: Path,
         ticket_service: TicketService,
-        git: Callable[..., str],
+        git: GitRunner,
     ) -> Slug:
         git(in_the_repository, 'symbolic-ref', 'HEAD', f'refs/heads/{BRANCH}')
         ticket_service.write(TICKET, ANSWERS)
@@ -526,9 +526,7 @@ class TestCompletionGate(TestTheStateOfATicket):
         assert (code, out) == (0, '')
         assert err.startswith(SKIPPED)
 
-    def test_off_the_ticket_branch_it_does_nothing(
-        self, hook: Hook, git: Callable[..., str]
-    ) -> None:
+    def test_off_the_ticket_branch_it_does_nothing(self, hook: Hook, git: GitRunner) -> None:
         git(hook.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
 
         assert hook.run('completion-gate', implementer_stop()) == (0, '', '')
@@ -557,15 +555,13 @@ class TestPreCompactSnapshot(TestTheStateOfATicket):
         assert record['slug'] == SLUG
         assert record['repository']['branch'] == BRANCH
 
-    def test_on_another_branch_it_writes_nothing(self, hook: Hook, git: Callable[..., str]) -> None:
+    def test_on_another_branch_it_writes_nothing(self, hook: Hook, git: GitRunner) -> None:
         git(hook.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
 
         assert hook.run('pre-compact', hook_input('PreCompact')) == (0, '', '')
         assert snapshot_files(hook.repository) == []
 
-    def test_with_a_detached_head_it_writes_nothing(
-        self, hook: Hook, git: Callable[..., str]
-    ) -> None:
+    def test_with_a_detached_head_it_writes_nothing(self, hook: Hook, git: GitRunner) -> None:
         git(
             hook.repository,
             '-c',

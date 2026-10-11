@@ -5,7 +5,7 @@ about, and read the closing's row, which the stores and the git history kept in 
 of.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,6 +15,7 @@ import pytest
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import git_at
 from mightymodels_plugin.tools.close.rendering import ARCHIVE_LINES
 from mightymodels_plugin.tools.close.schema import Closing
@@ -36,8 +37,6 @@ from mightymodels_plugin.tools.task.store import Attempt, Transition
 from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)

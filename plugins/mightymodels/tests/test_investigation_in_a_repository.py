@@ -4,7 +4,7 @@ These tests read the bytes of the database file, or arrange a real repository to
 read from: packed refs, a linked worktree, a detached HEAD and a directory that is no repository.
 """
 
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.tools.investigation.ledger import recorded_ledger
 from mightymodels_plugin.tools.investigation.schema import (
     EntryKind,
@@ -25,8 +26,6 @@ from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.investigation.store import LedgerRecord
 from mightymodels_plugin.tools.investigation.tests.support import investigation_service_at
 from mightymodels_plugin.tools.tests.support import stored_bytes
-
-type GitRunner = Callable[..., str]
 
 FAKE_TOKEN = 'ghp_' + 'a' * 36
 IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')

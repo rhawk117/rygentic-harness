@@ -27,6 +27,7 @@ from mcp.types import (
 )
 from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT, Base
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import workspace_at
 from mightymodels_plugin.server import build_server
 from mightymodels_plugin.tools.contract.tables import CommandRow
@@ -42,7 +43,6 @@ if TYPE_CHECKING:
 type Arguments = dict[str, object]
 type Content = dict[str, str | int | float | bool | list[str] | None]
 type Stored = Callable[[StateServer], object]
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 SOURCE_DIRECTORY = Path(__file__).parent.parent.joinpath('src')

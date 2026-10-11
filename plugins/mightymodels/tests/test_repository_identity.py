@@ -3,7 +3,6 @@
 import hashlib
 import os
 import re
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -17,10 +16,9 @@ from mightymodels_plugin.core.repository_key import (
     local_key,
     origin_key,
 )
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import STATE_DIRECTORY, Checkout, git_at
 from mightymodels_plugin.tools.tests.support import StateServer, ToolCall, text_of, tree
-
-type GitRunner = Callable[..., str]
 
 OWNER, NAME = 'acme', 'widgets'
 KEY = RepositoryKey(f'{OWNER}/{NAME}')

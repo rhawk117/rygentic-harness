@@ -1,7 +1,6 @@
 """The slug is the only caller-chosen text that becomes a path, so it is checked in one type."""
 
 import inspect
-from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,6 +16,7 @@ from mightymodels_plugin.core.slug import (
     Slug,
     parsed_slug,
 )
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import workspace_at
 from mightymodels_plugin.server import TOOLS
 from mightymodels_plugin.tools.investigation.schema import InvestigationStart, TargetKind
@@ -34,8 +34,6 @@ from mightymodels_plugin.tools.tests.support import (
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import InvalidTicketError, TicketService
 from pydantic import ValidationError
-
-type GitRunner = Callable[..., str]
 
 REJECTED = 2
 OUTSIDE = '../../../outside'

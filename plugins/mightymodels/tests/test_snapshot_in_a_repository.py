@@ -4,19 +4,17 @@ These tests take git off PATH and stand outside a repository, which a git histor
 has neither of.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import git_at
 from mightymodels_plugin.tools.snapshot.schema import DEFAULT_LIMIT, SnapshotView
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)

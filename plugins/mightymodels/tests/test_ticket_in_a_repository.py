@@ -13,12 +13,12 @@ from types import MappingProxyType
 import pytest
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers, TicketView
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tests.support import ticket_service_at
 from pydantic import ValidationError
 
-type GitRunner = Callable[..., str]
 type Command = Callable[[TicketService, object], TicketView]
 
 REJECTED = 2

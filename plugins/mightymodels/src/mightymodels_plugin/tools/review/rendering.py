@@ -7,9 +7,10 @@ Everything here takes values: `Standing` holds the run, the decision per finding
 per finding as the service read them, and no table row.
 """
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Protocol, runtime_checkable
 
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.tools.review.finding_merge import RANK, number_of
@@ -33,14 +34,17 @@ SOURCE_PERSONA: Mapping[str, Persona] = MappingProxyType(
     {'MV': Persona.MERGE_VADER, 'UB': Persona.UNCLE_BOB}
 )
 
-type Renderer = Callable[[Standing, Sequence[Finding]], str]
-
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Standing:
     run: ReviewRun
     dispositions: Mapping[str, Disposition]
     results: Mapping[str, Result]
+
+
+@runtime_checkable
+class Renderer(Protocol):
+    def __call__(self, standing: Standing, findings: Sequence[Finding], /) -> str: ...
 
 
 def heaviest_weight(finding: Finding, standing: Standing) -> float:

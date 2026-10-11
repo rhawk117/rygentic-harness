@@ -12,6 +12,7 @@ from types import MappingProxyType
 import pytest
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.tools.contract.schema import ContractCommand
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.task.schema import TaskStart, TaskVerification, TaskView
@@ -19,8 +20,6 @@ from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
 from pydantic import BaseModel, ValidationError
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)

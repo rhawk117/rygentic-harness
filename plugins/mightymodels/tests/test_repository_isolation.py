@@ -16,6 +16,7 @@ from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.tools.close.repository import close_store
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.service import CloseService
@@ -80,7 +81,6 @@ from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 
-type GitRunner = Callable[..., str]
 type RowsRead = Callable[[Database], int]
 
 SLUG = 'retry-queue'

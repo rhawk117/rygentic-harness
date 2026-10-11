@@ -1,9 +1,8 @@
 """The `investigation` tool on a served repository: what it refuses and what it answers."""
 
-from collections.abc import Callable
-
 import pytest
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.tools.investigation.ledger import recorded_ledger
 from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.investigation.store import LedgerRecord
@@ -13,8 +12,6 @@ from mightymodels_plugin.tools.tests.support import (
     StateServer,
     text_of,
 )
-
-type GitRunner = Callable[..., str]
 
 START_REQUEST = {'target': 'Queue drains slowly', 'kind': 'behavior'}
 VALID_ENTRY = {'kind': 'known', 'text': 'first', 'cite': 'a.py:1', 'source': 'code-scout'}

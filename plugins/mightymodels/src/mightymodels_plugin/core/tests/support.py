@@ -2,6 +2,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 import pytest
 
@@ -18,6 +19,11 @@ with Path({log!r}).open('a', encoding='utf-8') as log:
     log.write(json.dumps(call) + '\\n')
 print(0)
 """
+
+
+@runtime_checkable
+class GitRunner(Protocol):
+    def __call__(self, directory: Path, /, *arguments: str) -> str: ...
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

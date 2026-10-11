@@ -9,7 +9,7 @@ import json
 import shlex
 import sqlite3
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import timedelta
@@ -33,11 +33,10 @@ from mightymodels_plugin.core.database import (
     open_database,
 )
 from mightymodels_plugin.core.repository_key import local_key
+from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE, STATE_DIRECTORY
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.tests.support import StateServer, ToolCall, text_of, tree
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 PASSED, REJECTED = 0, 2

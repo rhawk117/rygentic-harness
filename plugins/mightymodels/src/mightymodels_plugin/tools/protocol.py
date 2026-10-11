@@ -25,7 +25,7 @@ in the scout reports waiting in the spool before it hands the services out, so e
 reaches a service finds the reports written since the last one.
 """
 
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
@@ -44,7 +44,10 @@ from mightymodels_plugin.tools.snapshot.service import SnapshotService
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.ticket.service import TicketService
 
-type ServiceHandler[Service, Call, View] = Callable[[Service, Call], View]
+
+@runtime_checkable
+class ServiceHandler[Service, Call, View](Protocol):
+    def __call__(self, service: Service, call: Call, /) -> View: ...
 
 
 class MissingArgumentsError(StateError):
