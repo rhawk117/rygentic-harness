@@ -114,6 +114,9 @@ class TestRunnerFailures:
         pytest.param(('pro\0gram',), None, id='nul-in-program'),
         pytest.param((sys.executable, '-c', 'pass'), Path('work\0ing'), id='nul-in-cwd'),
     )
+    LONE_SURROGATE_LAUNCHES = (
+        pytest.param((sys.executable, '-c', 'pass', '\ud800'), id='lone-surrogate-in-argument'),
+    )
 
     @pytest.fixture
     def runner(self) -> ProcessRunner:
@@ -147,6 +150,15 @@ class TestRunnerFailures:
 
         assert isinstance(run, FailedRun)
         assert (run.kind, 'embedded null byte' in run.detail) == (FailureKind.REFUSED, True)
+
+    @pytest.mark.parametrize('argv', LONE_SURROGATE_LAUNCHES)
+    def test_a_launch_that_holds_a_lone_surrogate_comes_back_refused_and_names_the_surrogate(
+        self, runner: ProcessRunner, argv: tuple[str, ...]
+    ) -> None:
+        run = runner.run(argv, timeout=KIND_ONLY_TIMEOUT)
+
+        assert isinstance(run, FailedRun)
+        assert (run.kind, 'surrogates not allowed' in run.detail) == (FailureKind.REFUSED, True)
 
 
 class TestGitFailures:
