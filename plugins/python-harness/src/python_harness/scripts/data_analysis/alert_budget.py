@@ -8,35 +8,32 @@ from math import isfinite
 
 import msgspec
 
-SCHEMA_VERSION = 2
-CONTRACT_VIOLATION = 2
+from python_harness.scripts.report import (
+    LAUNCHER,
+    ContractViolationError,
+    Report,
+    describe_arguments,
+    run_command,
+)
+
+COMMAND = f'{LAUNCHER} alert-budget'
 TRANSFER_ASSUMPTION = 'recall and false positive rate transfer to this population'
 PERIOD_ASSUMPTION = 'events are counted over the same period as the review budget'
 
 logger = logging.getLogger('alert_budget')
 
-type ArgumentValue = str | int | float | bool | tuple[str, ...] | None
 
-
-class Report[ResultT](msgspec.Struct, frozen=True, kw_only=True):
-    schema_version: int
-    command: str
-    arguments: dict[str, ArgumentValue]
-    result: ResultT
-    caveats: tuple[str, ...]
-
-
-class RateOutOfRangeError(ValueError):
+class RateOutOfRangeError(ContractViolationError):
     def __init__(self, name: str, value: float) -> None:
         super().__init__(f'{name} must be a probability in [0, 1], got {value}')
 
 
-class NonPositiveEventsError(ValueError):
+class NonPositiveEventsError(ContractViolationError):
     def __init__(self, events: int) -> None:
         super().__init__(f'events must be positive, got {events}')
 
 
-class UnpairedCostError(ValueError):
+class UnpairedCostError(ContractViolationError):
     def __init__(self) -> None:
         super().__init__('give both --cost-fn and --cost-fp, or neither')
 
@@ -100,36 +97,18 @@ class AlertLoad(msgspec.Struct, frozen=True, kw_only=True, omit_defaults=True):
     cost: ExpectedCost | None = None
 
 
-def normalize_argument(value: object) -> ArgumentValue:
-    match value:
-        case str() | int() | float() | bool() | None:
-            return value
-        case list() | tuple():
-            return tuple(map(str, value))
-        case _:
-            return str(value)
+def check_rate(name: str, value: float) -> None:
+    if not (isfinite(value) and 0 <= value <= 1):
+        raise RateOutOfRangeError(name, value)
 
 
-def describe_arguments(arguments: argparse.Namespace) -> dict[str, ArgumentValue]:
-    return {
-        name: normalize_argument(value)
-        for name, value in vars(arguments).items()
-        if not callable(value)
-    }
-
-
-def find_rate_violation(name: str, value: float) -> ValueError | None:
-    return None if isfinite(value) and 0 <= value <= 1 else RateOutOfRangeError(name, value)
-
-
-def find_scenario_violation(scenario: DetectorScenario) -> ValueError | None:
+def check_scenario(scenario: DetectorScenario) -> None:
     if scenario.events <= 0:
-        return NonPositiveEventsError(scenario.events)
-    rate_problems = (find_rate_violation(name, value) for name, value in scenario.rates)
-    if problem := next(filter(None, rate_problems), None):
-        return problem
-    has_one_cost = (scenario.cost_false_negative is None) != (scenario.cost_false_positive is None)
-    return UnpairedCostError() if has_one_cost else None
+        raise NonPositiveEventsError(scenario.events)
+    for name, value in scenario.rates:
+        check_rate(name, value)
+    if (scenario.cost_false_negative is None) != (scenario.cost_false_positive is None):
+        raise UnpairedCostError
 
 
 def expected_counts(scenario: DetectorScenario) -> ExpectedCounts:
@@ -186,7 +165,7 @@ def collect_caveats(load: AlertLoad) -> tuple[str, ...]:
 
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog=COMMAND, description=__doc__)
     parser.add_argument('--events', type=int, required=True, help='events per period')
     parser.add_argument('--prevalence', type=float, required=True)
     parser.add_argument('--recall', type=float, required=True, help='true positive rate')
@@ -209,27 +188,21 @@ def scenario_from(arguments: argparse.Namespace) -> DetectorScenario:
     )
 
 
-def main(argv: list[str]) -> int:
-    logging.basicConfig(stream=sys.stderr, format='%(levelname)s %(message)s')
+def build_report(argv: list[str]) -> Report[AlertLoad]:
     arguments = parse_arguments(argv)
     scenario = scenario_from(arguments)
-    if violation := find_scenario_violation(scenario):
-        logger.error('%s', violation)
-        return CONTRACT_VIOLATION
+    check_scenario(scenario)
     load = describe_load(scenario)
-    report = Report(
-        schema_version=SCHEMA_VERSION,
-        command='alert_budget',
+    return Report(
+        command=COMMAND,
         arguments=describe_arguments(arguments),
         result=load,
         caveats=collect_caveats(load),
     )
-    sys.stdout.write(msgspec.yaml.encode(report).decode())
-    return 0
 
 
-def console_main() -> int:
-    return main(sys.argv[1:])
+def main(argv: list[str]) -> int:
+    return run_command(logger, build_report, argv)
 
 
 if __name__ == '__main__':

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from python_harness.scripts.report import SCHEMA_VERSION
 from python_harness.scripts.tests.support import ENVELOPE_KEYS, ScriptRunner
 
-SCHEMA_VERSION = 2
 UNREADABLE_INPUT = 3
 
 
@@ -30,7 +30,7 @@ class TestEnvelope:
     ) -> None:
         report = run_size(*arguments)
         assert tuple(report.document) == ENVELOPE_KEYS
-        assert report.document['command'] == f'size_check {arguments[0]}'
+        assert report.document['command'] == f'python-harness-data size-check {arguments[0]}'
         assert report.document['schema_version'] == SCHEMA_VERSION
 
     def test_profile_uses_the_shared_envelope(
@@ -38,6 +38,7 @@ class TestEnvelope:
     ) -> None:
         report = run_profile('profile', str(keyed_parquet), '--key', 'asset_id')
         assert tuple(report.document) == ENVELOPE_KEYS
+        assert report.document['command'] == 'python-harness-data profile-data profile'
         assert report.document['arguments']['key'] == ['asset_id']
 
     def test_join_uses_the_same_key_flag_as_profile(
@@ -45,6 +46,7 @@ class TestEnvelope:
     ) -> None:
         report = run_profile('join', str(keyed_parquet), str(keyed_parquet), '--key', 'asset_id')
         assert tuple(report.document) == ENVELOPE_KEYS
+        assert report.document['command'] == 'python-harness-data profile-data join'
         assert report.result['keys'] == ['asset_id']
         assert report.caveats == []
 

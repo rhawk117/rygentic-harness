@@ -4,9 +4,9 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from python_harness.scripts.report import SCHEMA_VERSION
 from python_harness.scripts.tests.support import ENVELOPE_KEYS, ScriptRunner
 
-SCHEMA_VERSION = 2
 UNREADABLE_INPUT = 3
 ALERT_ARGUMENTS = (
     '--events',
@@ -34,11 +34,13 @@ class TestEnvelope:
         report = run_paired(str(results_csv), '--old', 'old', '--new', 'new', '--key', 'task')
         assert tuple(report.document) == ENVELOPE_KEYS
         assert report.document['schema_version'] == SCHEMA_VERSION
+        assert report.document['command'] == 'python-harness-data paired-compare'
         assert report.document['arguments']['key'] == 'task'
 
     def test_alert_budget_uses_the_shared_envelope(self, run_alert: ScriptRunner) -> None:
         report = run_alert(*ALERT_ARGUMENTS)
         assert tuple(report.document) == ENVELOPE_KEYS
+        assert report.document['command'] == 'python-harness-data alert-budget'
         assert report.document['arguments']['fpr'] == pytest.approx(0.1)
 
 

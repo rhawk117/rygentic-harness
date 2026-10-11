@@ -14,30 +14,23 @@ import duckdb
 import msgspec
 from duckdb import ColumnExpression, ConstantExpression, FunctionExpression
 
-SCHEMA_VERSION = 2
-CONTRACT_VIOLATION = 2
-UNREADABLE_INPUT = 3
+from python_harness.scripts.report import (
+    LAUNCHER,
+    ContractViolationError,
+    Report,
+    UnreadableInputError,
+    describe_arguments,
+    run_command,
+)
+
+COMMAND = f'{LAUNCHER} profile-data'
 EXAMPLE_LIMIT = 5
 ROWS_PER_KEY = 'rows_per_key'
-SUFFIXES = frozenset({'.parquet', '.csv'})
 
 logger = logging.getLogger('profile_data')
 
 type Relation = duckdb.DuckDBPyRelation
 type Expression = duckdb.Expression
-type ArgumentValue = str | int | float | bool | tuple[str, ...] | None
-
-
-class Report[ResultT](msgspec.Struct, frozen=True, kw_only=True):
-    schema_version: int
-    command: str
-    arguments: dict[str, ArgumentValue]
-    result: ResultT
-    caveats: tuple[str, ...]
-
-
-class UnreadableInputError(Exception):
-    pass
 
 
 class UnsupportedFormatError(UnreadableInputError):
@@ -50,7 +43,7 @@ class InputReadError(UnreadableInputError):
         super().__init__(f'DuckDB could not read or query the input: {cause}')
 
 
-class MissingKeyColumnError(ValueError):
+class MissingKeyColumnError(ContractViolationError):
     def __init__(self, source: str, missing: list[str]) -> None:
         super().__init__(f'{source} has no column(s) {", ".join(missing)}')
 
@@ -62,15 +55,12 @@ class KeyedTable:
     keys: tuple[str, ...]
 
     @property
-    def key_expressions(self) -> tuple[Expression, ...]:
-        return tuple(map(ColumnExpression, self.keys))
+    def quoted_keys(self) -> tuple[str, ...]:
+        return tuple(map(quote_identifier, self.keys))
 
     @property
-    def any_key_null(self) -> Expression:
-        return cast(
-            'Expression',
-            reduce(operator.or_, (key.isnull() for key in self.key_expressions)),
-        )
+    def any_key_null(self) -> str:
+        return ' OR '.join(f'{key} IS NULL' for key in self.quoted_keys)
 
 
 class ColumnProfile(msgspec.Struct, frozen=True, kw_only=True):
@@ -124,26 +114,15 @@ class Profiled:
     caveats: tuple[str, ...]
 
 
-type Outcome = Profiled | ValueError | UnreadableInputError
-type Command = Callable[[duckdb.DuckDBPyConnection, argparse.Namespace], Outcome]
+type Command = Callable[[duckdb.DuckDBPyConnection, argparse.Namespace], Profiled]
 
 
-def normalize_argument(value: object) -> ArgumentValue:
-    match value:
-        case str() | int() | float() | bool() | None:
-            return value
-        case list() | tuple():
-            return tuple(map(str, value))
-        case _:
-            return str(value)
+def quote_identifier(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
 
 
-def describe_arguments(arguments: argparse.Namespace) -> dict[str, ArgumentValue]:
-    return {
-        name: normalize_argument(value)
-        for name, value in vars(arguments).items()
-        if not callable(value)
-    }
+def key_alias(position: int) -> str:
+    return f'key_{position}'
 
 
 def open_table(connection: duckdb.DuckDBPyConnection, path: Path) -> Relation:
@@ -156,14 +135,10 @@ def open_table(connection: duckdb.DuckDBPyConnection, path: Path) -> Relation:
             raise UnsupportedFormatError(path)
 
 
-def find_unsupported_format(paths: tuple[Path, ...]) -> UnreadableInputError | None:
-    unsupported = next((path for path in paths if path.suffix.lower() not in SUFFIXES), None)
-    return None if unsupported is None else UnsupportedFormatError(unsupported)
-
-
-def find_missing_keys(table: KeyedTable) -> ValueError | None:
+def check_keys_exist(table: KeyedTable) -> None:
     missing = [key for key in table.keys if key not in table.relation.columns]
-    return MissingKeyColumnError(table.source, missing) if missing else None
+    if missing:
+        raise MissingKeyColumnError(table.source, missing)
 
 
 def scalar(relation: Relation, expression: Expression) -> int:
@@ -184,10 +159,9 @@ def max_of(relation: Relation, column: str) -> int:
 
 
 def null_counts(relation: Relation) -> dict[str, int]:
-    expressions = [
-        (FunctionExpression('count_star') - FunctionExpression('count', ColumnExpression(name)))
-        for name in relation.columns
-    ]
+    expressions = ', '.join(
+        f'count(*) - count({quote_identifier(name)})' for name in relation.columns
+    )
     row = relation.aggregate(expressions).fetchone() or ()
     return dict(zip(relation.columns, map(int, row), strict=True))
 
@@ -212,13 +186,9 @@ def profile_columns(
 
 
 def rows_per_key(table: KeyedTable) -> Relation:
-    present = table.relation.filter(~table.any_key_null)
-    grouping = ', '.join(map(str, table.key_expressions))
-    counted = [
-        *table.key_expressions,
-        FunctionExpression('count_star').alias(ROWS_PER_KEY),
-    ]
-    return present.aggregate(counted, grouping)
+    present = table.relation.filter(f'NOT ({table.any_key_null})')
+    keys = (f'{key} AS {key_alias(position)}' for position, key in enumerate(table.quoted_keys))
+    return present.aggregate(f'{", ".join(keys)}, count(*) AS {ROWS_PER_KEY}', 'ALL')
 
 
 def describe_duplicate(row: tuple[object, ...]) -> str:
@@ -245,12 +215,15 @@ def matched_key_counts(left: KeyedTable, right: KeyedTable) -> Relation:
     right_counts = rows_per_key(right).set_alias('r')
     condition = reduce(
         operator.and_,
-        (ColumnExpression(f'l.{key}') == ColumnExpression(f'r.{key}') for key in left.keys),
+        (
+            ColumnExpression('l', key_alias(position)) == ColumnExpression('r', key_alias(position))
+            for position in range(len(left.keys))
+        ),
     )
     joined = left_counts.join(right_counts, condition, how='outer')
     return joined.select(
-        ColumnExpression(f'l.{ROWS_PER_KEY}').alias('left_rows'),
-        ColumnExpression(f'r.{ROWS_PER_KEY}').alias('right_rows'),
+        ColumnExpression('l', ROWS_PER_KEY).alias('left_rows'),
+        ColumnExpression('r', ROWS_PER_KEY).alias('right_rows'),
     )
 
 
@@ -313,16 +286,13 @@ def profile_join(left: KeyedTable, right: KeyedTable) -> JoinProfile:
     )
 
 
-def run_profile(connection: duckdb.DuckDBPyConnection, arguments: argparse.Namespace) -> Outcome:
-    if unsupported := find_unsupported_format((arguments.path,)):
-        return unsupported
+def run_profile(connection: duckdb.DuckDBPyConnection, arguments: argparse.Namespace) -> Profiled:
     table = KeyedTable(
         source=str(arguments.path),
         relation=open_table(connection, arguments.path),
         keys=tuple(arguments.key or ()),
     )
-    if missing := find_missing_keys(table):
-        return missing
+    check_keys_exist(table)
     key = check_key(table) if table.keys else None
     profile = TableProfile(
         source=table.source,
@@ -333,22 +303,20 @@ def run_profile(connection: duckdb.DuckDBPyConnection, arguments: argparse.Names
     return Profiled(result=profile, caveats=key_caveats(key))
 
 
-def run_join(connection: duckdb.DuckDBPyConnection, arguments: argparse.Namespace) -> Outcome:
-    if unsupported := find_unsupported_format((arguments.left, arguments.right)):
-        return unsupported
+def run_join(connection: duckdb.DuckDBPyConnection, arguments: argparse.Namespace) -> Profiled:
     keys = tuple(arguments.key)
     left, right = (
         KeyedTable(source=str(path), relation=open_table(connection, path), keys=keys)
         for path in (arguments.left, arguments.right)
     )
-    if missing := find_missing_keys(left) or find_missing_keys(right):
-        return missing
+    check_keys_exist(left)
+    check_keys_exist(right)
     joined = profile_join(left, right)
     return Profiled(result=joined, caveats=join_caveats(joined.left, joined.right))
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog=COMMAND, description=__doc__)
     commands = parser.add_subparsers(dest='subcommand', required=True)
     profile = commands.add_parser('profile', help='schema, nulls, distinct counts, key check')
     profile.add_argument('path', type=Path)
@@ -364,38 +332,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def execute(connection: duckdb.DuckDBPyConnection, arguments: argparse.Namespace) -> Outcome:
+def execute(connection: duckdb.DuckDBPyConnection, arguments: argparse.Namespace) -> Profiled:
     try:
         command = cast('Command', arguments.command)
         return command(connection, arguments)
     except duckdb.Error as error:
-        return InputReadError(error)
+        raise InputReadError(error) from error
+
+
+def build_report(argv: list[str]) -> Report[TableProfile | JoinProfile]:
+    arguments = build_parser().parse_args(argv)
+    with duckdb.connect() as connection:
+        profiled = execute(connection, arguments)
+    return Report(
+        command=f'{COMMAND} {arguments.subcommand}',
+        arguments=describe_arguments(arguments),
+        result=profiled.result,
+        caveats=profiled.caveats,
+    )
 
 
 def main(argv: list[str]) -> int:
-    logging.basicConfig(stream=sys.stderr, format='%(levelname)s %(message)s')
-    arguments = build_parser().parse_args(argv)
-    with duckdb.connect() as connection:
-        outcome = execute(connection, arguments)
-    if isinstance(outcome, UnreadableInputError):
-        logger.error('%s', outcome)
-        return UNREADABLE_INPUT
-    if isinstance(outcome, ValueError):
-        logger.error('%s', outcome)
-        return CONTRACT_VIOLATION
-    report = Report(
-        schema_version=SCHEMA_VERSION,
-        command=f'profile_data {arguments.subcommand}',
-        arguments=describe_arguments(arguments),
-        result=outcome.result,
-        caveats=outcome.caveats,
-    )
-    sys.stdout.write(msgspec.yaml.encode(report).decode())
-    return 0
-
-
-def console_main() -> int:
-    return main(sys.argv[1:])
+    return run_command(logger, build_report, argv)
 
 
 if __name__ == '__main__':

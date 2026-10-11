@@ -13,26 +13,19 @@ import numpy as np
 import polars as pl
 from scipy.stats import binomtest
 
-SCHEMA_VERSION = 2
-CONTRACT_VIOLATION = 2
-UNREADABLE_INPUT = 3
+from python_harness.scripts.report import (
+    LAUNCHER,
+    ContractViolationError,
+    Report,
+    UnreadableInputError,
+    describe_arguments,
+    run_command,
+)
+
+COMMAND = f'{LAUNCHER} paired-compare'
 SMALL_SAMPLE = 30
 
 logger = logging.getLogger('paired_compare')
-
-type ArgumentValue = str | int | float | bool | tuple[str, ...] | None
-
-
-class Report[ResultT](msgspec.Struct, frozen=True, kw_only=True):
-    schema_version: int
-    command: str
-    arguments: dict[str, ArgumentValue]
-    result: ResultT
-    caveats: tuple[str, ...]
-
-
-class UnreadableInputError(Exception):
-    pass
 
 
 class UnsupportedFormatError(UnreadableInputError):
@@ -45,32 +38,32 @@ class InputReadError(UnreadableInputError):
         super().__init__(f'cannot read {path}: {cause}')
 
 
-class MissingColumnError(ValueError):
+class MissingColumnError(ContractViolationError):
     def __init__(self, column: str) -> None:
         super().__init__(f'column {column!r} is not in the results table')
 
 
-class EmptyResultsError(ValueError):
+class EmptyResultsError(ContractViolationError):
     def __init__(self) -> None:
         super().__init__('the results table has no rows')
 
 
-class NullOutcomeError(ValueError):
+class NullOutcomeError(ContractViolationError):
     def __init__(self, column: str, nulls: int) -> None:
         super().__init__(f'column {column!r} has {nulls} null outcomes; resolve them first')
 
 
-class NonBinaryOutcomeError(ValueError):
+class NonBinaryOutcomeError(ContractViolationError):
     def __init__(self, column: str, values: list[object]) -> None:
         super().__init__(f'column {column!r} must hold only 0/1 or booleans, found {values}')
 
 
-class DuplicateTaskError(ValueError):
+class DuplicateTaskError(ContractViolationError):
     def __init__(self, column: str, duplicates: int) -> None:
         super().__init__(f'{duplicates} task ids repeat in {column!r}; pairing is ambiguous')
 
 
-class LevelOutOfRangeError(ValueError):
+class LevelOutOfRangeError(ContractViolationError):
     def __init__(self, level: float) -> None:
         super().__init__(f'confidence level must be in (0, 1), got {level}')
 
@@ -127,69 +120,51 @@ class PairedComparison(msgspec.Struct, frozen=True, kw_only=True):
     exact_mcnemar_p: float
 
 
-def normalize_argument(value: object) -> ArgumentValue:
-    match value:
-        case str() | int() | float() | bool() | None:
-            return value
-        case list() | tuple():
-            return tuple(map(str, value))
-        case _:
-            return str(value)
-
-
-def describe_arguments(arguments: argparse.Namespace) -> dict[str, ArgumentValue]:
-    return {
-        name: normalize_argument(value)
-        for name, value in vars(arguments).items()
-        if not callable(value)
-    }
-
-
-def read_results(path: Path) -> pl.DataFrame | UnreadableInputError:
+def read_results(path: Path) -> pl.DataFrame:
     match path.suffix.lower():
         case '.csv':
             reader = pl.read_csv
         case '.parquet':
             reader = pl.read_parquet
         case _:
-            return UnsupportedFormatError(path)
+            raise UnsupportedFormatError(path)
     try:
         return reader(path)
     except (OSError, pl.exceptions.PolarsError) as error:
-        return InputReadError(path, error)
+        raise InputReadError(path, error) from error
 
 
-def find_missing_column(frame: pl.DataFrame, options: ComparisonOptions) -> ValueError | None:
+def check_columns_exist(frame: pl.DataFrame, options: ComparisonOptions) -> None:
     required = (*options.outcome_columns, *filter(None, (options.key_column,)))
     absent = next((column for column in required if column not in frame.columns), None)
-    return None if absent is None else MissingColumnError(absent)
+    if absent is not None:
+        raise MissingColumnError(absent)
 
 
-def find_outcome_violation(series: pl.Series) -> ValueError | None:
+def check_outcome(series: pl.Series) -> None:
     if series.null_count():
-        return NullOutcomeError(series.name, series.null_count())
+        raise NullOutcomeError(series.name, series.null_count())
     values = series.unique().to_list()
     is_binary = series.dtype.is_integer() or series.dtype == pl.Boolean
-    return (
-        None if is_binary and set(values) <= {0, 1} else NonBinaryOutcomeError(series.name, values)
-    )
+    if not (is_binary and set(values) <= {0, 1}):
+        raise NonBinaryOutcomeError(series.name, values)
 
 
-def find_duplicate_keys(frame: pl.DataFrame, key_column: str | None) -> ValueError | None:
+def check_unique_keys(frame: pl.DataFrame, key_column: str | None) -> None:
     duplicates = 0 if key_column is None else int(frame[key_column].is_duplicated().sum())
-    return DuplicateTaskError(str(key_column), duplicates) if duplicates else None
+    if duplicates:
+        raise DuplicateTaskError(str(key_column), duplicates)
 
 
-def find_table_violation(frame: pl.DataFrame, options: ComparisonOptions) -> ValueError | None:
+def check_table(frame: pl.DataFrame, options: ComparisonOptions) -> None:
     if not 0 < options.level < 1:
-        return LevelOutOfRangeError(options.level)
-    if missing := find_missing_column(frame, options):
-        return missing
+        raise LevelOutOfRangeError(options.level)
+    check_columns_exist(frame, options)
     if frame.is_empty():
-        return EmptyResultsError()
-    outcome_problems = map(find_outcome_violation, map(frame.get_column, options.outcome_columns))
-    first_problem = next(filter(None, outcome_problems), None)
-    return first_problem or find_duplicate_keys(frame, options.key_column)
+        raise EmptyResultsError
+    for column in options.outcome_columns:
+        check_outcome(frame.get_column(column))
+    check_unique_keys(frame, options.key_column)
 
 
 def wilson_interval(successes: int, trials: int, level: float) -> Interval:
@@ -276,7 +251,7 @@ def compare(frame: pl.DataFrame, options: ComparisonOptions) -> PairedComparison
 
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog=COMMAND, description=__doc__)
     parser.add_argument('results', type=Path, help='CSV or Parquet, one row per task')
     parser.add_argument('--old', required=True, help='0/1 outcome column for the old arm')
     parser.add_argument('--new', required=True, help='0/1 outcome column for the new arm')
@@ -298,31 +273,22 @@ def options_from(arguments: argparse.Namespace) -> ComparisonOptions:
     )
 
 
-def main(argv: list[str]) -> int:
-    logging.basicConfig(stream=sys.stderr, format='%(levelname)s %(message)s')
+def build_report(argv: list[str]) -> Report[PairedComparison]:
     arguments = parse_arguments(argv)
     options = options_from(arguments)
     frame = read_results(arguments.results)
-    if isinstance(frame, UnreadableInputError):
-        logger.error('%s', frame)
-        return UNREADABLE_INPUT
-    if violation := find_table_violation(frame, options):
-        logger.error('%s', violation)
-        return CONTRACT_VIOLATION
+    check_table(frame, options)
     comparison = compare(frame, options)
-    report = Report(
-        schema_version=SCHEMA_VERSION,
-        command='paired_compare',
+    return Report(
+        command=COMMAND,
         arguments=describe_arguments(arguments),
         result=comparison,
         caveats=collect_caveats(comparison),
     )
-    sys.stdout.write(msgspec.yaml.encode(report).decode())
-    return 0
 
 
-def console_main() -> int:
-    return main(sys.argv[1:])
+def main(argv: list[str]) -> int:
+    return run_command(logger, build_report, argv)
 
 
 if __name__ == '__main__':

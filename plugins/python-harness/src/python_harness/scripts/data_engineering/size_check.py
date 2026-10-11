@@ -10,8 +10,15 @@ from math import log10
 import msgspec
 import numpy as np
 
-SCHEMA_VERSION = 2
-CONTRACT_VIOLATION = 2
+from python_harness.scripts.report import (
+    LAUNCHER,
+    ContractViolationError,
+    Report,
+    describe_arguments,
+    run_command,
+)
+
+COMMAND = f'{LAUNCHER} size-check'
 DECIMAL_UNITS = ('B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB')
 SECONDS_PER_HOUR = 3_600
 EXCLUSIONS = 'excludes indexes, metadata, input copies, temporaries and process overhead'
@@ -19,23 +26,14 @@ EXCLUSIONS = 'excludes indexes, metadata, input copies, temporaries and process 
 logger = logging.getLogger('size_check')
 
 type Estimator = Callable[[argparse.Namespace], Sized]
-type ArgumentValue = str | int | float | bool | tuple[str, ...] | None
 
 
-class Report[ResultT](msgspec.Struct, frozen=True, kw_only=True):
-    schema_version: int
-    command: str
-    arguments: dict[str, ArgumentValue]
-    result: ResultT
-    caveats: tuple[str, ...]
-
-
-class NegativeQuantityError(ValueError):
+class NegativeQuantityError(ContractViolationError):
     def __init__(self, names: list[str]) -> None:
         super().__init__(f'quantities must be nonnegative: {", ".join(names)}')
 
 
-class UnknownDtypeError(ValueError):
+class UnknownDtypeError(ContractViolationError):
     def __init__(self, dtype: str) -> None:
         super().__init__(f'{dtype!r} is not a NumPy dtype name')
 
@@ -54,24 +52,6 @@ class SizeEstimate(msgspec.Struct, frozen=True, kw_only=True, omit_defaults=True
 class Sized:
     estimate: SizeEstimate
     caveats: tuple[str, ...]
-
-
-def normalize_argument(value: object) -> ArgumentValue:
-    match value:
-        case str() | int() | float() | bool() | None:
-            return value
-        case list() | tuple():
-            return tuple(map(str, value))
-        case _:
-            return str(value)
-
-
-def describe_arguments(arguments: argparse.Namespace) -> dict[str, ArgumentValue]:
-    return {
-        name: normalize_argument(value)
-        for name, value in vars(arguments).items()
-        if not callable(value)
-    }
 
 
 def readable_bytes(size: int) -> str:
@@ -147,7 +127,7 @@ def estimate_join(arguments: argparse.Namespace) -> Sized:
             elements=arguments.left_matches * arguments.right_matches,
             unit='rows',
         ),
-        caveats=('sum this over keys for the whole join; profile_data.py join does',),
+        caveats=(f'sum this over keys for the whole join; {LAUNCHER} profile-data join does',),
     )
 
 
@@ -176,7 +156,7 @@ def add_command(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(prog=COMMAND, description=__doc__)
     commands = parser.add_subparsers(dest='subcommand', required=True)
     dense = add_command(commands, 'dense', estimate_dense)
     dense.add_argument('--rows', type=int, required=True)
@@ -210,42 +190,39 @@ def add_fit_and_join_commands(
     fits.add_argument('--seconds-per-fit', type=float)
 
 
-def find_unknown_dtype(arguments: argparse.Namespace) -> ValueError | None:
+def check_dtypes(arguments: argparse.Namespace) -> None:
     names = (vars(arguments).get(key) for key in ('dtype', 'index_dtype'))
     unknown = next((name for name in names if name and not is_dtype_name(name)), None)
-    return None if unknown is None else UnknownDtypeError(unknown)
+    if unknown is not None:
+        raise UnknownDtypeError(unknown)
 
 
-def find_negative_quantities(arguments: argparse.Namespace) -> ValueError | None:
+def check_quantities(arguments: argparse.Namespace) -> None:
     numbers = {
         name: value
         for name, value in vars(arguments).items()
         if isinstance(value, int | float) and not isinstance(value, bool)
     }
     negative = sorted(name for name, value in numbers.items() if value < 0)
-    return NegativeQuantityError(negative) if negative else None
+    if negative:
+        raise NegativeQuantityError(negative)
 
 
-def main(argv: list[str]) -> int:
-    logging.basicConfig(stream=sys.stderr, format='%(levelname)s %(message)s')
+def build_report(argv: list[str]) -> Report[SizeEstimate]:
     arguments = build_parser().parse_args(argv)
-    if violation := find_negative_quantities(arguments) or find_unknown_dtype(arguments):
-        logger.error('%s', violation)
-        return CONTRACT_VIOLATION
+    check_quantities(arguments)
+    check_dtypes(arguments)
     sized = arguments.estimator(arguments)
-    report = Report(
-        schema_version=SCHEMA_VERSION,
-        command=f'size_check {arguments.subcommand}',
+    return Report(
+        command=f'{COMMAND} {arguments.subcommand}',
         arguments=describe_arguments(arguments),
         result=sized.estimate,
         caveats=sized.caveats,
     )
-    sys.stdout.write(msgspec.yaml.encode(report).decode())
-    return 0
 
 
-def console_main() -> int:
-    return main(sys.argv[1:])
+def main(argv: list[str]) -> int:
+    return run_command(logger, build_report, argv)
 
 
 if __name__ == '__main__':

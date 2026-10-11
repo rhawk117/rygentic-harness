@@ -90,3 +90,46 @@ class TestRejections:
     def test_unsupported_suffix(self, run_profile: ScriptRunner, tmp_path: Path) -> None:
         result = run_profile('profile', str(tmp_path.joinpath('data.txt')))
         assert result.exit_code == UNREADABLE_INPUT
+
+
+class TestColumnNamesThatNeedQuoting:
+    awkward_names = (
+        pytest.param('user.name', id='dotted'),
+        pytest.param('say "hi"', id='double-quote'),
+        pytest.param('rows_per_key', id='collides-with-internal-column'),
+        pytest.param('key_0', id='collides-with-internal-alias'),
+    )
+
+    @staticmethod
+    def write_csv(path: Path, column: str) -> Path:
+        pl.DataFrame({'id': [1, 2, 3], column: ['x', 'x', 'y']}).write_csv(path)
+        return path
+
+    @pytest.mark.parametrize('column', awkward_names)
+    def test_profile_reads_the_column_by_its_whole_name(
+        self, run_profile: ScriptRunner, tmp_path: Path, column: str
+    ) -> None:
+        path = self.write_csv(tmp_path.joinpath('table.csv'), column)
+        report = run_profile('profile', str(path))
+        assert report.exit_code == 0
+        assert [entry['name'] for entry in report.result['columns']] == ['id', column]
+
+    @pytest.mark.parametrize('column', awkward_names)
+    def test_profile_checks_a_key_by_its_whole_name(
+        self, run_profile: ScriptRunner, tmp_path: Path, column: str
+    ) -> None:
+        path = self.write_csv(tmp_path.joinpath('table.csv'), column)
+        report = run_profile('profile', str(path), '--key', column)
+        assert report.exit_code == 0
+        assert report.result['key']['duplicate_examples'] == ['x (2 rows)']
+
+    @pytest.mark.parametrize('column', awkward_names)
+    def test_join_matches_on_a_key_by_its_whole_name(
+        self, run_profile: ScriptRunner, tmp_path: Path, column: str
+    ) -> None:
+        left = self.write_csv(tmp_path.joinpath('l.csv'), column)
+        right = self.write_csv(tmp_path.joinpath('r.csv'), column)
+        report = run_profile('join', str(left), str(right), '--key', column)
+        assert report.exit_code == 0
+        assert report.result['keys'] == [column]
+        assert report.result['inner_join_rows'] == 2 * 2 + 1 * 1
