@@ -30,6 +30,7 @@ A missing target path is a tool error, never an empty result. Files that cannot 
 
 ```
 {root, source_roots[], ruff_config: "ruff.toml" | ".ruff.toml" | "pyproject.toml" | null,
+ ty_config: "ty.toml" | "pyproject.toml" | null,
  manifest: {name, requires_python, build_backend, entry_points[], classifiers[],
             dependencies[], dev_dependencies[], optional_dependencies[], declared_distributions[]} | null,
  layout: {has_py_typed, has_dunder_main, has_src_layout, has_tests_directory, has_uv_lock},
