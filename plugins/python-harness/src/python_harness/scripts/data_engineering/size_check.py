@@ -213,9 +213,9 @@ def check_quantities(arguments: argparse.Namespace) -> None:
         raise NegativeQuantityError(negative)
 
 
-def estimate(arguments: argparse.Namespace) -> Sized:
+def estimate(estimator: Estimator, arguments: argparse.Namespace) -> Sized:
     try:
-        return arguments.estimator(arguments)
+        return estimator(arguments)
     except OverflowError as overflow:
         raise QuantityTooLargeError from overflow
 
@@ -224,7 +224,7 @@ def build_report(argv: list[str]) -> Report[SizeEstimate]:
     arguments = build_parser().parse_args(argv)
     check_quantities(arguments)
     check_dtypes(arguments)
-    sized = estimate(arguments)
+    sized = estimate(arguments.estimator, arguments)
     return Report(
         command=f'{COMMAND} {arguments.subcommand}',
         arguments=describe_arguments(arguments),
