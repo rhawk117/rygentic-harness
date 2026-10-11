@@ -65,7 +65,7 @@ def default_tool_invocations(ruff_version: RuffVersion = DEFAULT_RUFF_VERSION) -
         {
             GateTool.RUFF_CHECK: ToolInvocation(
                 'ruff',
-                ('ruff', 'check', '--statistics', '--no-cache'),
+                ('ruff', 'check', '--no-fix', '--statistics', '--no-cache'),
                 config=ConfigKind.RUFF,
                 pinned_version=ruff_version,
             ),

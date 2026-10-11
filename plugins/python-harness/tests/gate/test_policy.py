@@ -33,6 +33,7 @@ RUFF_CHECK_ARGV = (
     '--isolated',
     'ruff',
     'check',
+    '--no-fix',
     '--statistics',
     '--no-cache',
 )
@@ -299,6 +300,12 @@ class TestLaunchers:
                 GateTool.RUFF_FORMAT,
                 ('uvx', 'ruff@0.16.9', 'format', '--check', '--no-cache'),
                 id='undeclared-ruff-runs-through-uvx-at-the-default-version',
+            ),
+            pytest.param(
+                replace(INPUTS, declared_distributions=frozenset()),
+                GateTool.RUFF_CHECK,
+                ('uvx', 'ruff@0.16.9', 'check', '--no-fix', '--statistics', '--no-cache'),
+                id='undeclared-ruff-check-does-not-fix',
             ),
             pytest.param(
                 INPUTS,

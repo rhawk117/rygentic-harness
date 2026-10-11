@@ -18,6 +18,7 @@ from python_harness.gate.domain import (
     GateCommand,
     GateOptions,
     GatePlan,
+    GateReport,
     GateTool,
     NotTracked,
     TimedOut,
@@ -317,6 +318,44 @@ class TestCreatedPaths:
         report = run_gate(workspace, self.PLAN, environment=NO_ENVIRONMENT)
 
         assert report.created_paths == NotTracked()
+
+
+class TestRuffCheckLeavesFilesAlone:
+    SOURCE = 'src/shop/prices.py'
+    UNUSED_IMPORT = b'import os\n\n\ndef price(total: int) -> int:\n    return total\n'
+    PROJECT = MappingProxyType(
+        {
+            'pyproject.toml': (
+                '[project]\nname = "shop"\nversion = "0"\nrequires-python = ">=3.14"\n'
+                '[tool.ruff]\nfix = true\nunsafe-fixes = true\n'
+                '[tool.ruff.lint]\nselect = ["F401"]\n'
+            ),
+            SOURCE: UNUSED_IMPORT.decode(),
+        }
+    )
+    OPTIONS = GateOptions(skipped=frozenset({GateTool.RUFF_FORMAT, GateTool.TY, GateTool.PYTEST}))
+
+    @pytest.fixture
+    def checked(self, project_builder: ProjectBuilder) -> tuple[Workspace, GateReport]:
+        workspace = project_builder.write(self.PROJECT)
+        survey = survey_project(workspace)
+        report = run_gate_for(workspace, survey, self.OPTIONS, environment=os.environ)
+        return workspace, report
+
+    def test_a_project_config_that_enables_fixes_does_not_change_the_source(
+        self, checked: tuple[Workspace, GateReport]
+    ) -> None:
+        workspace, _ = checked
+
+        assert workspace.root.joinpath(self.SOURCE).read_bytes() == self.UNUSED_IMPORT
+
+    def test_the_violation_is_reported_instead_of_fixed(
+        self, checked: tuple[Workspace, GateReport]
+    ) -> None:
+        _, report = checked
+
+        (result,) = report.results
+        assert (result.passed, 'F401' in result.output_tail) == (False, True)
 
 
 class TestUnreadableManifest:
