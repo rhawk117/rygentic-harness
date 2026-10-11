@@ -1,17 +1,15 @@
 """map_python_calls over MCP: per-module reference summaries and one symbol's references."""
 
-from collections.abc import Callable
 from typing import ClassVar
 
 import pytest
 from mcp import Client
-from mcp.types import CallToolResult
 from python_harness import server
 from python_harness.calls.services import find_symbol_references_for, map_call_sites_for
 from python_harness.core.output import MINIMUM_BUDGET, to_json_value
 from python_harness.core.tests.fixtures import ProjectBuilder
-from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import Workspace
+from python_harness.imports.services import load_project_index
 from python_harness.tools.map_python_calls.output import SUMMARY_SYMBOL_LIMIT
 from python_harness.tools.tests.support import document_of, text_of
 
@@ -27,25 +25,31 @@ class TestMapPythonCalls:
         self,
         project_client: Client,
         shop: Workspace,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'paths': list(self.PATHS), 'detail': 'full'})
 
-        expected = map_call_sites_for(shop, self.PATHS)
-        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
+        expected = map_call_sites_for(shop, load_project_index(shop), self.PATHS)
+        assert (result.is_error, document_of(result)['result']) == (
+            False,
+            to_json_value(expected),
+        )
 
     async def test_full_symbol_result_is_the_references_report_as_json(
         self,
         project_client: Client,
         shop: Workspace,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         arguments = {'paths': list(self.PATHS), 'symbol': self.SYMBOL, 'detail': 'full'}
 
         result = await project_client.call_tool(TOOL, arguments)
 
-        expected = find_symbol_references_for(shop, self.PATHS, self.SYMBOL)
-        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
+        expected = find_symbol_references_for(
+            shop, load_project_index(shop), self.PATHS, name=self.SYMBOL
+        )
+        assert (result.is_error, document_of(result)['result']) == (
+            False,
+            to_json_value(expected),
+        )
 
     @pytest.mark.usefixtures('shop')
     async def test_full_calls_cover_the_given_paths(self, project_client: Client) -> None:
@@ -229,7 +233,7 @@ class TestBudgetedCallsOutput:
         assert (result.is_error, sorted(document), sorted(document['workspace'])) == (
             False,
             ['budget', 'degraded', 'detail', 'result', 'tokens', 'truncated', 'workspace'],
-            ['external_packages', 'fallback_diagnostics', 'source_roots'],
+            ['fallback_diagnostics', 'source_roots', 'unindexed_packages'],
         )
 
     @pytest.mark.usefixtures('shop')
@@ -244,7 +248,7 @@ class TestBudgetedCallsOutput:
     async def test_a_document_that_cannot_fit_as_counts_is_a_tool_error(
         self, project_client: Client, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(server, 'workspace_diagnostics', lambda _: {'text': 'word ' * 2000})
+        monkeypatch.setattr(server, 'workspace_diagnostics', lambda *_: {'text': 'word ' * 2000})
 
         arguments = {'paths': list(TestMapPythonCalls.PATHS), 'budget': MINIMUM_BUDGET}
 

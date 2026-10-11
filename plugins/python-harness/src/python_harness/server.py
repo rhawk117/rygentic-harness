@@ -37,9 +37,12 @@ from python_harness.documentation.services import (
 from python_harness.documentation.settings import Settings
 from python_harness.gate.domain import GateOptions
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
-from python_harness.gate.services import run_gate_for
-from python_harness.imports.services import external_packages_for, load_project_index
-from python_harness.survey.services import survey_document, survey_project
+from python_harness.gate.policy import plan_gate
+from python_harness.gate.services import run_gate
+from python_harness.gate.util import gate_inputs_from
+from python_harness.imports.domain import ProjectIndex
+from python_harness.imports.services import load_project_index
+from python_harness.survey.services import survey_document, survey_indexed_project
 from python_harness.tools.check_citations import use_case as citations_use_case
 from python_harness.tools.check_citations.schema import (
     CitationsRequest,
@@ -54,7 +57,7 @@ from python_harness.tools.map_python_calls import use_case as calls_use_case
 from python_harness.tools.map_python_calls.schema import CallsRequest, SymbolReference
 from python_harness.tools.plan_review_surface import use_case as surface_use_case
 from python_harness.tools.plan_review_surface.schema import Revision, SurfaceRequest
-from python_harness.tools.project import ProjectPaths, open_project
+from python_harness.tools.project import ProjectPaths, open_project, workspace_diagnostics
 from python_harness.tools.read_python_docs import use_case as read_use_case
 from python_harness.tools.read_python_docs.schema import (
     DEFAULT_PAGE_CHARACTERS,
@@ -98,18 +101,6 @@ def render_document(report: object) -> str:
     return json.dumps(to_json_value(report), separators=COMPACT_SEPARATORS)
 
 
-def workspace_diagnostics(workspace: Workspace) -> dict[str, JsonValue]:
-    graph = load_project_index(workspace).graph
-    return {
-        'source_roots': [workspace.relative(root) for root in workspace.source_roots],
-        'fallback_diagnostics': list(workspace.fallback_diagnostics),
-        'external_packages': [
-            {'name': package.name, 'directory': package.directory}
-            for package in external_packages_for(workspace, graph)
-        ],
-    }
-
-
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProjectOutput:
     options: OutputOptions
@@ -124,16 +115,17 @@ class ProjectOutput:
         return output_view(self.counts(report))
 
 
-def render_project_document(
-    workspace: Workspace, report: object, *, output: ProjectOutput | None = None
-) -> str:
+def render_project_document(report: object, diagnostics: dict[str, JsonValue]) -> str:
     document = to_json_value(report)
     if not isinstance(document, dict):
         msg = 'project reports must serialize to JSON objects'
         raise TypeError(msg)
-    diagnostics = workspace_diagnostics(workspace)
-    if output is None:
-        return render_document(document | {'diagnostics': diagnostics})
+    return render_document(document | {'workspace': diagnostics})
+
+
+def render_budgeted_project_document(
+    report: object, diagnostics: dict[str, JsonValue], output: ProjectOutput
+) -> str:
     return render_budgeted_document(
         options=output.options,
         workspace=diagnostics,
@@ -207,15 +199,9 @@ class ProjectTools:
     environment: Mapping[str, str]
     uv_runner: UvRunner
 
-    def answer[Request](
-        self,
-        run: Callable[[Workspace, Request], object],
-        request: Request,
-        output: ProjectOutput | None = None,
-    ) -> str:
-        with tool_errors():
-            workspace = open_project(self.environment, self.uv_runner)
-            return render_project_document(workspace, run(workspace, request), output=output)
+    def open_indexed_project(self) -> tuple[Workspace, ProjectIndex]:
+        workspace = open_project(self.environment, self.uv_runner)
+        return workspace, load_project_index(workspace)
 
     def collect_python_facts(
         self,
@@ -247,7 +233,11 @@ class ProjectTools:
             counts=facts_output.facts_counts,
             summary_truncated=facts_output.facts_summary_is_truncated,
         )
-        return self.answer(facts_use_case.run, request, output)
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            report = facts_use_case.run(workspace, request)
+            diagnostics = workspace_diagnostics(workspace, index.graph)
+            return render_budgeted_project_document(report, diagnostics, output)
 
     def map_python_calls(
         self,
@@ -278,7 +268,11 @@ class ProjectTools:
             counts=calls_output.calls_counts,
             summary_truncated=calls_output.calls_summary_is_truncated,
         )
-        return self.answer(calls_use_case.run, request, output)
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            report = calls_use_case.run(workspace, index, request)
+            diagnostics = workspace_diagnostics(workspace, index.graph)
+            return render_budgeted_project_document(report, diagnostics, output)
 
     def check_citations(self, *, path: DocumentPath = '', text: DocumentText = '') -> str:
         """Check every path.py:line citation and its backticked quote in Markdown, as JSON.
@@ -288,21 +282,27 @@ class ProjectTools:
         lists are empty. A failed check is a report, not an error.
         """
         request = CitationsRequest(path=path or None, text=text or None)
-        return self.answer(citations_use_case.run, request)
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            report = citations_use_case.run(workspace, request)
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
     def survey(self) -> str:
         """Survey the project and return its mode, domains and layout as JSON."""
         with tool_errors():
-            workspace = open_project(self.environment, self.uv_runner)
-            return render_project_document(workspace, survey_document(survey_project(workspace)))
+            workspace, index = self.open_indexed_project()
+            report = survey_document(survey_indexed_project(workspace, index.graph))
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
     def gate(self) -> str:
         """Run the project's ruff, ty and pytest checks and return the report as JSON."""
         with tool_errors():
-            workspace = open_project(self.environment, self.uv_runner)
+            workspace, index = self.open_indexed_project()
             options = GateOptions(fallback_ruff_config=RUFF_CONFIG, fallback_ty_config=TY_CONFIG)
-            report = run_gate_for(workspace, options, environment=self.environment)
-            return render_project_document(workspace, report)
+            inputs = gate_inputs_from(survey_indexed_project(workspace, index.graph))
+            plan = plan_gate(inputs, workspace.root, options)
+            report = run_gate(workspace, plan, options, environment=self.environment)
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
     def plan_review_surface(
         self,
@@ -319,7 +319,10 @@ class ProjectTools:
         other modules that depend on them.
         """
         request = SurfaceRequest(paths=paths, diff_base=diff_base, diff_head=diff_head)
-        return self.answer(surface_use_case.run, request)
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            report = surface_use_case.run(workspace, index, request)
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
 
 def build_server(

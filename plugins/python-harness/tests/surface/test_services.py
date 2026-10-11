@@ -6,6 +6,7 @@ import pytest
 from python_harness.core.errors import TargetPathMissingError
 from python_harness.core.tests.fixtures import GitProject, ProjectBuilder
 from python_harness.core.workspace import Workspace
+from python_harness.imports.services import load_project_index
 from python_harness.surface.domain import CodebaseTarget, DiffTarget, SurfaceOptions
 from python_harness.surface.services import plan_surface
 
@@ -30,7 +31,7 @@ class TestEmptyModules:
     def test_modules_without_code_beyond_a_docstring_cost_no_dispatch(
         self, workspace: Workspace
     ) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         clustered = tuple(tuple(item.path for item in cluster.modules) for cluster in plan.clusters)
         assert clustered == self.CLUSTERED
@@ -63,7 +64,7 @@ class TestPlanSurfaceForCodebase:
         return project_builder.write(self.FILES)
 
     def test_modules_that_import_each_other_share_a_cluster(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         grouped = tuple(tuple(item.module for item in cluster.modules) for cluster in plan.clusters)
         assert grouped == (
@@ -72,20 +73,20 @@ class TestPlanSurfaceForCodebase:
         )
 
     def test_cluster_ids_number_the_clusters_in_order(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         assert tuple(cluster.id for cluster in plan.clusters) == ('c01', 'c02')
 
     def test_tests_and_outside_importers_attach_to_the_imported_cluster(
         self, workspace: Workspace
     ) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         attached = tuple((cluster.tests, cluster.dependents) for cluster in plan.clusters)
         assert attached == ((('tests/test_pricing.py',), ('src/shop/api.py',)), ((), ()))
 
     def test_totals_cover_every_clustered_module(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         assert (plan.module_count, plan.line_count) == (
             self.MODULE_COUNT,
@@ -93,7 +94,7 @@ class TestPlanSurfaceForCodebase:
         )
 
     def test_unparsable_surface_files_are_reported(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         assert tuple(item.path for item in plan.unparsable) == ('src/shop/core/broken.py',)
 
@@ -109,7 +110,7 @@ class TestPlanSurfaceForCodebase:
     ) -> None:
         options = SurfaceOptions(dispatch_budget=budget)
 
-        plan = plan_surface(workspace, self.TARGET, options)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET, options=options)
 
         assert plan.over_budget is expected
 
@@ -158,13 +159,13 @@ class TestPlanSurfaceForDiff:
         return git_project.commit(self.CHANGE, 'change')
 
     def test_changed_modules_form_the_surface(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         paths = tuple(tuple(item.path for item in cluster.modules) for cluster in plan.clusters)
         assert paths == (('src/shop/discounts.py', 'src/shop/pricing.py'),)
 
     def test_unchanged_importers_are_tests_or_dependents(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         attached = tuple((cluster.tests, cluster.dependents) for cluster in plan.clusters)
         assert attached == ((('tests/test_pricing.py',), ('src/shop/api.py',)),)
@@ -181,7 +182,7 @@ class TestPlanSurfaceForEmptyDiff:
         return git_project.commit(self.CHANGE, 'docs only')
 
     def test_no_changed_python_files_gives_an_empty_plan(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, DiffTarget('main'))
+        plan = plan_surface(workspace, load_project_index(workspace), DiffTarget('main'))
 
         assert (plan.clusters, plan.unparsable, plan.dispatches) == ((), (), 0)
 
@@ -204,7 +205,7 @@ class TestTestImporters:
         return project_builder.write(self.FILES)
 
     def test_test_directory_and_test_suffix_importers_are_tests(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         assert (plan.clusters[0].tests, plan.clusters[0].dependents) == self.EXPECTED
 
@@ -230,13 +231,13 @@ class TestSeveralCodebasePaths:
     def test_surface_is_the_union_of_every_path_in_one_numbering(
         self, workspace: Workspace
     ) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         grouped = tuple(tuple(item.module for item in cluster.modules) for cluster in plan.clusters)
         assert grouped == self.EXPECTED
 
     def test_overlapping_paths_count_each_module_once(self, workspace: Workspace) -> None:
-        plan = plan_surface(workspace, self.TARGET)
+        plan = plan_surface(workspace, load_project_index(workspace), self.TARGET)
 
         assert plan.module_count == self.MODULE_COUNT
 
@@ -250,4 +251,4 @@ class TestMissingTarget:
 
     def test_mistyped_codebase_path_is_reported(self, workspace: Workspace) -> None:
         with pytest.raises(TargetPathMissingError):
-            plan_surface(workspace, self.TARGET)
+            plan_surface(workspace, load_project_index(workspace), self.TARGET)

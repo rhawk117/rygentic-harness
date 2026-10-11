@@ -1,6 +1,7 @@
 """Choose the codebase or diff target a request names and plan its review surface."""
 
 from python_harness.core.workspace import Workspace
+from python_harness.imports.domain import ProjectIndex
 from python_harness.surface.domain import CodebaseTarget, DiffTarget, SurfacePlan, Target
 from python_harness.surface.services import plan_surface
 from python_harness.tools.errors import HeadWithoutBaseError, PathsWithDiffBaseError
@@ -35,7 +36,7 @@ def target_from(request: SurfaceRequest) -> Target:
     return codebase_target_from(request.paths)
 
 
-def run(workspace: Workspace, request: SurfaceRequest) -> SurfacePlan:
+def run(workspace: Workspace, index: ProjectIndex, request: SurfaceRequest) -> SurfacePlan:
     if (problem := check_target_choice(request)) is not None:
         raise problem
-    return plan_surface(workspace, target_from(request))
+    return plan_surface(workspace, index, target_from(request))

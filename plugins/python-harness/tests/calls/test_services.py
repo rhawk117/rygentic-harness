@@ -22,8 +22,8 @@ from python_harness.core.errors import PathOutsideWorkspaceError
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.tests.support import emit_document
 from python_harness.core.workspace import Workspace, open_workspace
-from python_harness.imports.domain import ExternalPackage
-from python_harness.imports.services import external_packages_for, load_project_index
+from python_harness.imports.domain import UnindexedPackage
+from python_harness.imports.services import load_project_index, unindexed_packages_for
 
 PROJECT = MappingProxyType(
     {
@@ -91,7 +91,7 @@ def workspace(project_builder: ProjectBuilder) -> Workspace:
 
 @pytest.fixture
 def report(workspace: Workspace) -> CallsReport:
-    return map_call_sites_for(workspace, TARGET_PATHS)
+    return map_call_sites_for(workspace, load_project_index(workspace), TARGET_PATHS)
 
 
 class TestSymbolSummaries:
@@ -200,7 +200,9 @@ class TestSymbolGroups:
     @pytest.fixture
     def module(self, project_builder: ProjectBuilder) -> ModuleCalls:
         workspace = project_builder.write(self.FILES)
-        return map_call_sites_for(workspace, self.TARGET_PATHS).modules[0]
+        return map_call_sites_for(
+            workspace, load_project_index(workspace), self.TARGET_PATHS
+        ).modules[0]
 
     def test_symbols_split_by_whether_other_files_or_only_their_module_use_them(
         self, module: ModuleCalls
@@ -249,17 +251,23 @@ class TestSymbolReferences:
         ],
     )
     def test_references_carry_location_and_context(self, workspace: Workspace, name: str) -> None:
-        found = find_symbol_references_for(workspace, TARGET_PATHS, name)
+        found = find_symbol_references_for(
+            workspace, load_project_index(workspace), TARGET_PATHS, name=name
+        )
 
         assert tuple(item.references for item in found.symbols) == (self.EXPECTED[name],)
 
     def test_module_qualified_name_selects_the_symbol(self, workspace: Workspace) -> None:
-        found = find_symbol_references_for(workspace, TARGET_PATHS, 'shop.models.Order')
+        found = find_symbol_references_for(
+            workspace, load_project_index(workspace), TARGET_PATHS, name='shop.models.Order'
+        )
 
         assert tuple(item.references for item in found.symbols) == (self.EXPECTED['Order'],)
 
     def test_unmatched_name_gives_no_symbols(self, workspace: Workspace) -> None:
-        found = find_symbol_references_for(workspace, TARGET_PATHS, 'Invoice')
+        found = find_symbol_references_for(
+            workspace, load_project_index(workspace), TARGET_PATHS, name='Invoice'
+        )
 
         assert found.symbols == ()
 
@@ -293,7 +301,9 @@ class TestSharedNames:
     def test_requested_name_selects_matching_definitions(
         self, workspace: Workspace, name: str, expected: tuple[str, ...]
     ) -> None:
-        found = find_symbol_references_for(workspace, self.TARGET_PATHS, name)
+        found = find_symbol_references_for(
+            workspace, load_project_index(workspace), self.TARGET_PATHS, name=name
+        )
 
         qualified = tuple(item.definition.qualified_name() for item in found.symbols)
         assert qualified == expected
@@ -355,12 +365,12 @@ class TestWorkspaceFanIn:
             return '\n'.join(str(member) for member in members)
 
         workspace = open_workspace(root, uv_runner=list_members)
-        report = map_call_sites_for(workspace, (self.TARGET,))
+        report = map_call_sites_for(workspace, load_project_index(workspace), (self.TARGET,))
         metrics = report.modules[0].metrics
 
         assert (metrics.module, metrics.fan_in) == ('one.value', 1)
 
-    def test_in_workspace_external_package_has_a_relative_directory(
+    def test_in_workspace_unindexed_package_has_a_relative_directory(
         self, project_builder: ProjectBuilder
     ) -> None:
         project_builder.write(
@@ -375,8 +385,8 @@ class TestWorkspaceFanIn:
         workspace = open_workspace(root, uv_runner=list_members)
         graph = load_project_index(workspace).graph
 
-        assert external_packages_for(workspace, graph) == (
-            ExternalPackage('shared', 'members/two/src/shared'),
+        assert unindexed_packages_for(workspace, graph) == (
+            UnindexedPackage('shared', 'members/two/src/shared'),
         )
 
 
@@ -401,29 +411,33 @@ class TestTargets:
     def test_parsable_targets_are_measured_beside_an_unparsable_one(
         self, workspace: Workspace
     ) -> None:
-        report = map_call_sites_for(workspace, self.TARGET_PATHS)
+        report = map_call_sites_for(workspace, load_project_index(workspace), self.TARGET_PATHS)
 
         assert tuple(item.metrics.module for item in report.modules) == self.MEASURED
 
     def test_unparsable_target_is_reported_in_the_summary(self, workspace: Workspace) -> None:
-        report = map_call_sites_for(workspace, self.TARGET_PATHS)
+        report = map_call_sites_for(workspace, load_project_index(workspace), self.TARGET_PATHS)
 
         assert tuple(item.path for item in report.unparsable) == self.UNPARSABLE
 
     def test_unparsable_target_is_reported_in_the_drill_down(self, workspace: Workspace) -> None:
-        found = find_symbol_references_for(workspace, self.TARGET_PATHS, 'place')
+        found = find_symbol_references_for(
+            workspace, load_project_index(workspace), self.TARGET_PATHS, name='place'
+        )
 
         assert tuple(item.path for item in found.unparsable) == self.UNPARSABLE
 
     def test_target_outside_discovery_is_reported(self, workspace: Workspace) -> None:
         with pytest.raises(UnknownTargetPathsError) as caught:
-            map_call_sites_for(workspace, (*self.TARGET_PATHS, *self.UNDISCOVERED))
+            map_call_sites_for(
+                workspace, load_project_index(workspace), (*self.TARGET_PATHS, *self.UNDISCOVERED)
+            )
 
         assert caught.value.paths == self.UNDISCOVERED
 
     def test_target_outside_the_root_is_reported(self, workspace: Workspace) -> None:
         with pytest.raises(PathOutsideWorkspaceError):
-            map_call_sites_for(workspace, ('../elsewhere.py',))
+            map_call_sites_for(workspace, load_project_index(workspace), ('../elsewhere.py',))
 
 
 class TestTestImporters:
@@ -446,7 +460,7 @@ class TestTestImporters:
     def test_test_directory_and_test_suffix_importers_are_test_paths(
         self, workspace: Workspace
     ) -> None:
-        report = map_call_sites_for(workspace, self.TARGET_PATHS)
+        report = map_call_sites_for(workspace, load_project_index(workspace), self.TARGET_PATHS)
 
         assert report.modules[0].metrics.test_paths == self.EXPECTED
 
@@ -480,7 +494,9 @@ class TestDocuments:
     def test_drill_down_keeps_the_definition_without_a_qualified_name(
         self, workspace: Workspace
     ) -> None:
-        report = find_symbol_references_for(workspace, TARGET_PATHS, 'Order')
+        report = find_symbol_references_for(
+            workspace, load_project_index(workspace), TARGET_PATHS, name='Order'
+        )
 
         document = emit_document(report)
 

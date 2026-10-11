@@ -1,21 +1,25 @@
 """plan_review_surface over MCP: a codebase or diff target planned as import clusters."""
 
-from collections.abc import Callable
 from pathlib import Path
 
 import anyio
 import pytest
 from mcp import Client
-from mcp.types import CallToolResult
-from python_harness.core.output import to_json_value
-from python_harness.core.tests.fixtures import GitProject
+from python_harness.core.output import dataclass_to_json
+from python_harness.core.tests.fixtures import STUBBED_UV_DIAGNOSTIC, GitProject
 from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import Workspace
+from python_harness.imports.services import load_project_index
 from python_harness.surface.domain import CodebaseTarget, DiffTarget
 from python_harness.surface.services import plan_surface
 from python_harness.tools.tests.support import SHOP_PROJECT, document_of, text_of
 
 TOOL = 'plan_review_surface'
+SHOP_WORKSPACE = {
+    'source_roots': ['src'],
+    'fallback_diagnostics': [STUBBED_UV_DIAGNOSTIC],
+    'unindexed_packages': [],
+}
 
 
 @pytest.fixture
@@ -33,12 +37,12 @@ class TestCodebaseSurface:
         self,
         project_client: Client,
         shop: Workspace,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'paths': list(self.PATHS)})
 
-        expected = plan_surface(shop, CodebaseTarget(self.PATHS))
-        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
+        report = plan_surface(shop, load_project_index(shop), CodebaseTarget(self.PATHS))
+        expected = dataclass_to_json(report) | {'workspace': SHOP_WORKSPACE}
+        assert (result.is_error, document_of(result)) == (False, expected)
 
     @pytest.mark.usefixtures('shop')
     @pytest.mark.parametrize(
@@ -67,12 +71,12 @@ class TestDiffSurface:
         self,
         project_client: Client,
         branched: Workspace,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'diff_base': 'main'})
 
-        expected = plan_surface(branched, DiffTarget('main'))
-        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
+        report = plan_surface(branched, load_project_index(branched), DiffTarget('main'))
+        expected = dataclass_to_json(report) | {'workspace': SHOP_WORKSPACE}
+        assert (result.is_error, document_of(result)) == (False, expected)
 
     @pytest.mark.usefixtures('branched')
     async def test_diff_surface_holds_only_changed_modules(self, project_client: Client) -> None:
@@ -165,8 +169,8 @@ class TestWorkspaceDiagnostics:
     ) -> None:
         result = await project_client.call_tool(TOOL, {'paths': ['src']})
 
-        diagnostics = document_of(result)['diagnostics']
+        diagnostics = document_of(result)['workspace']
         assert (result.is_error, sorted(diagnostics)) == (
             False,
-            ['external_packages', 'fallback_diagnostics', 'source_roots'],
+            ['fallback_diagnostics', 'source_roots', 'unindexed_packages'],
         )

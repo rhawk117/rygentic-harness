@@ -9,12 +9,12 @@ from types import MappingProxyType
 from python_harness.core.sources import ParsedModule, load_sources
 from python_harness.core.workspace import Workspace
 from python_harness.imports.domain import (
-    ExternalPackage,
     ImportBinding,
     ImportEdge,
     ImportGraph,
     ModuleRef,
     ProjectIndex,
+    UnindexedPackage,
     longest_module_prefix,
 )
 
@@ -106,14 +106,16 @@ def load_project_index(workspace: Workspace) -> ProjectIndex:
     return ProjectIndex(sources, build_import_graph(workspace, sources.modules))
 
 
-def external_packages_for(workspace: Workspace, graph: ImportGraph) -> tuple[ExternalPackage, ...]:
+def unindexed_packages_for(
+    workspace: Workspace, graph: ImportGraph
+) -> tuple[UnindexedPackage, ...]:
     roots = (*workspace.source_roots, workspace.root)
     found = (
         (name, package_directory(workspace, name, roots))
         for name in sorted(graph.external_packages)
     )
     return tuple(
-        ExternalPackage(name, workspace.relative(directory))
+        UnindexedPackage(name, workspace.relative(directory))
         for name, directory in found
         if directory is not None
     )

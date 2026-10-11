@@ -85,10 +85,10 @@ class TestSurveyOverStdio:
     def test_the_survey_carries_the_workspace_diagnostics(
         self, documents: ProjectDocuments
     ) -> None:
-        assert documents.survey['diagnostics'] == {
+        assert documents.survey['workspace'] == {
             'source_roots': ['src'],
             'fallback_diagnostics': [],
-            'external_packages': [],
+            'unindexed_packages': [],
         }
 
 
@@ -125,8 +125,8 @@ class TestGateOverStdio:
         assert outcomes['ty'] == {'kind': 'exited', 'exit_code': 0}
 
     def test_the_gate_carries_the_workspace_diagnostics(self, documents: ProjectDocuments) -> None:
-        assert documents.gate['diagnostics'] == {
+        assert documents.gate['workspace'] == {
             'source_roots': ['src'],
             'fallback_diagnostics': [],
-            'external_packages': [],
+            'unindexed_packages': [],
         }

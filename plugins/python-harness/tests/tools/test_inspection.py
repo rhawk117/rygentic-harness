@@ -15,6 +15,7 @@ from python_harness.gate.domain import (
     Exited,
     GateCommand,
     GateOptions,
+    GatePlan,
     GateReport,
     GateResult,
     GateTool,
@@ -47,16 +48,21 @@ class TestGate:
         given: list[GateOptions] = []
 
         def run_gate(
-            workspace: Workspace, options: GateOptions, *, environment: Mapping[str, str]
+            workspace: Workspace,
+            plan: GatePlan,
+            options: GateOptions,
+            *,
+            environment: Mapping[str, str],
         ) -> GateReport:
             assert workspace.root.is_dir()
+            assert plan.commands
             assert environment
             given.append(options)
             command = GateCommand(GateTool.RUFF_CHECK, 'ruff', ('check',))
             result = GateResult(command, Exited(1), 'error: line too long')
             return GateReport(RuffConfigSource.FALLBACK, (result,), NotTracked())
 
-        monkeypatch.setattr(server, 'run_gate_for', run_gate)
+        monkeypatch.setattr(server, 'run_gate', run_gate)
         return given
 
     @pytest.mark.usefixtures('shop')
@@ -103,12 +109,11 @@ def keep(report: object) -> object:
 
 
 class TestBudgetedProjectOutput:
-    @pytest.mark.usefixtures('shop')
-    def test_shared_project_path_returns_the_response_envelope(self, shop: Workspace) -> None:
-        rendered = server.render_project_document(
-            shop,
+    def test_shared_project_path_returns_the_response_envelope(self) -> None:
+        rendered = server.render_budgeted_project_document(
             {'value': 'ok'},
-            output=server.ProjectOutput(
+            {'source_roots': ['src']},
+            server.ProjectOutput(
                 options=OutputOptions(detail=Detail.COUNTS, budget=256),
                 summary=keep,
                 counts=keep,

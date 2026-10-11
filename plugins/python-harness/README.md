@@ -78,7 +78,7 @@ Every project tool's document says how the project's source roots were found. Th
 
 When `uv` is not on `PATH`, exits with an error, times out, lists no members, lists a relative path or lists a path outside the project root, the project root's `src` directory is the only source root (when it exists) and the reason is listed in `fallback_diagnostics`.
 
-The diagnostics hold `source_roots`, `fallback_diagnostics` and `external_packages` (each a `name` and a `directory`). They are under `workspace` in the envelope of the two budgeted tools and under a top-level `diagnostics` field in the documents of the others.
+The diagnostics hold `source_roots`, `fallback_diagnostics` and `unindexed_packages`. `unindexed_packages` lists each imported package that has a directory under a source root or the project root and no Python module the tools read, with its `name` and its `directory`. The diagnostics are under `workspace` in every project tool's document: at the top level for `survey`, `gate`, `plan_review_surface` and `check_citations`, and in the envelope of the two budgeted tools.
 
 #### Detail and budget
 

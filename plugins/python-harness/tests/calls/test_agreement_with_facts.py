@@ -34,8 +34,8 @@ class TestMetricsAgreeWithFacts:
         return collect_module_facts(module, self.CATALOG)
 
     @pytest.fixture
-    def metrics(self, workspace: Workspace) -> ModuleMetrics:
-        return map_call_sites_for(workspace, (self.PATH,)).modules[0].metrics
+    def metrics(self, workspace: Workspace, index: ProjectIndex) -> ModuleMetrics:
+        return map_call_sites_for(workspace, index, (self.PATH,)).modules[0].metrics
 
     def function_shape_maxima(self, module_facts: ModuleFacts) -> tuple[int, int]:
         shapes = tuple(

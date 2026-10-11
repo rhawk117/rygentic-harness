@@ -9,7 +9,8 @@ from python_harness.core.tests.fixtures import STUBBED_UV_DIAGNOSTIC, ProjectBui
 from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import open_workspace
 from python_harness.documentation.tests.support import DOCS_VERSION, DocsSite, standard_pages
-from python_harness.server import workspace_diagnostics
+from python_harness.imports.services import load_project_index
+from python_harness.tools.project import workspace_diagnostics
 from python_harness.tools.tests.support import document_of
 
 OS_PATH_PAGE_PATH = f'/{DOCS_VERSION}/library/os.path.html'
@@ -156,14 +157,13 @@ class TestProjectDiagnostics:
         result = await project_client.call_tool(tool, arguments)
 
         assert result.is_error is False
-        document = document_of(result)
-        diagnostics = document['workspace' if tool in BUDGETED_TOOLS else 'diagnostics']
+        diagnostics = document_of(result)['workspace']
         assert diagnostics['source_roots'] == ['src']
         assert diagnostics['fallback_diagnostics'] == [STUBBED_UV_DIAGNOSTIC]
 
 
 class TestWorkspaceDiagnostics:
-    def test_external_workspace_package_has_a_relative_directory(
+    def test_unindexed_workspace_package_has_a_relative_directory(
         self, project_builder: ProjectBuilder
     ) -> None:
         project_builder.write(
@@ -179,8 +179,9 @@ class TestWorkspaceDiagnostics:
             return '\n'.join(str(member) for member in members)
 
         workspace = open_workspace(root, uv_runner=list_members)
+        graph = load_project_index(workspace).graph
 
-        assert workspace_diagnostics(workspace)['external_packages'] == [
+        assert workspace_diagnostics(workspace, graph)['unindexed_packages'] == [
             {'name': 'shared', 'directory': 'members/two/src/shared'}
         ]
 

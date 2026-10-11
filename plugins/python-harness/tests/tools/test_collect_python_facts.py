@@ -1,15 +1,12 @@
 """collect_python_facts over MCP: the facts report as JSON for paths inside the project."""
 
-from collections.abc import Callable
 from types import MappingProxyType
 
 import pytest
 from mcp import Client
-from mcp.types import CallToolResult
 from python_harness import server
 from python_harness.core.output import MINIMUM_BUDGET, to_json_value
 from python_harness.core.tests.fixtures import ProjectBuilder
-from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import Workspace
 from python_harness.facts.services import build_review_catalog, collect_facts
 from python_harness.tools.tests.support import document_of, text_of
@@ -25,12 +22,14 @@ class TestCollectPythonFacts:
         self,
         project_client: Client,
         shop: Workspace,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'paths': list(self.PATHS), 'detail': 'full'})
 
         expected = collect_facts(shop, self.PATHS, build_review_catalog())
-        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
+        assert (result.is_error, document_of(result)['result']) == (
+            False,
+            to_json_value(expected),
+        )
 
     @pytest.mark.usefixtures('shop')
     @pytest.mark.parametrize(
@@ -47,13 +46,11 @@ class TestCollectPythonFacts:
     async def test_full_facts_cover_the_given_paths(
         self,
         project_client: Client,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
         paths: list[str],
         expected: list[str],
     ) -> None:
-        facts = project_report_of(
-            await project_client.call_tool(TOOL, {'paths': paths, 'detail': 'full'})
-        )
+        result = await project_client.call_tool(TOOL, {'paths': paths, 'detail': 'full'})
+        facts = document_of(result)['result']
 
         assert [module['path'] for module in facts['modules']] == expected
 
@@ -68,13 +65,12 @@ class TestCollectPythonFacts:
     async def test_function_shapes_are_reported_only_on_request(
         self,
         project_client: Client,
-        project_report_of: Callable[[CallToolResult], JsonDocument],
         option: dict[str, bool],
         reported: bool,
     ) -> None:
         arguments = {'paths': ['src/shop/pricing.py'], 'detail': 'full', **option}
 
-        facts = project_report_of(await project_client.call_tool(TOOL, arguments))
+        facts = document_of(await project_client.call_tool(TOOL, arguments))['result']
 
         assert ('function_shape' in facts['modules'][0]['counts']) is reported
 
@@ -203,7 +199,7 @@ class TestBudgetedFactsOutput:
         assert (result.is_error, sorted(document), sorted(document['workspace'])) == (
             False,
             ['budget', 'degraded', 'detail', 'result', 'tokens', 'truncated', 'workspace'],
-            ['external_packages', 'fallback_diagnostics', 'source_roots'],
+            ['fallback_diagnostics', 'source_roots', 'unindexed_packages'],
         )
 
     @pytest.mark.usefixtures('shop')
@@ -218,7 +214,7 @@ class TestBudgetedFactsOutput:
     async def test_a_document_that_cannot_fit_as_counts_is_a_tool_error(
         self, project_client: Client, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(server, 'workspace_diagnostics', lambda _: {'text': 'word ' * 2000})
+        monkeypatch.setattr(server, 'workspace_diagnostics', lambda *_: {'text': 'word ' * 2000})
 
         result = await project_client.call_tool(
             TOOL, {'paths': list(self.PATHS), 'budget': MINIMUM_BUDGET}

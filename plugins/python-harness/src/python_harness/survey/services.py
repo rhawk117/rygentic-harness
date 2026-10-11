@@ -9,6 +9,7 @@ import tomllib
 from python_harness.core.output import JsonValue, dataclass_to_json
 from python_harness.core.toml import TomlTable, read_table
 from python_harness.core.workspace import Workspace
+from python_harness.imports.domain import ImportGraph
 from python_harness.imports.services import load_project_index
 from python_harness.survey.domain import (
     NO_MANIFEST,
@@ -99,17 +100,14 @@ def find_ty_config(workspace: Workspace, pyproject: TomlTable | None) -> str | N
     return ty_config_name(workspace.root, pyproject)
 
 
-def list_external_packages(workspace: Workspace) -> tuple[str, ...]:
-    graph = load_project_index(workspace).graph
-    return tuple(sorted(graph.external_packages))
-
-
-def survey_project(workspace: Workspace, options: SurveyOptions | None = None) -> ProjectSurvey:
+def survey_indexed_project(
+    workspace: Workspace, graph: ImportGraph, options: SurveyOptions | None = None
+) -> ProjectSurvey:
     chosen = SurveyOptions() if options is None else options
     pyproject = load_pyproject(workspace)
     manifest = NO_MANIFEST if pyproject is None else manifest_from_document(pyproject)
     layout = read_layout(workspace)
-    external_packages = list_external_packages(workspace)
+    external_packages = tuple(sorted(graph.external_packages))
     return ProjectSurvey(
         root=workspace.root.as_posix(),
         manifest=manifest,
@@ -121,3 +119,7 @@ def survey_project(workspace: Workspace, options: SurveyOptions | None = None) -
         source_roots=tuple(workspace.relative(root) for root in workspace.source_roots),
         ty_config=find_ty_config(workspace, pyproject),
     )
+
+
+def survey_project(workspace: Workspace, options: SurveyOptions | None = None) -> ProjectSurvey:
+    return survey_indexed_project(workspace, load_project_index(workspace).graph, options)

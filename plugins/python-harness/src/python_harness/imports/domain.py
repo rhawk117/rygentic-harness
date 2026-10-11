@@ -78,6 +78,6 @@ class ProjectIndex:
 
 
 @dataclass(frozen=True, slots=True)
-class ExternalPackage:
+class UnindexedPackage:
     name: str
     directory: str
