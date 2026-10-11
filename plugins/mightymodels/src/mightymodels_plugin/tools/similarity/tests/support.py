@@ -4,10 +4,12 @@ import pytest
 
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.repository_key import local_key
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.similarity.repository import similarity_store
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 from mightymodels_plugin.tools.similarity.tests.in_memory import InMemorySimilarityStore
+from mightymodels_plugin.tools.tests.support import repository_key_of
 
 
 @pytest.fixture
@@ -38,3 +40,8 @@ def in_memory_similarity_service(
         spool=tmp_path.joinpath(SPOOL_DIRECTORY),
         repository_key=local_key(tmp_path),
     )
+
+
+@pytest.fixture
+def own_key(repository_workspace: Workspace) -> str:
+    return repository_key_of(repository_workspace).root
