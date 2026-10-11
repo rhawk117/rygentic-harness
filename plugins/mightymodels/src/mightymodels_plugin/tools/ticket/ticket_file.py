@@ -36,6 +36,11 @@ class SubsetError(StateError):
         self.reason = reason
 
 
+class TabIndentationError(SubsetError):
+    def __init__(self, number: int) -> None:
+        super().__init__(number, 'the indentation holds a tab; indent with two spaces per level')
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Line:
     number: int
@@ -104,8 +109,10 @@ def source_line(number: int, raw: str) -> Line | None:
     content = raw.rstrip()
     if not content.strip() or content.lstrip().startswith('#'):
         return None
+    if '\t' in content.removesuffix(content.lstrip()):
+        raise TabIndentationError(number)
     indent = len(content) - len(content.lstrip(' '))
-    if indent % INDENT or '\t' in content[:indent]:
+    if indent % INDENT:
         raise SubsetError(number, 'indentation must be a multiple of two spaces')
     return Line(number=number, indent=indent, text=content.strip())
 

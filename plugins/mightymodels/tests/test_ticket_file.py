@@ -43,6 +43,9 @@ class TestParse:
         ('source', 'number', 'reason'),
         [
             pytest.param('a: 1\n b: 2\n', 2, 'multiple of two spaces', id='odd-indent'),
+            pytest.param('a:\n\tb: 1\n', 2, 'indentation holds a tab', id='tab-alone'),
+            pytest.param('a:\n  \tb: 1\n', 2, 'indentation holds a tab', id='tab-after-spaces'),
+            pytest.param('a:\n\t  b: 1\n', 2, 'indentation holds a tab', id='tab-before-spaces'),
             pytest.param('  a: 1\n', 1, 'unexpected indentation', id='indented-first-line'),
             pytest.param('a: 1\n    b: 2\n', 2, 'unexpected indentation', id='indent-after-scalar'),
             pytest.param('a:\n  b: 1\n    c: 2\n', 3, 'unexpected indentation', id='too-deep'),
@@ -64,6 +67,20 @@ class TestParse:
 
         assert error.value.number == number
         assert reason in error.value.reason
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            pytest.param('a: 1\n\t\nb: 2\n', id='tab-in-a-blank-line'),
+            pytest.param('a: 1\n\t# note\nb: 2\n', id='tab-in-a-comment-line'),
+        ],
+    )
+    def test_a_tab_in_a_line_that_holds_no_key_is_skipped_with_the_line(self, source: str) -> None:
+        assert parse(source) == {'a': 1, 'b': 2}
+
+    @pytest.mark.parametrize('source', [pytest.param('a: x\ty\n', id='tab-inside-a-value')])
+    def test_a_tab_inside_a_value_is_kept_in_the_value(self, source: str) -> None:
+        assert parse(source) == {'a': 'x\ty'}
 
 
 class TestWithContext:

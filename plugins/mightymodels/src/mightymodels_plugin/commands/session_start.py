@@ -5,8 +5,10 @@ find the state database the server opened. The hook has the data directory and t
 file, and Claude Code sets what that file exports in every later Bash command of the session, a
 subagent's included. The command appends one line there, the export of the data directory, unless
 the file already holds that line, and does nothing else: it creates no directory, prints nothing
-and loads no database or server package. When the variable or the env file is missing it says so on
-standard error and exits 0.
+and loads no database or server package. A last line that has no newline is read as a whole line:
+when it is the export the file is left as it is, and when it is anything else the command ends it
+with a newline first, so the export starts a line of its own. When the variable or the env file is
+missing it says so on standard error and exits 0.
 """
 
 from collections.abc import Mapping
@@ -41,8 +43,10 @@ def export_data_directory(environ: Mapping[str, str]) -> int:
         return skipped(EnvFileMissingError())
     line = export_line(data_directory)
     exports = Path(env_file)
-    if exports.is_file() and line in exports.read_text(encoding='utf-8').splitlines(keepends=True):
+    held = exports.read_text(encoding='utf-8') if exports.is_file() else ''
+    missing_newline = '\n' if held and not held.endswith('\n') else ''
+    if line in f'{held}{missing_newline}'.splitlines(keepends=True):
         return 0
     with exports.open('a', encoding='utf-8') as file:
-        file.write(line)
+        file.write(f'{missing_newline}{line}')
     return 0

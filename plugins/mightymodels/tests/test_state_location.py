@@ -499,6 +499,18 @@ class TestSessionStartExport:
         hook_env_file.write_text(self.OTHER_EXPORT, encoding='utf-8')
         return hook_env_file
 
+    @pytest.fixture
+    def hook_env_file_with_no_final_newline(self, hook_env_file: Path) -> Path:
+        hook_env_file.write_text(self.OTHER_EXPORT.removesuffix('\n'), encoding='utf-8')
+        return hook_env_file
+
+    @pytest.fixture
+    def hook_env_file_with_the_export_and_no_final_newline(self, hook_env_file: Path) -> Path:
+        main(SESSION_START)
+        exported = hook_env_file.read_text(encoding='utf-8')
+        hook_env_file.write_text(exported.removesuffix('\n'), encoding='utf-8')
+        return hook_env_file
+
     def test_it_appends_one_shell_quoted_export_of_the_data_directory_and_nothing_else(
         self, data_directory: Path, hook_env_file: Path, tmp_path: Path
     ) -> None:
@@ -529,6 +541,34 @@ class TestSessionStartExport:
 
         assert exports[0] == self.OTHER_EXPORT.strip()
         assert [shlex.split(line) for line in exports[1:]] == [
+            ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
+        ]
+
+    @pytest.mark.parametrize(
+        'runs',
+        [
+            pytest.param(1, id='no-final-newline-run-once'),
+            pytest.param(2, id='no-final-newline-run-twice'),
+        ],
+    )
+    def test_after_a_line_with_no_newline_it_exports_once_on_a_line_of_its_own(
+        self, runs: int, data_directory: Path, hook_env_file_with_no_final_newline: Path
+    ) -> None:
+        for _ in range(runs):
+            main(SESSION_START)
+        exports = hook_env_file_with_no_final_newline.read_text(encoding='utf-8')
+        kept_line, exported = exports.splitlines(keepends=True)
+
+        assert kept_line == self.OTHER_EXPORT
+        assert shlex.split(exported) == ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
+
+    def test_it_appends_no_second_copy_of_an_export_with_no_final_newline(
+        self, data_directory: Path, hook_env_file_with_the_export_and_no_final_newline: Path
+    ) -> None:
+        main(SESSION_START)
+        exports = hook_env_file_with_the_export_and_no_final_newline.read_text(encoding='utf-8')
+
+        assert [shlex.split(line) for line in exports.splitlines()] == [
             ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
         ]
 
