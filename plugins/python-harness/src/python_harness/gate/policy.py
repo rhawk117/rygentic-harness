@@ -6,6 +6,7 @@ from pathlib import Path
 
 from python_harness.gate.domain import (
     GateCommand,
+    GateConfigSelections,
     GateInputs,
     GateOptions,
     GatePlan,
@@ -14,6 +15,7 @@ from python_harness.gate.domain import (
     RuffConfigSelection,
     RuffConfigSource,
     ToolInvocation,
+    TyConfigSelection,
 )
 
 
@@ -44,6 +46,15 @@ def select_ruff_config(
     return RuffConfigSelection(RuffConfigSource.FALLBACK, arguments)
 
 
+def select_ty_config(inputs: GateInputs, options: GateOptions) -> TyConfigSelection:
+    if inputs.has_ty_config:
+        return TyConfigSelection(())
+    fallback = options.fallback_ty_config
+    if fallback is None:
+        return TyConfigSelection(())
+    return TyConfigSelection(('--config-file', fallback.as_posix()))
+
+
 def project_launcher(inputs: GateInputs) -> Launcher:
     if inputs.has_uv_lock:
         return Launcher('uv', ('run', '--isolated', '--frozen'))
@@ -63,13 +74,18 @@ def choose_launcher(invocation: ToolInvocation, inputs: GateInputs) -> Launcher:
 def build_command(
     tool: GateTool,
     inputs: GateInputs,
-    ruff_config: RuffConfigSelection,
+    configs: GateConfigSelections,
     *,
     options: GateOptions,
 ) -> GateCommand:
     invocation = options.tools[tool]
     launcher = choose_launcher(invocation, inputs)
-    config = ruff_config.arguments if invocation.reads_ruff_config else ()
+    if invocation.reads_ruff_config:
+        config = configs.ruff.arguments
+    elif invocation.reads_ty_config:
+        config = configs.ty.arguments
+    else:
+        config = ()
     arguments = (*launcher.arguments, *invocation.arguments, *config)
     return GateCommand(tool, launcher.program, arguments)
 
@@ -86,6 +102,8 @@ def plan_gate(
 ) -> GatePlan:
     chosen = GateOptions() if options is None else options
     ruff_config = select_ruff_config(inputs, workspace_root, chosen)
+    ty_config = select_ty_config(inputs, chosen)
+    configs = GateConfigSelections(ruff_config, ty_config)
     planned = (tool for tool in chosen.tools if is_tool_planned(tool, inputs, chosen))
-    commands = tuple(build_command(tool, inputs, ruff_config, options=chosen) for tool in planned)
+    commands = tuple(build_command(tool, inputs, configs, options=chosen) for tool in planned)
     return GatePlan(commands, ruff_config.source)

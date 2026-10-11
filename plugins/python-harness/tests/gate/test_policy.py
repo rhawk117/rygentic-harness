@@ -117,6 +117,44 @@ class TestRuffConfig:
         )
 
 
+class TestTyConfig:
+    WITH_TY_CONFIG = replace(INPUTS, has_ty_config=True)
+    WITHOUT_TY_CONFIG = replace(INPUTS, has_ty_config=False)
+    FALLBACK_OPTIONS = GateOptions(fallback_ty_config=Path('/plugin/assets/ty.toml'))
+    FALLBACK_ARGUMENTS = ('--config-file', '/plugin/assets/ty.toml')
+    TY_CHECK_ARGV = ('uv', 'run', '--isolated', '--with', 'ty', 'ty', 'check')
+
+    @pytest.mark.parametrize(
+        ('inputs', 'options', 'expected'),
+        [
+            pytest.param(
+                WITH_TY_CONFIG,
+                FALLBACK_OPTIONS,
+                TY_CHECK_ARGV,
+                id='repository-config-wins-over-fallback',
+            ),
+            pytest.param(
+                WITHOUT_TY_CONFIG,
+                FALLBACK_OPTIONS,
+                (*TY_CHECK_ARGV, *FALLBACK_ARGUMENTS),
+                id='fallback-config-is-explicit',
+            ),
+            pytest.param(
+                WITHOUT_TY_CONFIG,
+                GateOptions(),
+                TY_CHECK_ARGV,
+                id='no-fallback-config-keeps-ty-defaults',
+            ),
+        ],
+    )
+    def test_ty_config_arguments(
+        self, inputs: GateInputs, options: GateOptions, expected: tuple[str, ...]
+    ) -> None:
+        plan = plan_gate(inputs, ROOT, options)
+
+        assert argv_for(plan, GateTool.TY) == expected
+
+
 class TestSourceRootsOverride:
     ROOTS = (Path("/home/o'brien/shop/src"), Path('/home/o\\x/shop'))
 

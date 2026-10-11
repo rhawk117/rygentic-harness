@@ -29,6 +29,7 @@ class ToolInvocation:
     distribution: str
     arguments: tuple[str, ...]
     reads_ruff_config: bool = False
+    reads_ty_config: bool = False
     runs_in_project_environment: bool = False
     required_domain: Domain | None = None
 
@@ -49,7 +50,12 @@ def default_tool_invocations() -> ToolInvocations:
                 ('ruff', 'format', '--check', '--no-cache'),
                 reads_ruff_config=True,
             ),
-            GateTool.TY: ToolInvocation('ty', ('ty', 'check'), runs_in_project_environment=True),
+            GateTool.TY: ToolInvocation(
+                'ty',
+                ('ty', 'check'),
+                reads_ty_config=True,
+                runs_in_project_environment=True,
+            ),
             GateTool.PYTEST: ToolInvocation(
                 'pytest',
                 ('pytest', '-q', '-p', 'no:cacheprovider'),
@@ -82,6 +88,7 @@ def default_launcher_environment() -> Path | None:
 @dataclass(frozen=True, slots=True)
 class GateOptions:
     fallback_ruff_config: Path | None = None
+    fallback_ty_config: Path | None = None
     dropped_environment: frozenset[str] = PYTHON_HARNESS_ENVIRONMENT
     launcher_environment: Path | None = field(default_factory=default_launcher_environment)
     child_environment: Mapping[str, str] = field(default_factory=default_child_environment)
@@ -98,12 +105,24 @@ class GateInputs:
     has_ruff_config: bool
     domains: frozenset[Domain]
     source_roots: tuple[str, ...]
+    has_ty_config: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class RuffConfigSelection:
     source: RuffConfigSource
     arguments: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class TyConfigSelection:
+    arguments: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class GateConfigSelections:
+    ruff: RuffConfigSelection
+    ty: TyConfigSelection
 
 
 @dataclass(frozen=True, slots=True)

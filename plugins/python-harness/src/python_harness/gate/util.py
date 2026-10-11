@@ -19,6 +19,7 @@ def gate_inputs_from(survey: ProjectSurvey) -> GateInputs:
         declared_distributions=survey.manifest.declared_distributions,
         has_uv_lock=survey.layout.has_uv_lock,
         has_ruff_config=survey.ruff_config is not None,
+        has_ty_config=survey.ty_config is not None,
         domains=frozenset(survey.domains),
         source_roots=survey.source_roots,
     )

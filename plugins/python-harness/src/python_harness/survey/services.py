@@ -6,13 +6,14 @@ from pathlib import Path
 
 import tomllib
 
-from python_harness.core.toml import TomlTable
+from python_harness.core.toml import TomlTable, read_table
 from python_harness.core.workspace import Workspace
 from python_harness.imports.services import load_project_index
 from python_harness.survey.domain import (
     NO_MANIFEST,
     PYPROJECT,
     RUFF_CONFIG_FILES,
+    TY_CONFIG_FILES,
     UV_LOCK,
     LayoutFacts,
     ProjectSurvey,
@@ -76,6 +77,20 @@ def find_ruff_config(workspace: Workspace, pyproject: TomlTable | None) -> str |
     return ruff_config_name(workspace.root, pyproject)
 
 
+def ty_config_name(directory: Path, pyproject: TomlTable | None) -> str | None:
+    candidates = (directory.joinpath(name) for name in TY_CONFIG_FILES)
+    dedicated = next((path.name for path in candidates if path.is_file()), None)
+    if dedicated is not None:
+        return dedicated
+    if pyproject is None or 'ty' not in read_table(pyproject, 'tool'):
+        return None
+    return PYPROJECT
+
+
+def find_ty_config(workspace: Workspace, pyproject: TomlTable | None) -> str | None:
+    return ty_config_name(workspace.root, pyproject)
+
+
 def list_external_packages(workspace: Workspace) -> tuple[str, ...]:
     graph = load_project_index(workspace).graph
     return tuple(sorted(graph.external_packages))
@@ -96,4 +111,5 @@ def survey_project(workspace: Workspace, options: SurveyOptions | None = None) -
         ruff_config=find_ruff_config(workspace, pyproject),
         external_packages=external_packages,
         source_roots=tuple(workspace.relative(root) for root in workspace.source_roots),
+        ty_config=find_ty_config(workspace, pyproject),
     )

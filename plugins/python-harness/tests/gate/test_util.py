@@ -92,6 +92,14 @@ class TestGateInputsFrom:
             {Domain.PYTEST, Domain.FASTAPI},
         )
 
+    def test_ty_config_is_absent_when_the_survey_found_none(self, inputs: GateInputs) -> None:
+        assert inputs.has_ty_config is False
+
+    def test_ty_config_carries_over_from_the_survey(self) -> None:
+        inputs = gate_inputs_from(replace(self.SURVEY, ty_config='ty.toml'))
+
+        assert inputs.has_ty_config is True
+
     def test_source_roots_carry_over(self, inputs: GateInputs) -> None:
         assert inputs.source_roots == self.SURVEY.source_roots
 
