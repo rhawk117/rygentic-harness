@@ -1,5 +1,6 @@
 """The `bin/python-harness-data` launcher: exact pins, a capped resolution, and its dispatch."""
 
+import importlib
 import re
 import sys
 from datetime import datetime
@@ -116,6 +117,14 @@ class TestDispatch:
 
         assert launcher.main([name, '--flag', 'value']) == 7
         assert calls == [(launcher.COMMANDS[name], ['--flag', 'value'])]
+
+    @pytest.mark.parametrize('name', COMMAND_NAMES)
+    def test_each_table_entry_imports_a_module_with_a_callable_main(
+        self, launcher: ModuleType, name: str
+    ) -> None:
+        module = importlib.import_module(launcher.COMMANDS[name])
+
+        assert callable(module.main)
 
     @pytest.mark.parametrize('argv', [[], ['unknown', '--help']], ids=['missing', 'unknown'])
     def test_a_missing_or_unknown_name_exits_nonzero_naming_the_four(
