@@ -100,12 +100,14 @@ JSON object with exactly these keys:
 `scout` is `code-scout` or `web-scout`, `target` is at most 255 characters and `report` is
 non-blank text of at most `REPORT_LIMIT` = 60000 characters, and the file is at most
 `SPOOL_FILE_BYTES` = 724,996 bytes. `REPORT_LIMIT` is the limit of a scout report and of the text of
-every similarity row, in `declarative.py`, and the byte cap follows from it: the writer escapes
-non-ASCII text in JSON, so a character takes at most 12 bytes (a four-byte character is a surrogate
-pair of two six-byte escapes), and the cap is (`REPORT_LIMIT` + 255 for the target + 140 for the
-key) x 12 bytes plus 256 for the keys and braces. A report at the limit is therefore stored whole,
-never cut, whatever its characters, and one over it is set aside. A file over the cap is set aside
-the same way. A writer creates the file under a name that does not end in `.json` and
+every similarity row, in `declarative.py`, and the byte cap follows from it: the cap allows for the
+longest spelling a JSON writer gives a character, the escaped one, at most 12 bytes (a four-byte
+character is a surrogate pair of two six-byte escapes), and the cap is (`REPORT_LIMIT` + 255 for
+the target + 140 for the key) x 12 bytes plus 256 for the keys and braces. The plugin's own writer
+writes a character outside ASCII as itself in UTF-8, which never takes more. A report at the limit
+is therefore stored whole, never cut, whatever its characters, and one over it is set aside. A file
+over the cap is set aside the same way.
+A writer creates the file under a name that does not end in `.json` and
 renames it, so a half-written file is never read. `<digest>` is the SHA-256 hex digest of the repository key's text in UTF-8 and the
 `spool_file_prefix(key)` function in `repository_key.py` gives `<digest>-`. The directory is
 shared by every repository, so the server lists only the names that begin with its own digest
