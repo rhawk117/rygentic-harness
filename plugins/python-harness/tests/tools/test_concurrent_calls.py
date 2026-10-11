@@ -43,5 +43,7 @@ class TestDocumentationCallDuringAHeldProjectCall:
                 )
                 assert (search.is_error, finished) == (False, [])
                 held_open.write(b'held = 1\n')
+            with await anyio.to_thread.run_sync(open_for_writing, pipe) as workspace_scan_open:
+                workspace_scan_open.write(b'held = 1\n')
 
         assert [held.is_error for held in finished] == [False]

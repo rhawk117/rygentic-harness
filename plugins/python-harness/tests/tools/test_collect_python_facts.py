@@ -1,8 +1,12 @@
 """collect_python_facts over MCP: the facts report as JSON for paths inside the project."""
 
+from collections.abc import Callable
+
 import pytest
 from mcp import Client
+from mcp.types import CallToolResult
 from python_harness.core.output import to_json_value
+from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import Workspace
 from python_harness.facts.services import build_review_catalog, collect_facts
 from python_harness.tools.tests.support import document_of
@@ -15,12 +19,15 @@ class TestCollectPythonFacts:
     PATHS = ('src/shop',)
 
     async def test_result_is_the_facts_report_as_json(
-        self, project_client: Client, shop: Workspace
+        self,
+        project_client: Client,
+        shop: Workspace,
+        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'paths': list(self.PATHS)})
 
         expected = collect_facts(shop, self.PATHS, build_review_catalog())
-        assert (result.is_error, document_of(result)) == (False, to_json_value(expected))
+        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
 
     @pytest.mark.usefixtures('shop')
     @pytest.mark.parametrize(
@@ -57,3 +64,18 @@ class TestCollectPythonFacts:
         facts = document_of(await project_client.call_tool(TOOL, arguments))
 
         assert ('function_shape' in facts['modules'][0]['counts']) is reported
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures('shop')
+class TestWorkspaceDiagnostics:
+    async def test_collect_python_facts_reports_the_workspace_in_its_diagnostics(
+        self, project_client: Client
+    ) -> None:
+        result = await project_client.call_tool(TOOL, {'paths': list(TestCollectPythonFacts.PATHS)})
+
+        diagnostics = document_of(result)['diagnostics']
+        assert (result.is_error, sorted(diagnostics)) == (
+            False,
+            ['external_packages', 'fallback_diagnostics', 'source_roots'],
+        )

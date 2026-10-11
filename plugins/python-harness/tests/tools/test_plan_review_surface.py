@@ -1,10 +1,12 @@
 """plan_review_surface over MCP: a codebase or diff target planned as import clusters."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import anyio
 import pytest
 from mcp import Client
+from mcp.types import CallToolResult
 from python_harness.core.output import to_json_value
 from python_harness.core.tests.fixtures import GitProject
 from python_harness.core.tests.support import JsonDocument
@@ -28,12 +30,15 @@ class TestCodebaseSurface:
     PATHS = ('src',)
 
     async def test_result_is_the_surface_plan_as_json(
-        self, project_client: Client, shop: Workspace
+        self,
+        project_client: Client,
+        shop: Workspace,
+        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'paths': list(self.PATHS)})
 
         expected = plan_surface(shop, CodebaseTarget(self.PATHS))
-        assert (result.is_error, document_of(result)) == (False, to_json_value(expected))
+        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
 
     @pytest.mark.usefixtures('shop')
     @pytest.mark.parametrize(
@@ -59,12 +64,15 @@ class TestCodebaseSurface:
 @pytest.mark.anyio
 class TestDiffSurface:
     async def test_result_is_the_surface_plan_as_json(
-        self, project_client: Client, branched: Workspace
+        self,
+        project_client: Client,
+        branched: Workspace,
+        project_report_of: Callable[[CallToolResult], JsonDocument],
     ) -> None:
         result = await project_client.call_tool(TOOL, {'diff_base': 'main'})
 
         expected = plan_surface(branched, DiffTarget('main'))
-        assert (result.is_error, document_of(result)) == (False, to_json_value(expected))
+        assert (result.is_error, project_report_of(result)) == (False, to_json_value(expected))
 
     @pytest.mark.usefixtures('branched')
     async def test_diff_surface_holds_only_changed_modules(self, project_client: Client) -> None:
@@ -147,3 +155,18 @@ class TestOptionLikeRevision:
 
         written = [entry async for entry in anyio.Path(output_directory).iterdir()]
         assert (result.is_error, written) == (True, [])
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures('shop')
+class TestWorkspaceDiagnostics:
+    async def test_plan_review_surface_reports_the_workspace_in_its_diagnostics(
+        self, project_client: Client
+    ) -> None:
+        result = await project_client.call_tool(TOOL, {'paths': ['src']})
+
+        diagnostics = document_of(result)['diagnostics']
+        assert (result.is_error, sorted(diagnostics)) == (
+            False,
+            ['external_packages', 'fallback_diagnostics', 'source_roots'],
+        )

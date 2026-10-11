@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from python_harness.core.errors import PythonHarnessError
-from python_harness.core.output import COMPACT_SEPARATORS, to_json_value
+from python_harness.core.output import COMPACT_SEPARATORS, JsonValue, to_json_value
 from python_harness.core.workspace import Workspace
 from python_harness.documentation.repository import documentation_http_client
 from python_harness.documentation.services import (
@@ -22,6 +22,7 @@ from python_harness.documentation.services import (
     call_deadline,
 )
 from python_harness.documentation.settings import Settings
+from python_harness.imports.services import external_packages_for, load_project_index
 from python_harness.tools.check_citations import use_case as citations_use_case
 from python_harness.tools.check_citations.schema import (
     CitationsRequest,
@@ -75,6 +76,26 @@ def tool_errors() -> Generator[None]:
 
 def render_document(report: object) -> str:
     return json.dumps(to_json_value(report), separators=COMPACT_SEPARATORS)
+
+
+def workspace_diagnostics(workspace: Workspace) -> dict[str, JsonValue]:
+    graph = load_project_index(workspace).graph
+    return {
+        'source_roots': [workspace.relative(root) for root in workspace.source_roots],
+        'fallback_diagnostics': list(workspace.fallback_diagnostics),
+        'external_packages': [
+            {'name': package.name, 'directory': package.directory}
+            for package in external_packages_for(workspace, graph)
+        ],
+    }
+
+
+def render_project_document(workspace: Workspace, report: object) -> str:
+    document = to_json_value(report)
+    if not isinstance(document, dict):
+        msg = 'project reports must serialize to JSON objects'
+        raise TypeError(msg)
+    return render_document(document | {'diagnostics': workspace_diagnostics(workspace)})
 
 
 async def close_client(client: httpx.AsyncClient, timeout_seconds: float) -> None:
@@ -140,7 +161,8 @@ class ProjectTools:
 
     def answer[Request](self, run: Callable[[Workspace, Request], object], request: Request) -> str:
         with tool_errors():
-            return render_document(run(open_project(self.environment), request))
+            workspace = open_project(self.environment)
+            return render_project_document(workspace, run(workspace, request))
 
     def collect_python_facts(
         self, *, paths: ProjectPaths, with_function_shapes: FunctionShapes = False

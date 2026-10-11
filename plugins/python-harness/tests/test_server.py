@@ -1,10 +1,16 @@
 """End to end over MCP: schemas, search tiers, paginated reads, model-visible errors."""
 
+from pathlib import Path
+
 import pytest
 from mcp import Client
 from mcp.types import CallToolResult
+from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.tests.support import JsonDocument
+from python_harness.core.workspace import open_workspace
 from python_harness.documentation.tests.support import DOCS_VERSION, DocsSite, standard_pages
+from python_harness.server import workspace_diagnostics
+from python_harness.tools.tests.support import document_of
 
 OS_PATH_PAGE_PATH = f'/{DOCS_VERSION}/library/os.path.html'
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
@@ -14,6 +20,14 @@ VERSION_PATTERN = r'^3\.(0|[1-9][0-9]?)$'
 VERSION_HELP = (
     'Python minor version such as 3.13.\n\n'
     'Read requires-python in pyproject.toml or .python-version first; do not guess.'
+)
+PROJECT_DIAGNOSTIC_ARGUMENTS = (
+    pytest.param(
+        'collect_python_facts', {'paths': ['src/shop/pricing.py']}, id='collect-python-facts'
+    ),
+    pytest.param('map_python_calls', {'paths': ['src/shop/pricing.py']}, id='map-python-calls'),
+    pytest.param('check_citations', {'text': 'text'}, id='check-citations'),
+    pytest.param('plan_review_surface', {'paths': ['src']}, id='plan-review-surface'),
 )
 
 
@@ -85,6 +99,45 @@ class TestToolSchemas:
             VERSION_PATTERN,
             VERSION_HELP,
         )
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures('shop')
+class TestProjectDiagnostics:
+    @pytest.mark.parametrize(('tool', 'arguments'), PROJECT_DIAGNOSTIC_ARGUMENTS)
+    async def test_project_tools_add_workspace_diagnostics(
+        self, project_client: Client, tool: str, arguments: dict[str, object]
+    ) -> None:
+        result = await project_client.call_tool(tool, arguments)
+
+        assert result.is_error is False
+        diagnostics = document_of(result)['diagnostics']
+        assert diagnostics['source_roots'] == ['src']
+        assert len(diagnostics['fallback_diagnostics']) == 1
+        assert 'uv workspace discovery failed' in diagnostics['fallback_diagnostics'][0]
+
+
+class TestWorkspaceDiagnostics:
+    def test_external_workspace_package_has_a_relative_directory(
+        self, project_builder: ProjectBuilder
+    ) -> None:
+        project_builder.write(
+            {
+                'members/one/src/one/__init__.py': 'from shared import value\n',
+                'members/two/src/shared/py.typed': '',
+            }
+        )
+        root = project_builder.root
+        members = (root.joinpath('members', 'one'), root.joinpath('members', 'two'))
+
+        def list_members(_: Path) -> str:
+            return '\n'.join(str(member) for member in members)
+
+        workspace = open_workspace(root, uv_runner=list_members)
+
+        assert workspace_diagnostics(workspace)['external_packages'] == [
+            {'name': 'shared', 'directory': 'members/two/src/shared'}
+        ]
 
 
 @pytest.mark.anyio
