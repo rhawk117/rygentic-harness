@@ -35,6 +35,12 @@ ignore = [
 ]
 dummy-variable-rgx = "^_.*$"
 
+[lint.per-file-ignores]
+"**/tests/**/*.py" = ["S101", "PLR2004", "PLR0913", "PLR0917", "FBT001", "ANN401"]
+"**/test_*.py" = ["S101", "PLR2004", "PLR0913", "PLR0917", "FBT001", "ANN401"]
+"**/*_test.py" = ["S101", "PLR2004", "PLR0913", "PLR0917", "FBT001", "ANN401"]
+"**/conftest.py" = ["S101", "PLR2004", "PLR0913", "PLR0917", "FBT001", "ANN401"]
+
 [lint.flake8-annotations]
 allow-star-arg-any = false
 ignore-fully-untyped = false

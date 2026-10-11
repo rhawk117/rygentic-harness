@@ -19,7 +19,7 @@ SERVER_NAME = 'python-harness'
 FIXTURE_PROJECT = {
     'pyproject.toml': '[project]\nname = "shop"\nversion = "0"\nrequires-python = ">=3.14"\n',
     'src/shop/__init__.py': 'def price(total: int) -> int:\n    return total\n',
-    'tests/test_price.py': 'def test_price() -> None:\n    pass\n',
+    'tests/test_price.py': 'def test_price() -> None:\n    total = 2 * 2\n    assert total == 4\n',
 }
 GATE_TOOLS = ['ruff_check', 'ruff_format', 'ty', 'pytest']
 
