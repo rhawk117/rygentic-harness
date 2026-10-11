@@ -6,73 +6,44 @@ protocol 2026-07-28. `Context.elicit` is never used because that host has no bac
 """
 
 import asyncio
-import re
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from operator import attrgetter
 from pathlib import Path
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import pytest
-import sqlalchemy as sql
-from mcp import Client
-from mcp.client.context import ClientRequestContext
-from mcp.types import (
-    CallToolResult,
-    ElicitRequestFormParams,
-    ElicitRequestParams,
-    ElicitResult,
-    InputRequiredResult,
-)
-from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT, Base
-from mightymodels_plugin.core.slug import Slug
+from mcp.types import CallToolResult, ElicitResult
+from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
 from mightymodels_plugin.core.tests.support import GitRunner
-from mightymodels_plugin.core.workspace import workspace_at
-from mightymodels_plugin.server import build_server
 from mightymodels_plugin.tools.contract.tables import CommandRow
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
-from mightymodels_plugin.tools.review.tables import ReviewDispositionRow, ReviewRunRow
-from mightymodels_plugin.tools.tests.support import StateServer, text_of, workspace_database
+from mightymodels_plugin.tools.review.tables import ReviewDispositionRow
+from mightymodels_plugin.tools.tests.scripted_host import (
+    SLUG,
+    TICKET_INTERVIEW,
+    Arguments,
+    Exchange,
+    Replies,
+    Stored,
+    exchange_with,
+    review_runs,
+    rows_read,
+    said,
+    ticket_handoff,
+    unanswered,
+)
+from mightymodels_plugin.tools.tests.support import StateServer, text_of
 
-if TYPE_CHECKING:
-    from mcp.types import (
-        InputResponses,
-    )
-
-type Arguments = dict[str, object]
 type Content = dict[str, str | int | float | bool | list[str] | None]
-type Stored = Callable[[StateServer], object]
-
-SLUG = 'retry-queue'
 SOURCE_DIRECTORY = Path(__file__).parent.parent.joinpath('src')
 REPORT = Path(__file__).parent.joinpath('fixtures', 'merge-vader-report.md')
 DRAIN = 'the drain loop'
-TICKET_INTERVIEW: Arguments = {
-    'summary': 'Retry queue drains slowly',
-    'context': ['drain loop sleeps between batches'],
-}
-HANDOFF_LINE = re.compile(r'^  (scope|plan-first|branch-name): (.*)$', re.MULTILINE)
 NO_ONE_ANSWERED = 'needs input: no one answered; ask the user, then call again'
-
-
-def rows_read[Stored: Base, Value](
-    server: StateServer, row_type: type[Stored], project: Callable[[Stored], Value]
-) -> list[Value]:
-    assert isinstance(server.data_directory, Path)
-    with (
-        workspace_database(workspace_at(server.root), server.data_directory) as database,
-        database.transaction() as session,
-    ):
-        return [project(row) for row in session.scalars(sql.select(row_type)).all()]
 
 
 def contract_rows(server: StateServer) -> object:
     return rows_read(server, CommandRow, attrgetter('command_id', 'approved_by'))
-
-
-def review_runs(server: StateServer) -> object:
-    return rows_read(server, ReviewRunRow, attrgetter('scope', 'depth', 'emphasis'))
 
 
 def dispositions(server: StateServer) -> object:
@@ -85,13 +56,6 @@ def dispositions(server: StateServer) -> object:
 
 def investigation_targets(server: StateServer) -> object:
     return rows_read(server, LedgerEntryRow, attrgetter('kind', 'text', 'cite'))
-
-
-def ticket_handoff(server: StateServer) -> object:
-    ticket = workspace_at(server.root).ticket_file(Slug(SLUG))
-    if not ticket.is_file():
-        return []
-    return HANDOFF_LINE.findall(ticket.read_text(encoding='utf-8'))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -266,75 +230,6 @@ ROWS = (
 )
 
 
-async def not_asked(context: ClientRequestContext, params: ElicitRequestParams) -> ElicitResult:
-    asked = f'{context.session}: {params.message}'
-    raise AssertionError(asked)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Replies:
-    fallback: ElicitResult
-    by_resolver: Mapping[str, ElicitResult] = MappingProxyType({})
-
-    def __call__(self, key: str) -> ElicitResult:
-        return self.by_resolver.get(key.rsplit(':', 1)[-1], self.fallback)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Exchange:
-    first: CallToolResult | InputRequiredResult
-    before: object
-    between: object
-    final: CallToolResult | InputRequiredResult | None
-    after: object
-
-    def questions(self) -> list[ElicitRequestFormParams]:
-        assert isinstance(self.first, InputRequiredResult)
-        assert self.first.input_requests is not None
-        asked = [request.params for request in self.first.input_requests.values()]
-        assert all(isinstance(params, ElicitRequestFormParams) for params in asked)
-        return [params for params in asked if isinstance(params, ElicitRequestFormParams)]
-
-    def question(self) -> ElicitRequestFormParams:
-        (only,) = self.questions()
-        return only
-
-    def result(self) -> CallToolResult:
-        assert isinstance(self.final, CallToolResult)
-        return self.final
-
-    def refused(self) -> CallToolResult:
-        refused = self.final if self.final is not None else self.first
-        assert isinstance(refused, CallToolResult)
-        return refused
-
-
-async def exchange_with(
-    server: StateServer, tool: str, arguments: Arguments, stored: Stored, replies: Replies | None
-) -> Exchange:
-    async with Client(
-        build_server(server.root, server.data_directory), elicitation_callback=not_asked
-    ) as client:
-        before = stored(server)
-        first = await client.session.call_tool(
-            tool, {'request': arguments}, allow_input_required=True
-        )
-        between = stored(server)
-        final = None
-        if replies is not None and isinstance(first, InputRequiredResult):
-            assert first.input_requests is not None
-            answers: InputResponses = {key: replies(str(key)) for key in first.input_requests}
-            final = await client.session.call_tool(
-                tool,
-                {'request': arguments},
-                input_responses=answers,
-                request_state=first.request_state,
-                allow_input_required=True,
-            )
-        after = stored(server)
-        return Exchange(first=first, before=before, between=between, final=final, after=after)
-
-
 def asked_with(
     server: StateServer, row: Row, replies: Replies | None, arguments: Arguments | None = None
 ) -> Exchange:
@@ -342,17 +237,8 @@ def asked_with(
     return asyncio.run(exchange_with(server, row.tool, given, row.stored, replies))
 
 
-def said(result: CallToolResult) -> str:
-    assert result.structured_content is not None
-    return str(result.structured_content['text'])
-
-
 def accepted(content: Content) -> Replies:
     return Replies(fallback=ElicitResult(action='accept', content=content))
-
-
-def unanswered(action: Literal['cancel', 'decline']) -> Replies:
-    return Replies(fallback=ElicitResult(action=action))
 
 
 def shown_choices(row: Row) -> list[object]:
@@ -455,71 +341,6 @@ class TestEachQuestion:
         assert f'\nchoices: {", ".join(map(str, shown_choices(row)))}\n' in text
         assert f'\npass: {row.argument}' in text
         assert done.after == done.before
-
-
-class TestSeveralQuestionsInOneCall:
-    def test_a_review_started_with_nothing_asks_for_scope_depth_and_emphasis_together(
-        self, state_server: StateServer
-    ) -> None:
-        arguments: Arguments = {'action': 'start'}
-        replies = Replies(
-            fallback=ElicitResult(action='accept', content={'choice': 'deep'}),
-            by_resolver={
-                'ask_scope': ElicitResult(action='accept', content={'choice': 'codebase'}),
-                'ask_emphasis': ElicitResult(action='accept', content={'choice': 'balanced'}),
-            },
-        )
-
-        done = asyncio.run(exchange_with(state_server, 'review', arguments, review_runs, replies))
-
-        assert sorted(question.message for question in done.questions()) == [
-            'How deep should the review go?',
-            'What should the review cover?',
-            'What should the review emphasize?',
-        ]
-        assert done.between == []
-        assert done.after == [('codebase', 'deep', 'balanced')]
-
-    def test_a_review_nobody_answers_names_every_missing_question(
-        self, state_server: StateServer
-    ) -> None:
-        arguments: Arguments = {'action': 'start', 'payload': {'scope': 'codebase'}}
-
-        done = asyncio.run(
-            exchange_with(state_server, 'review', arguments, review_runs, unanswered('cancel'))
-        )
-
-        text = said(done.result())
-        assert 'How deep should the review go?' in text
-        assert 'What should the review emphasize?' in text
-        assert 'What should the review cover?' not in text
-        assert done.after == []
-
-    def test_a_ticket_written_with_no_choice_asks_for_all_three(
-        self, state_server: StateServer
-    ) -> None:
-        arguments: Arguments = {'action': 'write', 'slug': SLUG, 'fields': TICKET_INTERVIEW}
-        replies = Replies(
-            fallback=ElicitResult(action='accept', content={'choice': 'sm'}),
-            by_resolver={
-                'ask_compaction': ElicitResult(action='accept', content={'choice': True}),
-                'ask_branch': ElicitResult(
-                    action='accept', content={'choice': 'new', 'name': 'fix/drain'}
-                ),
-            },
-        )
-
-        done = asyncio.run(
-            exchange_with(state_server, 'ticket', arguments, ticket_handoff, replies)
-        )
-
-        assert len(done.questions()) == 3
-        assert done.between == []
-        assert done.after == [
-            ('scope', '"sm"'),
-            ('plan-first', 'true'),
-            ('branch-name', '"fix/drain"'),
-        ]
 
 
 class TestWhatOnlyOneQuestionNeeds:
