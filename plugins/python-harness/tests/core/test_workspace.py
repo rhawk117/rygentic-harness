@@ -383,4 +383,6 @@ class TestUvFailure:
 
         assert workspace.source_roots == (project_builder.root.joinpath('src'),)
         assert isinstance(workspace.fallback_diagnostics, tuple)
-        assert diagnostic in workspace.fallback_diagnostics[0]
+        message = workspace.fallback_diagnostics[0]
+        assert message.startswith('uv workspace discovery failed: ')
+        assert diagnostic in message

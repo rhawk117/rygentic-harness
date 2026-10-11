@@ -118,12 +118,12 @@ def discover_uv_members(
 
 def validate_workspace_members(root: Path, members: tuple[Path, ...]) -> tuple[Path, ...] | str:
     if not members:
-        return 'uv workspace discovery returned no workspace members'
+        return 'uv workspace discovery failed: no workspace members'
     if any(not member.is_absolute() for member in members):
-        return 'uv workspace discovery returned a non-absolute member path'
+        return 'uv workspace discovery failed: non-absolute member path'
     resolved = tuple(member.resolve() for member in members)
     if any(not member.is_relative_to(root) for member in resolved):
-        return 'uv workspace discovery returned a path outside the project root'
+        return 'uv workspace discovery failed: path outside the project root'
     return resolved
 
 
