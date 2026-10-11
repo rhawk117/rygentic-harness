@@ -51,13 +51,13 @@ from mightymodels_plugin.tools.close.schema import (
     CloseView,
     Closing,
 )
+from mightymodels_plugin.tools.contract.assessment import NEVER_RUN
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from mightymodels_plugin.tools.investigation.ledger import Ledger, linked_ledgers
 from mightymodels_plugin.tools.investigation.schema import EntryKind
 from mightymodels_plugin.tools.review.schema import Result
 from mightymodels_plugin.tools.snapshot.latest_review import LatestReview, latest_review_of
 from mightymodels_plugin.tools.snapshot.repository import SnapshotRepository
-from mightymodels_plugin.tools.snapshot.service import NEVER_RUN
 from mightymodels_plugin.tools.task.gates import plan_task_problem
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
 from mightymodels_plugin.tools.task.service import problem_lines, records_of

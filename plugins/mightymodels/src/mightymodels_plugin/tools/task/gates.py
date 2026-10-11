@@ -18,6 +18,7 @@ from pathlib import Path
 
 from mightymodels_plugin.core.task_id import is_plan_task
 from mightymodels_plugin.core.workspace import Git
+from mightymodels_plugin.tools.contract.assessment import Assessment, Taken
 from mightymodels_plugin.tools.contract.schema import Outcome
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
@@ -67,10 +68,12 @@ def brief_problems(git: Git, evidence: Evidence) -> list[str]:
 
 
 def receipt_problem(command_id: str, receipt: ReceiptRow | None, head: str | None) -> str | None:
-    if receipt is None or head is None or receipt.head != head:
+    taken = None if receipt is None else Taken(outcome=receipt.outcome, head=receipt.head)
+    outcome = Assessment(taken=taken, head=head).outcome_at_head
+    if outcome is None:
         return f'{command_id} has no receipt at the current HEAD'
-    if receipt.outcome != Outcome.PASSED:
-        return f'{command_id} {receipt.outcome} at HEAD'
+    if outcome != Outcome.PASSED:
+        return f'{command_id} {outcome} at HEAD'
     return None
 
 

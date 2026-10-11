@@ -22,7 +22,8 @@ from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.process import ProcessRunner
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import Workspace
-from mightymodels_plugin.head import SHORT_SHA, short_head
+from mightymodels_plugin.head import short_head
+from mightymodels_plugin.tools.contract.assessment import Assessment, ReceiptState, Taken
 from mightymodels_plugin.tools.contract.executor import receipt_for
 from mightymodels_plugin.tools.contract.repository import Approval, contract_transaction
 from mightymodels_plugin.tools.contract.schema import (
@@ -95,11 +96,14 @@ def changed_command_error(
     return None if changed is None else ChangedCommandError(changed)
 
 
-def state_of(command: CommandRow, latest: ReceiptRow | None, head: str | None) -> str:
-    if latest is None:
-        return 'never-run'
-    if latest.head != head:
-        return f'stale ({latest.outcome} at {str(latest.head)[:SHORT_SHA]})'
+def assessment_of(latest: ReceiptRow | None, head: str | None) -> Assessment:
+    taken = None if latest is None else Taken(outcome=latest.outcome, head=latest.head)
+    return Assessment(taken=taken, head=head)
+
+
+def state_of(command: CommandRow, latest: ReceiptRow | None, assessment: Assessment) -> str:
+    if latest is None or assessment.state is not ReceiptState.AT_HEAD:
+        return assessment.text
     return f'{latest.outcome} {latest.phase} expect={command.expect_exit}'
 
 
@@ -157,19 +161,23 @@ class ContractService:
         head = self.workspace.git.resolve_head()
         with contract_transaction(self.database) as repository:
             latest = repository.latest_receipts(slug)
+            commands = repository.commands(slug)
+            assessments = [
+                assessment_of(latest.get(command.command_id), head) for command in commands
+            ]
             states = tuple(
                 CommandState(
                     id=command.command_id,
                     argv=tuple(command.argv),
-                    state=state_of(command, latest.get(command.command_id), head),
+                    state=state_of(command, latest.get(command.command_id), assessment),
                 )
-                for command in repository.commands(slug)
+                for command, assessment in zip(commands, assessments, strict=True)
             )
         rows = ''.join(f'{state.id} {state.state}\n' for state in states)
         header = f'HEAD {short_head(head)}\n'
         return ContractView(
             text=header + (rows or 'no matching commands\n'),
-            passing=all(state.state.split(' ', 1)[0] == Outcome.PASSED for state in states),
+            passing=all(assessment.outcome_at_head == Outcome.PASSED for assessment in assessments),
             commands=states,
         )
 

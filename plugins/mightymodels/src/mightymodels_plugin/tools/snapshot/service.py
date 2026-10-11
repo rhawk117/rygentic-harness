@@ -26,6 +26,7 @@ from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import Git, GitRefusal, UntrackedFiles, Workspace
 from mightymodels_plugin.head import short_head
+from mightymodels_plugin.tools.contract.assessment import Assessment, Taken
 from mightymodels_plugin.tools.contract.schema import Outcome
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from mightymodels_plugin.tools.investigation.ledger import Ledger, LinkedLedgers, linked_ledgers
@@ -54,7 +55,6 @@ from mightymodels_plugin.tools.task.tables import TransitionRow
 from mightymodels_plugin.tools.ticket.schema import WorkUnit
 from mightymodels_plugin.tools.ticket.service import unit_of
 
-NEVER_RUN = 'never-run'
 NOT_STARTED = 'not started'
 
 
@@ -91,11 +91,8 @@ def task_state(record: TaskRecord) -> TaskState:
 
 
 def check_state(receipt: ReceiptRow | None, head: str | None) -> str:
-    if receipt is None:
-        return NEVER_RUN
-    if receipt.head != head:
-        return f'stale ({receipt.outcome} at {short_head(receipt.head)})'
-    return receipt.outcome
+    taken = None if receipt is None else Taken(outcome=receipt.outcome, head=receipt.head)
+    return Assessment(taken=taken, head=head).text
 
 
 def check_states(

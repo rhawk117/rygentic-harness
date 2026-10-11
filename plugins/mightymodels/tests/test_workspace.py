@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from operator import methodcaller
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 import pytest
 import sqlalchemy as sql
@@ -34,6 +35,12 @@ from mightymodels_plugin.tools.tests.support import (
 )
 
 type PathRequest = Callable[[Workspace], object]
+
+
+@runtime_checkable
+class GitRunner(Protocol):
+    def __call__(self, directory: Path, /, *arguments: str) -> str: ...
+
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)
@@ -504,6 +511,13 @@ class TestSymlinkedReviewDirectory:
 
 
 class TestInsideARepository:
+    IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
+
+    @pytest.fixture
+    def first_commit(self, repository: Path, git: GitRunner) -> None:
+        git(repository, *self.IDENTITY, 'commit', '--quiet', '--allow-empty', '-m', 'first commit')
+
+    @pytest.mark.usefixtures('first_commit')
     def test_verify_run_runs_the_approved_command_where_git_answers(
         self, project: Project, capsys: pytest.CaptureFixture[str]
     ) -> None:

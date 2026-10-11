@@ -44,6 +44,7 @@ PASSED, REJECTED = 0, 2
 SQLITE_HEADER = b'SQLite format 3\x00'
 VERIFY_RUN = ('verify', 'run', '--slug', SLUG, '--all')
 SESSION_START = ('session-start',)
+IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
 PLUGIN = Path(__file__).parent.parent
 TOOL_NAMES = [
     'close',
@@ -151,6 +152,11 @@ def session_in_the_subdirectory(
 
 
 @pytest.fixture
+def first_commit(repository: Path, git: GitRunner) -> None:
+    git(repository, *IDENTITY, 'commit', '--quiet', '--allow-empty', '-m', 'first commit')
+
+
+@pytest.fixture
 def approved_command(state_server: StateServer) -> StateServer:
     slug_results(state_server, WRITE, VALIDATE, APPROVE)
     return state_server
@@ -206,7 +212,7 @@ class TestTheDatabaseFile:
 
         assert busy_timeouts_of_two_connections == [stated_milliseconds, stated_milliseconds]
 
-    @pytest.mark.usefixtures('approved_command', 'session_in_the_repository')
+    @pytest.mark.usefixtures('first_commit', 'approved_command', 'session_in_the_repository')
     def test_verify_run_opens_the_database_the_server_wrote(
         self, state_server: StateServer, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -580,6 +586,7 @@ class TestTheSessionStartHook:
         monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(approved_command.root))
         return approved_command
 
+    @pytest.mark.usefixtures('first_commit')
     def test_with_what_the_hook_exported_verify_run_opens_the_database_the_server_wrote(
         self, session_after_the_hook: StateServer, capsys: pytest.CaptureFixture[str]
     ) -> None:
