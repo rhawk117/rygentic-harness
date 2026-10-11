@@ -4,112 +4,51 @@ A write that adds to what a whole read returns is held to that read's limit, so 
 plugin accepts makes a ticket, a run or an investigation unreadable.
 """
 
-from collections.abc import Callable, Iterable, Sized
-from contextlib import suppress
+from collections.abc import Callable
 from dataclasses import dataclass
-from types import MappingProxyType
 
 import pytest
-import sqlalchemy as sql
-from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import (
-    Database,
-    Latest,
-    ReadLimit,
-    ReadLimitError,
-    WriteLimitError,
-)
-from mightymodels_plugin.core.declarative import Base
-from mightymodels_plugin.core.process import process_runner
-from mightymodels_plugin.core.routing import Depth, Scope
+from mightymodels_plugin.core.database import Database, Latest, ReadLimit
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import Workspace, git_at
-from mightymodels_plugin.tools.contract.repository import COMMANDS, contract_store
-from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase
-from mightymodels_plugin.tools.contract.service import ContractService
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.crashout import service as crashouts
 from mightymodels_plugin.tools.crashout.repository import JOURNAL_WINDOW, crashout_store
 from mightymodels_plugin.tools.crashout.schema import JournaledCrashout, Severity, Verdict
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.investigation import service as investigations
 from mightymodels_plugin.tools.investigation.repository import (
-    ENTRIES,
     INVESTIGATIONS_LISTED,
-    TARGET_SEQ,
     investigation_store,
 )
-from mightymodels_plugin.tools.investigation.schema import (
-    EntryKind,
-    LedgerEntry,
-    Source,
-    TargetKind,
-)
-from mightymodels_plugin.tools.investigation.service import InvestigationService
-from mightymodels_plugin.tools.investigation.store import LedgerRecord
-from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
 from mightymodels_plugin.tools.review import service as reviews
-from mightymodels_plugin.tools.review.repository import (
-    FINDINGS,
-    RUNS_LISTED,
-    review_store,
-)
-from mightymodels_plugin.tools.review.schema import (
-    Decision,
-    Emphasis,
-    FindingInput,
-    Persona,
-    ReportedSeverity,
-    Result,
-    ReviewRun,
-    ReviewScope,
-    Shape,
-)
-from mightymodels_plugin.tools.review.schema import Severity as FindingSeverity
-from mightymodels_plugin.tools.review.service import ReviewService
-from mightymodels_plugin.tools.review.store import DecidedFinding, ResolvedFinding
-from mightymodels_plugin.tools.review.tables import (
-    ReviewDispositionRow,
-    ReviewFindingRow,
-    ReviewOutcomeRow,
-    ReviewRunRow,
-)
-from mightymodels_plugin.tools.task.gates import STUCK
-from mightymodels_plugin.tools.task.repository import (
-    ATTEMPT_COUNTS,
-    FAILED_FIXES,
-    TASKS,
-    task_store,
-)
-from mightymodels_plugin.tools.task.schema import ArchitectMode, Implementer, Status, TaskStart
-from mightymodels_plugin.tools.task.service import TaskService
-from mightymodels_plugin.tools.task.tables import AttemptRow, FailedFixRow, TaskRow, TransitionRow
-from mightymodels_plugin.tools.tests.support import (
-    RowValues,
-    SelectsSent,
-    filled_row,
-    selects_sent_to,
-    table_of,
+from mightymodels_plugin.tools.review.repository import RUNS_LISTED, review_store
+from mightymodels_plugin.tools.task.repository import task_store
+from mightymodels_plugin.tools.tests.bounded_reads import (
+    LEDGER,
+    RUN,
+    TARGET,
+    TASK,
+    TICKET,
+    Read,
+    attempt_counts,
+    attempts_in_modes,
+    commands,
+    dispositions,
+    finding_ids,
+    investigation_service,
+    latest_receipts,
+    ledger_entries,
+    outcomes,
+    review_service,
+    selects_of,
+    started,
+    stuck_transitions,
+    tasks,
+    unrecorded_investigations,
 )
 from mightymodels_plugin.tools.ticket.repository import ticket_store
-from mightymodels_plugin.tools.ticket.tables import TicketRow
 
-type Read = Callable[[Database], object]
-type SizedRead = Callable[[Database], Sized]
-type Write = Callable[[Database], None]
-
-SLUG = 'retry-queue'
-TICKET = Slug(SLUG)
-TASK = 'T1'
-OTHER_TASK = 'T2'
-RUN = RunId('20260928-120000')
-LEDGER = Slug('20260928-queue')
-OTHER_LEDGER = Slug('20260928-drain')
-NEVER_STARTED = Slug('20260928-never-started')
-MODES = frozenset(ArchitectMode)
-SNAPSHOT_LIMIT = 3
-A_PASSING_RUN = MappingProxyType({'outcome': Outcome.PASSED, 'phase': Phase.TASK})
 JOURNALED = JournaledCrashout(
     at='2026-09-28T12:00:00+00:00',
     ticket=None,
@@ -122,39 +61,6 @@ JOURNALED = JournaledCrashout(
     corrective_action='run the gate before reporting',
     barked_back=False,
 )
-TARGET = LedgerRecord(
-    seq=TARGET_SEQ,
-    round=0,
-    kind=EntryKind.TARGET,
-    text='queue',
-    source=Source.USER,
-    cite=TargetKind.BEHAVIOR,
-    supersedes=(),
-    at='2026-09-28T12:00:00+00:00',
-    head=None,
-)
-A_RUN = MappingProxyType(
-    {
-        'scope': ReviewScope.CODEBASE,
-        'depth': Depth.DEEP,
-        'emphasis': Emphasis.BALANCED,
-        'weights': {},
-        'models': {},
-    }
-)
-A_FINDING = MappingProxyType(
-    {'run_id': RUN.root, 'sources': ['MV-1'], 'severity': FindingSeverity.HIGH}
-)
-AN_ENTRY = MappingProxyType(
-    {'investigation_id': LEDGER.root, 'kind': EntryKind.OPEN, 'source': Source.USER}
-)
-
-
-def store(database: Database, row_type: type[Base], rows: Iterable[RowValues]) -> None:
-    key = database.repository_key.root
-    filled = [filled_row(row_type, **row, repository_key=key) for row in rows]
-    with database.transaction() as session:
-        session.execute(sql.insert(table_of(row_type)), filled)
 
 
 def ticket_row(database: Database) -> None:
@@ -162,51 +68,9 @@ def ticket_row(database: Database) -> None:
         repository.ticket(TICKET)
 
 
-def commands(database: Database) -> Sized:
-    with contract_store(database).transaction() as repository:
-        return repository.commands(TICKET)
-
-
-def latest_receipts(database: Database) -> dict[str, int]:
-    with contract_store(database).transaction() as repository:
-        latest = repository.latest_receipts(TICKET)
-        return {command: receipt.duration_ms for command, receipt in latest.items()}
-
-
 def task_row(database: Database) -> None:
     with task_store(database).transaction() as repository:
         repository.task(TICKET, TASK)
-
-
-def tasks(database: Database) -> Sized:
-    with task_store(database).transaction() as repository:
-        return repository.tasks(TICKET)
-
-
-def attempt_counts(database: Database) -> list[tuple[str, str, int]]:
-    with task_store(database).transaction() as repository:
-        counts = repository.attempts_by_worker(TICKET)
-    return [
-        (task, worker, count)
-        for task, by_worker in counts.items()
-        for worker, count in by_worker.items()
-    ]
-
-
-def failed_fixes(database: Database) -> Sized:
-    with task_store(database).transaction() as repository:
-        return repository.failed_fixes(TICKET, TASK)
-
-
-def attempts_in_modes(database: Database) -> int:
-    with task_store(database).transaction() as repository:
-        return repository.attempts_in_modes(TICKET, TASK, MODES)
-
-
-def stuck_transitions(database: Database) -> list[str]:
-    with task_store(database).transaction() as repository:
-        latest = repository.latest_transitions_into(TICKET, STUCK, SNAPSHOT_LIMIT)
-        return [str(transition.head) for transition in latest]
 
 
 def run_row(database: Database) -> None:
@@ -227,34 +91,9 @@ def latest_run_of_the_ticket(database: Database) -> None:
         repository.latest_run(TICKET)
 
 
-def finding_ids(database: Database) -> list[str]:
-    with review_store(database).transaction() as repository:
-        return [finding.id for finding in repository.findings(RUN)]
-
-
-def dispositions(database: Database) -> Sized:
-    with review_store(database).transaction() as repository:
-        return repository.decisions.dispositions(RUN)
-
-
-def outcomes(database: Database) -> Sized:
-    with review_store(database).transaction() as repository:
-        return repository.decisions.outcomes(RUN)
-
-
 def ledger_target(database: Database) -> None:
     with investigation_store(database).transaction() as repository:
         repository.has_entries(LEDGER)
-
-
-def ledger_entries(database: Database) -> Sized:
-    with investigation_store(database).transaction() as repository:
-        return repository.entries(LEDGER)
-
-
-def unrecorded_investigations(database: Database) -> list[Slug]:
-    with ticket_store(database).transaction() as repository:
-        return repository.unrecorded_investigations([LEDGER, OTHER_LEDGER, NEVER_STARTED])
 
 
 def latest_investigations(database: Database) -> Latest[str]:
@@ -278,12 +117,6 @@ def latest_crashouts(database: Database) -> Latest[str]:
 def latest_crashout(database: Database) -> None:
     with crashout_store(database).transaction() as repository:
         repository.latest_crashout()
-
-
-def selects_of(read: Read, database: Database) -> SelectsSent:
-    with selects_sent_to(database) as selects, suppress(ReadLimitError):
-        read(database)
-    return selects
 
 
 READS_OF_ROWS = (
@@ -340,22 +173,6 @@ def journal_crashouts(database: Database, count: int) -> list[str]:
     return times
 
 
-def started(run: RunId) -> ReviewRun:
-    return ReviewRun(
-        run_id=run,
-        slug=None,
-        scope=ReviewScope.CODEBASE,
-        base=None,
-        head=None,
-        depth=Depth.DEEP,
-        emphasis=Emphasis.BALANCED,
-        weights=dict.fromkeys(Persona, 0.5),
-        personas=tuple(Persona),
-        models={},
-        created_at=now(),
-    )
-
-
 def start_runs(database: Database, count: int) -> list[str]:
     runs = [RunId(f'20260928-{number:06d}') for number in range(count)]
     with review_store(database).transaction() as repository:
@@ -370,16 +187,6 @@ def start_investigations(database: Database, count: int) -> list[str]:
         for investigation in started:
             repository.append(investigation, [TARGET])
     return [investigation.root for investigation in started]
-
-
-def review_service(workspace: Workspace, database: Database) -> ReviewService:
-    return ReviewService(
-        workspace=workspace, store=review_store(database), git=git_at(workspace.root)
-    )
-
-
-def investigation_service(workspace: Workspace, database: Database) -> InvestigationService:
-    return InvestigationService(store=investigation_store(database), git=git_at(workspace.root))
 
 
 def crashout_stats(_workspace: Workspace, database: Database) -> str:
@@ -496,663 +303,3 @@ class TestAReadOfARepositorysHistory:
 
         assert told.endswith(history.left_out_note)
         assert str(history.window.rows) in history.left_out_note
-
-
-def a_ticket_with_two_tasks(database: Database) -> None:
-    store(database, TicketRow, [{'slug': SLUG, 'scope': Scope.MED, 'models': {}}])
-    store(database, TaskRow, [{'slug': SLUG, 'task_id': task} for task in (TASK, OTHER_TASK)])
-
-
-def two_approved_commands(database: Database) -> None:
-    store(database, CommandRow, [{'slug': SLUG, 'command_id': name} for name in ('a', 'b')])
-
-
-def a_run_of_every_command(database: Database) -> None:
-    with database.transaction() as session:
-        taken = session.scalars(sql.select(sql.func.count()).select_from(ReceiptRow)).one()
-    run = [
-        {'slug': SLUG, 'command_id': name, 'duration_ms': taken + number, **A_PASSING_RUN}
-        for number, name in enumerate(('a', 'b') * 5, start=1)
-    ]
-    store(database, ReceiptRow, run)
-
-
-def an_attempt_by_each_worker(database: Database) -> None:
-    tried = [
-        {'slug': SLUG, 'task_id': task, 'worker': worker, 'mode': mode}
-        for task in (TASK, OTHER_TASK)
-        for worker, mode in (
-            (Implementer.ENGINEER, None),
-            (Implementer.ARCHITECT, ArchitectMode.RECOVERY_IMPLEMENTATION),
-        )
-    ]
-    store(database, AttemptRow, tried * 5)
-
-
-def twelve_findings_of(run: RunId, database: Database) -> None:
-    store(database, ReviewRunRow, [{**A_RUN, 'run_id': run.root}])
-    found = [
-        {**A_FINDING, 'run_id': run.root, 'finding_id': f'F{number}'} for number in range(12, 0, -1)
-    ]
-    store(database, ReviewFindingRow, found)
-
-
-def twelve_findings(database: Database) -> None:
-    twelve_findings_of(RUN, database)
-
-
-def findings_of_two_other_runs(database: Database) -> None:
-    with review_store(database).transaction() as repository:
-        recorded = len(repository.latest_runs().rows)
-    for number in (recorded, recorded + 1):
-        twelve_findings_of(RunId(f'20260929-{number:06d}'), database)
-
-
-def two_started_investigations(database: Database) -> None:
-    with investigation_store(database).transaction() as repository:
-        repository.append(LEDGER, [TARGET])
-        repository.append(OTHER_LEDGER, [TARGET])
-
-
-def twenty_more_entries_in_each_ledger(database: Database) -> None:
-    with investigation_store(database).transaction() as repository:
-        recorded = len(repository.entries(LEDGER))
-    entries = [
-        {**AN_ENTRY, 'investigation_id': ledger.root, 'seq': recorded + number}
-        for ledger in (LEDGER, OTHER_LEDGER)
-        for number in range(1, 21)
-    ]
-    store(database, LedgerEntryRow, entries)
-
-
-def ten_failed_transitions(database: Database) -> None:
-    with task_store(database).transaction() as repository:
-        recorded = len(repository.latest_transitions_into(TICKET, STUCK, limit=1000))
-    failed = [
-        {
-            'slug': SLUG,
-            'task_id': TASK,
-            'before': Status.IN_PROGRESS,
-            'after': Status.FAILED,
-            'head': str(recorded + number),
-        }
-        for number in range(10)
-    ]
-    store(database, TransitionRow, failed)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Reduction:
-    arrange: Write
-    add_history: Write
-    read: Read
-    fetched: int
-    answer: object
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class FetchedTwice:
-    early: list[int]
-    late: list[int]
-    answer: object
-
-
-class TestAReductionTheDatabaseDoes:
-    REDUCTIONS = (
-        pytest.param(
-            Reduction(
-                arrange=two_approved_commands,
-                add_history=a_run_of_every_command,
-                read=latest_receipts,
-                fetched=2,
-                answer={'a': 49, 'b': 50},
-            ),
-            id='latest-receipt-per-command',
-        ),
-        pytest.param(
-            Reduction(
-                arrange=a_ticket_with_two_tasks,
-                add_history=an_attempt_by_each_worker,
-                read=attempt_counts,
-                fetched=4,
-                answer=[
-                    (TASK, Implementer.ENGINEER, 25),
-                    (TASK, Implementer.ARCHITECT, 25),
-                    (OTHER_TASK, Implementer.ENGINEER, 25),
-                    (OTHER_TASK, Implementer.ARCHITECT, 25),
-                ],
-            ),
-            id='attempt-counts',
-        ),
-        pytest.param(
-            Reduction(
-                arrange=a_ticket_with_two_tasks,
-                add_history=an_attempt_by_each_worker,
-                read=attempts_in_modes,
-                fetched=1,
-                answer=25,
-            ),
-            id='attempts-in-modes',
-        ),
-        pytest.param(
-            Reduction(
-                arrange=twelve_findings,
-                add_history=findings_of_two_other_runs,
-                read=finding_ids,
-                fetched=12,
-                answer=[f'F{number}' for number in range(1, 13)],
-            ),
-            id='findings-order',
-        ),
-        pytest.param(
-            Reduction(
-                arrange=two_started_investigations,
-                add_history=twenty_more_entries_in_each_ledger,
-                read=unrecorded_investigations,
-                fetched=2,
-                answer=[NEVER_STARTED],
-            ),
-            id='unrecorded-investigations',
-        ),
-        pytest.param(
-            Reduction(
-                arrange=a_ticket_with_two_tasks,
-                add_history=ten_failed_transitions,
-                read=stuck_transitions,
-                fetched=SNAPSHOT_LIMIT,
-                answer=['47', '48', '49'],
-            ),
-            id='stuck-transitions',
-        ),
-    )
-    MORE_HISTORY = 4
-
-    @pytest.fixture
-    def fetched_twice(self, reduction: Reduction, repository_database: Database) -> FetchedTwice:
-        reduction.arrange(repository_database)
-        reduction.add_history(repository_database)
-        early = selects_of(reduction.read, repository_database).rows_fetched()
-        for _ in range(self.MORE_HISTORY):
-            reduction.add_history(repository_database)
-        late = selects_of(reduction.read, repository_database).rows_fetched()
-        return FetchedTwice(early=early, late=late, answer=reduction.read(repository_database))
-
-    @pytest.mark.parametrize('reduction', REDUCTIONS)
-    def test_fetches_the_same_number_of_rows_after_five_times_the_history(
-        self, reduction: Reduction, fetched_twice: FetchedTwice
-    ) -> None:
-        assert fetched_twice.early == [reduction.fetched]
-        assert fetched_twice.late == [reduction.fetched]
-
-    @pytest.mark.parametrize('reduction', REDUCTIONS)
-    def test_answers_as_the_whole_history_would(
-        self, reduction: Reduction, fetched_twice: FetchedTwice
-    ) -> None:
-        assert fetched_twice.answer == reduction.answer
-
-
-def decisions_on(numbers: range) -> list[RowValues]:
-    return [
-        {'run_id': RUN.root, 'finding_id': f'F{number}', 'decision': Decision.FIX}
-        for number in numbers
-    ]
-
-
-def outcomes_of(numbers: range) -> list[RowValues]:
-    return [
-        {'run_id': RUN.root, 'finding_id': f'F{number}', 'result': Result.FIXED}
-        for number in numbers
-    ]
-
-
-def commands_of_the_ticket(database: Database, count: int) -> None:
-    named = [{'slug': SLUG, 'command_id': f'c{number}'} for number in range(count)]
-    store(database, CommandRow, named)
-
-
-def a_receipt_of_every_command(database: Database, count: int) -> None:
-    commands_of_the_ticket(database, count)
-    run = [{'slug': SLUG, 'command_id': f'c{number}', **A_PASSING_RUN} for number in range(count)]
-    store(database, ReceiptRow, run)
-
-
-def tasks_of_the_ticket(database: Database, count: int) -> None:
-    store(database, TicketRow, [{'slug': SLUG, 'scope': Scope.MED, 'models': {}}])
-    started = [
-        {'slug': SLUG, 'task_id': f'T{number}', 'status': Status.VERIFIED}
-        for number in range(count)
-    ]
-    store(database, TaskRow, started)
-
-
-def an_attempt_at_every_task(database: Database, count: int) -> None:
-    tasks_of_the_ticket(database, count)
-    tried = [{'slug': SLUG, 'task_id': f'T{number}'} for number in range(count)]
-    store(database, AttemptRow, tried)
-
-
-def a_failed_fix_for_the_task(database: Database, count: int) -> None:
-    a_ticket_with_two_tasks(database)
-    store(database, FailedFixRow, [{'slug': SLUG, 'task_id': TASK}] * count)
-
-
-def findings_of_the_run(database: Database, count: int) -> None:
-    with review_store(database).transaction() as repository:
-        repository.record_run(started(RUN))
-    found = [{**A_FINDING, 'finding_id': f'F{number}'} for number in range(count)]
-    store(database, ReviewFindingRow, found)
-
-
-def a_decision_on_every_finding(database: Database, count: int) -> None:
-    findings_of_the_run(database, count)
-    store(database, ReviewDispositionRow, decisions_on(range(count)))
-
-
-def an_outcome_of_every_finding(database: Database, count: int) -> None:
-    a_decision_on_every_finding(database, count)
-    store(database, ReviewOutcomeRow, outcomes_of(range(count)))
-
-
-def entries_of_the_ledger(database: Database, count: int) -> None:
-    entries = [{**AN_ENTRY, 'seq': number} for number in range(1, count + 1)]
-    store(database, LedgerEntryRow, entries)
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Collection:
-    limit: ReadLimit
-    fill: Callable[[Database, int], None]
-    read: SizedRead
-    owner: str
-
-
-class TestACollectionReadWhole:
-    OF_THE_TICKET = f'ticket {SLUG}'
-    OF_THE_RUN = f'run {RUN}'
-    COLLECTIONS = (
-        pytest.param(
-            Collection(
-                limit=COMMANDS, fill=commands_of_the_ticket, read=commands, owner=OF_THE_TICKET
-            ),
-            id='contract-commands',
-        ),
-        pytest.param(
-            Collection(
-                limit=COMMANDS,
-                fill=a_receipt_of_every_command,
-                read=latest_receipts,
-                owner=OF_THE_TICKET,
-            ),
-            id='latest-receipts',
-        ),
-        pytest.param(
-            Collection(limit=TASKS, fill=tasks_of_the_ticket, read=tasks, owner=OF_THE_TICKET),
-            id='tasks',
-        ),
-        pytest.param(
-            Collection(
-                limit=ATTEMPT_COUNTS,
-                fill=an_attempt_at_every_task,
-                read=attempt_counts,
-                owner=OF_THE_TICKET,
-            ),
-            id='attempt-counts',
-        ),
-        pytest.param(
-            Collection(
-                limit=FAILED_FIXES,
-                fill=a_failed_fix_for_the_task,
-                read=failed_fixes,
-                owner=f'task {TASK} of ticket {SLUG}',
-            ),
-            id='failed-fixes',
-        ),
-        pytest.param(
-            Collection(
-                limit=FINDINGS, fill=findings_of_the_run, read=finding_ids, owner=OF_THE_RUN
-            ),
-            id='review-findings',
-        ),
-        pytest.param(
-            Collection(
-                limit=FINDINGS,
-                fill=a_decision_on_every_finding,
-                read=dispositions,
-                owner=OF_THE_RUN,
-            ),
-            id='review-dispositions',
-        ),
-        pytest.param(
-            Collection(
-                limit=FINDINGS, fill=an_outcome_of_every_finding, read=outcomes, owner=OF_THE_RUN
-            ),
-            id='review-outcomes',
-        ),
-        pytest.param(
-            Collection(
-                limit=ENTRIES,
-                fill=entries_of_the_ledger,
-                read=ledger_entries,
-                owner=f'investigation {LEDGER}',
-            ),
-            id='ledger-entries',
-        ),
-    )
-
-    @pytest.fixture
-    def filled_to_the_limit(
-        self, collection: Collection, repository_database: Database
-    ) -> Database:
-        collection.fill(repository_database, collection.limit.rows)
-        return repository_database
-
-    @pytest.fixture
-    def filled_past_the_limit(
-        self, collection: Collection, repository_database: Database
-    ) -> Database:
-        collection.fill(repository_database, collection.limit.rows + 2)
-        return repository_database
-
-    @pytest.mark.parametrize('collection', COLLECTIONS)
-    def test_at_its_limit_is_returned_whole(
-        self, collection: Collection, filled_to_the_limit: Database
-    ) -> None:
-        assert len(collection.read(filled_to_the_limit)) == collection.limit.rows
-
-    @pytest.mark.parametrize('collection', COLLECTIONS)
-    def test_past_its_limit_is_refused_by_name_and_not_cut(
-        self, collection: Collection, filled_past_the_limit: Database
-    ) -> None:
-        with pytest.raises(ReadLimitError) as refused:
-            collection.read(filled_past_the_limit)
-
-        assert (refused.value.owner, refused.value.rows, refused.value.kept) == (
-            collection.owner,
-            collection.limit.rows,
-            collection.limit.kept,
-        )
-        assert f'{collection.owner} holds more than {collection.limit.rows}' in str(refused.value)
-
-    @pytest.mark.parametrize('collection', COLLECTIONS)
-    def test_past_its_limit_fetches_one_row_more_than_the_limit(
-        self, collection: Collection, filled_past_the_limit: Database
-    ) -> None:
-        selects = selects_of(collection.read, filled_past_the_limit)
-
-        assert selects.rows_fetched() == [collection.limit.fetched]
-
-
-def decisions_in_a_full_run(database: Database, count: int) -> None:
-    findings_of_the_run(database, FINDINGS.rows)
-    store(database, ReviewDispositionRow, decisions_on(range(count)))
-
-
-def outcomes_in_a_full_run(database: Database, count: int) -> None:
-    decisions_in_a_full_run(database, FINDINGS.rows)
-    store(database, ReviewOutcomeRow, outcomes_of(range(count)))
-
-
-def approve_commands(workspace: Workspace, database: Database, numbers: range) -> None:
-    approved = [
-        ContractCommand(id=f'c{number}', argv=('true',), approved_by='user') for number in numbers
-    ]
-    ContractService(
-        workspace=workspace,
-        store=contract_store(database),
-        git=git_at(workspace.root),
-        processes=process_runner(),
-    ).approve(TICKET, approved)
-
-
-def start_tasks(workspace: Workspace, database: Database, numbers: range) -> None:
-    service = TaskService(
-        workspace=workspace, store=task_store(database), git=git_at(workspace.root)
-    )
-    change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
-    for number in numbers:
-        service.start(TICKET, f'T{number}', change)
-
-
-def add_findings(workspace: Workspace, database: Database, numbers: range) -> None:
-    found = [
-        FindingInput(
-            sources=('MV-1',),
-            severity=ReportedSeverity.HIGH,
-            title='the drain loop sleeps between batches',
-            location=f'src/queue.py:{number}',
-            fix='drain in one pass',
-            verify='run the drain test',
-        )
-        for number in numbers
-    ]
-    review_service(workspace, database).add_findings(RUN, found)
-
-
-def decide_findings(_workspace: Workspace, database: Database, numbers: range) -> None:
-    decided = [
-        DecidedFinding(
-            finding_id=f'F{number}', decision=Decision.FIX, reason='', by='user', at=now()
-        )
-        for number in numbers
-    ]
-    with review_store(database).transaction() as repository:
-        repository.decisions.record_dispositions(RUN, decided)
-
-
-def resolve_findings(_workspace: Workspace, database: Database, numbers: range) -> None:
-    with review_store(database).transaction() as repository:
-        for number in numbers:
-            repository.decisions.record_outcome(
-                RUN,
-                ResolvedFinding(
-                    finding_id=f'F{number}',
-                    result=Result.FIXED,
-                    commit='abc1234',
-                    reason='',
-                    at=now(),
-                ),
-            )
-
-
-def add_entries(workspace: Workspace, database: Database, numbers: range) -> None:
-    entries = [
-        LedgerEntry(kind=EntryKind.OPEN, text=f'question {number}', source=Source.USER)
-        for number in numbers
-    ]
-    investigation_service(workspace, database).add(LEDGER, 1, entries)
-
-
-def contract_status(workspace: Workspace, database: Database) -> str:
-    return (
-        ContractService(
-            workspace=workspace,
-            store=contract_store(database),
-            git=git_at(workspace.root),
-            processes=process_runner(),
-        )
-        .status(TICKET)
-        .text
-    )
-
-
-def task_listing(workspace: Workspace, database: Database) -> str:
-    return (
-        TaskService(workspace=workspace, store=task_store(database), git=git_at(workspace.root))
-        .show(TICKET)
-        .text
-    )
-
-
-def review_report(workspace: Workspace, database: Database) -> str:
-    return review_service(workspace, database).report(RUN, Shape.FULL).text
-
-
-def rendered_ledger(workspace: Workspace, database: Database) -> str:
-    return investigation_service(workspace, database).render(LEDGER).text
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CappedWrite:
-    limit: ReadLimit
-    fill: Callable[[Database, int], None]
-    write: Callable[[Workspace, Database, range], None]
-    rows_written: int
-    read: SizedRead
-    told: Callable[[Workspace, Database], str]
-    owner: str
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class RefusedWrite:
-    database: Database
-    held: int
-    told_before: str
-    refusal: WriteLimitError
-    told_after: str
-
-
-class TestAWriteToACollectionReadWhole:
-    OF_THE_TICKET = f'ticket {SLUG}'
-    OF_THE_RUN = f'run {RUN}'
-    WRITES = (
-        pytest.param(
-            CappedWrite(
-                limit=COMMANDS,
-                fill=commands_of_the_ticket,
-                write=approve_commands,
-                rows_written=2,
-                read=commands,
-                told=contract_status,
-                owner=OF_THE_TICKET,
-            ),
-            id='contract-commands',
-        ),
-        pytest.param(
-            CappedWrite(
-                limit=TASKS,
-                fill=tasks_of_the_ticket,
-                write=start_tasks,
-                rows_written=1,
-                read=tasks,
-                told=task_listing,
-                owner=OF_THE_TICKET,
-            ),
-            id='tasks',
-        ),
-        pytest.param(
-            CappedWrite(
-                limit=FINDINGS,
-                fill=findings_of_the_run,
-                write=add_findings,
-                rows_written=2,
-                read=finding_ids,
-                told=review_report,
-                owner=OF_THE_RUN,
-            ),
-            id='review-findings',
-        ),
-        pytest.param(
-            CappedWrite(
-                limit=FINDINGS,
-                fill=decisions_in_a_full_run,
-                write=decide_findings,
-                rows_written=2,
-                read=dispositions,
-                told=review_report,
-                owner=OF_THE_RUN,
-            ),
-            id='review-dispositions',
-        ),
-        pytest.param(
-            CappedWrite(
-                limit=FINDINGS,
-                fill=outcomes_in_a_full_run,
-                write=resolve_findings,
-                rows_written=1,
-                read=outcomes,
-                told=review_report,
-                owner=OF_THE_RUN,
-            ),
-            id='review-outcomes',
-        ),
-        pytest.param(
-            CappedWrite(
-                limit=ENTRIES,
-                fill=entries_of_the_ledger,
-                write=add_entries,
-                rows_written=2,
-                read=ledger_entries,
-                told=rendered_ledger,
-                owner=f'investigation {LEDGER}',
-            ),
-            id='ledger-entries',
-        ),
-    )
-
-    @pytest.fixture
-    def written_up_to_the_limit(
-        self, capped: CappedWrite, repository_workspace: Workspace, repository_database: Database
-    ) -> Database:
-        held = capped.limit.rows - capped.rows_written
-        capped.fill(repository_database, held)
-        capped.write(repository_workspace, repository_database, range(held, capped.limit.rows))
-        return repository_database
-
-    @pytest.fixture
-    def refused_one_row_past_the_limit(
-        self, capped: CappedWrite, repository_workspace: Workspace, repository_database: Database
-    ) -> RefusedWrite:
-        held = capped.limit.rows - capped.rows_written + 1
-        capped.fill(repository_database, held)
-        told_before = capped.told(repository_workspace, repository_database)
-        with pytest.raises(WriteLimitError) as refused:
-            capped.write(
-                repository_workspace, repository_database, range(held, held + capped.rows_written)
-            )
-        return RefusedWrite(
-            database=repository_database,
-            held=held,
-            told_before=told_before,
-            refusal=refused.value,
-            told_after=capped.told(repository_workspace, repository_database),
-        )
-
-    @pytest.mark.parametrize('capped', WRITES)
-    def test_up_to_its_limit_is_stored_and_read_back_through_the_tool(
-        self,
-        capped: CappedWrite,
-        written_up_to_the_limit: Database,
-        repository_workspace: Workspace,
-    ) -> None:
-        assert len(capped.read(written_up_to_the_limit)) == capped.limit.rows
-        assert capped.told(repository_workspace, written_up_to_the_limit) != ''
-
-    @pytest.mark.parametrize('capped', WRITES)
-    def test_past_its_limit_is_refused_by_the_owner_and_the_limit(
-        self, capped: CappedWrite, refused_one_row_past_the_limit: RefusedWrite
-    ) -> None:
-        refusal = refused_one_row_past_the_limit.refusal
-
-        assert (refusal.owner, refusal.rows, refusal.kept) == (
-            capped.owner,
-            capped.limit.rows,
-            capped.limit.kept,
-        )
-        assert f'{capped.owner} would hold more than {capped.limit.rows}' in str(refusal)
-
-    @pytest.mark.parametrize('capped', WRITES)
-    def test_past_its_limit_stores_none_of_its_rows(
-        self, capped: CappedWrite, refused_one_row_past_the_limit: RefusedWrite
-    ) -> None:
-        refused = refused_one_row_past_the_limit
-
-        assert len(capped.read(refused.database)) == refused.held
-
-    @pytest.mark.parametrize('capped', WRITES)
-    def test_past_its_limit_leaves_what_was_stored_readable_through_the_tool(
-        self, refused_one_row_past_the_limit: RefusedWrite
-    ) -> None:
-        refused = refused_one_row_past_the_limit
-
-        assert refused.told_before != ''
-        assert refused.told_after == refused.told_before
