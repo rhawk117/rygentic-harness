@@ -95,9 +95,10 @@ each session on the project's Python toolchain, and the PreToolUse hook adds a n
 command runs plain `python` instead of `uv run python`. Neither blocks a command.
 
 The `python-harness` CLI has two commands, `inspect survey` and `inspect gate`. The MCP server,
-also named `python-harness`, has six tools. `search_python_docs` and `read_python_docs` read
-standard-library documentation from `docs.python.org`. `collect_python_facts`, `map_python_calls`,
-`check_citations` and `plan_review_surface` read the project Claude Code was started in.
+also named `python-harness`, has eight tools. `search_python_docs` and `read_python_docs` read
+standard-library documentation from `docs.python.org`. `survey`, `gate`, `collect_python_facts`,
+`map_python_calls`, `check_citations` and `plan_review_surface` read the project Claude Code was
+started in.
 
 The plugin needs [uv](https://docs.astral.sh/uv/) on your `PATH` and a POSIX system (Linux, macOS
 or WSL). The CLI launcher and the server both start through `uv tool run` with the dependency
@@ -150,7 +151,7 @@ a change has to pass: `make check`, which syncs the locked environment, runs pre
 
 ## Status
 
-vibe-code is at 0.4.0. python-harness is at 0.1.0. mightymodels is at 0.8.0 and is the
+vibe-code is at 0.4.0. python-harness is at 0.2.0. mightymodels is at 0.8.0 and is the
 marketplace's first plugin. Its hook layer (session covenant injection, verification gates at
 Stop, PreCompact ticket snapshots) and the team/personal overlay split are designed but not yet
 shipped. CHANGELOG.md has the full trail.
