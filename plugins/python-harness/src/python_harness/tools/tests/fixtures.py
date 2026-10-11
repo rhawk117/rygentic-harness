@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 import pytest
 from mcp import Client
 
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import Workspace
 from python_harness.documentation.settings import Settings
 from python_harness.documentation.tests.support import DocsSite
@@ -30,6 +30,6 @@ async def project_client(
 ) -> AsyncGenerator[Client]:
     async with (
         documentation_service(settings, docs_site.transport()) as service,
-        Client(build_server(service, project_environment)) as client,
+        Client(build_server(service, project_environment, uv_runner=stubbed_uv)) as client,
     ):
         yield client

@@ -8,6 +8,7 @@ import anyio
 import pytest
 from mcp import Client
 from mcp.types import CallToolResult
+from python_harness.core.tests.fixtures import stubbed_uv
 from python_harness.documentation.settings import Settings
 from python_harness.documentation.tests.support import DOCS_VERSION, DocsSite
 from python_harness.server import ProjectTools, build_server, documentation_service
@@ -56,7 +57,7 @@ class TestDocumentationCallDuringAHeldProjectCall:
         monkeypatch.setattr(ProjectTools, 'collect_python_facts', collect_python_facts)
         async with (
             documentation_service(settings, docs_site.transport()) as service,
-            Client(build_server(service, project_environment)) as client,
+            Client(build_server(service, project_environment, uv_runner=stubbed_uv)) as client,
         ):
             try:
                 yield HeldProjectCall(client=client, started=started, release=release)

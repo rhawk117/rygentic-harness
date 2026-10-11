@@ -9,7 +9,7 @@ from contextlib import suppress
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.tests.fixtures import GitProject, ProjectBuilder
+from python_harness.core.tests.fixtures import GitProject, ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import Workspace, open_workspace
 from python_harness.gate.domain import (
     CreatedPaths,
@@ -297,7 +297,7 @@ class TestCreatedPaths:
     def repository_workspace(self, git_project: GitProject) -> Workspace:
         git_project.commit(self.PROJECT, 'base')
         git_project.builder.write({'service/draft.txt': 'already here\n'})
-        return open_workspace(git_project.builder.root.joinpath('service'))
+        return open_workspace(git_project.builder.root.joinpath('service'), uv_runner=stubbed_uv)
 
     def test_files_the_run_creates_are_listed_relative_to_the_workspace(
         self, repository_workspace: Workspace

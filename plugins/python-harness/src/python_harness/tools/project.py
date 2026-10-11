@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import Field, StringConstraints
 
-from python_harness.core.workspace import Workspace, open_workspace
+from python_harness.core.workspace import UvRunner, Workspace, open_workspace
 from python_harness.tools.errors import ProjectRootRelativeError, ProjectRootUnsetError
 
 PROJECT_ROOT_VARIABLE = 'CLAUDE_PROJECT_DIR'
@@ -34,8 +34,8 @@ def check_project_root(
     return None
 
 
-def open_project(environment: Mapping[str, str]) -> Workspace:
+def open_project(environment: Mapping[str, str], uv_runner: UvRunner) -> Workspace:
     declared = environment.get(PROJECT_ROOT_VARIABLE, '')
     if (problem := check_project_root(declared)) is not None:
         raise problem
-    return open_workspace(Path(declared))
+    return open_workspace(Path(declared), uv_runner=uv_runner)

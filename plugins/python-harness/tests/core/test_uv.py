@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from python_harness.core import uv
+from python_harness.core.errors import UvWorkspaceError
 
 EXECUTABLE = '/custom/bin/uv'
 ARGUMENTS = ('workspace', 'list', '--paths', '--offline', '--color', 'never')
@@ -72,7 +73,9 @@ def test_run_uv_workspace_translates_nonzero_exit(
     monkeypatch.setattr(uv.shutil, 'which', lambda _: EXECUTABLE)
     monkeypatch.setattr(uv.subprocess, 'run', run)
 
-    with pytest.raises(RuntimeError, match=r'^uv exited 2: invalid workspace$'):
+    with pytest.raises(
+        UvWorkspaceError, match=r'^uv workspace discovery failed: uv exited 2: invalid workspace$'
+    ):
         uv.run_uv_workspace(tmp_path)
 
 
@@ -86,5 +89,34 @@ def test_run_uv_workspace_reports_missing_executable(
     monkeypatch.setattr(uv.shutil, 'which', lambda _: None)
     monkeypatch.setattr(uv.subprocess, 'run', run)
 
-    with pytest.raises(FileNotFoundError, match='uv is not on PATH'):
+    with pytest.raises(
+        UvWorkspaceError, match=r'^uv workspace discovery failed: uv is not on PATH$'
+    ):
         uv.run_uv_workspace(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ('failure', 'message'),
+    [
+        pytest.param(subprocess.TimeoutExpired('uv', 5.0), "Command 'uv' timed out", id='timeout'),
+        pytest.param(PermissionError('not executable'), 'not executable', id='unlaunchable'),
+        pytest.param(
+            UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte'),
+            'invalid start byte',
+            id='undecodable-output',
+        ),
+    ],
+)
+def test_run_uv_workspace_translates_process_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: Exception, message: str
+) -> None:
+    def run(*_: object, **__: object) -> subprocess.CompletedProcess[str]:
+        raise failure
+
+    monkeypatch.setattr(uv.shutil, 'which', lambda _: EXECUTABLE)
+    monkeypatch.setattr(uv.subprocess, 'run', run)
+
+    with pytest.raises(UvWorkspaceError, match=message) as raised:
+        uv.run_uv_workspace(tmp_path)
+
+    assert raised.value.__cause__ is failure

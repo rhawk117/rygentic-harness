@@ -9,7 +9,15 @@ from pathlib import Path
 
 import pytest
 
+from python_harness.core.errors import UvWorkspaceError
 from python_harness.core.workspace import Workspace, open_workspace
+
+STUBBED_UV_REASON = 'uv is stubbed out in tests'
+STUBBED_UV_DIAGNOSTIC = f'uv workspace discovery failed: {STUBBED_UV_REASON}'
+
+
+def stubbed_uv(_: Path) -> str:
+    raise UvWorkspaceError(STUBBED_UV_REASON)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +29,7 @@ class ProjectBuilder:
             target = self.root.joinpath(relative)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(textwrap.dedent(text).lstrip(), encoding='utf-8')
-        return open_workspace(self.root)
+        return open_workspace(self.root, uv_runner=stubbed_uv)
 
 
 @dataclass(frozen=True, slots=True)

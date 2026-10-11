@@ -1,6 +1,5 @@
 """Root-contained paths and Python file discovery for the project under inspection."""
 
-import subprocess
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from functools import partial
@@ -10,9 +9,11 @@ from pathlib import Path, PurePosixPath
 from python_harness.core.errors import (
     PathOutsideWorkspaceError,
     TargetPathMissingError,
+    UvWorkspaceError,
     WorkspaceRootMissingError,
 )
-from python_harness.core.uv import run_uv_workspace
+
+type UvRunner = Callable[[Path], str]
 
 DEFAULT_EXCLUDED_DIRECTORIES = frozenset(
     {
@@ -100,30 +101,21 @@ def find_source_roots(root: Path, options: DiscoveryOptions) -> tuple[Path, ...]
     return tuple(path for path in candidates if path.is_dir())
 
 
-def discover_uv_members(
-    root: Path,
-    uv_runner: Callable[[Path], str],
-) -> tuple[Path, ...] | str:
-    try:
-        return tuple(Path(line) for line in uv_runner(root).splitlines() if line)
-    except (
-        FileNotFoundError,
-        OSError,
-        RuntimeError,
-        TimeoutError,
-        subprocess.TimeoutExpired,
-    ) as error:
-        return f'uv workspace discovery failed: {error}'
+def discover_uv_members(root: Path, uv_runner: UvRunner) -> tuple[Path, ...]:
+    return tuple(Path(line) for line in uv_runner(root).splitlines() if line)
 
 
-def validate_workspace_members(root: Path, members: tuple[Path, ...]) -> tuple[Path, ...] | str:
+def validate_workspace_members(root: Path, members: tuple[Path, ...]) -> tuple[Path, ...]:
     if not members:
-        return 'uv workspace discovery failed: no workspace members'
+        msg = 'no workspace members'
+        raise UvWorkspaceError(msg)
     if any(not member.is_absolute() for member in members):
-        return 'uv workspace discovery failed: non-absolute member path'
+        msg = 'non-absolute member path'
+        raise UvWorkspaceError(msg)
     resolved = tuple(member.resolve() for member in members)
     if any(not member.is_relative_to(root) for member in resolved):
-        return 'uv workspace discovery failed: path outside the project root'
+        msg = 'path outside the project root'
+        raise UvWorkspaceError(msg)
     return resolved
 
 
@@ -153,19 +145,17 @@ def open_workspace(
     root: Path,
     options: DiscoveryOptions | None = None,
     *,
-    uv_runner: Callable[[Path], str] = run_uv_workspace,
+    uv_runner: UvRunner,
 ) -> Workspace:
     resolved = root.resolve()
     if not resolved.is_dir():
         raise WorkspaceRootMissingError(resolved)
     chosen = DiscoveryOptions() if options is None else options
-    fallback = find_source_roots(resolved, chosen)
-    discovered = discover_uv_members(resolved, uv_runner)
-    if isinstance(discovered, str):
-        return construct_workspace(resolved, fallback, chosen, diagnostic=discovered)
-    members = validate_workspace_members(resolved, discovered)
-    if isinstance(members, str):
-        return construct_workspace(resolved, fallback, chosen, diagnostic=members)
+    try:
+        members = validate_workspace_members(resolved, discover_uv_members(resolved, uv_runner))
+    except UvWorkspaceError as error:
+        fallback = find_source_roots(resolved, chosen)
+        return construct_workspace(resolved, fallback, chosen, diagnostic=str(error))
     roots = derive_workspace_source_roots(members, chosen)
     return construct_workspace(resolved, roots, chosen)
 

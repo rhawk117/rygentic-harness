@@ -4,7 +4,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import DiscoveryOptions, Workspace, open_workspace
 from python_harness.imports.domain import ImportEdge, ImportGraph, ProjectIndex
 from python_harness.imports.services import load_project_index, module_name_for
@@ -135,7 +135,9 @@ class TestConfiguredTestFileNames:
     @pytest.fixture
     def graph(self, project_builder: ProjectBuilder) -> ImportGraph:
         project_builder.write(self.FILES)
-        return load_project_index(open_workspace(project_builder.root, self.OPTIONS)).graph
+        return load_project_index(
+            open_workspace(project_builder.root, self.OPTIONS, uv_runner=stubbed_uv)
+        ).graph
 
     @pytest.mark.parametrize(
         ('module', 'expected'),

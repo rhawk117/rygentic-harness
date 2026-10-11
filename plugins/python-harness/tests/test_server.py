@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from mcp import Client
 from mcp.types import CallToolResult
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import STUBBED_UV_DIAGNOSTIC, ProjectBuilder
 from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import open_workspace
 from python_harness.documentation.tests.support import DOCS_VERSION, DocsSite, standard_pages
@@ -159,8 +159,7 @@ class TestProjectDiagnostics:
         document = document_of(result)
         diagnostics = document['workspace' if tool in BUDGETED_TOOLS else 'diagnostics']
         assert diagnostics['source_roots'] == ['src']
-        assert len(diagnostics['fallback_diagnostics']) == 1
-        assert 'uv workspace discovery failed' in diagnostics['fallback_diagnostics'][0]
+        assert diagnostics['fallback_diagnostics'] == [STUBBED_UV_DIAGNOSTIC]
 
 
 class TestWorkspaceDiagnostics:

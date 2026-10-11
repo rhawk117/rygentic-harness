@@ -7,12 +7,14 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
+from python_harness.core import uv
 from python_harness.core.errors import (
     PathOutsideWorkspaceError,
     TargetPathMissingError,
+    UvWorkspaceError,
     WorkspaceRootMissingError,
 )
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import (
     DiscoveryOptions,
     Workspace,
@@ -30,12 +32,12 @@ def no_workspace_members(_: Path) -> str:
 
 def failed_workspace_command(_: Path) -> str:
     msg = 'exit 2'
-    raise RuntimeError(msg)
+    raise UvWorkspaceError(msg)
 
 
 def timed_out_workspace_command(_: Path) -> str:
     msg = 'timed out'
-    raise TimeoutError(msg)
+    raise UvWorkspaceError(msg)
 
 
 def relative_workspace_member(_: Path) -> str:
@@ -46,18 +48,13 @@ def outside_workspace_member(_: Path) -> str:
     return '/outside/member'
 
 
-def timed_out_uv(_: Path) -> str:
-    msg = 'uv'
-    raise subprocess.TimeoutExpired(msg, 5.0)
-
-
 def colored_workspace_member(_: Path) -> str:
     return '\x1b[1m/tmp/member\x1b[0m'
 
 
 def missing_uv(_: Path) -> str:
     msg = 'uv is not on PATH'
-    raise FileNotFoundError(msg)
+    raise UvWorkspaceError(msg)
 
 
 class TestResolve:
@@ -194,7 +191,7 @@ class TestEscapingSymlinks:
 class TestOpenWorkspace:
     def test_missing_root_is_reported(self, project_builder: ProjectBuilder) -> None:
         with pytest.raises(WorkspaceRootMissingError):
-            open_workspace(project_builder.root.joinpath('absent'))
+            open_workspace(project_builder.root.joinpath('absent'), uv_runner=stubbed_uv)
 
     def test_flat_layout_has_no_source_roots(self, project_builder: ProjectBuilder) -> None:
         workspace = project_builder.write({'pkg/__init__.py': ''})
@@ -234,7 +231,7 @@ class TestCustomTestDirectories:
 
     @pytest.fixture
     def workspace(self, project_builder: ProjectBuilder) -> Workspace:
-        return open_workspace(project_builder.root, self.OPTIONS)
+        return open_workspace(project_builder.root, self.OPTIONS, uv_runner=stubbed_uv)
 
     @pytest.mark.parametrize(
         ('path', 'expected'),
@@ -350,11 +347,6 @@ class TestUvFailure:
                 id='missing-uv',
             ),
             pytest.param(
-                timed_out_uv,
-                'uv workspace discovery failed: Command',
-                id='subprocess-timeout',
-            ),
-            pytest.param(
                 colored_workspace_member,
                 'non-absolute member path',
                 id='colour-escaped-output',
@@ -383,6 +375,44 @@ class TestUvFailure:
 
         assert workspace.source_roots == (project_builder.root.joinpath('src'),)
         assert isinstance(workspace.fallback_diagnostics, tuple)
+        message = workspace.fallback_diagnostics[0]
+        assert message.startswith('uv workspace discovery failed: ')
+        assert diagnostic in message
+
+    @pytest.mark.parametrize(
+        ('failure', 'diagnostic'),
+        [
+            pytest.param(
+                UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte'),
+                'invalid start byte',
+                id='undecodable-output',
+            ),
+            pytest.param(
+                subprocess.TimeoutExpired('uv', 5.0),
+                "Command 'uv' timed out",
+                id='subprocess-timeout',
+            ),
+            pytest.param(PermissionError('not executable'), 'not executable', id='unlaunchable'),
+        ],
+    )
+    def test_a_failure_of_the_uv_process_is_a_diagnostic_not_a_tool_error(
+        self,
+        project_builder: ProjectBuilder,
+        monkeypatch: pytest.MonkeyPatch,
+        failure: Exception,
+        diagnostic: str,
+    ) -> None:
+        def run(*_: object, **__: object) -> subprocess.CompletedProcess[str]:
+            raise failure
+
+        monkeypatch.setattr(uv.shutil, 'which', lambda _: '/custom/bin/uv')
+        monkeypatch.setattr(uv.subprocess, 'run', run)
+        project_builder.write({'src/package/__init__.py': ''})
+
+        workspace = open_workspace(project_builder.root, uv_runner=uv.run_uv_workspace)
+
+        assert workspace.source_roots == (project_builder.root.joinpath('src'),)
+        assert len(workspace.fallback_diagnostics) == 1
         message = workspace.fallback_diagnostics[0]
         assert message.startswith('uv workspace discovery failed: ')
         assert diagnostic in message

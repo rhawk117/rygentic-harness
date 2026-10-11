@@ -3,7 +3,7 @@
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import ProjectBuilder, stubbed_uv
 from python_harness.core.toml import TomlTable
 from python_harness.core.workspace import DiscoveryOptions, Workspace, open_workspace
 from python_harness.survey.domain import Domain, LayoutFacts, Mode, ModeInference
@@ -137,7 +137,7 @@ class TestReadLayoutWithConfiguredTestDirectories:
     @pytest.fixture
     def workspace(self, project_builder: ProjectBuilder) -> Workspace:
         project_builder.write(self.FILES)
-        return open_workspace(project_builder.root, self.OPTIONS)
+        return open_workspace(project_builder.root, self.OPTIONS, uv_runner=stubbed_uv)
 
     def test_workspace_test_directories_decide_the_layout(self, workspace: Workspace) -> None:
         assert read_layout(workspace) == self.EXPECTED

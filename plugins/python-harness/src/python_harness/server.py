@@ -26,7 +26,8 @@ from python_harness.core.output import (
     render_budgeted_document,
     to_json_value,
 )
-from python_harness.core.workspace import Workspace
+from python_harness.core.uv import run_uv_workspace
+from python_harness.core.workspace import UvRunner, Workspace
 from python_harness.documentation.repository import documentation_http_client
 from python_harness.documentation.services import (
     DocumentationService,
@@ -204,6 +205,7 @@ class DocumentationTools:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProjectTools:
     environment: Mapping[str, str]
+    uv_runner: UvRunner
 
     def answer[Request](
         self,
@@ -212,7 +214,7 @@ class ProjectTools:
         output: ProjectOutput | None = None,
     ) -> str:
         with tool_errors():
-            workspace = open_project(self.environment)
+            workspace = open_project(self.environment, self.uv_runner)
             return render_project_document(workspace, run(workspace, request), output=output)
 
     def collect_python_facts(
@@ -291,13 +293,13 @@ class ProjectTools:
     def survey(self) -> str:
         """Survey the project and return its mode, domains and layout as JSON."""
         with tool_errors():
-            workspace = open_project(self.environment)
+            workspace = open_project(self.environment, self.uv_runner)
             return render_project_document(workspace, survey_document(survey_project(workspace)))
 
     def gate(self) -> str:
         """Run the project's ruff, ty and pytest checks and return the report as JSON."""
         with tool_errors():
-            workspace = open_project(self.environment)
+            workspace = open_project(self.environment, self.uv_runner)
             options = GateOptions(fallback_ruff_config=RUFF_CONFIG, fallback_ty_config=TY_CONFIG)
             report = run_gate_for(workspace, options, environment=self.environment)
             return render_project_document(workspace, report)
@@ -321,10 +323,15 @@ class ProjectTools:
 
 
 def build_server(
-    service: DocumentationService, environment: Mapping[str, str] | None = None
+    service: DocumentationService,
+    environment: Mapping[str, str] | None = None,
+    *,
+    uv_runner: UvRunner,
 ) -> MCPServer:
     documentation = DocumentationTools(service=service)
-    project = ProjectTools(environment={} if environment is None else environment)
+    project = ProjectTools(
+        environment={} if environment is None else environment, uv_runner=uv_runner
+    )
     server = MCPServer(SERVER_NAME, instructions=SERVER_INSTRUCTIONS)
     server.add_tool(documentation.search_python_docs, annotations=READ_ONLY_REMOTE)
     server.add_tool(
@@ -344,7 +351,7 @@ def build_server(
 
 async def serve(settings: Settings) -> None:
     async with documentation_service(settings) as service:
-        await build_server(service, os.environ).run_stdio_async()
+        await build_server(service, os.environ, uv_runner=run_uv_workspace).run_stdio_async()
 
 
 def main() -> int:
