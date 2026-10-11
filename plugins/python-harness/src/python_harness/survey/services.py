@@ -6,6 +6,7 @@ from pathlib import Path
 
 import tomllib
 
+from python_harness.core.output import JsonValue, dataclass_to_json
 from python_harness.core.toml import TomlTable, read_table
 from python_harness.core.workspace import Workspace
 from python_harness.imports.services import load_project_index
@@ -22,6 +23,13 @@ from python_harness.survey.domain import (
 from python_harness.survey.errors import ManifestUnreadableError
 from python_harness.survey.policy import detect_domains, infer_mode
 from python_harness.survey.util import declares_ruff_config, manifest_from_document
+
+
+def survey_document(survey: ProjectSurvey) -> JsonValue:
+    document = dataclass_to_json(survey)
+    if survey.manifest is NO_MANIFEST:
+        return document | {'manifest': None}
+    return document
 
 
 def load_pyproject(workspace: Workspace) -> TomlTable | None:

@@ -12,7 +12,6 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from python_harness.cli.inspection import survey_document
 from python_harness.core.errors import PythonHarnessError
 from python_harness.core.output import COMPACT_SEPARATORS, JsonValue, to_json_value
 from python_harness.core.workspace import Workspace
@@ -27,7 +26,7 @@ from python_harness.gate.domain import GateOptions
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.gate.services import run_gate_for
 from python_harness.imports.services import external_packages_for, load_project_index
-from python_harness.survey.services import survey_project
+from python_harness.survey.services import survey_document, survey_project
 from python_harness.tools.check_citations import use_case as citations_use_case
 from python_harness.tools.check_citations.schema import (
     CitationsRequest,
