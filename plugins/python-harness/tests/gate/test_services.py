@@ -1,8 +1,11 @@
 """Running gate commands: outcomes, output tails, environment, timeouts and leftovers."""
 
+import os
+import signal
 import stat
 import sys
 import time
+from contextlib import suppress
 from types import MappingProxyType
 
 import pytest
@@ -24,6 +27,23 @@ from python_harness.gate.services import run_gate, run_gate_for
 from python_harness.survey.errors import ManifestUnreadableError
 
 NO_ENVIRONMENT = MappingProxyType({})
+POLL_SECONDS = 0.05
+RECORD_PID_AND_SLEEP = (
+    'import os, pathlib, sys, time; '
+    'pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); '
+    'time.sleep(60)'
+)
+
+
+def is_gone_within(pid: int, seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(POLL_SECONDS)
+    return False
 
 
 def python_command(tool: GateTool, script: str, *arguments: str) -> GateCommand:
@@ -146,6 +166,7 @@ class TestMissingProgram:
 
 class TestTimeout:
     OPTIONS = GateOptions(timeout_seconds=0.5)
+    RECORDING_OPTIONS = GateOptions(timeout_seconds=3.0)
     DEADLINE_SECONDS = 15.0
     SLOW_PLAN = plan_of(
         python_command(
@@ -176,6 +197,30 @@ class TestTimeout:
 
         assert report.results[0].timed_out
         assert elapsed < self.DEADLINE_SECONDS
+
+    def test_the_grandchild_process_no_longer_exists_after_the_timeout(
+        self, workspace: Workspace
+    ) -> None:
+        pid_file = workspace.root.joinpath('grandchild.pid')
+        plan = plan_of(
+            python_command(
+                GateTool.PYTEST,
+                'import subprocess, sys; '
+                'subprocess.run([sys.executable, "-c", sys.argv[1], sys.argv[2]])',
+                RECORD_PID_AND_SLEEP,
+                str(pid_file),
+            )
+        )
+
+        report = run_gate(workspace, plan, self.RECORDING_OPTIONS, environment=NO_ENVIRONMENT)
+
+        grandchild = int(pid_file.read_text(encoding='utf-8'))
+        try:
+            assert report.results[0].timed_out
+            assert is_gone_within(grandchild, self.DEADLINE_SECONDS)
+        finally:
+            with suppress(ProcessLookupError):
+                os.kill(grandchild, signal.SIGTERM)
 
 
 class TestConcurrency:

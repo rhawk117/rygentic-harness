@@ -1,10 +1,12 @@
 """The survey and gate project tools return their inspection documents over MCP."""
 
+import argparse
 from collections.abc import Mapping
 
 import pytest
 from mcp import Client
 from python_harness import server
+from python_harness.cli.inspection import add_gate_arguments
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.gate.domain import (
@@ -81,3 +83,14 @@ class TestGate:
             RUFF_CONFIG,
             TY_CONFIG,
         )
+
+    @pytest.mark.usefixtures('shop')
+    async def test_each_check_gets_a_600_second_timeout_like_the_cli_default(
+        self, project_client: Client, gate_options: list[GateOptions]
+    ) -> None:
+        await project_client.call_tool('gate')
+        parser = argparse.ArgumentParser()
+        add_gate_arguments(parser)
+
+        (options,) = gate_options
+        assert (options.timeout_seconds, parser.parse_args([]).timeout) == (600.0, 600.0)
