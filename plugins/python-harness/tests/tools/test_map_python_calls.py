@@ -12,6 +12,7 @@ from python_harness.core.output import MINIMUM_BUDGET, to_json_value
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import Workspace
+from python_harness.tools.map_python_calls.output import SUMMARY_SYMBOL_LIMIT
 from python_harness.tools.tests.support import document_of, text_of
 
 TOOL = 'map_python_calls'
@@ -259,3 +260,42 @@ class TestBudgetedCallsOutput:
             'summary',
             4000,
         )
+
+
+@pytest.mark.anyio
+class TestSummarySymbolLimit:
+    async def test_summary_keeps_the_most_referenced_symbols_up_to_the_limit(
+        self, project_builder: ProjectBuilder, project_client: Client
+    ) -> None:
+        names = [f'symbol_{index:02}' for index in range(20)] + ['zz_most_referenced']
+        project_builder.write(
+            {
+                'pyproject.toml': """
+                    [project]
+                    name = "many-symbols"
+                    version = "0.1.0"
+                    requires-python = ">=3.14"
+                """,
+                'src/pkg/defs.py': '\n'.join(f'def {name}() -> None: ...' for name in names),
+                'src/pkg/uses.py': '\n'.join(
+                    [
+                        f'from .defs import {", ".join(names)}',
+                        'def use() -> None:',
+                        *(f'    {name}()' for name in names),
+                        '    zz_most_referenced()',
+                    ]
+                ),
+            }
+        )
+
+        document = document_of(await project_client.call_tool(TOOL, {'paths': ['src/pkg']}))
+
+        top_symbols = document['result']['top_referenced_symbols']
+        assert (
+            document['detail'],
+            document['truncated'],
+            document['degraded'],
+            len(top_symbols),
+            top_symbols[0]['name'],
+            document['result']['counts']['symbol_categories']['external'],
+        ) == ('summary', True, False, SUMMARY_SYMBOL_LIMIT, 'zz_most_referenced', len(names))
