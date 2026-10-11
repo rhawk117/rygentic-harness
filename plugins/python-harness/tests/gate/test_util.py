@@ -22,7 +22,7 @@ from python_harness.gate.domain import (
     GateTool,
     RuffVersion,
 )
-from python_harness.gate.errors import InvalidRuffVersionError
+from python_harness.gate.errors import ECHOED_VALUE_LIMIT, InvalidRuffVersionError
 from python_harness.gate.policy import plan_gate
 from python_harness.gate.tests.support import argv_for
 from python_harness.gate.util import (
@@ -355,6 +355,19 @@ class TestRuffVersionOption:
     def test_any_other_value_is_refused_by_naming_the_option(self, text: str) -> None:
         with pytest.raises(InvalidRuffVersionError, match=RUFF_VERSION_OPTION):
             ruff_version_from({RUFF_VERSION_VARIABLE: text})
+
+    def test_a_long_refused_value_is_cut_in_the_message(self) -> None:
+        error = InvalidRuffVersionError(RUFF_VERSION_OPTION, RUFF_VERSION_VARIABLE, 'x' * 10_000)
+
+        message = str(error)
+
+        assert len(message) < 200
+        assert RUFF_VERSION_OPTION in message
+        assert RUFF_VERSION_VARIABLE in message
+        assert 'x' * ECHOED_VALUE_LIMIT in message
+        assert 'x' * (ECHOED_VALUE_LIMIT + 1) not in message
+        assert f'cut to {ECHOED_VALUE_LIMIT} characters' in message
+        assert error.value == 'x' * 10_000
 
     def test_the_environment_variable_sets_the_pin_of_both_ruff_commands(self) -> None:
         tools = tool_invocations_from({RUFF_VERSION_VARIABLE: '0.15.2'})
