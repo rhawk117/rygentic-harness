@@ -3,11 +3,13 @@
 import ast
 from collections.abc import Iterable, Iterator, Mapping
 from itertools import chain
+from pathlib import Path
 from types import MappingProxyType
 
 from python_harness.core.sources import ParsedModule, load_sources
 from python_harness.core.workspace import Workspace
 from python_harness.imports.domain import (
+    ExternalPackage,
     ImportBinding,
     ImportEdge,
     ImportGraph,
@@ -20,9 +22,13 @@ from python_harness.imports.domain import (
 def module_name_for(workspace: Workspace, path: str) -> str:
     absolute = workspace.resolve(path)
     bases = (*workspace.source_roots, workspace.root)
-    base = next(root for root in bases if absolute.is_relative_to(root))
+    base = max((root for root in bases if absolute.is_relative_to(root)), key=path_depth)
     parts = absolute.relative_to(base).with_suffix('').parts
     return '.'.join(part for part in parts if part != '__init__')
+
+
+def path_depth(path: Path) -> int:
+    return len(path.parts)
 
 
 def module_ref_for(workspace: Workspace, path: str) -> ModuleRef:
@@ -98,3 +104,28 @@ def build_import_graph(workspace: Workspace, modules: Iterable[ParsedModule]) ->
 def load_project_index(workspace: Workspace) -> ProjectIndex:
     sources = load_sources(workspace, workspace.python_files('.'))
     return ProjectIndex(sources, build_import_graph(workspace, sources.modules))
+
+
+def external_packages_for(workspace: Workspace, graph: ImportGraph) -> tuple[ExternalPackage, ...]:
+    roots = (*workspace.source_roots, workspace.root)
+    found = (
+        (name, package_directory(workspace, name, roots))
+        for name in sorted(graph.external_packages)
+    )
+    return tuple(
+        ExternalPackage(name, workspace.relative(directory))
+        for name, directory in found
+        if directory is not None
+    )
+
+
+def package_directory(workspace: Workspace, name: str, roots: Iterable[Path]) -> Path | None:
+    candidates = (root.joinpath(name) for root in roots)
+    return next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate.is_dir() and candidate.resolve().is_relative_to(workspace.root)
+        ),
+        None,
+    )

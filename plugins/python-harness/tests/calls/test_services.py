@@ -1,6 +1,7 @@
 """Reference summaries, symbol drill-downs and coupling facts for target modules."""
 
 from itertools import chain
+from pathlib import Path
 from types import MappingProxyType
 
 import pytest
@@ -20,7 +21,9 @@ from python_harness.calls.services import (
 from python_harness.core.errors import PathOutsideWorkspaceError
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.tests.support import emit_document
-from python_harness.core.workspace import Workspace
+from python_harness.core.workspace import Workspace, open_workspace
+from python_harness.imports.domain import ExternalPackage
+from python_harness.imports.services import external_packages_for, load_project_index
 
 PROJECT = MappingProxyType(
     {
@@ -329,6 +332,52 @@ class TestModuleMetrics:
         self, report: CallsReport, module: str, expected: float | None
     ) -> None:
         assert self.metrics_of(report, module).instability == expected
+
+
+class TestWorkspaceFanIn:
+    FILES = MappingProxyType(
+        {
+            'members/one/src/one/__init__.py': 'from two import value\n',
+            'members/one/src/one/value.py': 'VALUE = 1\n',
+            'members/two/src/two/__init__.py': 'from one import value\n',
+            'members/two/src/two/value.py': 'VALUE = 2\n',
+            'members/two/src/shared/py.typed': '',
+        }
+    )
+    TARGET = 'members/one/src/one/value.py'
+
+    def test_workspace_fan_in_from_uv_members(self, project_builder: ProjectBuilder) -> None:
+        project_builder.write(self.FILES)
+        root = project_builder.root
+        members = (root.joinpath('members', 'one'), root.joinpath('members', 'two'))
+
+        def list_members(_: Path) -> str:
+            return '\n'.join(str(member) for member in members)
+
+        workspace = open_workspace(root, uv_runner=list_members)
+        report = map_call_sites_for(workspace, (self.TARGET,))
+        metrics = report.modules[0].metrics
+
+        assert (metrics.module, metrics.fan_in) == ('one.value', 1)
+
+    def test_in_workspace_external_package_has_a_relative_directory(
+        self, project_builder: ProjectBuilder
+    ) -> None:
+        project_builder.write(
+            {**self.FILES, 'members/one/src/one/use.py': 'from shared import value\n'}
+        )
+        root = project_builder.root
+        members = (root.joinpath('members', 'one'), root.joinpath('members', 'two'))
+
+        def list_members(_: Path) -> str:
+            return '\n'.join(str(member) for member in members)
+
+        workspace = open_workspace(root, uv_runner=list_members)
+        graph = load_project_index(workspace).graph
+
+        assert external_packages_for(workspace, graph) == (
+            ExternalPackage('shared', 'members/two/src/shared'),
+        )
 
 
 class TestTargets:

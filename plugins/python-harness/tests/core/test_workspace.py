@@ -1,5 +1,7 @@
 """Workspace containment, discovery and source-root detection."""
 
+import subprocess
+from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 from types import MappingProxyType
@@ -20,6 +22,42 @@ from python_harness.core.workspace import (
     list_ancestors_to,
     open_workspace,
 )
+
+
+def no_workspace_members(_: Path) -> str:
+    return ''
+
+
+def failed_workspace_command(_: Path) -> str:
+    msg = 'exit 2'
+    raise RuntimeError(msg)
+
+
+def timed_out_workspace_command(_: Path) -> str:
+    msg = 'timed out'
+    raise TimeoutError(msg)
+
+
+def relative_workspace_member(_: Path) -> str:
+    return 'relative/member'
+
+
+def outside_workspace_member(_: Path) -> str:
+    return '/outside/member'
+
+
+def timed_out_uv(_: Path) -> str:
+    msg = 'uv'
+    raise subprocess.TimeoutExpired(msg, 5.0)
+
+
+def colored_workspace_member(_: Path) -> str:
+    return '\x1b[1m/tmp/member\x1b[0m'
+
+
+def missing_uv(_: Path) -> str:
+    msg = 'uv is not on PATH'
+    raise FileNotFoundError(msg)
 
 
 class TestResolve:
@@ -253,3 +291,96 @@ class TestAncestors:
         start = project_builder.root.joinpath('lonely')
 
         assert find_search_boundary(start, ('no-such-marker',)) == start
+
+
+class TestUvWorkspace:
+    def test_uv_workspace_uses_each_member_src_or_flat_root(
+        self, project_builder: ProjectBuilder
+    ) -> None:
+        project_builder.write(
+            {
+                'src/root_package/__init__.py': '',
+                'members/library/src/library/__init__.py': '',
+                'members/tool/tool.py': '',
+            }
+        )
+        root = project_builder.root
+
+        def list_members(_: Path) -> str:
+            return '\n'.join(
+                (
+                    str(root),
+                    str(root.joinpath('members', 'library')),
+                    str(root.joinpath('members', 'tool')),
+                )
+            )
+
+        workspace = open_workspace(root, uv_runner=list_members)
+
+        assert workspace.source_roots == (
+            root.joinpath('src'),
+            root.joinpath('members', 'library', 'src'),
+            root.joinpath('members', 'tool'),
+        )
+        assert workspace.fallback_diagnostics == ()
+
+
+class TestUvFailure:
+    @pytest.mark.parametrize(
+        ('runner', 'diagnostic'),
+        [
+            pytest.param(
+                no_workspace_members,
+                'no workspace members',
+                id='no-workspace',
+            ),
+            pytest.param(
+                failed_workspace_command,
+                'exit 2',
+                id='nonzero-exit',
+            ),
+            pytest.param(
+                timed_out_workspace_command,
+                'timed out',
+                id='timeout',
+            ),
+            pytest.param(
+                missing_uv,
+                'uv workspace discovery failed: uv is not on PATH',
+                id='missing-uv',
+            ),
+            pytest.param(
+                timed_out_uv,
+                'uv workspace discovery failed: Command',
+                id='subprocess-timeout',
+            ),
+            pytest.param(
+                colored_workspace_member,
+                'non-absolute member path',
+                id='colour-escaped-output',
+            ),
+            pytest.param(
+                relative_workspace_member,
+                'non-absolute member path',
+                id='relative-output',
+            ),
+            pytest.param(
+                outside_workspace_member,
+                'outside the project root',
+                id='outside-output',
+            ),
+        ],
+    )
+    def test_uv_failure_keeps_existing_roots_and_records_the_cause(
+        self,
+        project_builder: ProjectBuilder,
+        runner: Callable[[Path], str],
+        diagnostic: str,
+    ) -> None:
+        project_builder.write({'src/package/__init__.py': ''})
+
+        workspace = open_workspace(project_builder.root, uv_runner=runner)
+
+        assert workspace.source_roots == (project_builder.root.joinpath('src'),)
+        assert isinstance(workspace.fallback_diagnostics, tuple)
+        assert diagnostic in workspace.fallback_diagnostics[0]

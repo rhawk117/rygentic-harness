@@ -1,5 +1,6 @@
 """Module naming, binding collection and edge building for the import graph."""
 
+from pathlib import Path
 from types import MappingProxyType
 
 import pytest
@@ -52,6 +53,17 @@ class TestModuleNameFor:
         self, workspace: Workspace, path: str, expected: str
     ) -> None:
         assert module_name_for(workspace, path) == expected
+
+    def test_most_specific_source_root_wins(self, project_builder: ProjectBuilder) -> None:
+        project_builder.write({'packages/member/src/member/module.py': ''})
+        root = project_builder.root
+
+        def list_members(_: Path) -> str:
+            return '\n'.join((str(root), str(root.joinpath('packages', 'member'))))
+
+        workspace = open_workspace(root, uv_runner=list_members)
+
+        assert module_name_for(workspace, 'packages/member/src/member/module.py') == 'member.module'
 
 
 class TestEdges:
