@@ -20,6 +20,20 @@ and left as it was: there is no migration, and tables of another shape would be 
 unstamped file that already holds tables is such a file, and a database an earlier version kept
 inside a repository is one.
 
+Two processes can open one new file at the same moment: the server and `verify run` of one
+session, or two sessions. So the open takes SQLite's write lock before it reads the stamp and
+holds it to the last `CREATE`, and whoever comes second waits `BUSY_TIMEOUT` for it and then
+finds the stamp and the tables there. The lock is a transaction on the file itself and nothing
+is kept beside it. The driver begins no transaction ahead of a `PRAGMA` or a `CREATE`, so on
+that one connection it is told to begin none at all and the open sends `BEGIN IMMEDIATE` by
+name. SQLAlchemy's transaction around it still sends the `COMMIT`, or the `ROLLBACK` that leaves
+a refused file unwritten.
+
+A database error met during the open, such as a file that is not a database or a lock nobody
+gave up in time, leaves as a `DatabaseOpenError` that names the file and the cause. It is a
+`StateError`, so the edge shows it to its caller as a refusal. An error the owner raises while
+it holds the database leaves as itself.
+
 SQLite checks a foreign key only on a connection that asks it to, so every connection of the
 engine asks as it opens. A row whose parent is missing is then refused when its transaction
 commits.
@@ -30,8 +44,12 @@ seconds, for another session's write before its own is refused as locked. A tran
 rows only and no command runs inside one, so a wait is as long as the commits queued ahead, and
 ten seconds covers several of them on a slow disk while a call still answers. The mode is kept in
 the file's header and setting it writes the file, so it is set only once the stamp is accepted:
-a refused file is not written at all. While a session has the file open, a `-wal` and a `-shm`
-file sit beside it.
+a refused file is not written at all. SQLite does not change the mode inside a transaction, and
+outside one it refuses at once, with no wait, while another connection holds the write lock. So
+the open asks for `locking_mode = EXCLUSIVE` before its commit, which keeps the lock past the
+commit, and for `NORMAL` again before it sets the mode, which gives the lock up once that
+statement has written the header. On a file already in the mode the three statements change
+nothing. While a session has the file open, a `-wal` and a `-shm` file sit beside it.
 
 No read returns more rows as a repository's history grows, and none answers from a part of what
 it was asked for without saying so. A `ReadLimit` is the most rows one read returns, and the read
@@ -57,6 +75,7 @@ from pathlib import Path
 import sqlalchemy as sql
 from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
 from sqlalchemy.engine.interfaces import DBAPIConnection
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
@@ -74,7 +93,18 @@ STAMP = f'{STORED_VERSION} = {SCHEMA_VERSION}'
 STORED_OBJECTS = 'SELECT count(*) FROM sqlite_master'
 ENFORCE_FOREIGN_KEYS = 'PRAGMA foreign_keys = ON'
 KEEP_A_WRITE_AHEAD_LOG = 'PRAGMA journal_mode = WAL'
+DRIVER_BEGINS_NOTHING = 'AUTOCOMMIT'
+TAKE_THE_WRITE_LOCK = 'BEGIN IMMEDIATE'
+KEEP_THE_LOCK_PAST_THE_COMMIT = 'PRAGMA locking_mode = EXCLUSIVE'
+GIVE_THE_LOCK_UP_AFTER_THE_NEXT_STATEMENT = 'PRAGMA locking_mode = NORMAL'
 BUSY_TIMEOUT = timedelta(seconds=10)
+
+
+class DatabaseOpenError(StateError):
+    def __init__(self, database_file: Path, cause: DBAPIError) -> None:
+        super().__init__(f'{database_file} could not be opened as the state database: {cause.orig}')
+        self.database_file = database_file
+        self.cause = cause
 
 
 class SchemaVersionError(StateError):
@@ -176,6 +206,25 @@ def schema_version_error(
 
 
 @contextmanager
+def database_errors_refused(database_file: Path) -> Generator[None]:
+    try:
+        yield
+    except DBAPIError as error:
+        raise DatabaseOpenError(database_file, error) from error
+
+
+@contextmanager
+def write_lock_held(engine: sql.Engine) -> Generator[sql.Connection]:
+    with engine.connect().execution_options(isolation_level=DRIVER_BEGINS_NOTHING) as connection:
+        with connection.begin():
+            connection.exec_driver_sql(TAKE_THE_WRITE_LOCK)
+            yield connection
+            connection.exec_driver_sql(KEEP_THE_LOCK_PAST_THE_COMMIT)
+        connection.exec_driver_sql(GIVE_THE_LOCK_UP_AFTER_THE_NEXT_STATEMENT)
+        connection.exec_driver_sql(KEEP_A_WRITE_AHEAD_LOG)
+
+
+@contextmanager
 def open_database(
     database_file: Path, repository_key: RepositoryKey, row_types: RowTypes
 ) -> Generator[Database]:
@@ -187,14 +236,11 @@ def open_database(
     event.listen(engine, 'connect', enforce_foreign_keys)
     tables = [Base.metadata.tables[row_type.__tablename__] for row_type in row_types]
     try:
-        with engine.begin() as connection:
+        with database_errors_refused(database_file), write_lock_held(engine) as connection:
             stamp_a_file_that_holds_nothing(connection)
-            error = schema_version_error(connection, database_file)
-        if error is not None:
-            raise error
-        with engine.begin() as connection:
-            connection.exec_driver_sql(KEEP_A_WRITE_AHEAD_LOG)
-        Base.metadata.create_all(engine, tables=tables)
+            if (error := schema_version_error(connection, database_file)) is not None:
+                raise error
+            Base.metadata.create_all(connection, tables=tables)
         yield Database(engine=engine, sessions=sessionmaker(engine), repository_key=repository_key)
     finally:
         engine.dispose()

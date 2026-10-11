@@ -10,6 +10,7 @@ from typing import get_args, get_type_hints
 import pytest
 from jsonschema import Draft202012Validator
 from mcp.types import CallToolResult
+from mightymodels_plugin.core.database import DATABASE_NAME
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.server import SERVER_NAME, TOOLS, AppState
 from mightymodels_plugin.tools.close.service import CloseService
@@ -303,6 +304,29 @@ class TestOutsideARepository:
         assert (written.is_error, shown.is_error) == (True, True)
         assert f'{state_server.root} is not inside a git repository' in text_of(written)
         assert tree(state_server.root) == {}
+
+
+class TestADatabaseFileThatIsNotADatabase:
+    CONTENT = b'these bytes are not a database ' * 64
+    CAUSE = 'file is not a database'
+
+    @pytest.fixture
+    def not_a_database(self, data_directory: Path) -> Path:
+        data_directory.mkdir()
+        database_file = data_directory.joinpath(DATABASE_NAME)
+        database_file.write_bytes(self.CONTENT)
+        return database_file
+
+    def test_the_server_lists_its_tools_and_refuses_a_ticket_naming_the_file_and_the_cause(
+        self, state_server: StateServer, not_a_database: Path
+    ) -> None:
+        listed = state_server.tools()
+        (shown,) = ticket_results(state_server, ('ticket', {'action': 'show'}))
+
+        assert sorted(listed) == TOOL_NAMES
+        assert shown.is_error
+        assert f'{not_a_database} could not be opened' in text_of(shown)
+        assert self.CAUSE in text_of(shown)
 
 
 class TestToolCalls:
