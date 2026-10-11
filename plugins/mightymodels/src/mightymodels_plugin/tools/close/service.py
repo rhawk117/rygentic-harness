@@ -25,13 +25,12 @@ from dataclasses import dataclass
 from itertools import count
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import (
     LIVE_DEBUG_FILE,
-    Git,
+    GitQueries,
     GitRefusal,
     RecordFiles,
     UntrackedFiles,
@@ -40,7 +39,6 @@ from mightymodels_plugin.core.workspace import (
 )
 from mightymodels_plugin.redaction import redact, redact_within
 from mightymodels_plugin.tools.close.rendering import DECISION_LIMIT, archive_markdown
-from mightymodels_plugin.tools.close.repository import CloseRepository, close_transaction
 from mightymodels_plugin.tools.close.schema import (
     ArchivedCommand,
     ArchivedDecision,
@@ -51,6 +49,7 @@ from mightymodels_plugin.tools.close.schema import (
     CloseView,
     Closing,
 )
+from mightymodels_plugin.tools.close.store import CloseRepository, CloseStore
 from mightymodels_plugin.tools.contract.assessment import NEVER_RUN
 from mightymodels_plugin.tools.contract.schema import Receipt
 from mightymodels_plugin.tools.contract.store import RecordedCommand
@@ -58,7 +57,7 @@ from mightymodels_plugin.tools.investigation.ledger import Ledger, linked_ledger
 from mightymodels_plugin.tools.investigation.schema import EntryKind
 from mightymodels_plugin.tools.review.schema import Result
 from mightymodels_plugin.tools.snapshot.latest_review import LatestReview, latest_review_of
-from mightymodels_plugin.tools.snapshot.repository import SnapshotRepository
+from mightymodels_plugin.tools.snapshot.store import SnapshotRepository
 from mightymodels_plugin.tools.task.gates import plan_task_problem
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
 from mightymodels_plugin.tools.task.service import problem_lines, records_of
@@ -138,14 +137,14 @@ def unchecked(branch: str, reason: str) -> str:
     return f'branch {branch} could not be checked: {reason}'
 
 
-def unpushed_blockers(git: Git, branch: str) -> list[str]:
+def unpushed_blockers(git: GitQueries, branch: str) -> list[str]:
     unpushed = git.commits_on_no_remote(branch)
     if unpushed is None:
         return [unchecked(branch, 'git could not count its commits on no remote')]
     return [f'branch {branch} has {unpushed} commits on no remote'] if unpushed > 0 else []
 
 
-def uncommitted_blockers(git: Git, branch: str) -> list[str]:
+def uncommitted_blockers(git: GitQueries, branch: str) -> list[str]:
     if git.current_branch() != branch:
         return []
     dirty = git.dirty_paths(untracked=UntrackedFiles.NO)
@@ -154,7 +153,7 @@ def uncommitted_blockers(git: Git, branch: str) -> list[str]:
     return [f'branch {branch} is checked out with uncommitted changes'] if len(dirty) > 0 else []
 
 
-def branch_blockers(git: Git, branch: str) -> list[str]:
+def branch_blockers(git: GitQueries, branch: str) -> list[str]:
     if (error := revision_error(branch)) is not None:
         return [unchecked(branch, str(error))]
     if git.resolve_commit(f'refs/heads/{branch}') is None:
@@ -246,19 +245,19 @@ def archive_record(
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CloseService:
     workspace: Workspace
-    database: Database
+    store: CloseStore
+    git: GitQueries
 
     def live_work(
         self, repository: CloseRepository, unit: WorkUnit, refusal: GitRefusal | None
     ) -> list[str]:
         recorded = repository.recorded
         debug_note = self.workspace.handoffs.live_debug(unit.slug)
-        git = self.workspace.git
         return [
             *task_blockers(tuple(records_of(recorded.tasks, unit.slug).values())),
             *([LIVE_DEBUG] if debug_note.is_file() else []),
             *review_blockers(latest_review_of(recorded.reviews, unit.slug)),
-            *([] if refusal is not None else branch_blockers(git, unit.ticket.branch)),
+            *([] if refusal is not None else branch_blockers(self.git, unit.ticket.branch)),
         ]
 
     def free_archive_files(self, slug: Slug) -> RecordFiles:
@@ -266,8 +265,8 @@ class CloseService:
         return next(files for files in candidates if not files.markdown.exists())
 
     def check(self, slug: Slug) -> CloseView:
-        refusal = self.workspace.git.refusal()
-        with close_transaction(self.database) as repository:
+        refusal = self.git.refusal()
+        with self.store.transaction() as repository:
             unit = repository.recorded.tickets.staged_ticket(slug)
             blockers = self.live_work(repository, unit, refusal)
         if blockers:
@@ -275,9 +274,8 @@ class CloseService:
         return CloseView(text=f'{slug} has no live work\n{git_note(refusal)}', blocked=False)
 
     def close(self, slug: Slug, closing: Closing) -> CloseView:
-        git = self.workspace.git
-        refusal = git.refusal()
-        with close_transaction(self.database) as repository:
+        refusal = self.git.refusal()
+        with self.store.transaction() as repository:
             unit = repository.recorded.tickets.staged_ticket(slug)
             blockers = self.live_work(repository, unit, refusal)
             if blockers:
@@ -285,7 +283,9 @@ class CloseService:
             redacted = one_lined(closing)
             if (error := closing_error(redacted)) is not None:
                 raise error
-            record = archive_record(repository.recorded, unit, redacted, head=git.resolve_head())
+            record = archive_record(
+                repository.recorded, unit, redacted, head=self.git.resolve_head()
+            )
             files = self.free_archive_files(slug)
             archive = self.workspace.relative_to_root(files.markdown)
             repository.record_closing(record, archive=archive)

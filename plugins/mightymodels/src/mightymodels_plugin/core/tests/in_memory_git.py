@@ -3,15 +3,19 @@
 A test arranges it with `commit`, which records the files a commit changed on top of HEAD and
 moves HEAD to it, or on another history when it is `unrelated`. HEAD is the newest commit, and
 there is none before the first. It answers only for the commits it holds and launches nothing.
+
+The rest is what it was built with. A branch named in `branches` is in the repository and at
+HEAD, and any other branch is not there. `dirty` is `None` when the status cannot be read.
 """
 
 import hashlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from mightymodels_plugin.core.workspace import GitRefusal, UntrackedFiles, revision_error
 
 HEAD = 'HEAD'
+BRANCH_REFS = 'refs/heads/'
 SHA_LENGTH = 40
 
 
@@ -25,8 +29,9 @@ class RecordedCommit:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InMemoryGit:
     branch: str | None = 'main'
+    branches: Collection[str] = ()
     refused: GitRefusal | None = None
-    dirty: Sequence[str] = ()
+    dirty: Sequence[str] | None = ()
     untracked: Sequence[str] = ()
     unpushed: Mapping[str, int] = field(default_factory=dict)
     commits: list[RecordedCommit] = field(default_factory=list)
@@ -55,7 +60,7 @@ class InMemoryGit:
     def resolve_commit(self, revision: str) -> str | None:
         if (error := revision_error(revision)) is not None:
             raise error
-        if revision == HEAD:
+        if revision == HEAD or revision.removeprefix(BRANCH_REFS) in self.branches:
             return self.resolve_head()
         named = {commit.sha for commit in self.commits if commit.sha.startswith(revision)}
         return named.pop() if len(named) == 1 else None
@@ -76,6 +81,8 @@ class InMemoryGit:
         return self.branch
 
     def dirty_paths(self, *, untracked: UntrackedFiles) -> list[str] | None:
+        if self.dirty is None:
+            return None
         shown = self.untracked if untracked is UntrackedFiles.NORMAL else ()
         return [*self.dirty, *shown]
 

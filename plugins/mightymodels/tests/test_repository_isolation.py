@@ -16,6 +16,7 @@ from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.tools.close.repository import close_store
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tables import ClosingRow
@@ -285,10 +286,7 @@ class Clone:
     investigations: InvestigationService
     crashouts: CrashoutService
     similarity: SimilarityService
-
-    @property
-    def database(self) -> Database:
-        return self.closings.database
+    database: Database
 
     def stage_the_ticket(self) -> None:
         self.tickets.write(TICKET, ANSWERS)
@@ -361,7 +359,7 @@ def clone_of(state: OpenState) -> Clone:
             processes=process_runner(),
         ),
         reviews=ReviewService(workspace=workspace, store=review_store(database), git=workspace.git),
-        closings=CloseService(workspace=workspace, database=database),
+        closings=CloseService(workspace=workspace, store=close_store(database), git=workspace.git),
         investigations=InvestigationService(store=investigation_store(database), git=workspace.git),
         crashouts=CrashoutService(store=crashout_store(database)),
         similarity=SimilarityService(
@@ -369,6 +367,7 @@ def clone_of(state: OpenState) -> Clone:
             spool=state.data_directory.joinpath(SPOOL_DIRECTORY),
             repository_key=database.repository_key,
         ),
+        database=database,
     )
 
 

@@ -1,10 +1,15 @@
-"""The close service against a real git repository, with archive_ticket.py's tests moved here."""
+"""The close service on the close store and the git history kept in memory.
 
-from collections.abc import Callable, Mapping
+What needs a repository on disk or the stored row is in test_close_in_a_repository.py, and the
+tool is in test_close_tool.py.
+"""
+
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
+from typing import Self
 
 import pytest
 from mightymodels_plugin.clock import now
@@ -12,7 +17,7 @@ from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import workspace_at
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
 from mightymodels_plugin.tools.close.rendering import ARCHIVE_LINES
 from mightymodels_plugin.tools.close.schema import CloseView, Closing
 from mightymodels_plugin.tools.close.service import (
@@ -20,7 +25,6 @@ from mightymodels_plugin.tools.close.service import (
     ShippedRequiredError,
     TooManyGotchasError,
 )
-from mightymodels_plugin.tools.close.tables import ClosingRow
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.investigation.schema import (
@@ -44,23 +48,16 @@ from mightymodels_plugin.tools.review.schema import (
     StartPayload,
 )
 from mightymodels_plugin.tools.review.service import ReviewService
-from mightymodels_plugin.tools.task.repository import task_store
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.task.store import Attempt, Transition
-from mightymodels_plugin.tools.tests.support import StateServer
-from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)
 OLD = 'a' * 40
 CHECKED_OUT = 'feature'
-IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
-NEEDS_GIT = 'git was not consulted: this needs git and no git executable is on PATH\n'
 REVIEWED = datetime(2026, 9, 28, 12, tzinfo=UTC)
 ARCHIVE = f'.mightymodels/archives/{SLUG}.md'
 LEDGER = '20260928-queue'
@@ -107,7 +104,7 @@ class Repo:
     tickets: TicketService
     contracts: ContractService
     reviews: ReviewService
-    runner: GitRunner
+    git: InMemoryGit
 
     @property
     def root(self) -> Path:
@@ -117,8 +114,11 @@ class Repo:
     def state(self) -> Path:
         return self.root.joinpath('.mightymodels')
 
-    def git(self, *arguments: str) -> str:
-        return self.runner(self.root, *IDENTITY, *arguments).strip()
+    def head(self) -> str:
+        return self.git.commits[-1].sha
+
+    def seeing(self, git: InMemoryGit) -> Self:
+        return replace(self, git=git, closings=replace(self.closings, git=git))
 
     def stage(self, branch: str) -> None:
         self.tickets.write(TICKET, TicketAnswers.model_validate({**ANSWERS, 'branch': branch}))
@@ -145,13 +145,13 @@ class Repo:
 
     def record_task(self, task_id: str, after: Status, *workers: Implementer) -> None:
         started = transition_to(task_id, Status.IN_PROGRESS)
-        with task_store(self.closings.database).transaction() as repository:
-            repository.tickets.mark_in_progress(TICKET)
+        with self.closings.store.transaction() as repository:
+            repository.recorded.tickets.mark_in_progress(TICKET)
             for worker in workers:
                 attempt = Attempt(worker=worker, mode=None, owned=['queue.py'])
-                repository.record_start(TICKET, started, attempt)
-        with task_store(self.closings.database).transaction() as repository:
-            repository.record_mark(TICKET, transition_to(task_id, after))
+                repository.recorded.tasks.record_start(TICKET, started, attempt)
+        with self.closings.store.transaction() as repository:
+            repository.recorded.tasks.record_mark(TICKET, transition_to(task_id, after))
 
     def record_verified_work(self) -> None:
         self.record_task('T1', Status.VERIFIED, Implementer.ENGINEER)
@@ -166,14 +166,8 @@ class Repo:
         return run
 
     def ticket_status(self) -> str:
-        with ticket_store(self.closings.database).transaction() as repository:
-            return repository.staged_ticket(TICKET).status
-
-    def recorded_archive(self) -> str | None:
-        with self.closings.database.transaction() as session:
-            key = (self.closings.database.repository_key.root, SLUG)
-            closing = session.get(ClosingRow, key)
-            return None if closing is None else closing.archive
+        with self.closings.store.transaction() as repository:
+            return repository.recorded.tickets.staged_ticket(TICKET).status
 
 
 @pytest.fixture
@@ -182,20 +176,25 @@ def ticket_branch() -> str:
 
 
 @pytest.fixture
+def in_memory_git() -> InMemoryGit:
+    return InMemoryGit(branch=CHECKED_OUT)
+
+
+@pytest.fixture
 def staged(
-    close_service: CloseService,
-    ticket_service: TicketService,
-    contract_service: ContractService,
-    review_service: ReviewService,
-    git: GitRunner,
+    in_memory_close_service: CloseService,
+    in_memory_ticket_service: TicketService,
+    in_memory_contract_service: ContractService,
+    in_memory_review_service: ReviewService,
+    in_memory_git: InMemoryGit,
     ticket_branch: str,
 ) -> Repo:
     space = Repo(
-        closings=close_service,
-        tickets=ticket_service,
-        contracts=contract_service,
-        reviews=review_service,
-        runner=git,
+        closings=in_memory_close_service,
+        tickets=in_memory_ticket_service,
+        contracts=in_memory_contract_service,
+        reviews=in_memory_review_service,
+        git=in_memory_git,
     )
     space.stage(ticket_branch)
     space.approve_with_a_passing_receipt('T1.AC-1', ('uv', 'run', 'pytest'))
@@ -204,10 +203,7 @@ def staged(
 
 @pytest.fixture
 def committed(staged: Repo) -> Repo:
-    staged.git('symbolic-ref', 'HEAD', f'refs/heads/{CHECKED_OUT}')
-    staged.root.joinpath('queue.py').write_text('base\n', encoding='utf-8')
-    staged.git('add', 'queue.py')
-    staged.git('commit', '-q', '-m', 'base')
+    staged.git.commit('queue.py')
     return staged
 
 
@@ -218,12 +214,14 @@ def repo(committed: Repo) -> Repo:
 
 
 @pytest.fixture
-def repo_with_a_ledger_decision(repo: Repo, investigation_service: InvestigationService) -> Repo:
-    investigation_service.start(LEDGER_TARGET, started=LEDGER_STARTED)
-    investigation_service.add(Slug(LEDGER), 1, [LEDGER_DECISION])
-    with ticket_store(repo.closings.database).transaction() as repository:
-        section = repository.staged_ticket(TICKET).ticket
-        repository.stage(TICKET, section, [LEDGER])
+def repo_with_a_ledger_decision(
+    repo: Repo, in_memory_investigation_service: InvestigationService
+) -> Repo:
+    in_memory_investigation_service.start(LEDGER_TARGET, started=LEDGER_STARTED)
+    in_memory_investigation_service.add(Slug(LEDGER), 1, [LEDGER_DECISION])
+    with repo.closings.store.transaction() as repository:
+        section = repository.recorded.tickets.staged_ticket(TICKET).ticket
+        repository.recorded.tickets.stage(TICKET, section, [LEDGER])
     return repo
 
 
@@ -270,16 +268,6 @@ class TestUnverifiedTasks:
         assert 'T1 is blocked, not verified' in view.text
         assert 'whats-broken.md is present' in view.text
         assert not repo_with_a_blocked_task_and_a_live_debug.state.joinpath('archives').exists()
-
-    def test_a_refused_close_stores_nothing_and_leaves_the_ticket_open(
-        self, repo_with_a_blocked_task_and_a_live_debug: Repo
-    ) -> None:
-        view = repo_with_a_blocked_task_and_a_live_debug.closings.close(TICKET, CLOSING)
-
-        assert view.text.startswith('not closed; live work remains\n')
-        assert view.archive is None
-        assert repo_with_a_blocked_task_and_a_live_debug.ticket_status() == 'in-progress'
-        assert repo_with_a_blocked_task_and_a_live_debug.recorded_archive() is None
 
 
 class TestALiveDebug:
@@ -340,21 +328,23 @@ class TestTheTicketBranch:
         return CHECKED_OUT
 
     @pytest.fixture
+    def in_memory_git(self) -> InMemoryGit:
+        return InMemoryGit(branch=CHECKED_OUT, branches=[CHECKED_OUT], unpushed={CHECKED_OUT: 1})
+
+    @pytest.fixture
     def repo_with_an_uncommitted_change(self, repo: Repo) -> Repo:
-        repo.root.joinpath('queue.py').write_text('changed\n', encoding='utf-8')
-        return repo
+        return repo.seeing(replace(repo.git, dirty=['queue.py']))
 
     @pytest.fixture
     def repo_with_the_branch_on_a_remote(self, repo: Repo) -> Repo:
-        repo.git('update-ref', f'refs/remotes/origin/{CHECKED_OUT}', 'HEAD')
-        return repo
+        return repo.seeing(replace(repo.git, unpushed={CHECKED_OUT: 0}))
 
     @pytest.fixture
     def repo_on_another_branch_with_an_uncommitted_change(
         self, repo_with_an_uncommitted_change: Repo
     ) -> Repo:
-        repo_with_an_uncommitted_change.git('symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
-        return repo_with_an_uncommitted_change
+        elsewhere = replace(repo_with_an_uncommitted_change.git, branch='elsewhere')
+        return repo_with_an_uncommitted_change.seeing(elsewhere)
 
     def test_a_branch_with_commits_on_no_remote_blocks(self, repo: Repo) -> None:
         view = repo.closings.check(TICKET)
@@ -392,22 +382,20 @@ class TestABranchGitHasNoAnswerFor:
         return CHECKED_OUT
 
     @pytest.fixture
+    def in_memory_git(self) -> InMemoryGit:
+        return InMemoryGit(branch=CHECKED_OUT, branches=[CHECKED_OUT], unpushed={CHECKED_OUT: 1})
+
+    @pytest.fixture
     def repo_with_the_branch_deleted(self, repo: Repo) -> Repo:
-        repo.git('checkout', '-q', '-b', 'elsewhere')
-        repo.git('branch', '-q', '-D', CHECKED_OUT)
-        return repo
+        return repo.seeing(replace(repo.git, branch='elsewhere', branches=[]))
 
     @pytest.fixture
-    def repo_with_a_lost_parent_commit(self, repo: Repo) -> Repo:
-        parent = repo.git('rev-parse', 'HEAD')
-        repo.git('commit', '-q', '--allow-empty', '-m', 'second')
-        repo.root.joinpath('.git', 'objects', parent[:2], parent[2:]).unlink()
-        return repo
+    def repo_whose_unpushed_commits_git_cannot_count(self, repo: Repo) -> Repo:
+        return repo.seeing(replace(repo.git, unpushed={}))
 
     @pytest.fixture
-    def repo_with_an_unreadable_index(self, repo: Repo) -> Repo:
-        repo.root.joinpath('.git', 'index').write_bytes(b'not an index')
-        return repo
+    def repo_whose_status_git_cannot_read(self, repo: Repo) -> Repo:
+        return repo.seeing(replace(repo.git, dirty=None))
 
     def test_a_branch_that_is_no_longer_in_the_repository_does_not_block(
         self, repo_with_the_branch_deleted: Repo
@@ -417,87 +405,23 @@ class TestABranchGitHasNoAnswerFor:
         assert (view.blocked, view.blockers) == (False, ())
 
     def test_a_branch_whose_unpushed_commits_git_cannot_count_blocks(
-        self, repo_with_a_lost_parent_commit: Repo
+        self, repo_whose_unpushed_commits_git_cannot_count: Repo
     ) -> None:
-        view = repo_with_a_lost_parent_commit.closings.check(TICKET)
+        view = repo_whose_unpushed_commits_git_cannot_count.closings.check(TICKET)
 
         assert view.blockers == (
             'branch feature could not be checked: git could not count its commits on no remote',
         )
 
     def test_a_checked_out_branch_whose_status_git_cannot_read_blocks(
-        self, repo_with_an_unreadable_index: Repo
+        self, repo_whose_status_git_cannot_read: Repo
     ) -> None:
-        view = repo_with_an_unreadable_index.closings.check(TICKET)
+        view = repo_whose_status_git_cannot_read.closings.check(TICKET)
 
         assert view.blockers == (
             'branch feature has 1 commits on no remote',
             'branch feature could not be checked: git could not read the working-tree status',
         )
-
-
-class TestWhenGitIsMissing:
-    @pytest.fixture
-    def ticket_branch(self) -> str:
-        return CHECKED_OUT
-
-    @pytest.fixture
-    def repo_without_git(self, repo: Repo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Repo:
-        monkeypatch.setenv('PATH', str(tmp_path.joinpath('no-binaries')))
-        return replace(repo, closings=replace(repo.closings, workspace=workspace_at(repo.root)))
-
-    def test_when_git_is_missing_the_branch_is_not_asked_about_and_the_text_says_so(
-        self, repo_without_git: Repo
-    ) -> None:
-        view = repo_without_git.closings.check(TICKET)
-
-        assert (view.blocked, view.text) == (False, f'{SLUG} has no live work\n{NEEDS_GIT}')
-
-    def test_when_git_is_missing_a_close_says_git_was_not_consulted(
-        self, repo_without_git: Repo
-    ) -> None:
-        view = repo_without_git.closings.close(TICKET, CLOSING)
-
-        assert view.text == f'closed {SLUG}; archive at {ARCHIVE}\n{NEEDS_GIT}'
-        assert view.archive is not None
-        assert view.archive.record.head is None
-
-
-class TestABranchNameGitCannotTake:
-    BRANCH = '--all'
-    UNCHECKED = f"branch {BRANCH} could not be checked: '{BRANCH}' is not a plain revision name"
-
-    @pytest.fixture
-    def ticket_branch(self) -> str:
-        return self.BRANCH
-
-    def test_a_branch_name_that_is_not_a_plain_revision_blocks_and_is_named(
-        self, repo: Repo
-    ) -> None:
-        view = repo.closings.check(TICKET)
-
-        assert (view.blocked, view.text) == (True, f'live work remains\n  - {self.UNCHECKED}\n')
-
-
-class TestALegalBranchNameOutsideTheRevisionPattern:
-    BRANCH = 'feat/a+b'
-    UNCHECKED = f"branch {BRANCH} could not be checked: '{BRANCH}' is not a plain revision name"
-
-    @pytest.fixture
-    def ticket_branch(self) -> str:
-        return self.BRANCH
-
-    @pytest.fixture
-    def repo_with_the_branch_unpushed(self, repo: Repo) -> Repo:
-        repo.git('branch', self.BRANCH)
-        return repo
-
-    def test_a_branch_whose_name_cannot_be_asked_about_blocks_and_is_named(
-        self, repo_with_the_branch_unpushed: Repo
-    ) -> None:
-        view = repo_with_the_branch_unpushed.closings.check(TICKET)
-
-        assert (view.blocked, view.blockers) == (True, (self.UNCHECKED,))
 
 
 class TestClose:
@@ -509,35 +433,11 @@ class TestClose:
     )
 
     @pytest.fixture
-    def repo_with_an_older_archive(self, repo: Repo) -> Repo:
-        archives = repo.state.joinpath('archives')
-        archives.mkdir(parents=True)
-        archives.joinpath(f'{SLUG}.md').write_text('# older\n', encoding='utf-8')
-        return repo
-
-    @pytest.fixture
     def closed(self, repo: Repo) -> CloseView:
         return repo.closings.close(TICKET, CLOSING)
 
-    def test_close_writes_a_bounded_archive_and_marks_the_unit_closed(
-        self, repo_with_a_ledger_decision: Repo
-    ) -> None:
-        view = repo_with_a_ledger_decision.closings.close(TICKET, CLOSING)
-
-        assert view.archive is not None
-        record = view.archive.record.model_dump(mode='json')
-        assert not view.blocked
-        assert len(view.archive.markdown.splitlines()) <= ARCHIVE_LINES
-        assert 'PR: https://x/pull/7 · tracker: #42' in view.archive.markdown
-        assert '- keep the 10s floor (20260928-queue e2)' in view.archive.markdown
-        assert record['verification'][0]['argv'] == ['uv', 'run', 'pytest']
-        assert (
-            repo_with_a_ledger_decision.ticket_status(),
-            repo_with_a_ledger_decision.recorded_archive(),
-        ) == ('closed', ARCHIVE)
-
     def test_close_returns_the_archive_for_the_agent_to_write(self, repo: Repo) -> None:
-        head = repo.git('rev-parse', 'HEAD')
+        head = repo.head()
 
         view = repo.closings.close(TICKET, CLOSING)
 
@@ -590,30 +490,12 @@ class TestClose:
         assert 'hunter2' not in view.archive.markdown
         assert 'abc123' not in view.archive.record.model_dump_json()
 
-    def test_a_repeated_slug_gets_its_own_archive(self, repo_with_an_older_archive: Repo) -> None:
-        view = repo_with_an_older_archive.closings.close(TICKET, CLOSING)
-
-        assert view.archive is not None
-        assert repo_with_an_older_archive.recorded_archive() == (
-            f'.mightymodels/archives/{SLUG}-2.md'
-        )
-        assert view.archive.record_path == f'.mightymodels/archives/{SLUG}-2.json'
-        assert view.archive.markdown.endswith(f'details: archives/{SLUG}-2.json\n')
-
     @pytest.mark.usefixtures('closed')
     def test_check_answers_for_a_closed_ticket(self, repo: Repo) -> None:
         view = repo.closings.check(TICKET)
 
         assert (view.blocked, view.text) == (False, f'{SLUG} has no live work\n')
         assert repo.ticket_status() == 'closed'
-
-    def test_a_path_shaped_slug_is_refused(
-        self, connected_server: StateServer, tree_after_the_connect: dict[str, bytes]
-    ) -> None:
-        (refused,) = connected_server.call(('close', {'action': 'check', 'slug': '..'}))
-
-        assert refused.is_error
-        assert connected_server.files_on_disk() == tree_after_the_connect
 
 
 class TestAClosedTicket:
@@ -625,10 +507,10 @@ class TestAClosedTicket:
         return repo
 
     def test_a_closed_ticket_takes_no_new_task_and_stays_closed(
-        self, closed: Repo, task_service: TaskService
+        self, closed: Repo, in_memory_task_service: TaskService
     ) -> None:
         with pytest.raises(StateError) as refusal:
-            task_service.start(TICKET, 'C1', self.CI_FIX)
+            in_memory_task_service.start(TICKET, 'C1', self.CI_FIX)
 
         assert f'{SLUG} is closed, and a closed ticket is final' in str(refusal.value)
         assert closed.ticket_status() == 'closed'
@@ -700,25 +582,3 @@ class TestTheLongestArchive:
             f'details: archives/{SLUG}.json',
         ]
         assert view.archive.record.gotchas == ('first', 'second line', 'third')
-
-
-class TestOutsideARepository:
-    @pytest.fixture
-    def repository(self, tmp_path: Path) -> Path:
-        directory = tmp_path.joinpath('plain-directory')
-        directory.mkdir()
-        return directory
-
-    @pytest.fixture
-    def verified_work_outside_a_repository(self, staged: Repo) -> Repo:
-        staged.record_verified_work()
-        return staged
-
-    def test_outside_a_repository_check_answers_and_says_git_was_not_consulted(
-        self, verified_work_outside_a_repository: Repo
-    ) -> None:
-        view = verified_work_outside_a_repository.closings.check(TICKET)
-
-        assert not view.blocked
-        assert view.text.startswith(f'{SLUG} has no live work\ngit was not consulted: ')
-        assert 'is not inside a git repository' in view.text

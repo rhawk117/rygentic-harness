@@ -22,9 +22,13 @@ from dataclasses import dataclass
 from itertools import islice
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import Git, GitRefusal, UntrackedFiles, Workspace
+from mightymodels_plugin.core.workspace import (
+    GitQueries,
+    GitRefusal,
+    UntrackedFiles,
+    Workspace,
+)
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.tools.contract.assessment import Assessment, Taken
 from mightymodels_plugin.tools.contract.schema import Outcome, Receipt
@@ -34,7 +38,6 @@ from mightymodels_plugin.tools.investigation.schema import EntryKind
 from mightymodels_plugin.tools.review.schema import Decision
 from mightymodels_plugin.tools.snapshot.latest_review import LatestReview, latest_review_of
 from mightymodels_plugin.tools.snapshot.rendering import snapshot_markdown
-from mightymodels_plugin.tools.snapshot.repository import snapshot_transaction
 from mightymodels_plugin.tools.snapshot.schema import (
     CheckState,
     FailedAttempt,
@@ -48,6 +51,7 @@ from mightymodels_plugin.tools.snapshot.schema import (
     TaskState,
     TicketSummary,
 )
+from mightymodels_plugin.tools.snapshot.store import SnapshotStore
 from mightymodels_plugin.tools.task.gates import STUCK
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
 from mightymodels_plugin.tools.task.service import records_of
@@ -61,7 +65,7 @@ def git_warnings(refusal: GitRefusal | None) -> tuple[str, ...]:
     return () if refusal is None else (f'git was not consulted: {refusal}',)
 
 
-def repository_state(git: Git, limit: int) -> RepositoryState:
+def repository_state(git: GitQueries, limit: int) -> RepositoryState:
     dirty = git.dirty_paths(untracked=UntrackedFiles.NORMAL)
     return RepositoryState(
         branch=git.current_branch(),
@@ -170,12 +174,12 @@ def review_state(review: LatestReview | None, limit: int) -> ReviewState | None:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SnapshotService:
     workspace: Workspace
-    database: Database
+    store: SnapshotStore
+    git: GitQueries
 
     def take(self, slug: Slug, limit: int) -> SnapshotView:
-        git = self.workspace.git
-        repository_now = repository_state(git, limit)
-        with snapshot_transaction(self.database) as repository:
+        repository_now = repository_state(self.git, limit)
+        with self.store.transaction() as repository:
             unit = repository.tickets.staged_ticket(slug)
             commands = repository.contracts.commands(slug)
             receipts = repository.contracts.latest_receipts(slug)
@@ -194,7 +198,7 @@ class SnapshotService:
                     repository.tasks.latest_transitions_into(slug, STUCK, limit)
                 ),
                 review=review_state(latest_review_of(repository.reviews, slug), limit),
-                warnings=(*git_warnings(git.refusal()), *ledger_warnings(linked)),
+                warnings=(*git_warnings(self.git.refusal()), *ledger_warnings(linked)),
             )
         files = self.workspace.handoffs.snapshot(slug)
         return SnapshotView(

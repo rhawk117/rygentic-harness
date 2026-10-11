@@ -1,12 +1,14 @@
 """What the ticket, task, contract, review and investigation domains recorded, in one transaction.
 
-A snapshot stores nothing and has no table. `snapshot_transaction` opens one transaction on the
-database and hands out the five domains' repositories, all built here on that transaction's
-session, so the snapshot service never sees a session and one transaction serves every read. Each
-of the five holds the key of the git repository the database was opened for.
+A snapshot stores nothing and has no table. `SqliteSnapshotStore` is the snapshot store over the
+database: its `transaction` opens one and hands out the five domains' repositories, all built here
+on that transaction's session, so the snapshot service never sees a session and one transaction
+serves every read, and `snapshot_store` builds it as the `SnapshotStore` a service holds. Each of
+the five holds the key of the git repository the database was opened for.
 
 The repository holds that session because the close domain builds its own repository over it:
-closing a ticket reads the same rows and writes in the same transaction.
+closing a ticket reads the same rows and writes in the same transaction. The session is no part of
+the `SnapshotRepository` a service sees.
 """
 
 from collections.abc import Generator
@@ -22,12 +24,13 @@ from mightymodels_plugin.tools.review.repository import (
     SqliteDecisionRepository,
     SqliteReviewRepository,
 )
+from mightymodels_plugin.tools.snapshot.store import SnapshotStore
 from mightymodels_plugin.tools.task.repository import SqliteTaskRepository
 from mightymodels_plugin.tools.ticket.repository import SqliteTicketRepository
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class SnapshotRepository:
+class SqliteSnapshotRepository:
     session: Session
     tickets: SqliteTicketRepository
     tasks: SqliteTaskRepository
@@ -36,29 +39,39 @@ class SnapshotRepository:
     investigations: SqliteInvestigationRepository
 
 
-@contextmanager
-def snapshot_transaction(database: Database) -> Generator[SnapshotRepository]:
-    with database.transaction() as session:
-        repository_key = database.repository_key
-        tickets = SqliteTicketRepository(session=session, repository_key=repository_key)
-        contracts = SqliteContractRepository(session=session, repository_key=repository_key)
-        yield SnapshotRepository(
-            session=session,
-            tickets=tickets,
-            tasks=SqliteTaskRepository(
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SqliteSnapshotStore:
+    database: Database
+
+    @contextmanager
+    def transaction(self) -> Generator[SqliteSnapshotRepository]:
+        with self.database.transaction() as session:
+            repository_key = self.database.repository_key
+            tickets = SqliteTicketRepository(session=session, repository_key=repository_key)
+            contracts = SqliteContractRepository(session=session, repository_key=repository_key)
+            yield SqliteSnapshotRepository(
                 session=session,
-                repository_key=repository_key,
                 tickets=tickets,
+                tasks=SqliteTaskRepository(
+                    session=session,
+                    repository_key=repository_key,
+                    tickets=tickets,
+                    contracts=contracts,
+                ),
                 contracts=contracts,
-            ),
-            contracts=contracts,
-            reviews=SqliteReviewRepository(
-                session=session,
-                repository_key=repository_key,
-                tickets=tickets,
-                decisions=SqliteDecisionRepository(session=session, repository_key=repository_key),
-            ),
-            investigations=SqliteInvestigationRepository(
-                session=session, repository_key=repository_key
-            ),
-        )
+                reviews=SqliteReviewRepository(
+                    session=session,
+                    repository_key=repository_key,
+                    tickets=tickets,
+                    decisions=SqliteDecisionRepository(
+                        session=session, repository_key=repository_key
+                    ),
+                ),
+                investigations=SqliteInvestigationRepository(
+                    session=session, repository_key=repository_key
+                ),
+            )
+
+
+def snapshot_store(database: Database) -> SnapshotStore:
+    return SqliteSnapshotStore(database=database)

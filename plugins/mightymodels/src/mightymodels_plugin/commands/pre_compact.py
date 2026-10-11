@@ -19,6 +19,7 @@ from mightymodels_plugin.core.edge import OpenState, open_state
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.row_types import ROW_TYPES
+from mightymodels_plugin.tools.snapshot.repository import snapshot_store
 from mightymodels_plugin.tools.snapshot.schema import DEFAULT_LIMIT
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
 from mightymodels_plugin.tools.ticket.repository import ticket_store
@@ -28,9 +29,10 @@ def write_snapshot(state: OpenState) -> None:
     slug = ticket_on_branch(ticket_store(state.database), state.workspace.git.current_branch())
     if slug is None:
         return
-    view = SnapshotService(workspace=state.workspace, database=state.database).take(
-        slug, DEFAULT_LIMIT
+    snapshots = SnapshotService(
+        workspace=state.workspace, store=snapshot_store(state.database), git=state.workspace.git
     )
+    view = snapshots.take(slug, DEFAULT_LIMIT)
     files = state.workspace.handoffs.snapshot(slug)
     files.record.parent.mkdir(parents=True, exist_ok=True)
     files.record.write_text(f'{view.record.model_dump_json(indent=2)}\n', encoding='utf-8')

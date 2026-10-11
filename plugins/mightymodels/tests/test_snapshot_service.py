@@ -1,17 +1,23 @@
-"""The snapshot service against a real git repository, with the tests moved from snapshot.py's."""
+"""The snapshot service on the snapshot store and the git history kept in memory.
 
-from collections.abc import Callable, Mapping
+What needs a repository on disk is in test_snapshot_in_a_repository.py, and the tool is in
+test_snapshot_tool.py.
+"""
+
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
+from typing import Self
 
 import pytest
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import workspace_at
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.investigation.schema import (
@@ -38,20 +44,15 @@ from mightymodels_plugin.tools.snapshot.service import SnapshotService
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskMark, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.task.store import Attempt, Transition
-from mightymodels_plugin.tools.tests.support import StateServer, text_of
-from mightymodels_plugin.tools.ticket.repository import NotStagedError, ticket_store
+from mightymodels_plugin.tools.ticket.repository import NotStagedError
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)
 OLD = 'a' * 40
 BRANCH = 'fix/retry'
 LEDGER = '20260928-queue'
-IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
-NEEDS_GIT = 'git was not consulted: this needs git and no git executable is on PATH'
 ANSWERS = TicketAnswers.model_validate(
     {
         'summary': 'Retry queue drains slowly',
@@ -80,20 +81,18 @@ class Handoff:
     tasks: TaskService
     contracts: ContractService
     reviews: ReviewService
-    runner: GitRunner
+    git: InMemoryGit
 
     @property
     def root(self) -> Path:
         return self.snapshots.workspace.root
 
-    def git(self, *arguments: str) -> str:
-        return self.runner(self.root, *IDENTITY, *arguments).strip()
+    def head(self) -> str:
+        return self.git.commits[-1].sha
 
-    def commit(self, relative: str, text: str) -> str:
-        self.root.joinpath(relative).write_text(text, encoding='utf-8')
-        self.git('add', relative)
-        self.git('commit', '-q', '-m', f'change {relative}')
-        return self.git('rev-parse', 'HEAD')
+    def with_a_tree_of(self, *, dirty: Sequence[str] = (), untracked: Sequence[str] = ()) -> Self:
+        git = replace(self.git, dirty=dirty, untracked=untracked)
+        return replace(self, git=git, snapshots=replace(self.snapshots, git=git))
 
     def take(self, limit: int = DEFAULT_LIMIT) -> SnapshotView:
         return self.snapshots.take(TICKET, limit)
@@ -157,58 +156,53 @@ class Handoff:
 
 
 @pytest.fixture
+def in_memory_git() -> InMemoryGit:
+    return InMemoryGit(branch=BRANCH)
+
+
+@pytest.fixture
 def handoff(
-    snapshot_service: SnapshotService,
-    task_service: TaskService,
-    contract_service: ContractService,
-    review_service: ReviewService,
-    ticket_service: TicketService,
-    git: GitRunner,
+    in_memory_snapshot_service: SnapshotService,
+    in_memory_task_service: TaskService,
+    in_memory_contract_service: ContractService,
+    in_memory_review_service: ReviewService,
+    in_memory_ticket_service: TicketService,
+    in_memory_git: InMemoryGit,
 ) -> Handoff:
-    ticket_service.write(TICKET, ANSWERS)
-    ticket_service.validate(TICKET)
+    in_memory_ticket_service.write(TICKET, ANSWERS)
+    in_memory_ticket_service.validate(TICKET)
     return Handoff(
-        snapshots=snapshot_service,
-        tasks=task_service,
-        contracts=contract_service,
-        reviews=review_service,
-        runner=git,
+        snapshots=in_memory_snapshot_service,
+        tasks=in_memory_task_service,
+        contracts=in_memory_contract_service,
+        reviews=in_memory_review_service,
+        git=in_memory_git,
     )
 
 
 @pytest.fixture
 def repo(handoff: Handoff) -> Handoff:
-    handoff.git('symbolic-ref', 'HEAD', f'refs/heads/{BRANCH}')
-    handoff.commit('queue.py', 'base\n')
+    handoff.git.commit('queue.py')
     return handoff
 
 
 @pytest.fixture
 def repo_linking_an_investigation(repo: Handoff) -> Handoff:
-    with ticket_store(repo.snapshots.database).transaction() as repository:
-        section = repository.staged_ticket(TICKET).ticket
-        repository.stage(TICKET, section, [LEDGER])
+    with repo.snapshots.store.transaction() as repository:
+        section = repository.tickets.staged_ticket(TICKET).ticket
+        repository.tickets.stage(TICKET, section, [LEDGER])
     return repo
 
 
 class TestAnUnstagedTicket:
     def test_an_unstaged_ticket_writes_nothing(
-        self, snapshot_service: SnapshotService, repository: Path
+        self, in_memory_snapshot_service: SnapshotService, gitless_workspace: Workspace
     ) -> None:
         with pytest.raises(NotStagedError) as refusal:
-            snapshot_service.take(TICKET, DEFAULT_LIMIT)
+            in_memory_snapshot_service.take(TICKET, DEFAULT_LIMIT)
 
         assert f'{SLUG} is not staged' in str(refusal.value)
-        assert not repository.joinpath('.mightymodels', SLUG, 'handoffs').exists()
-
-    def test_a_path_shaped_slug_is_refused(
-        self, connected_server: StateServer, tree_after_the_connect: dict[str, bytes]
-    ) -> None:
-        (refused,) = connected_server.call(('snapshot', {'slug': '../../etc'}))
-
-        assert refused.is_error
-        assert 'String should match pattern' in text_of(refused)
-        assert connected_server.files_on_disk() == tree_after_the_connect
+        assert not gitless_workspace.root.joinpath('.mightymodels', SLUG, 'handoffs').exists()
 
 
 class TestAStagedTicket:
@@ -239,7 +233,7 @@ class TestAStagedTicket:
         assert not repo.root.joinpath('.mightymodels', SLUG, 'handoffs').exists()
 
     def test_the_header_names_the_ticket_and_the_repository(self, repo: Handoff) -> None:
-        head = repo.git('rev-parse', 'HEAD')
+        head = repo.head()
 
         lines = repo.take().markdown.splitlines()
 
@@ -272,18 +266,24 @@ class TestLinkedLedgers:
 
     @pytest.fixture
     def repo_with_a_superseded_question(
-        self, repo_linking_an_investigation: Handoff, investigation_service: InvestigationService
+        self,
+        repo_linking_an_investigation: Handoff,
+        in_memory_investigation_service: InvestigationService,
     ) -> Handoff:
-        investigation_service.start(self.TARGET, started=self.STARTED)
-        investigation_service.add(Slug(LEDGER), 1, [self.QUESTION, self.DECISION])
-        investigation_service.add(Slug(LEDGER), 2, [self.ANSWER])
+        in_memory_investigation_service.start(self.TARGET, started=self.STARTED)
+        in_memory_investigation_service.add(Slug(LEDGER), 1, [self.QUESTION, self.DECISION])
+        in_memory_investigation_service.add(Slug(LEDGER), 2, [self.ANSWER])
         return repo_linking_an_investigation
 
     @pytest.fixture
     def repo_with_two_decisions_and_a_cited_question(
-        self, repo_with_a_superseded_question: Handoff, investigation_service: InvestigationService
+        self,
+        repo_with_a_superseded_question: Handoff,
+        in_memory_investigation_service: InvestigationService,
     ) -> Handoff:
-        investigation_service.add(Slug(LEDGER), 3, [self.LATER_QUESTION, self.LATER_DECISION])
+        in_memory_investigation_service.add(
+            Slug(LEDGER), 3, [self.LATER_QUESTION, self.LATER_DECISION]
+        )
         return repo_with_a_superseded_question
 
     def test_ledger_decisions_and_questions_skip_superseded_entries(
@@ -343,7 +343,7 @@ class TestChecks:
     @pytest.fixture
     def repo_with_a_current_and_a_stale_receipt(self, repo: Handoff) -> Handoff:
         repo.approve(self.COMMANDS)
-        repo.record_pass('T1.AC-1', repo.git('rev-parse', 'HEAD'))
+        repo.record_pass('T1.AC-1', repo.head())
         repo.record_pass('T1.AC-2', OLD)
         return repo
 
@@ -447,7 +447,7 @@ class TestReview:
     def test_the_review_section_names_the_run_and_each_kept_decision(
         self, repo_with_two_review_runs: Handoff
     ) -> None:
-        head = repo_with_two_review_runs.git('rev-parse', 'HEAD')
+        head = repo_with_two_review_runs.head()
 
         review = repo_with_two_review_runs.take().markdown.split('## Review\n\n')[1]
 
@@ -462,14 +462,11 @@ class TestReview:
 class TestADirtyTree:
     @pytest.fixture
     def repo_with_an_uncommitted_change(self, repo: Handoff) -> Handoff:
-        repo.root.joinpath('queue.py').write_text('changed\n', encoding='utf-8')
-        return repo
+        return repo.with_a_tree_of(dirty=['queue.py'])
 
     @pytest.fixture
     def repo_with_three_untracked_files(self, repo: Handoff) -> Handoff:
-        for name in ('a.py', 'b.py', 'c.py'):
-            repo.root.joinpath(name).write_text('new\n', encoding='utf-8')
-        return repo
+        return repo.with_a_tree_of(untracked=['a.py', 'b.py', 'c.py'])
 
     def test_a_dirty_tree_is_listed(self, repo_with_an_uncommitted_change: Handoff) -> None:
         view = repo_with_an_uncommitted_change.take()
@@ -488,44 +485,3 @@ class TestADirtyTree:
             ('a.py', 'b.py'),
         )
         assert 'tree 3 changed.' in view.markdown
-
-
-class TestWhenGitIsMissing:
-    @pytest.fixture
-    def repo_without_git(
-        self, repo: Handoff, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> Handoff:
-        monkeypatch.setenv('PATH', str(tmp_path.joinpath('no-binaries')))
-        return replace(repo, snapshots=replace(repo.snapshots, workspace=workspace_at(repo.root)))
-
-    def test_when_git_is_missing_the_repository_section_is_empty_and_a_warning_says_why(
-        self, repo_without_git: Handoff
-    ) -> None:
-        view = repo_without_git.take()
-        record = view.record.model_dump(mode='json')
-
-        assert record['repository'] == {
-            'branch': None,
-            'head': None,
-            'dirty_count': None,
-            'dirty': [],
-        }
-        assert record['warnings'] == [NEEDS_GIT]
-        assert view.markdown.endswith(f'## Warnings\n\n- {NEEDS_GIT}\n')
-
-
-class TestOutsideARepository:
-    @pytest.fixture
-    def repository(self, tmp_path: Path) -> Path:
-        directory = tmp_path.joinpath('plain-directory')
-        directory.mkdir()
-        return directory
-
-    def test_outside_a_repository_the_snapshot_answers_and_a_warning_says_why(
-        self, handoff: Handoff
-    ) -> None:
-        view = handoff.take()
-
-        assert view.record.repository.head is None
-        assert 'is not inside a git repository' in view.record.warnings[0]
-        assert 'Repository: detached at unknown; tree unknown.' in view.markdown

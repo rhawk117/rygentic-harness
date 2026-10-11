@@ -1,10 +1,11 @@
 """A ticket's closing, written with the ticket's closed status in one transaction.
 
-`close_transaction` opens the snapshot's transaction and hands out the close repository built on
-that transaction's session, so the close service never sees a session. The repository carries the
-snapshot repository as `recorded`: a closing is blocked by, and archives, what the ticket, task,
-contract, review and investigation domains recorded, and it reads those rows in the transaction it
-writes in.
+`SqliteCloseStore` is the close store over the database: its `transaction` opens the snapshot
+store's and hands out the close repository built on that transaction's session, so the close
+service never sees a session, and `close_store` builds it as the `CloseStore` a service holds. The
+repository carries the snapshot repository as `recorded`: a closing is blocked by, and archives,
+what the ticket, task, contract, review and investigation domains recorded, and it reads those
+rows in the transaction it writes in.
 
 `record_closing` is the only write. It marks the ticket closed and stores the closing's row
 together, so no ticket reads closed without its closing. The closing is stored under the key of
@@ -20,15 +21,19 @@ from sqlalchemy.orm import Session
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.tools.close.schema import ArchiveRecord
+from mightymodels_plugin.tools.close.store import CloseStore
 from mightymodels_plugin.tools.close.tables import ClosingRow
-from mightymodels_plugin.tools.snapshot.repository import SnapshotRepository, snapshot_transaction
+from mightymodels_plugin.tools.snapshot.repository import (
+    SqliteSnapshotRepository,
+    SqliteSnapshotStore,
+)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class CloseRepository:
+class SqliteCloseRepository:
     session: Session
     repository_key: RepositoryKey
-    recorded: SnapshotRepository
+    recorded: SqliteSnapshotRepository
 
     def record_closing(self, record: ArchiveRecord, *, archive: str) -> None:
         self.recorded.tickets.mark_closed(record.slug)
@@ -46,9 +51,19 @@ class CloseRepository:
         )
 
 
-@contextmanager
-def close_transaction(database: Database) -> Generator[CloseRepository]:
-    with snapshot_transaction(database) as recorded:
-        yield CloseRepository(
-            session=recorded.session, repository_key=database.repository_key, recorded=recorded
-        )
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SqliteCloseStore:
+    database: Database
+
+    @contextmanager
+    def transaction(self) -> Generator[SqliteCloseRepository]:
+        with SqliteSnapshotStore(database=self.database).transaction() as recorded:
+            yield SqliteCloseRepository(
+                session=recorded.session,
+                repository_key=self.database.repository_key,
+                recorded=recorded,
+            )
+
+
+def close_store(database: Database) -> CloseStore:
+    return SqliteCloseStore(database=database)

@@ -37,6 +37,7 @@ from mightymodels_plugin.core.edge import open_state
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.workspace import find_root
+from mightymodels_plugin.tools.close.repository import close_store
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tool import close_tool
 from mightymodels_plugin.tools.contract.repository import contract_store
@@ -58,6 +59,7 @@ from mightymodels_plugin.tools.similarity.repository import similarity_store
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 from mightymodels_plugin.tools.similarity.tool import similarity_tool
+from mightymodels_plugin.tools.snapshot.repository import snapshot_store
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
 from mightymodels_plugin.tools.snapshot.tool import snapshot_tool
 from mightymodels_plugin.tools.task.repository import task_store
@@ -136,8 +138,12 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
                 reviews=ReviewService(
                     workspace=workspace, store=review_store(database), git=workspace.git
                 ),
-                snapshots=SnapshotService(workspace=workspace, database=database),
-                closings=CloseService(workspace=workspace, database=database),
+                snapshots=SnapshotService(
+                    workspace=workspace, store=snapshot_store(database), git=workspace.git
+                ),
+                closings=CloseService(
+                    workspace=workspace, store=close_store(database), git=workspace.git
+                ),
                 investigations=InvestigationService(
                     store=investigation_store(database), git=workspace.git
                 ),
