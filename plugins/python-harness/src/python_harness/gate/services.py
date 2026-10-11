@@ -177,7 +177,7 @@ def run_gate(
     before = take_untracked_snapshot(workspace)
     results = asyncio.run(run_resolved_commands(resolved, settings))
     created = list_paths_created_since(workspace, before)
-    return GateReport(plan.ruff_config_source, results, created)
+    return GateReport(plan.ruff_config_source, plan.ty_config_source, results, created)
 
 
 def run_gate_for(

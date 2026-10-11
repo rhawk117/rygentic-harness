@@ -105,6 +105,9 @@ class TestGateOverStdio:
     def test_the_gate_reports_the_fallback_ruff_config(self, documents: ProjectDocuments) -> None:
         assert documents.gate['ruff_config_source'] == 'fallback'
 
+    def test_the_gate_reports_the_fallback_ty_config(self, documents: ProjectDocuments) -> None:
+        assert documents.gate['ty_config_source'] == 'fallback'
+
     def test_ruff_and_ty_commands_carry_the_packaged_fallback_config_paths(
         self, documents: ProjectDocuments
     ) -> None:

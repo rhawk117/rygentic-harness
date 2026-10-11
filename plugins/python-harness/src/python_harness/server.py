@@ -24,7 +24,7 @@ from python_harness.documentation.services import (
 )
 from python_harness.documentation.settings import Settings
 from python_harness.facts.domain import FactsReport
-from python_harness.gate.domain import GateOptions
+from python_harness.gate.domain import ConfigKind, GateOptions
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.gate.services import run_gate_for
 from python_harness.imports.domain import ProjectIndex
@@ -253,7 +253,8 @@ class ProjectTools:
         """Run the project's ruff, ty and pytest checks and return the report as JSON."""
         with tool_errors():
             workspace, index = self.open_indexed_project()
-            options = GateOptions(fallback_ruff_config=RUFF_CONFIG, fallback_ty_config=TY_CONFIG)
+            fallbacks = {ConfigKind.RUFF: RUFF_CONFIG, ConfigKind.TY: TY_CONFIG}
+            options = GateOptions(fallbacks=fallbacks)
             survey = survey_indexed_project(workspace, index.graph)
             report = run_gate_for(workspace, survey, options, environment=self.environment)
             return render_project_document(report, workspace_diagnostics(workspace, index.graph))

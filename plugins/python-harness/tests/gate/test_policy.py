@@ -6,10 +6,11 @@ from pathlib import Path
 import pytest
 import tomllib
 from python_harness.gate.domain import (
+    ConfigKind,
+    ConfigSource,
     GateInputs,
     GateOptions,
     GateTool,
-    RuffConfigSource,
 )
 from python_harness.gate.policy import build_source_roots_override, plan_gate
 from python_harness.gate.tests.support import argv_for, command_for
@@ -19,7 +20,7 @@ ROOT = Path('/work/shop')
 INPUTS = GateInputs(
     declared_distributions=frozenset({'pytest', 'ruff'}),
     has_uv_lock=False,
-    has_ruff_config=True,
+    project_configs=frozenset({ConfigKind.RUFF}),
     domains=frozenset({Domain.PYTEST}),
     source_roots=('src',),
 )
@@ -35,8 +36,8 @@ RUFF_CHECK_ARGV = (
 
 
 class TestRuffConfig:
-    WITHOUT_RUFF_CONFIG = replace(INPUTS, has_ruff_config=False)
-    FALLBACK_OPTIONS = GateOptions(fallback_ruff_config=Path('/plugin/assets/ruff.toml'))
+    WITHOUT_RUFF_CONFIG = replace(INPUTS, project_configs=frozenset())
+    FALLBACK_OPTIONS = GateOptions(fallbacks={ConfigKind.RUFF: Path('/plugin/assets/ruff.toml')})
     FALLBACK_ARGUMENTS = (
         '--config',
         '/plugin/assets/ruff.toml',
@@ -50,19 +51,19 @@ class TestRuffConfig:
             pytest.param(
                 INPUTS,
                 FALLBACK_OPTIONS,
-                (RuffConfigSource.REPOSITORY, RUFF_CHECK_ARGV),
+                (ConfigSource.REPOSITORY, RUFF_CHECK_ARGV),
                 id='repository-config-wins-over-fallback',
             ),
             pytest.param(
                 WITHOUT_RUFF_CONFIG,
                 FALLBACK_OPTIONS,
-                (RuffConfigSource.FALLBACK, (*RUFF_CHECK_ARGV, *FALLBACK_ARGUMENTS)),
+                (ConfigSource.FALLBACK, (*RUFF_CHECK_ARGV, *FALLBACK_ARGUMENTS)),
                 id='fallback-with-absolute-source-roots',
             ),
             pytest.param(
                 WITHOUT_RUFF_CONFIG,
                 GateOptions(),
-                (RuffConfigSource.DEFAULTS, RUFF_CHECK_ARGV),
+                (ConfigSource.DEFAULTS, RUFF_CHECK_ARGV),
                 id='ruff-defaults',
             ),
         ],
@@ -71,7 +72,7 @@ class TestRuffConfig:
         self,
         inputs: GateInputs,
         options: GateOptions,
-        expected: tuple[RuffConfigSource, tuple[str, ...]],
+        expected: tuple[ConfigSource, tuple[str, ...]],
     ) -> None:
         plan = plan_gate(inputs, ROOT, options)
 
@@ -118,9 +119,9 @@ class TestRuffConfig:
 
 
 class TestTyConfig:
-    WITH_TY_CONFIG = replace(INPUTS, has_ty_config=True)
-    WITHOUT_TY_CONFIG = replace(INPUTS, has_ty_config=False)
-    FALLBACK_OPTIONS = GateOptions(fallback_ty_config=Path('/plugin/assets/ty.toml'))
+    WITH_TY_CONFIG = replace(INPUTS, project_configs=frozenset(ConfigKind))
+    WITHOUT_TY_CONFIG = replace(INPUTS, project_configs=frozenset({ConfigKind.RUFF}))
+    FALLBACK_OPTIONS = GateOptions(fallbacks={ConfigKind.TY: Path('/plugin/assets/ty.toml')})
     FALLBACK_ARGUMENTS = ('--config-file', '/plugin/assets/ty.toml')
     TY_CHECK_ARGV = ('uv', 'run', '--isolated', '--with', 'ty', 'ty', 'check')
 
@@ -153,6 +154,110 @@ class TestTyConfig:
         plan = plan_gate(inputs, ROOT, options)
 
         assert argv_for(plan, GateTool.TY) == expected
+
+    @pytest.mark.parametrize(
+        ('inputs', 'options', 'expected'),
+        [
+            pytest.param(
+                WITH_TY_CONFIG,
+                FALLBACK_OPTIONS,
+                ConfigSource.REPOSITORY,
+                id='project-config',
+            ),
+            pytest.param(
+                WITHOUT_TY_CONFIG,
+                FALLBACK_OPTIONS,
+                ConfigSource.FALLBACK,
+                id='packaged-fallback',
+            ),
+            pytest.param(
+                WITHOUT_TY_CONFIG,
+                GateOptions(),
+                ConfigSource.DEFAULTS,
+                id='ty-defaults',
+            ),
+        ],
+    )
+    def test_ty_config_source(
+        self, inputs: GateInputs, options: GateOptions, expected: ConfigSource
+    ) -> None:
+        plan = plan_gate(inputs, ROOT, options)
+
+        assert plan.ty_config_source == expected
+
+
+class TestEachToolKeepsItsOwnConfig:
+    OPTIONS = GateOptions(
+        fallbacks={
+            ConfigKind.RUFF: Path('/plugin/assets/ruff.toml'),
+            ConfigKind.TY: Path('/plugin/assets/ty.toml'),
+        }
+    )
+    TY_CHECK_ARGV = ('uv', 'run', '--isolated', '--with', 'ty', 'ty', 'check')
+    TY_FALLBACK_ARGV = (*TY_CHECK_ARGV, '--config-file', '/plugin/assets/ty.toml')
+    RUFF_FALLBACK_ARGV = (
+        *RUFF_CHECK_ARGV,
+        '--config',
+        '/plugin/assets/ruff.toml',
+        '--config',
+        'src = ["/work/shop/src", "/work/shop"]',
+    )
+
+    @pytest.mark.parametrize(
+        ('project_configs', 'expected'),
+        [
+            pytest.param(
+                frozenset(ConfigKind),
+                (ConfigSource.REPOSITORY, RUFF_CHECK_ARGV, ConfigSource.REPOSITORY, TY_CHECK_ARGV),
+                id='both',
+            ),
+            pytest.param(
+                frozenset(),
+                (
+                    ConfigSource.FALLBACK,
+                    RUFF_FALLBACK_ARGV,
+                    ConfigSource.FALLBACK,
+                    TY_FALLBACK_ARGV,
+                ),
+                id='neither',
+            ),
+            pytest.param(
+                frozenset({ConfigKind.RUFF}),
+                (
+                    ConfigSource.REPOSITORY,
+                    RUFF_CHECK_ARGV,
+                    ConfigSource.FALLBACK,
+                    TY_FALLBACK_ARGV,
+                ),
+                id='ruff-only',
+            ),
+            pytest.param(
+                frozenset({ConfigKind.TY}),
+                (
+                    ConfigSource.FALLBACK,
+                    RUFF_FALLBACK_ARGV,
+                    ConfigSource.REPOSITORY,
+                    TY_CHECK_ARGV,
+                ),
+                id='ty-only',
+            ),
+        ],
+    )
+    def test_each_tool_follows_its_own_config(
+        self,
+        project_configs: frozenset[ConfigKind],
+        expected: tuple[ConfigSource, tuple[str, ...], ConfigSource, tuple[str, ...]],
+    ) -> None:
+        inputs = replace(INPUTS, project_configs=project_configs)
+
+        plan = plan_gate(inputs, ROOT, self.OPTIONS)
+
+        assert (
+            plan.ruff_config_source,
+            argv_for(plan, GateTool.RUFF_CHECK),
+            plan.ty_config_source,
+            argv_for(plan, GateTool.TY),
+        ) == expected
 
 
 class TestSourceRootsOverride:

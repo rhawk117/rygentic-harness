@@ -23,7 +23,7 @@ class ConfigKind(StrEnum):
     TY = auto()
 
 
-class RuffConfigSource(StrEnum):
+class ConfigSource(StrEnum):
     REPOSITORY = auto()
     FALLBACK = auto()
     DEFAULTS = auto()
@@ -91,8 +91,7 @@ def default_launcher_environment() -> Path | None:
 
 @dataclass(frozen=True, slots=True)
 class GateOptions:
-    fallback_ruff_config: Path | None = None
-    fallback_ty_config: Path | None = None
+    fallbacks: Mapping[ConfigKind, Path] = field(default_factory=dict)
     dropped_environment: frozenset[str] = PYTHON_HARNESS_ENVIRONMENT
     launcher_environment: Path | None = field(default_factory=default_launcher_environment)
     child_environment: Mapping[str, str] = field(default_factory=default_child_environment)
@@ -106,15 +105,14 @@ class GateOptions:
 class GateInputs:
     declared_distributions: frozenset[str]
     has_uv_lock: bool
-    has_ruff_config: bool
+    project_configs: frozenset[ConfigKind]
     domains: frozenset[Domain]
     source_roots: tuple[str, ...]
-    has_ty_config: bool = False
 
 
 @dataclass(frozen=True, slots=True)
-class RuffConfigSelection:
-    source: RuffConfigSource
+class ConfigSelection:
+    source: ConfigSource
     arguments: tuple[str, ...]
 
 
@@ -151,7 +149,8 @@ class ResolvedCommand:
 @dataclass(frozen=True, slots=True)
 class GatePlan:
     commands: tuple[GateCommand, ...]
-    ruff_config_source: RuffConfigSource
+    ruff_config_source: ConfigSource
+    ty_config_source: ConfigSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,7 +213,8 @@ type UntrackedBaseline = UntrackedSnapshot | NotTracked
 
 @dataclass(frozen=True, slots=True)
 class GateReport:
-    ruff_config_source: RuffConfigSource
+    ruff_config_source: ConfigSource
+    ty_config_source: ConfigSource
     results: tuple[GateResult, ...]
     created_paths: CreationTracking
 

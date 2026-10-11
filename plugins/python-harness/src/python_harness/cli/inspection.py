@@ -16,7 +16,7 @@ from python_harness.cli.util import add_command_parsers, build_root_parent
 from python_harness.core.output import write_document
 from python_harness.core.uv import run_uv_workspace
 from python_harness.core.workspace import open_workspace
-from python_harness.gate.domain import GateOptions, GateTool
+from python_harness.gate.domain import ConfigKind, GateOptions, GateTool
 from python_harness.gate.services import run_gate_for
 from python_harness.survey.services import survey_document, survey_project
 
@@ -46,9 +46,10 @@ def locate_fallback_ruff_config(given: Path | None, root: Path) -> Path | None:
 
 
 def gate_options_from(arguments: argparse.Namespace, root: Path) -> GateOptions:
-    fallback = locate_fallback_ruff_config(arguments.fallback_ruff_config, root)
+    ruff_fallback = locate_fallback_ruff_config(arguments.fallback_ruff_config, root)
+    fallbacks = {} if ruff_fallback is None else {ConfigKind.RUFF: ruff_fallback}
     return GateOptions(
-        fallback_ruff_config=fallback,
+        fallbacks=fallbacks,
         timeout_seconds=arguments.timeout,
         skipped=frozenset(GateTool(name) for name in arguments.skip),
     )

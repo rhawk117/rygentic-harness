@@ -5,7 +5,7 @@ import sys
 from collections.abc import Collection, Mapping
 from pathlib import Path
 
-from python_harness.gate.domain import GateInputs, GateOptions
+from python_harness.gate.domain import ConfigKind, GateInputs, GateOptions
 from python_harness.survey.domain import ProjectSurvey
 
 SEARCH_PATH = 'PATH'
@@ -14,12 +14,19 @@ VIRTUALENV_SCRIPTS = 'Scripts' if sys.platform == 'win32' else 'bin'
 UNTRACKED_STATUS_CODES = frozenset({'??', '!!'})
 
 
+def project_configs_from(survey: ProjectSurvey) -> frozenset[ConfigKind]:
+    found = {
+        ConfigKind.RUFF: survey.ruff_config,
+        ConfigKind.TY: survey.ty_config,
+    }
+    return frozenset(kind for kind, config in found.items() if config is not None)
+
+
 def gate_inputs_from(survey: ProjectSurvey) -> GateInputs:
     return GateInputs(
         declared_distributions=survey.manifest.declared_distributions,
         has_uv_lock=survey.layout.has_uv_lock,
-        has_ruff_config=survey.ruff_config is not None,
-        has_ty_config=survey.ty_config is not None,
+        project_configs=project_configs_from(survey),
         domains=frozenset(survey.domains),
         source_roots=survey.source_roots,
     )

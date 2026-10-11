@@ -11,6 +11,7 @@ from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.gate import services as gate_services
 from python_harness.gate.domain import (
+    ConfigKind,
     Exited,
     GateCommand,
     GateOptions,
@@ -19,7 +20,6 @@ from python_harness.gate.domain import (
     GateResult,
     GateTool,
     NotTracked,
-    RuffConfigSource,
 )
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.tools.envelope import (
@@ -28,7 +28,7 @@ from python_harness.tools.envelope import (
     ProjectOutput,
     render_budgeted_project_document,
 )
-from python_harness.tools.tests.support import document_of
+from python_harness.tools.tests.support import SHOP_PROJECT, document_of
 
 
 @pytest.mark.anyio
@@ -65,7 +65,8 @@ class TestGate:
             given.append(options)
             command = GateCommand(GateTool.RUFF_CHECK, 'ruff', ('check',))
             result = GateResult(command, Exited(1), 'error: line too long')
-            return GateReport(RuffConfigSource.FALLBACK, (result,), NotTracked())
+            sources = (plan.ruff_config_source, plan.ty_config_source)
+            return GateReport(*sources, (result,), NotTracked())
 
         monkeypatch.setattr(gate_services, 'run_gate', run_gate)
         return given
@@ -85,6 +86,28 @@ class TestGate:
         assert document['results'][0]['output_tail'] == 'error: line too long'
         assert len(gate_options) == 1
 
+    @pytest.mark.usefixtures('shop', 'gate_options')
+    async def test_a_project_without_a_ty_config_gets_the_fallback_as_ty_source(
+        self, project_client: Client
+    ) -> None:
+        result = await project_client.call_tool('gate')
+
+        assert document_of(result)['ty_config_source'] == 'fallback'
+
+    @pytest.mark.usefixtures('gate_options')
+    async def test_a_project_with_its_own_ty_config_names_the_project_as_ty_source(
+        self, project_builder: ProjectBuilder, project_client: Client
+    ) -> None:
+        project_builder.write({**SHOP_PROJECT, 'ty.toml': ''})
+
+        result = await project_client.call_tool('gate')
+
+        document = document_of(result)
+        assert (document['ruff_config_source'], document['ty_config_source']) == (
+            'fallback',
+            'repository',
+        )
+
     @pytest.mark.usefixtures('shop')
     async def test_the_gate_gets_the_packaged_fallback_configs(
         self, project_client: Client, gate_options: list[GateOptions]
@@ -92,10 +115,7 @@ class TestGate:
         await project_client.call_tool('gate')
 
         (options,) = gate_options
-        assert (options.fallback_ruff_config, options.fallback_ty_config) == (
-            RUFF_CONFIG,
-            TY_CONFIG,
-        )
+        assert options.fallbacks == {ConfigKind.RUFF: RUFF_CONFIG, ConfigKind.TY: TY_CONFIG}
 
     @pytest.mark.usefixtures('shop')
     async def test_each_check_gets_a_600_second_timeout_like_the_cli_default(

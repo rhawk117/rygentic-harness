@@ -173,6 +173,22 @@ class TestGate:
             'fallback',
         )
 
+    def test_ty_runs_on_its_defaults_because_the_cli_passes_no_ty_fallback(
+        self, workspace: Workspace
+    ) -> None:
+        exit_code, document = run_inspect(workspace, 'gate', *self.EVERY_TOOL_SKIPPED)
+
+        assert (exit_code, document['ty_config_source']) == (ExitCode.PASSED, 'defaults')
+
+    def test_a_ty_config_in_the_project_is_reported_as_the_projects(
+        self, project_builder: ProjectBuilder
+    ) -> None:
+        workspace = project_builder.write({**PROJECT, 'ty.toml': ''})
+
+        exit_code, document = run_inspect(workspace, 'gate', *self.EVERY_TOOL_SKIPPED)
+
+        assert (exit_code, document['ty_config_source']) == (ExitCode.PASSED, 'repository')
+
     def test_missing_fallback_ruff_config_is_refused_before_any_tool_runs(
         self, workspace: Workspace
     ) -> None:

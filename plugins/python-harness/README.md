@@ -70,7 +70,7 @@ When the tools are missing from a session, the server did not start. Check the p
 
 Each tool returns one JSON document as its text result. `plan_review_surface` runs `git` to list the files a diff changed, and `gate` runs the project's checks through `uv`. Every project tool runs `uv workspace list` to find the workspace members. `gate` is the one project tool registered without the read-only hint, because it runs the project's own tools.
 
-`gate` runs ruff check, ruff format check, ty and pytest. When the project has no ruff config, it uses a ruff config packaged with the plugin. When the project has no ty config, it runs ty with a ty config packaged with the plugin. `survey` reports the ruff config and the ty config it found: a `ty.toml` in the project root, or a `[tool.ty]` table in `pyproject.toml`.
+`gate` runs ruff check, ruff format check, ty and pytest. When the project has no ruff config, it uses a ruff config packaged with the plugin. When the project has no ty config, it runs ty with a ty config packaged with the plugin. The gate document says where each config came from in `ruff_config_source` and `ty_config_source`: `repository` for the project's own, `fallback` for the packaged one and `defaults` for neither. `survey` reports the ruff config and the ty config it found: a `ty.toml` in the project root, or a `[tool.ty]` table in `pyproject.toml`.
 
 #### Workspace diagnostics
 

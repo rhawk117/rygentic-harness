@@ -12,6 +12,7 @@ import pytest
 from python_harness.core.tests.fixtures import GitProject, ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import Workspace, open_workspace
 from python_harness.gate.domain import (
+    ConfigSource,
     CreatedPaths,
     Exited,
     GateCommand,
@@ -19,7 +20,6 @@ from python_harness.gate.domain import (
     GatePlan,
     GateTool,
     NotTracked,
-    RuffConfigSource,
     TimedOut,
 )
 from python_harness.gate.errors import LauncherUnavailableError
@@ -52,7 +52,7 @@ def python_command(tool: GateTool, script: str, *arguments: str) -> GateCommand:
 
 
 def plan_of(*commands: GateCommand) -> GatePlan:
-    return GatePlan(commands, RuffConfigSource.DEFAULTS)
+    return GatePlan(commands, ConfigSource.DEFAULTS, ConfigSource.DEFAULTS)
 
 
 @pytest.fixture
@@ -78,9 +78,10 @@ class TestPassAndFail:
     def test_report_fails_when_any_command_fails(self, workspace: Workspace) -> None:
         report = run_gate(workspace, self.PLAN, environment=NO_ENVIRONMENT)
 
-        assert (report.passed, report.ruff_config_source) == (
+        assert (report.passed, report.ruff_config_source, report.ty_config_source) == (
             False,
-            RuffConfigSource.DEFAULTS,
+            ConfigSource.DEFAULTS,
+            ConfigSource.DEFAULTS,
         )
 
     def test_stderr_is_merged_into_the_tail(self, workspace: Workspace) -> None:

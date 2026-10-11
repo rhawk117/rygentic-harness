@@ -12,7 +12,7 @@ import pytest
 import tomllib
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
-from python_harness.gate.domain import GateInputs, GateOptions, GateTool
+from python_harness.gate.domain import ConfigKind, GateInputs, GateOptions, GateTool
 from python_harness.gate.policy import plan_gate
 from python_harness.gate.tests.support import argv_for
 from python_harness.gate.util import (
@@ -64,6 +64,7 @@ class TestGateInputsFrom:
         ruff_config=None,
         external_packages=(),
         source_roots=('src',),
+        ty_config=None,
     )
     EXTRA_ONLY_PYTEST_ARGV = (
         'uv',
@@ -86,19 +87,24 @@ class TestGateInputsFrom:
         assert inputs.declared_distributions == {'fastapi', 'ruff'}
 
     def test_layout_config_and_domains_carry_over(self, inputs: GateInputs) -> None:
-        assert (inputs.has_uv_lock, inputs.has_ruff_config, inputs.domains) == (
+        assert (inputs.has_uv_lock, inputs.project_configs, inputs.domains) == (
             True,
-            False,
+            frozenset(),
             {Domain.PYTEST, Domain.FASTAPI},
         )
 
     def test_ty_config_is_absent_when_the_survey_found_none(self, inputs: GateInputs) -> None:
-        assert inputs.has_ty_config is False
+        assert ConfigKind.TY not in inputs.project_configs
 
     def test_ty_config_carries_over_from_the_survey(self) -> None:
         inputs = gate_inputs_from(replace(self.SURVEY, ty_config='ty.toml'))
 
-        assert inputs.has_ty_config is True
+        assert ConfigKind.TY in inputs.project_configs
+
+    def test_ruff_config_carries_over_from_the_survey(self) -> None:
+        inputs = gate_inputs_from(replace(self.SURVEY, ruff_config='ruff.toml'))
+
+        assert ConfigKind.RUFF in inputs.project_configs
 
     def test_source_roots_carry_over(self, inputs: GateInputs) -> None:
         assert inputs.source_roots == self.SURVEY.source_roots
@@ -117,7 +123,7 @@ class TestGateInputsFrom:
 
 
 class TestSourceRootsFromTheWorkspace:
-    FALLBACK_OPTIONS = GateOptions(fallback_ruff_config=Path('/plugin/assets/ruff.toml'))
+    FALLBACK_OPTIONS = GateOptions(fallbacks={ConfigKind.RUFF: Path('/plugin/assets/ruff.toml')})
 
     @pytest.fixture
     def workspace(

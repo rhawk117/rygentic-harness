@@ -111,4 +111,4 @@ class ProjectSurvey:
     ruff_config: str | None
     external_packages: tuple[str, ...]
     source_roots: tuple[str, ...]
-    ty_config: str | None = None
+    ty_config: str | None

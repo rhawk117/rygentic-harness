@@ -44,6 +44,7 @@ A missing target path is a tool error, never an empty result. Files that cannot 
 
 ```
 {ruff_config_source: "repository" | "fallback" | "defaults",
+ ty_config_source: "repository" | "fallback" | "defaults",
  results: [{command: {tool: "ruff_check" | "ruff_format" | "ty" | "pytest", program, arguments[], argv[]},
             outcome: {kind: "exited", exit_code} | {kind: "timed_out"},
             output_tail, passed, timed_out}],
@@ -51,7 +52,7 @@ A missing target path is a tool error, never an empty result. Files that cannot 
  passed}
 ```
 
-Declared tools run through `uv run --isolated` (plus `--frozen` when `uv.lock` exists), so the project's pinned versions apply without writing a lockfile, a `.venv` or caches. Undeclared ruff runs through `uvx`; undeclared ty and pytest join the project environment with `--with`. pytest runs only when the survey found the pytest domain. `ruff check` runs with `--statistics`, so its tail is a count per rule. Some build backends still write into the tree (setuptools writes `*.egg-info`): `created_paths.paths` lists every untracked or ignored path that appeared during the run; outside a git repository it is `{kind: "not_tracked"}`. Nothing is deleted. Options: `--skip TOOL` (repeatable), `--timeout SECONDS` (default 600). A `--fallback-ruff-config` path that does not exist is an error (exit 2); a relative one is resolved against the root. The fallback config's `src` is set to the roots the survey found, so first-party imports resolve for the reviewed project.
+Declared tools run through `uv run --isolated` (plus `--frozen` when `uv.lock` exists), so the project's pinned versions apply without writing a lockfile, a `.venv` or caches. Undeclared ruff runs through `uvx`; undeclared ty and pytest join the project environment with `--with`. pytest runs only when the survey found the pytest domain. `ruff check` runs with `--statistics`, so its tail is a count per rule. Some build backends still write into the tree (setuptools writes `*.egg-info`): `created_paths.paths` lists every untracked or ignored path that appeared during the run; outside a git repository it is `{kind: "not_tracked"}`. Nothing is deleted. Options: `--skip TOOL` (repeatable), `--timeout SECONDS` (default 600). A `--fallback-ruff-config` path that does not exist is an error (exit 2); a relative one is resolved against the root. The fallback config's `src` is set to the roots the survey found, so first-party imports resolve for the reviewed project. `inspect gate` passes no ty fallback, so its `ty_config_source` is `repository` or `defaults`.
 
 ## plan_review_surface
 

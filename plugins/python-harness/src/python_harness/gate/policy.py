@@ -7,14 +7,14 @@ from pathlib import Path
 from python_harness.gate.domain import (
     ConfigArguments,
     ConfigKind,
+    ConfigSelection,
+    ConfigSource,
     GateCommand,
     GateInputs,
     GateOptions,
     GatePlan,
     GateTool,
     Launcher,
-    RuffConfigSelection,
-    RuffConfigSource,
     ToolInvocation,
 )
 
@@ -28,29 +28,30 @@ def build_source_roots_override(roots: Iterable[Path]) -> str:
     return f'src = {json.dumps([root.as_posix() for root in roots])}'
 
 
-def select_ruff_config(
-    inputs: GateInputs, workspace_root: Path, options: GateOptions
-) -> RuffConfigSelection:
-    fallback = options.fallback_ruff_config
-    if inputs.has_ruff_config:
-        return RuffConfigSelection(RuffConfigSource.REPOSITORY, ())
-    if fallback is None:
-        return RuffConfigSelection(RuffConfigSource.DEFAULTS, ())
-    source_roots = list_ruff_source_roots(inputs, workspace_root)
-    arguments = (
+def build_fallback_arguments(
+    kind: ConfigKind, fallback: Path, *, source_roots: Iterable[Path]
+) -> tuple[str, ...]:
+    if kind is ConfigKind.TY:
+        return ('--config-file', fallback.as_posix())
+    return (
         '--config',
         fallback.as_posix(),
         '--config',
         build_source_roots_override(source_roots),
     )
-    return RuffConfigSelection(RuffConfigSource.FALLBACK, arguments)
 
 
-def select_ty_config(inputs: GateInputs, options: GateOptions) -> tuple[str, ...]:
-    fallback = options.fallback_ty_config
-    if inputs.has_ty_config or fallback is None:
-        return ()
-    return ('--config-file', fallback.as_posix())
+def select_config(
+    kind: ConfigKind, inputs: GateInputs, workspace_root: Path, *, options: GateOptions
+) -> ConfigSelection:
+    fallback = options.fallbacks.get(kind)
+    if kind in inputs.project_configs:
+        return ConfigSelection(ConfigSource.REPOSITORY, ())
+    if fallback is None:
+        return ConfigSelection(ConfigSource.DEFAULTS, ())
+    source_roots = list_ruff_source_roots(inputs, workspace_root)
+    arguments = build_fallback_arguments(kind, fallback, source_roots=source_roots)
+    return ConfigSelection(ConfigSource.FALLBACK, arguments)
 
 
 def project_launcher(inputs: GateInputs) -> Launcher:
@@ -94,11 +95,14 @@ def plan_gate(
     inputs: GateInputs, workspace_root: Path, options: GateOptions | None = None
 ) -> GatePlan:
     chosen = GateOptions() if options is None else options
-    ruff_config = select_ruff_config(inputs, workspace_root, chosen)
-    configs = {
-        ConfigKind.RUFF: ruff_config.arguments,
-        ConfigKind.TY: select_ty_config(inputs, chosen),
+    selections = {
+        kind: select_config(kind, inputs, workspace_root, options=chosen) for kind in ConfigKind
     }
+    configs = {kind: selection.arguments for kind, selection in selections.items()}
     planned = (tool for tool in chosen.tools if is_tool_planned(tool, inputs, chosen))
     commands = tuple(build_command(tool, inputs, configs, options=chosen) for tool in planned)
-    return GatePlan(commands, ruff_config.source)
+    return GatePlan(
+        commands,
+        selections[ConfigKind.RUFF].source,
+        selections[ConfigKind.TY].source,
+    )
