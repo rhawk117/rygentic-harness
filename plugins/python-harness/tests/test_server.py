@@ -21,7 +21,18 @@ VERSION_HELP = (
     'Python minor version such as 3.13.\n\n'
     'Read requires-python in pyproject.toml or .python-version first; do not guess.'
 )
+EIGHT_TOOLS = (
+    'search_python_docs',
+    'read_python_docs',
+    'survey',
+    'gate',
+    'plan_review_surface',
+    'collect_python_facts',
+    'map_python_calls',
+    'check_citations',
+)
 PROJECT_DIAGNOSTIC_ARGUMENTS = (
+    pytest.param('survey', {}, id='survey'),
     pytest.param(
         'collect_python_facts', {'paths': ['src/shop/pricing.py']}, id='collect-python-facts'
     ),
@@ -50,15 +61,17 @@ def dereferenced(schema: JsonDocument, node: JsonDocument) -> JsonDocument:
 
 @pytest.mark.anyio
 class TestToolSchemas:
-    async def test_the_server_lists_exactly_its_six_tools(self, docs_client: Client) -> None:
+    async def test_the_server_lists_exactly_its_eight_tools(self, docs_client: Client) -> None:
         tools = (await docs_client.list_tools()).tools
         assert sorted(tool.name for tool in tools) == [
             'check_citations',
             'collect_python_facts',
+            'gate',
             'map_python_calls',
             'plan_review_surface',
             'read_python_docs',
             'search_python_docs',
+            'survey',
         ]
 
     async def test_every_tool_takes_object_arguments(self, docs_client: Client) -> None:
@@ -79,7 +92,27 @@ class TestToolSchemas:
             'map_python_calls': {'paths', 'symbol'},
             'check_citations': {'path', 'text'},
             'plan_review_surface': {'paths', 'diff_base', 'diff_head'},
+            'survey': set(),
+            'gate': set(),
         }
+
+    async def test_no_tool_takes_a_project_root(self, docs_client: Client) -> None:
+        tools = (await docs_client.list_tools()).tools
+        rooted = [tool.name for tool in tools if 'project_root' in tool.input_schema['properties']]
+        assert rooted == []
+
+    async def test_gate_is_not_read_only_and_survey_is(self, docs_client: Client) -> None:
+        tools = {tool.name: tool for tool in (await docs_client.list_tools()).tools}
+        assert tools['gate'].annotations is not None
+        assert tools['survey'].annotations is not None
+        assert (
+            tools['gate'].annotations.read_only_hint,
+            tools['survey'].annotations.read_only_hint,
+        ) == (False, True)
+
+    async def test_the_instructions_name_all_eight_tools(self, docs_client: Client) -> None:
+        instructions = docs_client.instructions or ''
+        assert [name for name in EIGHT_TOOLS if name not in instructions] == []
 
     @pytest.mark.parametrize(
         'name',

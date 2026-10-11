@@ -12,6 +12,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from python_harness.cli.inspection import survey_document
 from python_harness.core.errors import PythonHarnessError
 from python_harness.core.output import COMPACT_SEPARATORS, JsonValue, to_json_value
 from python_harness.core.workspace import Workspace
@@ -22,7 +23,11 @@ from python_harness.documentation.services import (
     call_deadline,
 )
 from python_harness.documentation.settings import Settings
+from python_harness.gate.domain import GateOptions
+from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
+from python_harness.gate.services import run_gate_for
 from python_harness.imports.services import external_packages_for, load_project_index
+from python_harness.survey.services import survey_project
 from python_harness.tools.check_citations import use_case as citations_use_case
 from python_harness.tools.check_citations.schema import (
     CitationsRequest,
@@ -58,12 +63,13 @@ SERVER_NAME = 'python-harness'
 SERVER_INSTRUCTIONS = (
     'Official Python standard-library documentation for a specific Python version.'
     ' Find exact names with search_python_docs, then read them with read_python_docs.'
-    ' The other four tools read the Python project at CLAUDE_PROJECT_DIR and return one JSON'
-    ' document each: plan_review_surface, collect_python_facts, map_python_calls and'
-    ' check_citations. Their paths are relative to that root and cannot leave it.'
+    ' The other six tools read the Python project at CLAUDE_PROJECT_DIR and return one JSON'
+    ' document each: survey, gate, plan_review_surface, collect_python_facts, map_python_calls'
+    ' and check_citations. Their paths are relative to that root and cannot leave it.'
 )
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 READ_ONLY_LOCAL = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+RUNS_PROJECT_CODE = ToolAnnotations(read_only_hint=False)
 
 
 @contextmanager
@@ -198,6 +204,20 @@ class ProjectTools:
         request = CitationsRequest(path=path or None, text=text or None)
         return self.answer(citations_use_case.run, request)
 
+    def survey(self) -> str:
+        """Survey the project and return its mode, domains and layout as JSON."""
+        with tool_errors():
+            workspace = open_project(self.environment)
+            return render_project_document(workspace, survey_document(survey_project(workspace)))
+
+    def gate(self) -> str:
+        """Run the project's ruff, ty and pytest checks and return the report as JSON."""
+        with tool_errors():
+            workspace = open_project(self.environment)
+            options = GateOptions(fallback_ruff_config=RUFF_CONFIG, fallback_ty_config=TY_CONFIG)
+            report = run_gate_for(workspace, options, environment=self.environment)
+            return render_project_document(workspace, report)
+
     def plan_review_surface(
         self,
         *,
@@ -233,6 +253,8 @@ def build_server(
         project.plan_review_surface,
     ):
         server.add_tool(tool, annotations=READ_ONLY_LOCAL, structured_output=False)
+    server.add_tool(project.survey, annotations=READ_ONLY_LOCAL, structured_output=False)
+    server.add_tool(project.gate, annotations=RUNS_PROJECT_CODE, structured_output=False)
     return server
 
 

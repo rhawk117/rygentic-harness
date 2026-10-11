@@ -179,14 +179,16 @@ class TestStartBesideAHostileProject:
     def test_the_server_reports_its_name(self, listing: ServerListing) -> None:
         assert listing.server_name == SERVER_NAME
 
-    def test_the_server_lists_exactly_its_six_tools(self, listing: ServerListing) -> None:
+    def test_the_server_lists_exactly_its_eight_tools(self, listing: ServerListing) -> None:
         assert listing.tool_names == [
             'check_citations',
             'collect_python_facts',
+            'gate',
             'map_python_calls',
             'plan_review_surface',
             'read_python_docs',
             'search_python_docs',
+            'survey',
         ]
 
     @pytest.mark.usefixtures('listing')
