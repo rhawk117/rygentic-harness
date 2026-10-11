@@ -142,7 +142,7 @@ async def spawn_process_group(
     transport, output = await asyncio.get_running_loop().subprocess_exec(
         partial(CheckOutput, sink),
         *argv,
-        stdin=None,
+        stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         cwd=settings.root,

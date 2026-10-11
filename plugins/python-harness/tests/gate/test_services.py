@@ -7,6 +7,7 @@ import stat
 import sys
 import time
 import warnings
+from collections.abc import Iterator
 from contextlib import suppress
 from types import MappingProxyType
 
@@ -309,6 +310,37 @@ class TestOutputPipeRelease:
         plan = plan_of(python_command(GateTool.PYTEST, 'print("done")'))
 
         assert self.resource_warnings_after(workspace, plan) == []
+
+
+class TestCheckStandardInput:
+    OPTIONS = GateOptions(timeout_seconds=5.0)
+    SERVER_BYTES = b'client request'
+    COPY_STDIN = 'import sys; sys.stdout.write(sys.stdin.read())'
+
+    @pytest.fixture
+    def server_stdin(self) -> Iterator[None]:
+        saved = os.dup(0)
+        read_end, write_end = os.pipe()
+        try:
+            os.write(write_end, self.SERVER_BYTES)
+            os.close(write_end)
+            os.dup2(read_end, 0)
+            os.close(read_end)
+            yield
+        finally:
+            os.dup2(saved, 0)
+            os.close(saved)
+
+    @pytest.mark.usefixtures('server_stdin')
+    def test_a_check_reads_the_null_device_and_leaves_the_server_stdin_unread(
+        self, workspace: Workspace
+    ) -> None:
+        plan = plan_of(python_command(GateTool.PYTEST, self.COPY_STDIN))
+
+        report = run_gate(workspace, plan, self.OPTIONS, environment=NO_ENVIRONMENT)
+
+        assert self.SERVER_BYTES.decode() not in report.results[0].output_tail
+        assert os.read(0, len(self.SERVER_BYTES)) == self.SERVER_BYTES
 
 
 class TestConcurrency:
