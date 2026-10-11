@@ -56,10 +56,6 @@ def list_script_names(project: TomlTable) -> tuple[str, ...]:
     return tuple(sorted(chain.from_iterable(tables)))
 
 
-def declares_ruff_config(document: TomlTable) -> bool:
-    return 'ruff' in read_table(document, 'tool')
-
-
 def read_uv_settings(document: TomlTable) -> TomlTable:
     return read_nested_table(document, 'tool', 'uv')
 
