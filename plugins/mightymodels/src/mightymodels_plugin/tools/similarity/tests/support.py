@@ -43,5 +43,5 @@ def in_memory_similarity_service(
 
 
 @pytest.fixture
-def own_key(repository_workspace: Workspace) -> str:
+def similarity_own_key(repository_workspace: Workspace) -> str:
     return repository_key_of(repository_workspace).root

@@ -43,9 +43,9 @@ def similarity_kinds(database: Database) -> list[str]:
 class TestAReportFileOfThisRepository:
     @pytest.fixture
     def after_the_next_call(
-        self, own_key: str, spool: Path, state_server: StateServer
+        self, similarity_own_key: str, spool: Path, state_server: StateServer
     ) -> tuple[Path, str]:
-        file = spooled(spool, named(own_key, 'first'), report_for(own_key))
+        file = spooled(spool, named(similarity_own_key, 'first'), report_for(similarity_own_key))
         (searched,) = state_server.call(SEARCH)
         assert not searched.is_error
         return file, text_of(searched)
@@ -72,9 +72,13 @@ class TestAReportFileOfThisRepository:
         assert similarity_kinds(repository_database) == [SimilarityKind.SCOUT_REPORT]
 
     def test_is_taken_in_by_any_tool_and_only_once(
-        self, own_key: str, spool: Path, state_server: StateServer, repository_database: Database
+        self,
+        similarity_own_key: str,
+        spool: Path,
+        state_server: StateServer,
+        repository_database: Database,
     ) -> None:
-        spooled(spool, named(own_key, 'first'), report_for(own_key))
+        spooled(spool, named(similarity_own_key, 'first'), report_for(similarity_own_key))
 
         state_server.call(('crashout', {'request': {'action': 'stats'}}))
         state_server.call(SEARCH)
@@ -82,10 +86,16 @@ class TestAReportFileOfThisRepository:
         assert len(scout_reports(repository_database)) == 1
 
     def test_has_its_secrets_redacted_before_it_is_stored(
-        self, own_key: str, spool: Path, state_server: StateServer, repository_database: Database
+        self,
+        similarity_own_key: str,
+        spool: Path,
+        state_server: StateServer,
+        repository_database: Database,
     ) -> None:
-        leaking = report_for(own_key, report='drain password=hunter2', target='token=abc123')
-        spooled(spool, named(own_key, 'leaking'), leaking)
+        leaking = report_for(
+            similarity_own_key, report='drain password=hunter2', target='token=abc123'
+        )
+        spooled(spool, named(similarity_own_key, 'leaking'), leaking)
 
         state_server.call(SEARCH)
         (stored,) = scout_reports(repository_database)
@@ -94,19 +104,27 @@ class TestAReportFileOfThisRepository:
         assert 'abc123' not in stored.target
 
     def test_several_files_are_taken_in_by_one_call(
-        self, own_key: str, spool: Path, state_server: StateServer, repository_database: Database
+        self,
+        similarity_own_key: str,
+        spool: Path,
+        state_server: StateServer,
+        repository_database: Database,
     ) -> None:
-        spooled(spool, named(own_key, 'first'), report_for(own_key))
-        spooled(spool, named(own_key, 'second'), report_for(own_key, report=f'{REPORT_TEXT}s'))
+        spooled(spool, named(similarity_own_key, 'first'), report_for(similarity_own_key))
+        spooled(
+            spool,
+            named(similarity_own_key, 'second'),
+            report_for(similarity_own_key, report=f'{REPORT_TEXT}s'),
+        )
 
         state_server.call(SEARCH)
 
         assert len(scout_reports(repository_database)) == 2
 
     def test_is_not_taken_in_when_the_call_is_refused_before_it_runs(
-        self, own_key: str, spool: Path, state_server: StateServer
+        self, similarity_own_key: str, spool: Path, state_server: StateServer
     ) -> None:
-        file = spooled(spool, named(own_key, 'first'), report_for(own_key))
+        file = spooled(spool, named(similarity_own_key, 'first'), report_for(similarity_own_key))
 
         (refused,) = state_server.call(('similarity', {'request': {'action': 'delete'}}))
 
@@ -116,13 +134,13 @@ class TestAReportFileOfThisRepository:
 
 class TestTheBoundOnAFileCount:
     @pytest.fixture
-    def more_files_than_a_call_takes(self, own_key: str, spool: Path) -> int:
+    def more_files_than_a_call_takes(self, similarity_own_key: str, spool: Path) -> int:
         count = SPOOL_FILES_PER_CALL + 2
         for number in range(count):
             spooled(
                 spool,
-                named(own_key, f'{number:04}'),
-                report_for(own_key, report=f'{REPORT_TEXT} {number}'),
+                named(similarity_own_key, f'{number:04}'),
+                report_for(similarity_own_key, report=f'{REPORT_TEXT} {number}'),
             )
         return count
 
@@ -144,11 +162,11 @@ class TestTheBoundOnAFileCount:
 
 class TestFilesOfAnotherRepositoryWaitingBeyondTheBound:
     @pytest.fixture
-    def own_file(self, own_key: str, spool: Path) -> Path:
+    def own_file(self, similarity_own_key: str, spool: Path) -> Path:
         for number in range(SPOOL_FILES_PER_CALL + 2):
             name = f'{"0" * 64}-{number:04}.json'
             spooled(spool, name, report_for(OTHER_KEY, report=f'{REPORT_TEXT} {number}'))
-        return spooled(spool, named(own_key, 'mine'), report_for(own_key))
+        return spooled(spool, named(similarity_own_key, 'mine'), report_for(similarity_own_key))
 
     def test_do_not_keep_the_file_of_this_one_from_the_next_call(
         self,
@@ -173,17 +191,21 @@ class TestALongReport:
 
     @pytest.fixture
     def at_the_limit(
-        self, own_key: str, spool: Path, state_server: StateServer
+        self, similarity_own_key: str, spool: Path, state_server: StateServer
     ) -> tuple[Path, Report]:
-        report = report_for(own_key, report=words_of(REPORT_LIMIT))
-        file = spooled(spool, named(own_key, 'long'), report)
+        report = report_for(similarity_own_key, report=words_of(REPORT_LIMIT))
+        file = spooled(spool, named(similarity_own_key, 'long'), report)
         state_server.call(SEARCH)
         return file, report
 
     @pytest.fixture
-    def over_the_limit(self, own_key: str, spool: Path, state_server: StateServer) -> Path:
+    def over_the_limit(
+        self, similarity_own_key: str, spool: Path, state_server: StateServer
+    ) -> Path:
         file = spooled(
-            spool, named(own_key, 'longer'), report_for(own_key, report=words_of(REPORT_LIMIT + 1))
+            spool,
+            named(similarity_own_key, 'longer'),
+            report_for(similarity_own_key, report=words_of(REPORT_LIMIT + 1)),
         )
         state_server.call(SEARCH)
         return file
@@ -200,13 +222,17 @@ class TestALongReport:
     def test_a_report_of_the_limit_in_the_shape_is_stored_whole(
         self,
         shape: str,
-        own_key: str,
+        similarity_own_key: str,
         spool: Path,
         state_server: StateServer,
         repository_database: Database,
     ) -> None:
         report = (shape * REPORT_LIMIT)[:REPORT_LIMIT]
-        file = spooled(spool, named(own_key, 'shaped'), report_for(own_key, report=report))
+        file = spooled(
+            spool,
+            named(similarity_own_key, 'shaped'),
+            report_for(similarity_own_key, report=report),
+        )
 
         state_server.call(SEARCH)
         (stored,) = scout_reports(repository_database)
@@ -272,13 +298,13 @@ class TestAScoutThatHandedBackAndThenStopped:
 
     def test_waiting_together_one_report_is_stored_and_it_is_the_handed_back_one(
         self,
-        own_key: str,
+        similarity_own_key: str,
         spool: Path,
         state_server: StateServer,
         repository_database: Database,
     ) -> None:
-        stopped = self.stop(own_key, spool, unique='0')
-        handed_back = self.hand_back(own_key, spool, unique='9')
+        stopped = self.stop(similarity_own_key, spool, unique='0')
+        handed_back = self.hand_back(similarity_own_key, spool, unique='9')
 
         state_server.call(SEARCH)
         (stored,) = scout_reports(repository_database)
@@ -290,14 +316,14 @@ class TestAScoutThatHandedBackAndThenStopped:
 
     def test_taken_in_before_the_stop_arrives_it_is_the_one_report(
         self,
-        own_key: str,
+        similarity_own_key: str,
         spool: Path,
         state_server: StateServer,
         repository_database: Database,
     ) -> None:
-        self.hand_back(own_key, spool)
+        self.hand_back(similarity_own_key, spool)
         state_server.call(SEARCH)
-        self.stop(own_key, spool)
+        self.stop(similarity_own_key, spool)
 
         state_server.call(SEARCH)
         (stored,) = scout_reports(repository_database)
@@ -308,12 +334,12 @@ class TestAScoutThatHandedBackAndThenStopped:
 
     def test_a_stop_with_no_hand_back_is_stored(
         self,
-        own_key: str,
+        similarity_own_key: str,
         spool: Path,
         state_server: StateServer,
         repository_database: Database,
     ) -> None:
-        self.stop(own_key, spool)
+        self.stop(similarity_own_key, spool)
 
         state_server.call(SEARCH)
         (stored,) = scout_reports(repository_database)
@@ -322,14 +348,14 @@ class TestAScoutThatHandedBackAndThenStopped:
 
     def test_two_agents_give_two_reports(
         self,
-        own_key: str,
+        similarity_own_key: str,
         spool: Path,
         state_server: StateServer,
         repository_database: Database,
     ) -> None:
-        self.hand_back(own_key, spool)
-        self.stop(own_key, spool)
-        self.stop(own_key, spool, unique='two', target='code-scout b2')
+        self.hand_back(similarity_own_key, spool)
+        self.stop(similarity_own_key, spool)
+        self.stop(similarity_own_key, spool, unique='two', target='code-scout b2')
 
         state_server.call(SEARCH)
 

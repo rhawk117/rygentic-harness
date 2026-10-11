@@ -29,38 +29,38 @@ class TestReopenOnMerge:
     )
 
     @pytest.fixture
-    def run(self, workspace: Workspace) -> RunId:
-        run = workspace.start(depth='deep')
-        workspace.add(run, [*self.RECORDED])
+    def run(self, review_workspace: Workspace) -> RunId:
+        run = review_workspace.start(depth='deep')
+        review_workspace.add(run, [*self.RECORDED])
         return run
 
     @pytest.fixture
-    def dismissed(self, workspace: Workspace, run: RunId) -> None:
+    def dismissed(self, review_workspace: Workspace, run: RunId) -> None:
         decisions = {'F1': self.DISMISSED, 'F2': self.DISMISSED}
-        workspace.dispose(run, by='user', decisions=decisions)
+        review_workspace.dispose(run, by='user', decisions=decisions)
 
     @pytest.fixture
-    def fixed(self, workspace: Workspace, run: RunId) -> None:
-        workspace.dispose(run, by='user', decisions={'F1': {'decision': 'fix'}})
-        resolved = workspace.resolve(run, finding='F1', result='fixed', commit='abc123')
+    def fixed(self, review_workspace: Workspace, run: RunId) -> None:
+        review_workspace.dispose(run, by='user', decisions={'F1': {'decision': 'fix'}})
+        resolved = review_workspace.resolve(run, finding='F1', result='fixed', commit='abc123')
         assert resolved.out == 'F1 fixed\n'
 
     @pytest.mark.usefixtures('dismissed')
     def test_a_dismissed_finding_a_later_merge_raises_in_severity_reads_undecided_at_the_gate(
-        self, workspace: Workspace, run: RunId
+        self, review_workspace: Workspace, run: RunId
     ) -> None:
-        workspace.add(run, [self.RAISED])
-        assert gate_decisions(workspace, run) == {'F1': 'undecided', 'F2': 'dismiss'}
-        assert decided_ids(workspace, run) == ['F2']
+        review_workspace.add(run, [self.RAISED])
+        assert gate_decisions(review_workspace, run) == {'F1': 'undecided', 'F2': 'dismiss'}
+        assert decided_ids(review_workspace, run) == ['F2']
 
     @pytest.mark.usefixtures('fixed')
     def test_a_fixed_finding_a_merge_changes_loses_its_decision_and_its_outcome(
-        self, workspace: Workspace, run: RunId
+        self, review_workspace: Workspace, run: RunId
     ) -> None:
-        workspace.add(run, [self.RAISED])
-        refused = workspace.resolve(run, finding='F1', result='fixed', commit='abc123')
-        assert decided_ids(workspace, run) == []
-        assert resolved_ids(workspace, run) == []
+        review_workspace.add(run, [self.RAISED])
+        refused = review_workspace.resolve(run, finding='F1', result='fixed', commit='abc123')
+        assert decided_ids(review_workspace, run) == []
+        assert resolved_ids(review_workspace, run) == []
         assert refused.err == 'F1: only a finding the user chose to fix is resolved'
 
     @pytest.mark.usefixtures('dismissed')
@@ -79,31 +79,31 @@ class TestReopenOnMerge:
         ],
     )
     def test_a_merge_that_changes_any_field_of_a_decided_finding_reopens_it(
-        self, workspace: Workspace, run: RunId, incoming: FindingInput
+        self, review_workspace: Workspace, run: RunId, incoming: FindingInput
     ) -> None:
-        outcome = workspace.add(run, [incoming])
+        outcome = review_workspace.add(run, [incoming])
         assert outcome.out == '1 findings in, 1 recorded: F1; back to undecided: F1\n'
-        assert decided_ids(workspace, run) == ['F2']
+        assert decided_ids(review_workspace, run) == ['F2']
 
     @pytest.mark.usefixtures('dismissed')
     def test_adding_the_same_batch_again_keeps_the_decisions(
-        self, workspace: Workspace, run: RunId
+        self, review_workspace: Workspace, run: RunId
     ) -> None:
-        outcome = workspace.add(run, [*self.RECORDED])
+        outcome = review_workspace.add(run, [*self.RECORDED])
         assert outcome.out == '2 findings in, 2 recorded: F1, F2\n'
-        assert gate_decisions(workspace, run) == {'F1': 'dismiss', 'F2': 'dismiss'}
-        assert decided_ids(workspace, run) == ['F1', 'F2']
+        assert gate_decisions(review_workspace, run) == {'F1': 'dismiss', 'F2': 'dismiss'}
+        assert decided_ids(review_workspace, run) == ['F1', 'F2']
 
     def test_a_merge_into_an_undecided_finding_leaves_the_text_as_it_was(
-        self, workspace: Workspace, run: RunId
+        self, review_workspace: Workspace, run: RunId
     ) -> None:
-        assert workspace.add(run, [self.RAISED]).out == '1 findings in, 1 recorded: F1\n'
+        assert review_workspace.add(run, [self.RAISED]).out == '1 findings in, 1 recorded: F1\n'
 
     @pytest.mark.usefixtures('dismissed')
     def test_add_names_only_the_decided_findings_the_batch_changed(
-        self, workspace: Workspace, run: RunId
+        self, review_workspace: Workspace, run: RunId
     ) -> None:
-        outcome = workspace.add(run, [self.UNSEEN, self.RECORDED[1], self.RAISED])
+        outcome = review_workspace.add(run, [self.UNSEEN, self.RECORDED[1], self.RAISED])
         assert outcome.out == '3 findings in, 3 recorded: F1, F2, F3; back to undecided: F1\n'
 
 
@@ -117,15 +117,15 @@ class TestTheReopenedFindingsInTheText:
     DISMISSED = Disposition.model_validate({'decision': 'dismiss', 'reason': 'not reachable'})
 
     @pytest.fixture
-    def ten_dismissed(self, workspace: Workspace) -> RunId:
-        run = workspace.start(depth='deep')
-        workspace.add(run, [*self.RECORDED])
+    def ten_dismissed(self, review_workspace: Workspace) -> RunId:
+        run = review_workspace.start(depth='deep')
+        review_workspace.add(run, [*self.RECORDED])
         decisions = {f'F{number}': self.DISMISSED for number in self.NUMBERS}
-        workspace.dispose(run, by='user', decisions=decisions)
+        review_workspace.dispose(run, by='user', decisions=decisions)
         return run
 
     def test_add_names_the_reopened_findings_in_number_order(
-        self, workspace: Workspace, ten_dismissed: RunId
+        self, review_workspace: Workspace, ten_dismissed: RunId
     ) -> None:
-        outcome = workspace.add(ten_dismissed, [*self.TENTH_THEN_SECOND])
+        outcome = review_workspace.add(ten_dismissed, [*self.TENTH_THEN_SECOND])
         assert outcome.out == '2 findings in, 2 recorded: F2, F10; back to undecided: F2, F10\n'

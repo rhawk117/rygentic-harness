@@ -40,7 +40,7 @@ def in_memory_review_service(
 
 
 @pytest.fixture
-def workspace(
+def review_workspace(
     in_memory_review_service: ReviewService, in_memory_git: InMemoryGit
 ) -> ReviewWorkspace:
     return ReviewWorkspace(reviews=in_memory_review_service, git=in_memory_git)

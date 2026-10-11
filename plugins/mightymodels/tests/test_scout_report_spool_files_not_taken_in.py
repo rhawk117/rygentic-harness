@@ -50,12 +50,12 @@ class TestAMalformedFile:
     def beside_a_good_file(
         self,
         request: pytest.FixtureRequest,
-        own_key: str,
+        similarity_own_key: str,
         spool: Path,
         state_server: StateServer,
     ) -> tuple[Path, bytes, bool]:
-        file = spooled(spool, named(own_key, 'a-bad'), request.param)
-        spooled(spool, named(own_key, 'b-good'), report_for(own_key))
+        file = spooled(spool, named(similarity_own_key, 'a-bad'), request.param)
+        spooled(spool, named(similarity_own_key, 'b-good'), report_for(similarity_own_key))
         (searched,) = state_server.call(SEARCH)
         return file, request.param, searched.is_error
 
@@ -72,17 +72,17 @@ class TestAMalformedFile:
     @pytest.mark.parametrize('beside_a_good_file', CASES, indirect=True)
     @pytest.mark.usefixtures('beside_a_good_file')
     def test_does_not_keep_the_good_file_beside_it_from_being_taken_in(
-        self, spool: Path, repository_database: Database, own_key: str
+        self, spool: Path, repository_database: Database, similarity_own_key: str
     ) -> None:
-        assert not spool.joinpath(named(own_key, 'b-good')).exists()
+        assert not spool.joinpath(named(similarity_own_key, 'b-good')).exists()
         assert len(scout_reports(repository_database)) == 1
 
     @pytest.mark.parametrize('beside_a_good_file', CASES[:1], indirect=True)
     @pytest.mark.usefixtures('beside_a_good_file')
     def test_is_kept_under_a_name_of_its_own_beside_one_set_aside_before(
-        self, spool: Path, state_server: StateServer, own_key: str
+        self, spool: Path, state_server: StateServer, similarity_own_key: str
     ) -> None:
-        spooled(spool, named(own_key, 'a-bad'), b'not json again')
+        spooled(spool, named(similarity_own_key, 'a-bad'), b'not json again')
 
         state_server.call(SEARCH)
 
@@ -92,10 +92,18 @@ class TestAMalformedFile:
         ]
 
     def test_with_text_that_redaction_lengthens_past_its_column_is_set_aside(
-        self, own_key: str, spool: Path, state_server: StateServer, repository_database: Database
+        self,
+        similarity_own_key: str,
+        spool: Path,
+        state_server: StateServer,
+        repository_database: Database,
     ) -> None:
         lengthened = words_of(REPORT_LIMIT - len(CREDENTIALS)) + CREDENTIALS
-        file = spooled(spool, named(own_key, 'long'), report_for(own_key, report=lengthened))
+        file = spooled(
+            spool,
+            named(similarity_own_key, 'long'),
+            report_for(similarity_own_key, report=lengthened),
+        )
 
         (searched,) = state_server.call(SEARCH)
 
@@ -158,9 +166,13 @@ class TestAFileOfAnotherRepository:
 
 class TestAFileUnderTheDigestOfThisRepositoryThatNamesAnother:
     def test_is_set_aside_with_its_bytes(
-        self, own_key: str, spool: Path, state_server: StateServer, repository_database: Database
+        self,
+        similarity_own_key: str,
+        spool: Path,
+        state_server: StateServer,
+        repository_database: Database,
     ) -> None:
-        file = spooled(spool, named(own_key, 'misnamed'), report_for(OTHER_KEY))
+        file = spooled(spool, named(similarity_own_key, 'misnamed'), report_for(OTHER_KEY))
         content = file.read_bytes()
 
         state_server.call(SEARCH)
@@ -180,10 +192,10 @@ class TestAFileUnderAnyOtherName:
         ],
     )
     def test_is_never_read(
-        self, name: str, own_key: str, spool: Path, state_server: StateServer
+        self, name: str, similarity_own_key: str, spool: Path, state_server: StateServer
     ) -> None:
-        digest = spool_file_prefix(RepositoryKey(own_key)).removesuffix('-')
-        file = spooled(spool, name.format(digest=digest), report_for(own_key))
+        digest = spool_file_prefix(RepositoryKey(similarity_own_key)).removesuffix('-')
+        file = spooled(spool, name.format(digest=digest), report_for(similarity_own_key))
 
         state_server.call(SEARCH)
 
@@ -193,22 +205,22 @@ class TestAFileUnderAnyOtherName:
 class TestNoRepositoryKeyIsEverInAPath:
     @pytest.fixture
     def after_every_kind_of_file(
-        self, own_key: str, spool: Path, state_server: StateServer, data_directory: Path
+        self, similarity_own_key: str, spool: Path, state_server: StateServer, data_directory: Path
     ) -> list[str]:
-        spooled(spool, named(own_key, 'own'), report_for(own_key))
+        spooled(spool, named(similarity_own_key, 'own'), report_for(similarity_own_key))
         spooled(spool, named(OTHER_KEY, 'other'), report_for(OTHER_KEY))
-        spooled(spool, named(own_key, 'traversal'), report_for('../../escape'))
-        spooled(spool, named(own_key, 'garbage'), b'garbage')
+        spooled(spool, named(similarity_own_key, 'traversal'), report_for('../../escape'))
+        spooled(spool, named(similarity_own_key, 'garbage'), b'garbage')
         state_server.call(SEARCH)
         return sorted(tree(data_directory.parent))
 
     def test_a_path_holds_the_data_directory_and_fixed_names_and_nothing_a_file_says(
-        self, after_every_kind_of_file: list[str], own_key: str
+        self, after_every_kind_of_file: list[str], similarity_own_key: str
     ) -> None:
         paths = ' '.join(after_every_kind_of_file)
 
         assert 'escape' not in paths
-        assert own_key.removeprefix('local:') not in paths
+        assert similarity_own_key.removeprefix('local:') not in paths
         assert 'gadgets' not in paths
 
     def test_the_file_naming_a_traversal_is_set_aside_inside_the_spool(
@@ -223,28 +235,28 @@ class TestNoRepositoryKeyIsEverInAPath:
 
 class TestAFileThatIsNotARegularFile:
     def test_a_symlink_and_a_directory_are_left_alone(
-        self, own_key: str, spool: Path, state_server: StateServer, tmp_path: Path
+        self, similarity_own_key: str, spool: Path, state_server: StateServer, tmp_path: Path
     ) -> None:
         outside = tmp_path.joinpath('outside.json')
-        outside.write_text(json.dumps(report_for(own_key)), encoding='utf-8')
+        outside.write_text(json.dumps(report_for(similarity_own_key)), encoding='utf-8')
         spool.mkdir(parents=True)
-        spool.joinpath(named(own_key, 'link')).symlink_to(outside)
-        spool.joinpath(named(own_key, 'directory')).mkdir()
+        spool.joinpath(named(similarity_own_key, 'link')).symlink_to(outside)
+        spool.joinpath(named(similarity_own_key, 'directory')).mkdir()
 
         (searched,) = state_server.call(SEARCH)
 
         assert not searched.is_error
-        assert spool.joinpath(named(own_key, 'link')).is_symlink()
-        assert spool.joinpath(named(own_key, 'directory')).is_dir()
+        assert spool.joinpath(named(similarity_own_key, 'link')).is_symlink()
+        assert spool.joinpath(named(similarity_own_key, 'directory')).is_dir()
         assert outside.exists()
 
     def test_a_file_that_does_not_end_in_json_is_not_read(
-        self, own_key: str, spool: Path, state_server: StateServer
+        self, similarity_own_key: str, spool: Path, state_server: StateServer
     ) -> None:
         file = spooled(
             spool,
-            f'{spool_file_prefix(RepositoryKey(own_key))}half-written.tmp',
-            report_for(own_key),
+            f'{spool_file_prefix(RepositoryKey(similarity_own_key))}half-written.tmp',
+            report_for(similarity_own_key),
         )
 
         state_server.call(SEARCH)
@@ -255,12 +267,12 @@ class TestAFileThatIsNotARegularFile:
 class TestAFileOfAnotherSchemaVersion:
     @pytest.fixture
     def refused_with_a_report_waiting(
-        self, own_key: str, spool: Path, data_directory: Path
+        self, similarity_own_key: str, spool: Path, data_directory: Path
     ) -> dict[str, bytes]:
         data_directory.mkdir()
         with closing(sqlite3.connect(data_directory.joinpath(DATABASE_NAME))) as connection:
             connection.execute(f'PRAGMA user_version = {SCHEMA_VERSION + 1}')
-        spooled(spool, named(own_key, 'first'), report_for(own_key))
+        spooled(spool, named(similarity_own_key, 'first'), report_for(similarity_own_key))
         return tree(data_directory)
 
     def test_leaves_the_database_and_the_spool_as_they_were(

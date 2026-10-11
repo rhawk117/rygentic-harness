@@ -121,9 +121,9 @@ class TestSessionBootstrap:
         return file
 
     def test_it_appends_the_export_of_the_data_directory(
-        self, env_file: Path, data_directory: Path, hook: Hook
+        self, env_file: Path, data_directory: Path, hook_command: Hook
     ) -> None:
-        code, out, err = hook.run('session-start', '{}')
+        code, out, err = hook_command.run('session-start', '{}')
 
         assert (code, out, err) == (0, '', '')
         assert shlex.split(env_file.read_text(encoding='utf-8')) == [
@@ -132,11 +132,11 @@ class TestSessionBootstrap:
         ]
 
     def test_it_appends_no_second_copy_of_a_line_already_there(
-        self, env_file: Path, hook: Hook
+        self, env_file: Path, hook_command: Hook
     ) -> None:
-        hook.run('session-start', '{}')
+        hook_command.run('session-start', '{}')
         once = env_file.read_text(encoding='utf-8')
-        hook.run('session-start', '{}')
+        hook_command.run('session-start', '{}')
 
         assert env_file.read_text(encoding='utf-8') == once
 
@@ -159,8 +159,8 @@ class TestSubagentRecorder:
         return done
 
     @pytest.fixture
-    def recorded(self, scout: str, hook: Hook, spool: Path) -> tuple[int, Path]:
-        code, _, _ = hook.run('subagent-record', scout_stop(scout))
+    def recorded(self, scout: str, hook_command: Hook, spool: Path) -> tuple[int, Path]:
+        code, _, _ = hook_command.run('subagent-record', scout_stop(scout))
         return code, spool
 
     def test_a_scout_report_leaves_one_file_named_by_the_prefix_of_the_key(
@@ -176,9 +176,9 @@ class TestSubagentRecorder:
         assert len(file.name) > len(prefix) + len('.json')
 
     def test_the_file_is_written_under_another_suffix_and_renamed(
-        self, scout: str, hook: Hook, renames: list[tuple[str, str]]
+        self, scout: str, hook_command: Hook, renames: list[tuple[str, str]]
     ) -> None:
-        hook.run('subagent-record', scout_stop(scout))
+        hook_command.run('subagent-record', scout_stop(scout))
         ((written, final),) = renames
 
         assert not written.endswith('.json')
@@ -200,18 +200,18 @@ class TestSubagentRecorder:
 
     @pytest.mark.parametrize('agent_type', OTHER_AGENTS)
     def test_another_agent_type_writes_nothing(
-        self, agent_type: str, hook: Hook, spool: Path
+        self, agent_type: str, hook_command: Hook, spool: Path
     ) -> None:
-        code, out, err = hook.run('subagent-record', scout_stop(agent_type))
+        code, out, err = hook_command.run('subagent-record', scout_stop(agent_type))
 
         assert (code, out, err) == (0, '', '')
         assert not spool.exists()
 
     @pytest.mark.parametrize('text', UNREADABLE_INPUTS)
     def test_input_it_cannot_read_writes_nothing_and_says_why(
-        self, text: str, hook: Hook, spool: Path
+        self, text: str, hook_command: Hook, spool: Path
     ) -> None:
-        code, out, err = hook.run('subagent-record', text)
+        code, out, err = hook_command.run('subagent-record', text)
 
         assert (code, out) == (0, '')
         assert err.startswith(f'{SKIPPED}the hook input is not a JSON object')
@@ -219,22 +219,22 @@ class TestSubagentRecorder:
 
     @pytest.mark.parametrize('message', [None, '', '   '])
     def test_a_stop_with_no_final_message_writes_nothing_and_says_why(
-        self, message: str | None, hook: Hook, spool: Path
+        self, message: str | None, hook_command: Hook, spool: Path
     ) -> None:
         text = hook_input('SubagentStop', SCOUTS[0], last_assistant_message=message)
 
-        code, _, err = hook.run('subagent-record', text)
+        code, _, err = hook_command.run('subagent-record', text)
 
         assert code == 0
         assert 'no report to keep' in err
         assert not spool.exists()
 
     def test_a_report_the_server_could_not_take_in_is_not_written(
-        self, hook: Hook, spool: Path
+        self, hook_command: Hook, spool: Path
     ) -> None:
         text = scout_stop(last_assistant_message='x' * SPOOL_FILE_BYTES)
 
-        code, _, err = hook.run('subagent-record', text)
+        code, _, err = hook_command.run('subagent-record', text)
 
         assert code == 0
         assert str(SPOOL_FILE_BYTES) in err
@@ -265,9 +265,9 @@ class TestSubagentHandback:
         assert registered == ('SubagentHandback', 'subagent-handback')
 
     def test_the_message_is_left_as_one_file_and_nothing_is_said(
-        self, scout: str, hook: Hook, spool: Path
+        self, scout: str, hook_command: Hook, spool: Path
     ) -> None:
-        code, out, err = hook.run('subagent-handback', scout_handback(scout))
+        code, out, err = hook_command.run('subagent-handback', scout_handback(scout))
         (file,) = spool.iterdir()
         content = json.loads(file.read_text(encoding='utf-8'))
 
@@ -275,17 +275,17 @@ class TestSubagentHandback:
         assert file.suffix == '.json'
         assert (content['report'], content['target']) == (REPORT, f'{scout.split(":")[1]} a1b2')
 
-    @pytest.mark.usefixtures('in_the_repository')
+    @pytest.mark.usefixtures('hook_repository')
     def test_the_server_stores_the_handed_back_report_and_not_the_closing_text(
         self,
         scout: str,
-        hook: Hook,
+        hook_command: Hook,
         state_server: StateServer,
         repository_database: Database,
         spool: Path,
     ) -> None:
-        hook.run('subagent-handback', scout_handback(scout))
-        hook.run('subagent-record', scout_stop(scout, last_assistant_message='Done.'))
+        hook_command.run('subagent-handback', scout_handback(scout))
+        hook_command.run('subagent-record', scout_stop(scout, last_assistant_message='Done.'))
 
         state_server.call(SEARCH)
         with repository_database.transaction() as session:
@@ -296,9 +296,9 @@ class TestSubagentHandback:
 
     @pytest.mark.parametrize('agent_type', OTHER_AGENTS)
     def test_another_agent_type_writes_nothing(
-        self, agent_type: str, hook: Hook, spool: Path
+        self, agent_type: str, hook_command: Hook, spool: Path
     ) -> None:
-        code, out, err = hook.run('subagent-handback', scout_handback(agent_type))
+        code, out, err = hook_command.run('subagent-handback', scout_handback(agent_type))
 
         assert (code, out, err) == (0, '', '')
         assert not spool.exists()
@@ -317,9 +317,11 @@ class TestSubagentHandback:
         ],
     )
     def test_a_message_that_is_missing_blank_or_not_text_writes_nothing_and_says_why(
-        self, tool_input: object, hook: Hook, spool: Path
+        self, tool_input: object, hook_command: Hook, spool: Path
     ) -> None:
-        code, out, err = hook.run('subagent-handback', scout_handback(tool_input=tool_input))
+        code, out, err = hook_command.run(
+            'subagent-handback', scout_handback(tool_input=tool_input)
+        )
 
         assert (code, out) == (0, '')
         assert 'no report to keep' in err
@@ -327,20 +329,20 @@ class TestSubagentHandback:
 
     @pytest.mark.parametrize('text', UNREADABLE_INPUTS)
     def test_input_it_cannot_read_writes_nothing_and_says_why(
-        self, text: str, hook: Hook, spool: Path
+        self, text: str, hook_command: Hook, spool: Path
     ) -> None:
-        code, out, err = hook.run('subagent-handback', text)
+        code, out, err = hook_command.run('subagent-handback', text)
 
         assert (code, out) == (0, '')
         assert err.startswith(f'{SKIPPED}the hook input is not a JSON object')
         assert not spool.exists()
 
     def test_a_message_too_long_for_the_server_is_not_written(
-        self, hook: Hook, spool: Path
+        self, hook_command: Hook, spool: Path
     ) -> None:
         text = scout_handback(tool_input={'message': 'x' * SPOOL_FILE_BYTES})
 
-        code, out, err = hook.run('subagent-handback', text)
+        code, out, err = hook_command.run('subagent-handback', text)
 
         assert (code, out) == (0, '')
         assert str(SPOOL_FILE_BYTES) in err
@@ -350,11 +352,11 @@ class TestSubagentHandback:
         'shape', ['a\n"', '\U0001f600'], ids=['newlines-and-quotes', 'four-byte-characters']
     )
     def test_a_message_of_the_report_limit_is_written_whatever_its_characters(
-        self, shape: str, hook: Hook, spool: Path
+        self, shape: str, hook_command: Hook, spool: Path
     ) -> None:
         message = (shape * REPORT_LIMIT)[:REPORT_LIMIT]
 
-        code, _, err = hook.run(
+        code, _, err = hook_command.run(
             'subagent-handback', scout_handback(tool_input={'message': message})
         )
         (file,) = spool.iterdir()

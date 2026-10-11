@@ -8,14 +8,14 @@ from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE
 
 
 @pytest.fixture
-def hook(
-    in_the_repository: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def hook_command(
+    hook_repository: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> Hook:
-    return Hook(repository=in_the_repository, monkeypatch=monkeypatch, capsys=capsys)
+    return Hook(repository=hook_repository, monkeypatch=monkeypatch, capsys=capsys)
 
 
 @pytest.fixture
-def in_the_repository(
+def hook_repository(
     repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Path:
     monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))

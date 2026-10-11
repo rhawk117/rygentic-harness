@@ -38,17 +38,15 @@ INPUTS = MappingProxyType(
 class TestWhenAHookCannotWork:
     @pytest.fixture
     def without_a_data_directory(
-        self, in_the_repository: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, hook_repository: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> Path:
         monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
         monkeypatch.setenv(ENV_FILE_VARIABLE, str(tmp_path.joinpath('session-env.sh')))
-        return in_the_repository
+        return hook_repository
 
     @pytest.fixture
-    def outside_a_repository(
-        self, in_the_repository: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> Path:
-        outside = in_the_repository.parent.joinpath('outside')
+    def outside_a_repository(self, hook_repository: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        outside = hook_repository.parent.joinpath('outside')
         outside.mkdir()
         monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(outside))
         return outside
@@ -61,9 +59,9 @@ class TestWhenAHookCannotWork:
     @pytest.mark.usefixtures('without_a_data_directory')
     @pytest.mark.parametrize('command', INPUTS)
     def test_without_a_data_directory_it_exits_0_blocking_nothing_and_says_why(
-        self, command: str, hook: Hook
+        self, command: str, hook_command: Hook
     ) -> None:
-        code, out, err = hook.run(command, INPUTS[command])
+        code, out, err = hook_command.run(command, INPUTS[command])
 
         assert (code, out) == (0, '')
         assert err.startswith(f'{SKIPPED}{PLUGIN_DATA_VARIABLE} is not set')
@@ -71,9 +69,9 @@ class TestWhenAHookCannotWork:
     @pytest.mark.usefixtures('outside_a_repository')
     @pytest.mark.parametrize('command', ['subagent-record', 'completion-gate', 'pre-compact'])
     def test_outside_a_git_repository_it_exits_0_blocking_nothing_and_says_why(
-        self, command: str, hook: Hook, data_directory: Path
+        self, command: str, hook_command: Hook, data_directory: Path
     ) -> None:
-        code, out, err = hook.run(command, INPUTS[command])
+        code, out, err = hook_command.run(command, INPUTS[command])
 
         assert (code, out) == (0, '')
         assert 'is not inside a git repository' in err
@@ -82,9 +80,9 @@ class TestWhenAHookCannotWork:
     @pytest.mark.usefixtures('with_a_refused_database')
     @pytest.mark.parametrize('command', ['completion-gate', 'pre-compact'])
     def test_with_a_refused_database_it_exits_0_blocking_nothing_and_says_why(
-        self, command: str, hook: Hook
+        self, command: str, hook_command: Hook
     ) -> None:
-        code, out, err = hook.run(command, INPUTS[command])
+        code, out, err = hook_command.run(command, INPUTS[command])
 
         assert (code, out) == (0, '')
         assert 'schema version 99' in err
