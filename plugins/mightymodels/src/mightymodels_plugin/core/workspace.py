@@ -32,6 +32,9 @@ before the first commit. `Git.refusal` and `Git.checkout` tell the two apart: `G
 when there is no executable, `GitNoAnswerError` naming the cause otherwise. An operation that
 cannot work without git asks `Git.refusal` first and raises what it returns, and one that can
 says in its result that git was not consulted.
+
+A service asks git through `GitQueries`, the eight questions `Git` answers, and holds it as a field
+of its own, so a test hands it a history kept in memory and launches nothing.
 """
 
 import re
@@ -40,6 +43,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
+from typing import Protocol, runtime_checkable
 
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.process import (
@@ -186,6 +190,25 @@ def exclude_state(common_directory: Path) -> None:
     exclude.parent.mkdir(parents=True, exist_ok=True)
     separator = '' if not current or current.endswith('\n') else '\n'
     exclude.write_text(f'{current}{separator}{EXCLUDE_LINE}\n', encoding='utf-8')
+
+
+@runtime_checkable
+class GitQueries(Protocol):
+    def refusal(self) -> GitRefusal | None: ...
+
+    def resolve_head(self) -> str | None: ...
+
+    def resolve_commit(self, revision: str) -> str | None: ...
+
+    def is_ancestor(self, base: str, commit: str) -> bool: ...
+
+    def changed_files(self, base: str, commit: str) -> set[str]: ...
+
+    def current_branch(self) -> str | None: ...
+
+    def dirty_paths(self, *, untracked: UntrackedFiles) -> list[str] | None: ...
+
+    def commits_on_no_remote(self, branch: str) -> int | None: ...
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

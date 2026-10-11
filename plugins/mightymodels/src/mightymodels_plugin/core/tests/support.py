@@ -1,9 +1,12 @@
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
+
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
+from mightymodels_plugin.core.workspace import Workspace, git_at, workspace_of
 
 RECORDER_SOURCE = """#!{python}
 import json
@@ -47,3 +50,15 @@ def recorder(tmp_path: Path) -> Recorder:
     )
     executable.chmod(0o700)
     return Recorder(executable=str(executable), log=log)
+
+
+@pytest.fixture
+def in_memory_git() -> InMemoryGit:
+    return InMemoryGit()
+
+
+@pytest.fixture
+def gitless_workspace(tmp_path: Path) -> Workspace:
+    directory = tmp_path.joinpath('gitless')
+    directory.mkdir()
+    return workspace_of(replace(git_at(directory), executable=None))
