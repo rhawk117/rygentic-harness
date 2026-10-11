@@ -9,13 +9,17 @@ A text that redaction lengthens past its limit refuses the batch.
 
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from types import MappingProxyType
 
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.redaction import redact_within
 from mightymodels_plugin.tools.review.errors import (
     FieldRequiredError,
+    FindingError,
+    LineBelowOneError,
     LocationShapeError,
+    ReversedRangeError,
     UnsupportedQualityError,
 )
 from mightymodels_plugin.tools.review.schema import (
@@ -30,8 +34,15 @@ from mightymodels_plugin.tools.review.schema import (
 LOCATION = re.compile(r'^(?P<path>[^\s:]+):(?P<start>\d+)(?:-(?P<end>\d+))?$')
 UNNUMBERED = 'F0'
 CONFLICT_GAP = 2
+FIRST_LINE = 1
 
-type Span = tuple[str, int, int]
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Span:
+    path: str
+    start: int
+    end: int
+
 
 RANK: Mapping[Severity, int] = MappingProxyType(
     {Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 2, Severity.LOW: 3}
@@ -55,13 +66,24 @@ def number_of(finding: Finding) -> int:
     return finding_number(finding.id)
 
 
-def span_of(location: str) -> Span:
+def span_of(location: str) -> Span | None:
     match = LOCATION.match(location)
     if match is None:
-        return location, 0, 0
-    path = str(match['path'])
+        return None
     start = int(match['start'])
-    return path, start, start if match['end'] is None else int(match['end'])
+    end = start if match['end'] is None else int(match['end'])
+    return Span(path=str(match['path']), start=start, end=end)
+
+
+def location_error(index: int, sources: Sequence[str], span: Span | None) -> FindingError | None:
+    if span is None:
+        return LocationShapeError(index, sources)
+    lowest = min(span.start, span.end)
+    if lowest < FIRST_LINE:
+        return LineBelowOneError(index, sources, lowest)
+    if span.end < span.start:
+        return ReversedRangeError(index, sources, start=span.start, end=span.end)
+    return None
 
 
 def required_text(index: int, sources: Sequence[str], field: str, *, value: str) -> str:
@@ -81,8 +103,8 @@ def evidence_of(index: int, sources: Sequence[str], evidence: Evidence | None) -
 def normalized(entry: FindingInput, index: int) -> Finding:
     sources = sorted(set(entry.sources))
     location = required_text(index, sources, 'location', value=entry.location)
-    if not LOCATION.match(location):
-        raise LocationShapeError(index, sources)
+    if (error := location_error(index, sources, span_of(location))) is not None:
+        raise error
     severity = STORED_SEVERITY[entry.severity]
     finding = Finding(
         id=UNNUMBERED,
@@ -103,9 +125,14 @@ def normalized(entry: FindingInput, index: int) -> Finding:
 
 
 def overlaps(left: Finding, right: Finding) -> bool:
-    left_path, left_start, left_end = span_of(left.location)
-    right_path, right_start, right_end = span_of(right.location)
-    return left_path == right_path and left_start <= right_end and right_start <= left_end
+    left_span, right_span = span_of(left.location), span_of(right.location)
+    if left_span is None or right_span is None:
+        return False
+    return (
+        left_span.path == right_span.path
+        and left_span.start <= right_span.end
+        and right_span.start <= left_span.end
+    )
 
 
 def conflict_between(keep: Finding, other: Finding, current: str | None) -> str | None:

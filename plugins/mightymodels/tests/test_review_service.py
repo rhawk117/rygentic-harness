@@ -264,6 +264,25 @@ def test_a_bad_finding_rejects_the_whole_batch(workspace: Workspace) -> None:
     assert workspace.gate(run).out == 'no findings recorded\n'
 
 
+@pytest.mark.parametrize(
+    ('location', 'problem'),
+    [
+        pytest.param('src/q.py:0', 'location line 0 is below 1', id='line-zero'),
+        pytest.param(
+            'src/q.py:9-3', 'location range 9-3 ends before it starts', id='reversed-range'
+        ),
+    ],
+)
+def test_a_location_that_is_not_a_span_rejects_the_whole_batch(
+    workspace: Workspace, location: str, problem: str
+) -> None:
+    run = workspace.start(depth='deep')
+    batch = [finding('MV-1', 'High', 'src/q.py:1'), finding('MV-2', 'High', location)]
+    outcome = workspace.add(run, batch)
+    assert outcome.err.startswith(f'finding 1: {problem}')
+    assert workspace.gate(run).out == 'no findings recorded\n'
+
+
 def test_secrets_in_findings_are_redacted(workspace: Workspace) -> None:
     run = workspace.start(depth='deep')
     leaked = finding('MV-1', 'Critical', 'cfg.py:2', title='hardcoded password=hunter22')

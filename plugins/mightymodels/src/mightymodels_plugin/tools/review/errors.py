@@ -110,6 +110,19 @@ class LocationShapeError(FindingError):
         super().__init__(index, sources, 'location must be path:line or path:start-end')
 
 
+class LineBelowOneError(FindingError):
+    def __init__(self, index: int, sources: Sequence[str], line: int) -> None:
+        super().__init__(index, sources, f'location line {line} is below 1')
+        self.line = line
+
+
+class ReversedRangeError(FindingError):
+    def __init__(self, index: int, sources: Sequence[str], *, start: int, end: int) -> None:
+        super().__init__(index, sources, f'location range {start}-{end} ends before it starts')
+        self.start = start
+        self.end = end
+
+
 class UnsupportedQualityError(FindingError):
     def __init__(self, index: int, sources: Sequence[str]) -> None:
         super().__init__(
