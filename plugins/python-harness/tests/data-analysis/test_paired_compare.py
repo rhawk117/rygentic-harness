@@ -107,6 +107,16 @@ class TestRejectedInputs:
         )
         assert result.exit_code == CONTRACT_VIOLATION
 
+    @pytest.mark.parametrize('resamples', ['0', '-1'])
+    def test_resamples_must_be_positive(
+        self, run_paired: ScriptRunner, results_csv: Path, resamples: str
+    ) -> None:
+        result = run_paired(
+            str(results_csv), '--old', 'old_pass', '--new', 'new_pass', '--resamples', resamples
+        )
+        assert (result.exit_code, result.stdout) == (CONTRACT_VIOLATION, '')
+        assert f'resamples must be positive, got {resamples}' in result.stderr
+
 
 class TestWilsonInterval:
     def test_zero_successes_keeps_upper_uncertainty(self) -> None:

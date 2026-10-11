@@ -69,6 +69,21 @@ class TestRejections:
             'nope',
             id='bad-dtype',
         ),
+        pytest.param(
+            ('dense', '--rows', '1', '--cols', '2', '--dtype', 'i4,,'),
+            'i4,,',
+            id='dtype-that-does-not-parse',
+        ),
+        pytest.param(
+            ('dense', '--rows', str(10**164), '--cols', str(10**164)),
+            'too large',
+            id='byte-count-beyond-float-range',
+        ),
+        pytest.param(
+            ('fits', '--configs', str(10**400), '--folds', '2', '--seconds-per-fit', '1.5'),
+            'too large',
+            id='fit-hours-beyond-float-range',
+        ),
     )
 
     @pytest.mark.parametrize(('arguments', 'message'), rejected)

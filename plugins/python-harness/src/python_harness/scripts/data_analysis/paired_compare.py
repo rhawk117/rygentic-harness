@@ -68,6 +68,11 @@ class LevelOutOfRangeError(ContractViolationError):
         super().__init__(f'confidence level must be in (0, 1), got {level}')
 
 
+class NonPositiveResamplesError(ContractViolationError):
+    def __init__(self, resamples: int) -> None:
+        super().__init__(f'resamples must be positive, got {resamples}')
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ComparisonOptions:
     old_column: str
@@ -159,6 +164,8 @@ def check_unique_keys(frame: pl.DataFrame, key_column: str | None) -> None:
 def check_table(frame: pl.DataFrame, options: ComparisonOptions) -> None:
     if not 0 < options.level < 1:
         raise LevelOutOfRangeError(options.level)
+    if options.resamples < 1:
+        raise NonPositiveResamplesError(options.resamples)
     check_columns_exist(frame, options)
     if frame.is_empty():
         raise EmptyResultsError

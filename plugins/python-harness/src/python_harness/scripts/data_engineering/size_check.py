@@ -38,6 +38,11 @@ class UnknownDtypeError(ContractViolationError):
         super().__init__(f'{dtype!r} is not a NumPy dtype name')
 
 
+class QuantityTooLargeError(ContractViolationError):
+    def __init__(self) -> None:
+        super().__init__('quantities are too large to estimate')
+
+
 class SizeEstimate(msgspec.Struct, frozen=True, kw_only=True, omit_defaults=True):
     quantity: str
     elements: int
@@ -62,7 +67,7 @@ def readable_bytes(size: int) -> str:
 def is_dtype_name(name: str) -> bool:
     try:
         np.dtype(name)
-    except TypeError:
+    except (TypeError, SyntaxError):
         return False
     return True
 
@@ -208,11 +213,18 @@ def check_quantities(arguments: argparse.Namespace) -> None:
         raise NegativeQuantityError(negative)
 
 
+def estimate(arguments: argparse.Namespace) -> Sized:
+    try:
+        return arguments.estimator(arguments)
+    except OverflowError as overflow:
+        raise QuantityTooLargeError from overflow
+
+
 def build_report(argv: list[str]) -> Report[SizeEstimate]:
     arguments = build_parser().parse_args(argv)
     check_quantities(arguments)
     check_dtypes(arguments)
-    sized = arguments.estimator(arguments)
+    sized = estimate(arguments)
     return Report(
         command=f'{COMMAND} {arguments.subcommand}',
         arguments=describe_arguments(arguments),
