@@ -36,7 +36,7 @@ It prints one line per command, `ID outcome exit=N 1.2s`, and for a command that
 
 ## Receipts
 
-One `receipts` row per run, appended: `id` (a serial number), `slug`, `command_id`, `argv`, `outcome` (`pass`, `fail`, `timeout`, `not-found`), `exit` (null for `timeout` and `not-found`), `duration_ms`, `stdout_tail` and `stderr_tail` (last 40 lines, at most 4000 characters), `digest` (SHA-256 of the full stdout plus stderr), `head`, `phase`, `at`. A run that HEAD moved under is recorded as `fail`. `not-found` means the program in argv does not exist.
+One `receipts` row per run, appended: `id` (a serial number), `slug`, `command_id`, `argv`, `outcome` (`pass`, `fail`, `timeout`, `not-found`, `refused`, `undecodable`), `exit` (null for `timeout`, `not-found`, `refused` and `undecodable`), `duration_ms`, `stdout_tail` and `stderr_tail` (last 40 lines, at most 4000 characters), `digest` (SHA-256 of the full stdout plus stderr), `head`, `phase`, `at`. A run that HEAD moved under is recorded as `fail`. `not-found` means the program in argv does not exist, `refused` that it could not be launched (it is not executable, or the argv holds a NUL), and `undecodable` that its output is not text in the default encoding.
 
 ## Status
 

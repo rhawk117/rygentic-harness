@@ -1,5 +1,7 @@
 """The `contract` tool's service and `verify run`, moved from verification.py's tests."""
 
+import errno
+import os
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -42,6 +44,7 @@ class Recorded:
     id: str
     argv: list[str]
     outcome: str
+    exit: int | None
     head: str | None
     phase: str
     stdout_tail: str
@@ -87,6 +90,7 @@ class Workspace:
                     id=row.command_id,
                     argv=row.argv,
                     outcome=row.outcome,
+                    exit=row.exit,
                     head=row.head,
                     phase=row.phase,
                     stdout_tail=row.stdout_tail,
@@ -394,3 +398,58 @@ class TestVerifyRunAllowlist:
         assert exit_info.value.code == REJECTED
         assert not workspace.root.joinpath(self.MARKER).exists()
         assert workspace.receipts() == []
+
+
+class TestLaunchAndDecodeFailures:
+    NOT_TEXT = 'import sys; sys.stdout.buffer.write(bytes([255, 254]))'
+    STORED = (
+        ('1-passes', 'pass'),
+        ('2-not-executable', 'refused'),
+        ('3-not-text', 'undecodable'),
+        ('4-nul-in-argument', 'refused'),
+        ('5-passes', 'pass'),
+    )
+
+    @pytest.fixture
+    def approved(self, workspace: Workspace, tmp_path: Path) -> Outcome:
+        not_executable = tmp_path.joinpath('not-executable')
+        not_executable.write_text('not executable\n', encoding='utf-8')
+        return workspace.approve(
+            {'id': '1-passes', 'argv': python('print(1)')},
+            {'id': '2-not-executable', 'argv': [str(not_executable)]},
+            {'id': '3-not-text', 'argv': python(self.NOT_TEXT)},
+            {'id': '4-nul-in-argument', 'argv': python('print(1)', 'a\0b')},
+            {'id': '5-passes', 'argv': python('print(2)')},
+        )
+
+    @pytest.mark.usefixtures('approved')
+    @pytest.mark.parametrize(
+        ('command_id', 'stored', 'cause'),
+        [
+            pytest.param(
+                '2-not-executable', 'refused', os.strerror(errno.EACCES), id='refused-launch'
+            ),
+            pytest.param(
+                '3-not-text', 'undecodable', "can't decode byte 0xff", id='undecodable-output'
+            ),
+        ],
+    )
+    def test_a_command_that_cannot_launch_or_decode_is_stored_as_an_outcome_of_its_own(
+        self, workspace: Workspace, command_id: str, stored: str, cause: str
+    ) -> None:
+        outcome = workspace.run('--id', command_id)
+
+        receipt = workspace.receipts()[0]
+        assert (outcome.code, receipt.outcome, receipt.exit) == (FAILED, stored, None)
+        assert cause in receipt.stderr_tail.splitlines()[-1]
+
+    @pytest.mark.usefixtures('approved')
+    def test_one_batch_stores_a_receipt_for_every_command_around_the_ones_that_cannot_run(
+        self, workspace: Workspace
+    ) -> None:
+        outcome = workspace.run('--all')
+
+        assert outcome.code == FAILED
+        assert [(receipt.id, receipt.outcome) for receipt in workspace.receipts()] == list(
+            self.STORED
+        )

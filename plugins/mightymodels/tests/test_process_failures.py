@@ -6,6 +6,7 @@ from operator import methodcaller
 from pathlib import Path
 
 import pytest
+from mightymodels_plugin.core.declarative import WORD_LIMIT
 from mightymodels_plugin.core.process import FailedRun, FailureKind, ProcessRunner, process_runner
 from mightymodels_plugin.core.workspace import (
     GIT_NOT_FOUND,
@@ -19,7 +20,12 @@ from mightymodels_plugin.core.workspace import (
     Workspace,
     git_at,
 )
-from mightymodels_plugin.tools.contract.executor import execute, receipt_for, with_cause
+from mightymodels_plugin.tools.contract.executor import (
+    execute,
+    failure_outcome,
+    receipt_for,
+    with_cause,
+)
 from mightymodels_plugin.tools.contract.schema import ApprovedCommand, Outcome, Phase
 
 PRINTED = 'printed before the timeout'
@@ -103,6 +109,16 @@ def failing(tmp_path: Path) -> FailingPrograms:
 
 
 class TestRunnerFailures:
+    NUL_LAUNCHES = (
+        pytest.param((sys.executable, '-c', 'pass', 'a\0b'), None, id='nul-in-argument'),
+        pytest.param(('pro\0gram',), None, id='nul-in-program'),
+        pytest.param((sys.executable, '-c', 'pass'), Path('work\0ing'), id='nul-in-cwd'),
+    )
+
+    @pytest.fixture
+    def runner(self) -> ProcessRunner:
+        return process_runner()
+
     @pytest.mark.parametrize('kind', KINDS)
     def test_a_run_that_fails_comes_back_as_a_failure_of_its_own_kind(
         self, failing: FailingPrograms, kind: FailureKind
@@ -122,6 +138,15 @@ class TestRunnerFailures:
             stdout=f'{PRINTED}\n',
             stderr=f'{WARNED}\n',
         )
+
+    @pytest.mark.parametrize(('argv', 'cwd'), NUL_LAUNCHES)
+    def test_a_launch_that_holds_a_nul_comes_back_refused_and_names_the_null_byte(
+        self, runner: ProcessRunner, argv: tuple[str, ...], cwd: Path | None
+    ) -> None:
+        run = runner.run(argv, timeout=KIND_ONLY_TIMEOUT, cwd=cwd)
+
+        assert isinstance(run, FailedRun)
+        assert (run.kind, 'embedded null byte' in run.detail) == (FailureKind.REFUSED, True)
 
 
 class TestGitFailures:
@@ -227,13 +252,13 @@ class TestExecuteFailures:
             ),
             pytest.param(
                 FailureKind.REFUSED,
-                Outcome.FAILED,
+                Outcome.REFUSED,
                 os.strerror(errno.EACCES),
                 id='refused-launch',
             ),
             pytest.param(
                 FailureKind.UNDECODABLE,
-                Outcome.FAILED,
+                Outcome.UNDECODABLE,
                 "can't decode byte 0xff",
                 id='undecodable-output',
             ),
@@ -276,3 +301,13 @@ class TestExecuteFailures:
     )
     def test_the_cause_is_the_last_line_of_stderr(self, captured: str, stderr: str) -> None:
         assert with_cause(captured, 'cause') == stderr
+
+
+class TestOutcomes:
+    def test_every_failure_kind_has_an_outcome_of_its_own_and_none_is_fail(self) -> None:
+        outcomes = {failure_outcome(kind) for kind in FailureKind}
+
+        assert (len(outcomes), Outcome.FAILED in outcomes) == (len(FailureKind), False)
+
+    def test_every_outcome_fits_the_word_column_it_is_stored_in(self) -> None:
+        assert [outcome for outcome in Outcome if len(outcome) > WORD_LIMIT] == []

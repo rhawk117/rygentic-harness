@@ -61,6 +61,8 @@ class Outcome(StrEnum):
     FAILED = 'fail'
     TIMEOUT = 'timeout'
     NOT_FOUND = 'not-found'
+    REFUSED = 'refused'
+    UNDECODABLE = 'undecodable'
 
 
 class ContractCommand(RequestModel):

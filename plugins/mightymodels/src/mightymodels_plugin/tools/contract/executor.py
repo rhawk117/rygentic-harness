@@ -41,7 +41,9 @@ def failure_outcome(kind: FailureKind) -> Outcome:
         return Outcome.TIMEOUT
     if kind is FailureKind.NOT_FOUND:
         return Outcome.NOT_FOUND
-    return Outcome.FAILED
+    if kind is FailureKind.REFUSED:
+        return Outcome.REFUSED
+    return Outcome.UNDECODABLE
 
 
 def with_cause(captured: str, cause: str) -> str:

@@ -4,7 +4,8 @@
 which every caller has to name. It returns a `CompletedRun`, or a `FailedRun` whose `kind` says
 which of four things happened: the wait ran out, the executable is missing, the system refused
 the launch, or the output is not text in the default encoding. None of the four leaves `run` as
-an exception, and `detail` carries the cause in words.
+an exception, and `detail` carries the cause in words. A program, an argument or a working
+directory that holds a NUL is a refused launch too.
 
 A finished run is decoded as `text=True` decodes it. What a timed-out run printed before it was
 killed is decoded with the same encoding and the same newline handling, except that bytes which
@@ -43,7 +44,7 @@ class FailedRun:
 
 
 type RunOutcome = CompletedRun | FailedRun
-type LaunchError = subprocess.TimeoutExpired | OSError | UnicodeDecodeError
+type LaunchError = subprocess.TimeoutExpired | OSError | ValueError
 type Captured = bytes | str | None
 
 
@@ -89,7 +90,7 @@ class SubprocessRunner:
                 timeout=timeout,
                 check=False,
             )
-        except (subprocess.TimeoutExpired, OSError, UnicodeDecodeError) as error:
+        except (subprocess.TimeoutExpired, OSError, ValueError) as error:
             return failed_run(error)
         return CompletedRun(
             exit=completed.returncode, stdout=completed.stdout, stderr=completed.stderr
