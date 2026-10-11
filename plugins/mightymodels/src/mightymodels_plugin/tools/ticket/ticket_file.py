@@ -2,9 +2,12 @@
 
 Two levels of mappings, scalars, and lists of scalars, with trailing comments. A hand edit
 that stays in the subset parses; anything else is refused with its line number rather than
-misread.
+misread. A line ends at a newline, a carriage return or the pair, and at nothing else, so a
+form feed or a Unicode line separator stays in the line that holds it, and a line is indented
+with spaces alone.
 """
 
+import io
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -39,6 +42,16 @@ class SubsetError(StateError):
 class TabIndentationError(SubsetError):
     def __init__(self, number: int) -> None:
         super().__init__(number, 'the indentation holds a tab; indent with two spaces per level')
+
+
+class IndentationCharacterError(SubsetError):
+    def __init__(self, number: int, character: str) -> None:
+        super().__init__(
+            number,
+            f'the indentation holds U+{ord(character):04X}, which is not a space; '
+            'indent with two spaces per level',
+        )
+        self.character = character
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -112,13 +125,19 @@ def source_line(number: int, raw: str) -> Line | None:
     if '\t' in content.removesuffix(content.lstrip()):
         raise TabIndentationError(number)
     indent = len(content) - len(content.lstrip(' '))
+    if (character := content[indent]).isspace():
+        raise IndentationCharacterError(number, character)
     if indent % INDENT:
         raise SubsetError(number, 'indentation must be a multiple of two spaces')
     return Line(number=number, indent=indent, text=content.strip())
 
 
+def raw_lines(source: str) -> list[str]:
+    return [line.removesuffix('\n') for line in io.StringIO(source, newline=None)]
+
+
 def source_lines(source: str) -> list[Line]:
-    numbered = enumerate(source.splitlines(), start=1)
+    numbered = enumerate(raw_lines(source), start=1)
     return [line for number, raw in numbered if (line := source_line(number, raw)) is not None]
 
 
@@ -211,7 +230,7 @@ def parse(source: str) -> Tree:
 
 
 def with_context(source: str, context: Sequence[str]) -> str:
-    raw = source.splitlines()
+    raw = raw_lines(source)
     lines = source_lines(source)
     after_file = len(raw) + 1
     top_level = [line for line in lines if line.indent == 0]

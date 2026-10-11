@@ -46,6 +46,12 @@ class TestParse:
             pytest.param('a:\n\tb: 1\n', 2, 'indentation holds a tab', id='tab-alone'),
             pytest.param('a:\n  \tb: 1\n', 2, 'indentation holds a tab', id='tab-after-spaces'),
             pytest.param('a:\n\t  b: 1\n', 2, 'indentation holds a tab', id='tab-before-spaces'),
+            pytest.param('a:\n\xa0b: 1\n', 2, 'indentation holds U+00A0', id='no-break-space'),
+            pytest.param('a:\n\u2003b: 1\n', 2, 'indentation holds U+2003', id='em-space'),
+            pytest.param('a:\n\x0cb: 1\n', 2, 'indentation holds U+000C', id='form-feed'),
+            pytest.param(
+                'a:\n \xa0b: 1\n', 2, 'indentation holds U+00A0', id='space-then-no-break-space'
+            ),
             pytest.param('  a: 1\n', 1, 'unexpected indentation', id='indented-first-line'),
             pytest.param('a: 1\n    b: 2\n', 2, 'unexpected indentation', id='indent-after-scalar'),
             pytest.param('a:\n  b: 1\n    c: 2\n', 3, 'unexpected indentation', id='too-deep'),
@@ -82,6 +88,50 @@ class TestParse:
     def test_a_tab_inside_a_value_is_kept_in_the_value(self, source: str) -> None:
         assert parse(source) == {'a': 'x\ty'}
 
+    @pytest.mark.parametrize(
+        'source',
+        [
+            pytest.param('a: 1\n\xa0\nb: 2\n', id='no-break-space-in-a-blank-line'),
+            pytest.param('a: 1\n\xa0# note\nb: 2\n', id='no-break-space-in-a-comment-line'),
+        ],
+    )
+    def test_a_no_break_space_in_a_line_that_holds_no_key_is_skipped_with_the_line(
+        self, source: str
+    ) -> None:
+        assert parse(source) == {'a': 1, 'b': 2}
+
+    @pytest.mark.parametrize(
+        'source', [pytest.param('a: x\xa0y\n', id='no-break-space-inside-a-value')]
+    )
+    def test_a_no_break_space_inside_a_value_is_kept_in_the_value(self, source: str) -> None:
+        assert parse(source) == {'a': 'x\xa0y'}
+
+    @pytest.mark.parametrize(
+        ('source', 'parsed'),
+        [
+            pytest.param('a: x\x0cb: 1\n', {'a': 'x\x0cb: 1'}, id='form-feed-inside-a-value'),
+            pytest.param(
+                'a: "x\u2028y"\n', {'a': 'x\u2028y'}, id='line-separator-inside-a-quoted-value'
+            ),
+        ],
+    )
+    def test_a_character_that_is_not_a_newline_stays_in_the_value_that_holds_it(
+        self, source: str, parsed: dict[str, str]
+    ) -> None:
+        assert parse(source) == parsed
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            pytest.param('a: 1\r\nb: 2\r\n', id='crlf-line-ends'),
+            pytest.param('a: 1\rb: 2\r', id='cr-line-ends'),
+        ],
+    )
+    def test_a_carriage_return_ends_a_line_with_or_without_a_newline_after_it(
+        self, source: str
+    ) -> None:
+        assert parse(source) == {'a': 1, 'b': 2}
+
 
 class TestWithContext:
     def test_replaces_the_context_block_between_its_neighbours(self) -> None:
@@ -96,3 +146,8 @@ class TestWithContext:
         source = 'task: "t"\ncontext:\n  - "old"\n'
 
         assert with_context(source, ['a', 'b']) == 'task: "t"\ncontext:\n  - "a"\n  - "b"\n'
+
+    def test_keeps_a_form_feed_in_a_line_it_does_not_replace(self) -> None:
+        source = 'task: "t"\ncontext:\n  - "old"\nsummary: a\x0cb\n'
+
+        assert with_context(source, ['new']) == 'task: "t"\ncontext:\n  - "new"\nsummary: a\x0cb\n'

@@ -579,6 +579,34 @@ class TestSessionStartExport:
         assert capsys.readouterr() == ('', '')
 
 
+class TestSessionStartExportWithALineBoundaryInTheName:
+    LINE_BOUNDARIES = (
+        pytest.param('\n', id='newline-in-the-name'),
+        pytest.param('\x0c', id='form-feed-in-the-name'),
+        pytest.param('\r', id='carriage-return-in-the-name'),
+    )
+
+    @pytest.fixture(params=LINE_BOUNDARIES)
+    def data_directory(self, request: pytest.FixtureRequest, tmp_path: Path) -> Path:
+        return tmp_path.joinpath(f'the plugin{request.param}data directory')
+
+    @pytest.fixture
+    def env_file_after_one_run(self, hook_env_file: Path) -> KeptFile:
+        main(SESSION_START)
+        return kept(hook_env_file)
+
+    def test_a_second_run_leaves_the_env_file_as_the_first_run_left_it_holding_one_export(
+        self, data_directory: Path, env_file_after_one_run: KeptFile
+    ) -> None:
+        main(SESSION_START)
+
+        assert env_file_after_one_run.is_as_it_was()
+        assert shlex.split(env_file_after_one_run.content.decode()) == [
+            'export',
+            f'{SESSION_DATA_VARIABLE}={data_directory}',
+        ]
+
+
 class TestSessionStartWithAVariableMissing:
     @pytest.fixture
     def without_a_data_directory(self, env_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
