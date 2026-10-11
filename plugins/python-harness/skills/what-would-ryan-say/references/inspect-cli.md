@@ -1,6 +1,6 @@
 # `python-harness` CLI and MCP tools reference
 
-Two commands run on the CLI and four tools run on the `python-harness` MCP server. Each returns one compact JSON document. Paths in output are relative to the project root and use `/`, except `survey.root` and the config paths inside the gate's argv, which are absolute.
+Two commands run on the CLI, and the `python-harness` MCP server has eight tools: two documentation tools and six that read the project. The four project tools below are the ones the review calls. Each command and tool returns one compact JSON document. Paths in output are relative to the project root and use `/`, except `survey.root` and the config paths inside the gate's argv, which are absolute.
 
 ## CLI commands
 
@@ -18,9 +18,11 @@ Claude Code names each tool `mcp__plugin_python-harness_python-harness__<tool>`.
 | Tool | Inputs | Use |
 | --- | --- | --- |
 | `plan_review_surface` | `paths` (list), or `diff_base` with optional `diff_head` | Review surface as import-graph clusters, one pylens dispatch each |
-| `collect_python_facts` | `paths` (list, required), `with_function_shapes` (boolean, default false) | Mechanical AST facts per module |
-| `map_python_calls` | `paths` (list, required), `symbol` (optional) | Per-module coupling metrics and reference tallies; `symbol` lists one symbol's call sites |
+| `collect_python_facts` | `paths` (list, required), `with_function_shapes` (boolean, default false), `detail`, `budget` | Mechanical AST facts per module |
+| `map_python_calls` | `paths` (list, required), `symbol` (optional), `detail`, `budget` | Per-module coupling metrics and reference tallies; `symbol` lists one symbol's call sites |
 | `check_citations` | exactly one of `path` and `text` | Checks every `path.py:line` citation and its quote in a Markdown document |
+
+`collect_python_facts` and `map_python_calls` answer inside a budgeted envelope; the other project tools return their plain document, with the workspace diagnostics under a top-level `diagnostics` key, and take no `detail` or `budget`. Always pass `detail: full` and `budget: 20000` to the two budgeted tools and read the document under `result`: the default is a summary that leaves facts out. When `degraded` is true, `result` holds a smaller document than the one asked for; halve the `paths` list and call again.
 
 A missing target path is a tool error, never an empty result. Files that cannot be read or parsed (bad encoding, syntax errors) are listed under `unparsable` instead of stopping the tool. `check_citations` returns its report whether or not the citations hold; read `passed`.
 
@@ -66,6 +68,12 @@ A cluster is a connected group of surface modules that import each other, split 
 ## collect_python_facts
 
 ```
+{detail: "full" | "summary" | "counts", budget, tokens, truncated, degraded, result: <document>, workspace}
+```
+
+`detail` is the level of the document under `result`, which is the level that fit, not always the one asked for. `budget` is the token budget; it must be at least 256, and the default is 4000. `tokens` is the estimated size of the whole response. `truncated` is true when `result` leaves out items or when `degraded` is true. `degraded` is true when the requested detail did not fit the budget and the tool stepped down (`full` to `summary` to `counts`). A `counts` response that still does not fit is a tool error. `workspace` holds the workspace diagnostics. The `detail` argument is `full` (every fact), `summary` (the default: counts, the highest-ranked modules and a `narrowing` entry with the arguments for a full call) or `counts` (totals only). The document under `result` at `full` is:
+
+```
 {modules: [{path, line_count, counts: {kind: n},
             facts: [{line, symbol: "Class.method" | "function" | null, detail: {kind, ...fields}}]}],
  unparsable[]}
@@ -79,7 +87,13 @@ Modules come out in path order, each once, however the `paths` overlap. Names ma
 
 ## map_python_calls
 
-Summary (no `symbol`):
+```
+{detail: "full" | "summary" | "counts", budget, tokens, truncated, degraded, result: <document>, workspace}
+```
+
+The envelope keys, `detail` values, defaults and budget minimum are those of `collect_python_facts` above. At `summary`, `result` holds `counts`, the highest-ranked `modules` (without `symbol`), `top_referenced_symbols` and a `narrowing` entry with the arguments for a full call; at `counts` it holds totals only. At `full`, `result` is one of the two documents below.
+
+Document under `result` without `symbol`:
 
 ```
 {modules: [{metrics: {path, module, fan_in, fan_out, instability, public_symbols, private_symbols,
@@ -93,7 +107,7 @@ Summary (no `symbol`):
 
 `external` holds the symbols other files reference, with who references them and how; `internal_only` names symbols used only inside their own module; `unreferenced` names symbols nothing references.
 
-Drill-down (`symbol`, a bare name or `module.name`):
+Document under `result` with `symbol` (a bare name or `module.name`):
 
 ```
 {name, symbols: [{definition: {module, path, name, kind, line, is_public},
