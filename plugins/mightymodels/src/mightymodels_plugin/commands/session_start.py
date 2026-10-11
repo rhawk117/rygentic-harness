@@ -7,10 +7,10 @@ subagent's included. The command appends one line there, the export of the data 
 the file already holds that line, and does nothing else: it creates no directory, prints nothing
 and loads no database or server package. A last line that has no newline is read as a whole line:
 when it is the export the file is left as it is, and when it is anything else the command ends it
-with a newline first, so the export starts a line of its own. The file is read with no newline
-translation and the export is looked for as the text the command writes, where a line starts, so
-one whose directory name holds a newline, a form feed or a carriage return is found as well. When
-the variable or the env file is missing it says so on standard error and exits 0.
+with a newline first, so the export starts a line of its own. The file is read and written with no
+newline translation and the export is looked for as the text the command writes, where a line
+starts, so one whose directory name holds a newline, a form feed or a carriage return is found as
+well. When the variable or the env file is missing it says so on standard error and exits 0.
 """
 
 from collections.abc import Mapping
@@ -50,6 +50,6 @@ def export_data_directory(environ: Mapping[str, str]) -> int:
     whole_lines = f'{held}{missing_newline}'
     if whole_lines.startswith(line) or f'\n{line}' in whole_lines:
         return 0
-    with exports.open('a', encoding='utf-8') as file:
+    with exports.open('a', encoding='utf-8', newline='') as file:
         file.write(f'{missing_newline}{line}')
     return 0
