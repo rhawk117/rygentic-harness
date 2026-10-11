@@ -7,41 +7,40 @@ standard output.
 """
 
 import asyncio
-import io
 import json
 import os
 import shlex
-import sqlite3
-import sys
-from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 import sqlalchemy as sql
-from mightymodels_plugin.cli import build_parser, main
+from mightymodels_plugin.cli import build_parser
 from mightymodels_plugin.commands.session_start import ENV_FILE_VARIABLE
+from mightymodels_plugin.commands.tests.hook_inputs import (
+    OTHER_AGENTS,
+    REPORT,
+    SKIPPED,
+    UNREADABLE_INPUTS,
+    Hook,
+    hook_input,
+    scout_stop,
+)
 from mightymodels_plugin.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
-from mightymodels_plugin.core.database import DATABASE_NAME, Database
+from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import REPORT_LIMIT
 from mightymodels_plugin.core.repository_key import spool_file_prefix
-from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.tests.support import GitRunner
-from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE, Workspace
+from mightymodels_plugin.core.workspace import Workspace
 from mightymodels_plugin.tools.similarity.schema import SimilarityKind
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY, SPOOL_FILE_BYTES
 from mightymodels_plugin.tools.similarity.tables import ScoutReportRow
-from mightymodels_plugin.tools.task.schema import Implementer, TaskStart
-from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.tests.support import (
     StateServer,
     ToolCall,
     repository_key_of,
     text_of,
 )
-from mightymodels_plugin.tools.ticket.schema import TicketAnswers
-from mightymodels_plugin.tools.ticket.service import TicketService
 
 PLUGIN = Path(__file__).parent.parent
 HOOKS = PLUGIN.joinpath('hooks', 'hooks.json')
@@ -51,93 +50,12 @@ SUBCOMMANDS_OF_WRAPPERS_WITHOUT_ARGUMENTS = MappingProxyType(
     {'mightymodels-dispatch-hook': 'dispatch-hook'}
 )
 
-SKIPPED = 'mightymodels hook did nothing: '
-SLUG = 'retry-queue'
-TICKET = Slug(SLUG)
-OTHER_SLUG = 'retry-queue-again'
-BRANCH = 'fix/retry'
-REPORT = '<report><verdict>VERIFIED</verdict><findings>the drain loop sleeps</findings></report>'
 SEARCH: ToolCall = (
     'similarity',
     {'request': {'action': 'search', 'query': 'the drain loop sleeps'}},
 )
 SCOUTS = ('mightymodels:code-scout', 'mightymodels:web-scout')
 IMPLEMENTERS = ('mightymodels:engineer', 'mightymodels:architect')
-OTHER_AGENTS = (
-    'mightymodels:qualitylens',
-    'mightymodels:wingman',
-    'code-scout',
-    'engineer',
-    'other:engineer',
-    'general-purpose',
-    '',
-)
-ANSWERS = TicketAnswers.model_validate(
-    {
-        'summary': 'Retry queue drains slowly',
-        'scope': 'med',
-        'compaction': False,
-        'branch': BRANCH,
-        'context': ['drain loop sleeps between batches'],
-    }
-)
-DONE_WITH_A_COMMIT = '## ASKED\nobjective: drain\n\n## DONE\ncommit: 0123abc\n'
-DONE_WITHOUT_A_COMMIT = '## ASKED\nobjective: drain\n\n## DONE\nI did it.\n'
-ENGINEER_STOP_HOLDING = '{{"agent_type": "mightymodels:engineer", "elapsed": {value}}}'
-UNREADABLE_INPUTS = (
-    pytest.param('', id='empty'),
-    pytest.param('not json', id='not-json'),
-    pytest.param('[]', id='not-an-object'),
-    pytest.param(ENGINEER_STOP_HOLDING.format(value='NaN'), id='nan'),
-    pytest.param(ENGINEER_STOP_HOLDING.format(value='Infinity'), id='infinity'),
-    pytest.param(ENGINEER_STOP_HOLDING.format(value='1e400'), id='number-out-of-range'),
-    pytest.param(ENGINEER_STOP_HOLDING.format(value='"\\ud800"'), id='escaped-lone-surrogate'),
-    pytest.param(ENGINEER_STOP_HOLDING.format(value='"\ud800"'), id='raw-lone-surrogate'),
-)
-
-
-def hook_input(event: str, agent_type: str | None = None, **given: object) -> str:
-    fields = {'hook_event_name': event, 'session_id': 's1', 'cwd': '/ignored'}
-    return json.dumps(fields | ({} if agent_type is None else {'agent_type': agent_type}) | given)
-
-
-def scout_stop(agent_type: str = 'mightymodels:code-scout', **given: object) -> str:
-    stop = {'agent_id': 'a1b2', 'stop_hook_active': False, 'last_assistant_message': REPORT}
-    return hook_input('SubagentStop', agent_type, **(stop | given))
-
-
-def implementer_stop(agent_type: str = 'mightymodels:engineer', **given: object) -> str:
-    stop = {'stop_hook_active': False, 'last_assistant_message': 'done'}
-    return hook_input('SubagentStop', agent_type, **(stop | given))
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Hook:
-    repository: Path
-    monkeypatch: pytest.MonkeyPatch
-    capsys: pytest.CaptureFixture[str]
-
-    def run(self, command: str, text: str) -> tuple[int, str, str]:
-        self.monkeypatch.setattr(sys, 'stdin', io.StringIO(text))
-        code = main([command])
-        captured = self.capsys.readouterr()
-        return code, captured.out, captured.err
-
-
-@pytest.fixture
-def hook(
-    in_the_repository: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> Hook:
-    return Hook(repository=in_the_repository, monkeypatch=monkeypatch, capsys=capsys)
-
-
-@pytest.fixture
-def in_the_repository(
-    repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
-    monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))
-    monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(repository))
-    return repository
 
 
 @pytest.fixture
@@ -443,227 +361,6 @@ class TestSubagentHandback:
 
         assert (code, err) == (0, '')
         assert json.loads(file.read_text(encoding='utf-8'))['report'] == message
-
-
-class TestTheStateOfATicket:
-    @pytest.fixture
-    def on_the_branch(
-        self,
-        in_the_repository: Path,
-        ticket_service: TicketService,
-        git: GitRunner,
-    ) -> Slug:
-        git(in_the_repository, 'symbolic-ref', 'HEAD', f'refs/heads/{BRANCH}')
-        ticket_service.write(TICKET, ANSWERS)
-        ticket_service.validate(TICKET)
-        return TICKET
-
-    @pytest.fixture
-    def engineer_on_t1(self, on_the_branch: Slug, task_service: TaskService) -> None:
-        task_service.start(
-            on_the_branch, 'T1', TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
-        )
-
-    @pytest.fixture
-    def brief(self, repository_workspace: Workspace) -> Path:
-        return repository_workspace.task_brief(TICKET, 1)
-
-    def write_brief(self, brief: Path, text: str) -> None:
-        brief.parent.mkdir(parents=True, exist_ok=True)
-        brief.write_text(text, encoding='utf-8')
-
-
-@pytest.mark.usefixtures('engineer_on_t1')
-class TestCompletionGate(TestTheStateOfATicket):
-    def test_without_a_brief_it_blocks_naming_the_task_and_the_missing_brief(
-        self, hook: Hook
-    ) -> None:
-        code, out, err = hook.run('completion-gate', implementer_stop())
-        decision = json.loads(out)
-
-        assert (code, err) == (0, '')
-        assert decision['decision'] == 'block'
-        assert 'T1' in decision['reason']
-        assert 'task-01.md is missing' in decision['reason']
-
-    def test_with_a_done_half_naming_no_commit_it_blocks_naming_what_is_missing(
-        self, hook: Hook, brief: Path
-    ) -> None:
-        self.write_brief(brief, DONE_WITHOUT_A_COMMIT)
-
-        _, out, _ = hook.run('completion-gate', implementer_stop())
-        reason = json.loads(out)['reason']
-
-        assert 'T1' in reason
-        assert 'has no DONE half naming a commit' in reason
-
-    def test_a_second_stop_after_the_block_is_let_through(self, hook: Hook) -> None:
-        first = hook.run('completion-gate', implementer_stop())
-        second = hook.run('completion-gate', implementer_stop(stop_hook_active=True))
-
-        assert json.loads(first[1])['decision'] == 'block'
-        assert second == (0, '', '')
-
-    def test_with_a_done_half_naming_a_commit_it_lets_the_stop_through(
-        self, hook: Hook, brief: Path
-    ) -> None:
-        self.write_brief(brief, DONE_WITH_A_COMMIT)
-
-        assert hook.run('completion-gate', implementer_stop()) == (0, '', '')
-
-    def test_a_worker_that_started_nothing_is_let_through(self, hook: Hook) -> None:
-        assert hook.run('completion-gate', implementer_stop('mightymodels:architect')) == (
-            0,
-            '',
-            '',
-        )
-
-    @pytest.mark.parametrize('agent_type', OTHER_AGENTS)
-    def test_another_agent_type_is_let_through(self, agent_type: str, hook: Hook) -> None:
-        assert hook.run('completion-gate', implementer_stop(agent_type)) == (0, '', '')
-
-    @pytest.mark.parametrize('text', UNREADABLE_INPUTS)
-    def test_unreadable_input_is_let_through_and_says_why(self, text: str, hook: Hook) -> None:
-        code, out, err = hook.run('completion-gate', text)
-
-        assert (code, out) == (0, '')
-        assert err.startswith(SKIPPED)
-
-    def test_off_the_ticket_branch_it_does_nothing(self, hook: Hook, git: GitRunner) -> None:
-        git(hook.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
-
-        assert hook.run('completion-gate', implementer_stop()) == (0, '', '')
-
-
-def snapshot_files(repository: Path) -> list[str]:
-    handoffs = repository.joinpath('.mightymodels', SLUG, 'handoffs')
-    return sorted(path.name for path in handoffs.glob('*')) if handoffs.exists() else []
-
-
-@pytest.mark.usefixtures('on_the_branch')
-class TestPreCompactSnapshot(TestTheStateOfATicket):
-    @pytest.mark.parametrize('trigger', ['manual', 'auto'])
-    def test_it_writes_the_snapshot_of_the_ticket_on_the_checked_out_branch(
-        self, trigger: str, hook: Hook
-    ) -> None:
-        code, out, err = hook.run('pre-compact', hook_input('PreCompact', trigger=trigger))
-        record = json.loads(
-            hook.repository.joinpath('.mightymodels', SLUG, 'handoffs', 'snapshot.json').read_text(
-                encoding='utf-8'
-            )
-        )
-
-        assert (code, out, err) == (0, '', '')
-        assert snapshot_files(hook.repository) == ['snapshot.json', 'snapshot.md']
-        assert record['slug'] == SLUG
-        assert record['repository']['branch'] == BRANCH
-
-    def test_on_another_branch_it_writes_nothing(self, hook: Hook, git: GitRunner) -> None:
-        git(hook.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
-
-        assert hook.run('pre-compact', hook_input('PreCompact')) == (0, '', '')
-        assert snapshot_files(hook.repository) == []
-
-    def test_with_a_detached_head_it_writes_nothing(self, hook: Hook, git: GitRunner) -> None:
-        git(
-            hook.repository,
-            '-c',
-            'user.name=t',
-            '-c',
-            'user.email=t@example.com',
-            'commit',
-            '--allow-empty',
-            '-q',
-            '-m',
-            'base',
-        )
-        git(hook.repository, 'checkout', '-q', '--detach')
-
-        assert hook.run('pre-compact', hook_input('PreCompact')) == (0, '', '')
-        assert snapshot_files(hook.repository) == []
-
-    def test_with_two_tickets_on_the_branch_it_writes_nothing(
-        self, hook: Hook, ticket_service: TicketService
-    ) -> None:
-        other = Slug(OTHER_SLUG)
-        ticket_service.write(other, ANSWERS)
-        ticket_service.validate(other)
-
-        assert hook.run('pre-compact', hook_input('PreCompact')) == (0, '', '')
-        assert snapshot_files(hook.repository) == []
-        assert not hook.repository.joinpath('.mightymodels', OTHER_SLUG, 'handoffs').exists()
-
-
-def database_with_another_schema_version(data_directory: Path) -> None:
-    data_directory.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(data_directory.joinpath(DATABASE_NAME))) as connection:
-        connection.execute('CREATE TABLE other (x INTEGER)')
-        connection.execute('PRAGMA user_version = 99')
-
-
-INPUTS = MappingProxyType(
-    {
-        'session-start': '{}',
-        'subagent-record': scout_stop(),
-        'completion-gate': implementer_stop(),
-        'pre-compact': hook_input('PreCompact'),
-    }
-)
-
-
-class TestWhenAHookCannotWork:
-    @pytest.fixture
-    def without_a_data_directory(
-        self, in_the_repository: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> Path:
-        monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
-        monkeypatch.setenv(ENV_FILE_VARIABLE, str(tmp_path.joinpath('session-env.sh')))
-        return in_the_repository
-
-    @pytest.fixture
-    def outside_a_repository(
-        self, in_the_repository: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> Path:
-        outside = in_the_repository.parent.joinpath('outside')
-        outside.mkdir()
-        monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(outside))
-        return outside
-
-    @pytest.fixture
-    def with_a_refused_database(self, data_directory: Path) -> Path:
-        database_with_another_schema_version(data_directory)
-        return data_directory.joinpath(DATABASE_NAME)
-
-    @pytest.mark.usefixtures('without_a_data_directory')
-    @pytest.mark.parametrize('command', INPUTS)
-    def test_without_a_data_directory_it_exits_0_blocking_nothing_and_says_why(
-        self, command: str, hook: Hook
-    ) -> None:
-        code, out, err = hook.run(command, INPUTS[command])
-
-        assert (code, out) == (0, '')
-        assert err.startswith(f'{SKIPPED}{PLUGIN_DATA_VARIABLE} is not set')
-
-    @pytest.mark.usefixtures('outside_a_repository')
-    @pytest.mark.parametrize('command', ['subagent-record', 'completion-gate', 'pre-compact'])
-    def test_outside_a_git_repository_it_exits_0_blocking_nothing_and_says_why(
-        self, command: str, hook: Hook, data_directory: Path
-    ) -> None:
-        code, out, err = hook.run(command, INPUTS[command])
-
-        assert (code, out) == (0, '')
-        assert 'is not inside a git repository' in err
-        assert not data_directory.joinpath(SPOOL_DIRECTORY).exists()
-
-    @pytest.mark.usefixtures('with_a_refused_database')
-    @pytest.mark.parametrize('command', ['completion-gate', 'pre-compact'])
-    def test_with_a_refused_database_it_exits_0_blocking_nothing_and_says_why(
-        self, command: str, hook: Hook
-    ) -> None:
-        code, out, err = hook.run(command, INPUTS[command])
-
-        assert (code, out) == (0, '')
-        assert 'schema version 99' in err
 
 
 WRAPPER = BIN.joinpath('mightymodels-hook')

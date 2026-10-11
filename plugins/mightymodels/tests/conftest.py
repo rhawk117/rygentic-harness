@@ -12,6 +12,7 @@ CONCEPTS = (
     'tools.investigation',
     'tools.crashout',
     'tools.similarity',
+    'commands',
 )
 
 
