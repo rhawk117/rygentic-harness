@@ -14,9 +14,9 @@ from typing import Annotated
 
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.tools.failed_fix.schema import FailedFixAction, FailedFixPayload
+from mightymodels_plugin.tools.failed_fix.schema import FailedFixAction, FailedFixRequest
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
     ServedState,
     ServiceHandler,
@@ -27,14 +27,8 @@ from mightymodels_plugin.tools.task.schema import TaskView
 from mightymodels_plugin.tools.task.service import TaskService
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class FailedFixCall:
-    slug: Slug
-    payload: FailedFixPayload
-
-
-def record_failed_fix(tasks: TaskService, call: FailedFixCall) -> TaskView:
-    return tasks.record_failed_fix(call.slug, call.payload.task_id, call.payload.change)
+def record_failed_fix(tasks: TaskService, request: FailedFixRequest) -> TaskView:
+    return tasks.record_failed_fix(request.slug, request.payload.task_id, request.payload.change)
 
 
 def lifespan_tasks(ctx: Context[ServedState]) -> TaskService:
@@ -46,24 +40,18 @@ ResolvedTasks = Annotated[TaskService, Resolve(lifespan_tasks)]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class FailedFixTool:
-    handlers: Mapping[FailedFixAction, ServiceHandler[TaskService, FailedFixCall, TaskView]]
+    handlers: Mapping[FailedFixAction, ServiceHandler[TaskService, FailedFixRequest, TaskView]]
 
-    def failed_fix(
-        self,
-        action: FailedFixAction,
-        slug: Slug,
-        payload: FailedFixPayload,
-        *,
-        tasks: ResolvedTasks,
-    ) -> TaskView:
+    def failed_fix(self, request: FailedFixRequest, *, tasks: ResolvedTasks) -> TaskView:
         """Record a fix that failed, with the hypothesis it tested; the fourth is refused."""
-        call = FailedFixCall(slug=slug, payload=payload)
-        return dispatch_to_service(self.handlers, action, call, service=tasks)
+        return dispatch_to_service(self.handlers, request.action, request, service=tasks)
 
 
 failed_fix_tool = FailedFixTool(
-    handlers=MappingProxyType({FailedFixAction.RECORD: record_failed_fix})
+    handlers=MappingProxyType(
+        {FailedFixAction.RECORD: ActionHandler(variant=FailedFixRequest, handle=record_failed_fix)}
+    )
 )
-failed_fix_action_tool: ActionTool[FailedFixAction, TaskService, FailedFixCall, TaskView] = (
+failed_fix_action_tool: ActionTool[FailedFixAction, TaskService, FailedFixRequest, TaskView] = (
     failed_fix_tool
 )

@@ -1,7 +1,7 @@
-"""The `similarity` tool: a handler checks the call's arguments and asks the similarity service.
+"""The `similarity` tool: its handler takes the request and asks the similarity service.
 
-`search` needs the text to look for, and `search_similar` is the one place that refuses a call
-without it. The kind narrows the search to one kind of row.
+`search` takes the text to look for, and the schema refuses a `search` without it. The kind
+narrows the search to one kind of row.
 
 `ResolvedSimilarity` is a plain assignment because the SDK does not see a `Resolve` marker behind
 a PEP 695 `type` alias and would put the parameter in the tool's schema.
@@ -15,32 +15,23 @@ from typing import Annotated
 from mcp.server.mcpserver import Context, Resolve
 
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
-    MissingArgumentsError,
     ServedState,
     ServiceHandler,
     dispatch_to_service,
     served_services,
 )
-from mightymodels_plugin.tools.request import ProseText
 from mightymodels_plugin.tools.similarity.schema import (
     SimilarityAction,
-    SimilarityKind,
+    SimilarityRequest,
     SimilarityView,
 )
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class SimilarityCall:
-    query: str | None
-    kind: SimilarityKind | None
-
-
-def search_similar(similarity: SimilarityService, call: SimilarityCall) -> SimilarityView:
-    if call.query is None:
-        raise MissingArgumentsError(SimilarityAction.SEARCH, 'a query holding the text to look for')
-    return similarity.search(call.query, call.kind)
+def search_similar(similarity: SimilarityService, request: SimilarityRequest) -> SimilarityView:
+    return similarity.search(request.query, request.kind)
 
 
 def lifespan_similarity(ctx: Context[ServedState]) -> SimilarityService:
@@ -53,25 +44,21 @@ ResolvedSimilarity = Annotated[SimilarityService, Resolve(lifespan_similarity)]
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SimilarityTool:
     handlers: Mapping[
-        SimilarityAction, ServiceHandler[SimilarityService, SimilarityCall, SimilarityView]
+        SimilarityAction, ServiceHandler[SimilarityService, SimilarityRequest, SimilarityView]
     ]
 
     def similarity(
-        self,
-        action: SimilarityAction,
-        query: ProseText | None = None,
-        kind: SimilarityKind | None = None,
-        *,
-        similar: ResolvedSimilarity,
+        self, request: SimilarityRequest, *, similar: ResolvedSimilarity
     ) -> SimilarityView:
         """Search the stored ledger entries, scout reports, review findings and crashouts."""
-        call = SimilarityCall(query=query, kind=kind)
-        return dispatch_to_service(self.handlers, action, call, service=similar)
+        return dispatch_to_service(self.handlers, request.action, request, service=similar)
 
 
 similarity_tool = SimilarityTool(
-    handlers=MappingProxyType({SimilarityAction.SEARCH: search_similar})
+    handlers=MappingProxyType(
+        {SimilarityAction.SEARCH: ActionHandler(variant=SimilarityRequest, handle=search_similar)}
+    )
 )
 similarity_action_tool: ActionTool[
-    SimilarityAction, SimilarityService, SimilarityCall, SimilarityView
+    SimilarityAction, SimilarityService, SimilarityRequest, SimilarityView
 ] = similarity_tool

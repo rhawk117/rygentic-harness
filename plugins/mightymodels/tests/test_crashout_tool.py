@@ -52,7 +52,9 @@ class TestRefusals:
         tree_after_the_connect: dict[str, bytes],
         database_activity: DatabaseActivity,
     ) -> None:
-        (refused,) = connected_server.call(('crashout', {'action': 'add', 'entry': entry}))
+        (refused,) = connected_server.call(
+            ('crashout', {'request': {'action': 'add', 'entry': entry}})
+        )
 
         with pytest.raises(ValidationError):
             CrashoutEntry.model_validate(entry)
@@ -63,14 +65,14 @@ class TestRefusals:
     def test_add_without_an_entry_says_what_it_needs(
         self, connected_server: StateServer, database_activity: DatabaseActivity
     ) -> None:
-        (refused,) = connected_server.call(('crashout', {'action': 'add'}))
+        (refused,) = connected_server.call(('crashout', {'request': {'action': 'add'}}))
 
         assert refused.is_error
-        assert 'add needs an entry holding the crashout' in text_of(refused)
+        assert 'request.add.entry\n  Field required' in text_of(refused)
         assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
 
     def test_an_unknown_action_is_refused(self, connected_server: StateServer) -> None:
-        (refused,) = connected_server.call(('crashout', {'action': 'prune'}))
+        (refused,) = connected_server.call(('crashout', {'request': {'action': 'prune'}}))
 
         assert refused.is_error
 
@@ -80,9 +82,9 @@ class TestTheTool:
         self, state_server: StateServer
     ) -> None:
         added, last, stats = state_server.call(
-            ('crashout', {'action': 'add', 'entry': ENTRY}),
-            ('crashout', {'action': 'last'}),
-            ('crashout', {'action': 'stats'}),
+            ('crashout', {'request': {'action': 'add', 'entry': ENTRY}}),
+            ('crashout', {'request': {'action': 'last'}}),
+            ('crashout', {'request': {'action': 'stats'}}),
         )
 
         assert added.structured_content == {'text': 'journaled crashout #1\n', 'entry': None}

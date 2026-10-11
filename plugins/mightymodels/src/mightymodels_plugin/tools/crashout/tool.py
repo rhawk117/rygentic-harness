@@ -1,7 +1,7 @@
-"""The `crashout` tool: each handler checks the call's arguments and asks the crashout service.
+"""The `crashout` tool: each handler takes its action's request and asks the crashout service.
 
-`add` needs the crashout to journal, and `journal_crashout` is the one place that refuses a call
-without it. `stats` and `last` take nothing.
+`add` takes the crashout to journal, and the schema refuses an `add` without it. `stats` and
+`last` take nothing.
 
 `ResolvedCrashouts` is a plain assignment because the SDK does not see a `Resolve` marker behind
 a PEP 695 `type` alias and would put the parameter in the tool's schema.
@@ -14,11 +14,18 @@ from typing import Annotated
 
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.tools.crashout.schema import CrashoutAction, CrashoutEntry, CrashoutView
+from mightymodels_plugin.tools.crashout.schema import (
+    AddCrashout,
+    CrashoutAction,
+    CrashoutRequest,
+    CrashoutView,
+    LastCrashout,
+    StatsCrashout,
+)
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
-    MissingArgumentsError,
     ServedState,
     ServiceHandler,
     dispatch_to_service,
@@ -26,22 +33,15 @@ from mightymodels_plugin.tools.protocol import (
 )
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class CrashoutCall:
-    entry: CrashoutEntry | None
+def journal_crashout(crashouts: CrashoutService, request: AddCrashout) -> CrashoutView:
+    return crashouts.add(request.entry)
 
 
-def journal_crashout(crashouts: CrashoutService, call: CrashoutCall) -> CrashoutView:
-    if call.entry is None:
-        raise MissingArgumentsError(CrashoutAction.ADD, 'an entry holding the crashout')
-    return crashouts.add(call.entry)
-
-
-def report_patterns(crashouts: CrashoutService, _call: CrashoutCall) -> CrashoutView:
+def report_patterns(crashouts: CrashoutService, _request: StatsCrashout) -> CrashoutView:
     return crashouts.stats()
 
 
-def show_last_crashout(crashouts: CrashoutService, _call: CrashoutCall) -> CrashoutView:
+def show_last_crashout(crashouts: CrashoutService, _request: LastCrashout) -> CrashoutView:
     return crashouts.last()
 
 
@@ -54,29 +54,24 @@ ResolvedCrashouts = Annotated[CrashoutService, Resolve(lifespan_crashouts)]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CrashoutTool:
-    handlers: Mapping[CrashoutAction, ServiceHandler[CrashoutService, CrashoutCall, CrashoutView]]
+    handlers: Mapping[
+        CrashoutAction, ServiceHandler[CrashoutService, CrashoutRequest, CrashoutView]
+    ]
 
-    def crashout(
-        self,
-        action: CrashoutAction,
-        entry: CrashoutEntry | None = None,
-        *,
-        crashouts: ResolvedCrashouts,
-    ) -> CrashoutView:
+    def crashout(self, request: CrashoutRequest, *, crashouts: ResolvedCrashouts) -> CrashoutView:
         """Journal a crashout, or report recurring patterns."""
-        call = CrashoutCall(entry=entry)
-        return dispatch_to_service(self.handlers, action, call, service=crashouts)
+        return dispatch_to_service(self.handlers, request.action, request, service=crashouts)
 
 
 crashout_tool = CrashoutTool(
     handlers=MappingProxyType(
         {
-            CrashoutAction.ADD: journal_crashout,
-            CrashoutAction.STATS: report_patterns,
-            CrashoutAction.LAST: show_last_crashout,
+            CrashoutAction.ADD: ActionHandler(variant=AddCrashout, handle=journal_crashout),
+            CrashoutAction.STATS: ActionHandler(variant=StatsCrashout, handle=report_patterns),
+            CrashoutAction.LAST: ActionHandler(variant=LastCrashout, handle=show_last_crashout),
         }
     )
 )
-crashout_action_tool: ActionTool[CrashoutAction, CrashoutService, CrashoutCall, CrashoutView] = (
+crashout_action_tool: ActionTool[CrashoutAction, CrashoutService, CrashoutRequest, CrashoutView] = (
     crashout_tool
 )

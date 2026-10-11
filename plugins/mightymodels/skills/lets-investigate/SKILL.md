@@ -61,7 +61,7 @@ are `behavior`, `claim`, `research` and `change` (a proposed change to weigh, wh
 opens):
 
 ```json
-{"action": "start", "payload": {"request": {"target": "<target line>"}}}
+{"request": {"action": "start", "payload": {"request": {"target": "<target line>"}}}}
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put the question
@@ -71,8 +71,8 @@ it names to the user in one `AskUserQuestion` dialog, then call again with `kind
 `add` records the user's answers:
 
 ```json
-{"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 0},
- "entries": [{"kind": "known", "text": "<fact the user holds>", "cite": "user", "source": "user"}]}}
+{"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 0},
+ "entries": [{"kind": "known", "text": "<fact the user holds>", "cite": "user", "source": "user"}]}}}
 ```
 
 When the user is resuming an earlier investigation, action `list` shows the ids and action
@@ -115,18 +115,18 @@ is an entry `kind`:
 **4. Persist, then restate the whole ledger.** Write the round's entries in one `add` call:
 
 ```json
-{"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [
+{"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [
   {"kind": "known", "text": "...", "cite": "src/queue.py:41", "source": "code-scout"},
   {"kind": "open", "text": "... rests on ...", "cite": "CHANGELOG 3.x", "source": "web-scout"},
   {"kind": "known", "text": "...", "cite": "https://...#backoff", "source": "web-scout", "supersedes": [4]},
   {"kind": "next", "text": "<exact question>", "source": "code-scout"}
-]}}
+]}}}
 ```
 
 Then call `mcp__plugin_mightymodels_state__investigation` with action `render`:
 
 ```json
-{"action": "render", "investigation_id": "ID"}
+{"request": {"action": "render", "investigation_id": "ID"}}
 ```
 
 An answered Open question is retired by the entry that answers it (`supersedes`, naming an

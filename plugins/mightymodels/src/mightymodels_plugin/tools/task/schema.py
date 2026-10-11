@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.task_id import TASK_ID_PATTERN
 from mightymodels_plugin.tools.request import NameText, ProseText, RequestModel
 
@@ -60,12 +61,52 @@ class TaskMark(RequestModel):
     reason: ProseText
 
 
-type TaskChange = TaskStart | TaskVerification | TaskMark
+class StartTaskPayload(RequestModel):
+    task_id: TaskId
+    change: TaskStart
 
 
-class TaskPayload(RequestModel):
-    task_id: TaskId | None = None
-    change: TaskChange | None = None
+class VerifyTaskPayload(RequestModel):
+    task_id: TaskId
+    change: TaskVerification
+
+
+class MarkTaskPayload(RequestModel):
+    task_id: TaskId
+    change: TaskMark
+
+
+class StartTask(RequestModel):
+    action: Literal[TaskAction.START]
+    slug: Slug
+    payload: StartTaskPayload
+
+
+class VerifyTask(RequestModel):
+    action: Literal[TaskAction.VERIFY]
+    slug: Slug
+    payload: VerifyTaskPayload
+
+
+class MarkTask(RequestModel):
+    action: Literal[TaskAction.MARK]
+    slug: Slug
+    payload: MarkTaskPayload
+
+
+class ShowTask(RequestModel):
+    action: Literal[TaskAction.SHOW]
+    slug: Slug
+
+
+class ReadyTask(RequestModel):
+    action: Literal[TaskAction.READY]
+    slug: Slug
+
+
+type TaskRequest = Annotated[
+    StartTask | VerifyTask | MarkTask | ShowTask | ReadyTask, Field(discriminator='action')
+]
 
 
 class TaskRecord(BaseModel):

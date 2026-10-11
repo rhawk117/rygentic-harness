@@ -134,15 +134,15 @@ CLOSING = Closing(shipped='Retry queue drains in under a second')
 SCOUT_REPORT_TEXT = 'the retry loop sleeps between drain batches'
 SIMILAR_TO_EVERY_TEXT = 'queue floor drain sleeps optimised speed retry'
 ONE_READ_OF_EACH_TOOL: tuple[ToolCall, ...] = (
-    ('ticket', {'action': 'show', 'slug': SLUG}),
-    ('task', {'action': 'show', 'slug': SLUG}),
-    ('contract', {'action': 'status', 'slug': SLUG}),
-    ('review', {'action': 'list'}),
-    ('snapshot', {'slug': SLUG}),
-    ('close', {'action': 'check', 'slug': SLUG}),
-    ('investigation', {'action': 'list'}),
-    ('crashout', {'action': 'stats'}),
-    ('similarity', {'action': 'search', 'query': SIMILAR_TO_EVERY_TEXT}),
+    ('ticket', {'request': {'action': 'show', 'slug': SLUG}}),
+    ('task', {'request': {'action': 'show', 'slug': SLUG}}),
+    ('contract', {'request': {'action': 'status', 'slug': SLUG}}),
+    ('review', {'request': {'action': 'list'}}),
+    ('snapshot', {'request': {'slug': SLUG}}),
+    ('close', {'request': {'action': 'check', 'slug': SLUG}}),
+    ('investigation', {'request': {'action': 'list'}}),
+    ('crashout', {'request': {'action': 'stats'}}),
+    ('similarity', {'request': {'action': 'search', 'query': SIMILAR_TO_EVERY_TEXT}}),
 )
 
 

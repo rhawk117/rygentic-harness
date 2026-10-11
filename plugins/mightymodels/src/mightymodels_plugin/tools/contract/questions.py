@@ -19,8 +19,9 @@ from mcp.server.mcpserver import Elicit, Resolve
 from mightymodels_plugin.tools.asking import Choice, Question, enumerated
 from mightymodels_plugin.tools.contract.schema import (
     ApprovalChoice,
-    ContractAction,
+    ApproveContract,
     ContractCommand,
+    ContractRequest,
 )
 
 type Commands = Sequence[ContractCommand]
@@ -45,12 +46,10 @@ def all_approved(commands: Commands) -> bool:
     return all(command.approved_by.strip() for command in commands)
 
 
-def ask_approval(
-    action: ContractAction, commands: Commands | None
-) -> ApprovalAnswer | Elicit[ApprovalAnswer]:
-    if action is not ContractAction.APPROVE or commands is None or all_approved(commands):
+def ask_approval(request: ContractRequest) -> ApprovalAnswer | Elicit[ApprovalAnswer]:
+    if not isinstance(request, ApproveContract) or all_approved(request.commands):
         return ApprovalAnswer(choice=None)
-    return Elicit(approval_question(commands).message, ApprovalAnswer)
+    return Elicit(approval_question(request.commands).message, ApprovalAnswer)
 
 
 AskedApproval = Annotated[ElicitationResult[ApprovalAnswer], Resolve(ask_approval)]

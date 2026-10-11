@@ -8,6 +8,7 @@ runs and recorded answers read empty: the database holds no row for them yet.
 """
 
 from enum import StrEnum, auto
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,6 +29,20 @@ class Closing(RequestModel):
     shipped: ProseText = ''
     pr: ProseText | None = None
     gotchas: tuple[ProseText, ...] = ()
+
+
+class CheckClose(RequestModel):
+    action: Literal[CloseAction.CHECK]
+    slug: Slug
+
+
+class CloseClose(RequestModel):
+    action: Literal[CloseAction.CLOSE]
+    slug: Slug
+    closing: Closing
+
+
+type CloseRequest = Annotated[CheckClose | CloseClose, Field(discriminator='action')]
 
 
 class ArchivedTask(BaseModel):

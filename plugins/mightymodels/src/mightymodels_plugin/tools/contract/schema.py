@@ -6,11 +6,12 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 from mightymodels_plugin.core.declarative import NAME_LIMIT
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.request import NameText, ProseText, RequestModel
 
 COMMAND_ID_PATTERN = r'^[A-Za-z0-9._-]+$'
@@ -71,6 +72,20 @@ class ContractCommand(RequestModel):
     expect_exit: int = 0
     timeout: Timeout = DEFAULT_TIMEOUT
     approved_by: NameText = ''
+
+
+class ApproveContract(RequestModel):
+    action: Literal[ContractAction.APPROVE]
+    slug: Slug
+    commands: list[ContractCommand]
+
+
+class StatusContract(RequestModel):
+    action: Literal[ContractAction.STATUS]
+    slug: Slug
+
+
+type ContractRequest = Annotated[ApproveContract | StatusContract, Field(discriminator='action')]
 
 
 class CommandState(BaseModel):

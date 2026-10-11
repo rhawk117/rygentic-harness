@@ -29,15 +29,17 @@ LONGEST_NAME = 'w' * (REPOSITORY_KEY_LIMIT - len(f'{OWNER}/'))
 WRITE: ToolCall = (
     'ticket',
     {
-        'action': 'write',
-        'slug': 'retry-queue',
-        'fields': {
-            'summary': 'Retry queue drains slowly',
-            'scope': 'med',
-            'compaction': False,
-            'branch': 'fix/retry-queue',
-            'context': ['drain loop sleeps between batches'],
-        },
+        'request': {
+            'action': 'write',
+            'slug': 'retry-queue',
+            'fields': {
+                'summary': 'Retry queue drains slowly',
+                'scope': 'med',
+                'compaction': False,
+                'branch': 'fix/retry-queue',
+                'context': ['drain loop sleeps between batches'],
+            },
+        }
     },
 )
 URLS = st.one_of(

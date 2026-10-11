@@ -28,7 +28,10 @@ class TestTheTool:
     @pytest.fixture
     def started_through_the_tool(self, state_server: StateServer) -> Slug:
         (started,) = state_server.call(
-            ('investigation', {'action': 'start', 'payload': {'request': START_REQUEST}})
+            (
+                'investigation',
+                {'request': {'action': 'start', 'payload': {'request': START_REQUEST}}},
+            )
         )
         return Slug(started.structured_content['investigation_id'])
 
@@ -88,9 +91,11 @@ class TestTheTool:
             (
                 'investigation',
                 {
-                    'action': 'add',
-                    'investigation_id': started_through_the_tool.root,
-                    'payload': {'entries': [VALID_ENTRY, entry], 'request': {'round': 1}},
+                    'request': {
+                        'action': 'add',
+                        'investigation_id': started_through_the_tool.root,
+                        'payload': {'entries': [VALID_ENTRY, entry], 'request': {'round': 1}},
+                    }
                 },
             )
         )
@@ -108,21 +113,25 @@ class TestTheTool:
             (
                 'investigation',
                 {
-                    'action': 'add',
-                    'investigation_id': investigation,
-                    'payload': {'entries': [VALID_ENTRY], 'request': {'round': 1}},
+                    'request': {
+                        'action': 'add',
+                        'investigation_id': investigation,
+                        'payload': {'entries': [VALID_ENTRY], 'request': {'round': 1}},
+                    }
                 },
             ),
-            ('investigation', {'action': 'render', 'investigation_id': investigation}),
+            ('investigation', {'request': {'action': 'render', 'investigation_id': investigation}}),
             (
                 'investigation',
                 {
-                    'action': 'knowns',
-                    'investigation_id': investigation,
-                    'payload': {'request': {'kinds': ['open'], 'limit': 5}},
+                    'request': {
+                        'action': 'knowns',
+                        'investigation_id': investigation,
+                        'payload': {'request': {'kinds': ['open'], 'limit': 5}},
+                    }
                 },
             ),
-            ('investigation', {'action': 'list'}),
+            ('investigation', {'request': {'action': 'list'}}),
         )
 
         assert added.structured_content == {
@@ -144,12 +153,14 @@ class TestTheTool:
             (
                 'investigation',
                 {
-                    'action': 'add',
-                    'investigation_id': investigation,
-                    'payload': {'entries': [VALID_ENTRY], 'request': {'round': 1}},
+                    'request': {
+                        'action': 'add',
+                        'investigation_id': investigation,
+                        'payload': {'entries': [VALID_ENTRY], 'request': {'round': 1}},
+                    }
                 },
             ),
-            ('investigation', {'action': 'knowns', 'investigation_id': investigation}),
+            ('investigation', {'request': {'action': 'knowns', 'investigation_id': investigation}}),
         )
 
         assert (
@@ -162,38 +173,42 @@ class TestTheTool:
         [
             pytest.param(
                 {'action': 'start'},
-                'start needs a request holding target and kind',
+                'request.start.payload\n  Field required',
                 id='start-without-a-request',
             ),
             pytest.param(
                 {'action': 'start', 'payload': {'request': {'round': 1}}},
-                'start needs a request holding target and kind',
+                'request.start.payload.request.round\n  Extra inputs are not permitted',
                 id='start-with-a-round',
             ),
             pytest.param(
                 {'action': 'add', 'payload': {'entries': [], 'request': {'round': 1}}},
-                'add needs investigation_id',
+                'request.add.investigation_id\n  Field required',
                 id='add-without-an-investigation',
             ),
             pytest.param(
                 {'action': 'add', 'investigation_id': 'a', 'payload': {'request': {'round': 1}}},
-                'add needs entries and a request holding round',
+                'request.add.payload.entries\n  Field required',
                 id='add-without-entries',
             ),
             pytest.param(
                 {'action': 'add', 'investigation_id': 'a', 'payload': {'entries': []}},
-                'add needs entries and a request holding round',
+                'request.add.payload.request\n  Field required',
                 id='add-without-a-round',
             ),
             pytest.param(
-                {'action': 'render'}, 'render needs investigation_id', id='render-of-nothing'
+                {'action': 'render'},
+                'request.render.investigation_id\n  Field required',
+                id='render-of-nothing',
             ),
             pytest.param(
-                {'action': 'knowns'}, 'knowns needs investigation_id', id='knowns-of-nothing'
+                {'action': 'knowns'},
+                'request.knowns.investigation_id\n  Field required',
+                id='knowns-of-nothing',
             ),
             pytest.param(
                 {'action': 'knowns', 'investigation_id': 'a', 'payload': {'request': {'round': 1}}},
-                'knowns needs no request, or a request holding only kinds and limit',
+                'request.knowns.payload.request.round\n  Extra inputs are not permitted',
                 id='knowns-with-a-round',
             ),
         ],
@@ -205,7 +220,7 @@ class TestTheTool:
         connected_server: StateServer,
         database_activity: DatabaseActivity,
     ) -> None:
-        (refused,) = connected_server.call(('investigation', arguments))
+        (refused,) = connected_server.call(('investigation', {'request': arguments}))
 
         assert refused.is_error
         assert needs in text_of(refused)
@@ -277,7 +292,7 @@ class TestTheTool:
         tree_after_the_connect: dict[str, bytes],
         database_activity: DatabaseActivity,
     ) -> None:
-        (refused,) = connected_server.call(('investigation', arguments))
+        (refused,) = connected_server.call(('investigation', {'request': arguments}))
 
         assert refused.is_error
         assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()

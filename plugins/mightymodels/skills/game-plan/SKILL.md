@@ -84,10 +84,10 @@ list, and no `approved_by`; the tool shows the user each id and argv and records
 only when the user approves them:
 
 ```json
-{"action": "approve", "slug": "SLUG", "commands": [
+{"request": {"action": "approve", "slug": "SLUG", "commands": [
   {"id": "I1", "argv": ["uv", "run", "pytest", "-q"]},
   {"id": "T1.AC-1", "argv": ["uv", "run", "pytest", "-q", "tests/test_queue.py"], "timeout": 120}
-]}
+]}}
 ```
 
 An answer starting `not approved` means the user wants the list changed: change it as they said

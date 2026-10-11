@@ -93,7 +93,10 @@ NEEDS_GIT = 'this needs git and no git executable is on PATH'
 
 
 def slug_results(server: StateServer, *calls: ToolCall) -> list[CallToolResult]:
-    return server.call(*((name, {'slug': SLUG, **arguments}) for name, arguments in calls))
+    requests: list[ToolCall] = [
+        (name, {'request': {'slug': SLUG, **arguments}}) for name, arguments in calls
+    ]
+    return server.call(*requests)
 
 
 def sqlite_file(file: Path, statements: Sequence[str]) -> Path:

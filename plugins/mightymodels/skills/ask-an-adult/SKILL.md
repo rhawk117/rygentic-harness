@@ -81,7 +81,7 @@ list links one, append it through lets-investigate's ledger. Call
 `mcp__plugin_mightymodels_state__investigation` with action `add`:
 
 ```json
-{"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [{"kind": "decision", "text": "<the choice> (wingman: <verdict, one line>; user: <answer>)", "source": "user"}]}}
+{"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [{"kind": "decision", "text": "<the choice> (wingman: <verdict, one line>; user: <answer>)", "source": "user"}]}}}
 ```
 
 `ID` is the investigation's id and the `round` is the ledger's latest one (`investigation`

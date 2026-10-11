@@ -20,7 +20,8 @@ FORBIDDEN = ('report.md', 'pr-comment.md', 'review-run.json', 'findings.jsonl')
 
 
 def review_results(server: StateServer, *calls: dict[str, object]) -> list[CallToolResult]:
-    return server.call(*(('review', arguments) for arguments in calls))
+    requests: list[dict[str, object]] = [{'request': arguments} for arguments in calls]
+    return server.call(*(('review', request) for request in requests))
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -86,20 +87,34 @@ class TestReviewCalls:
         [
             pytest.param(
                 {'action': 'start', 'payload': {'shape': 'full'}},
-                'start needs no payload, or a payload holding scope, depth and emphasis',
+                'request.start.payload.shape\n  Extra inputs are not permitted',
                 id='start',
             ),
-            pytest.param({'action': 'gate'}, 'gate needs run_id', id='gate'),
-            pytest.param({'action': 'add'}, 'add needs run_id', id='add-run'),
-            pytest.param({'action': 'dispose'}, 'dispose needs run_id', id='dispose-run'),
-            pytest.param({'action': 'resolve'}, 'resolve needs run_id', id='resolve-run'),
-            pytest.param({'action': 'report'}, 'report needs run_id', id='report-run'),
-            pytest.param({'action': 'add', 'run_id': '20260101-000000'}, 'add needs', id='add'),
+            pytest.param({'action': 'gate'}, 'request.gate.run_id\n  Field required', id='gate'),
+            pytest.param({'action': 'add'}, 'request.add.run_id\n  Field required', id='add-run'),
             pytest.param(
-                {'action': 'dispose', 'run_id': '20260101-000000'}, 'dispose needs', id='dispose'
+                {'action': 'dispose'}, 'request.dispose.run_id\n  Field required', id='dispose-run'
             ),
             pytest.param(
-                {'action': 'resolve', 'run_id': '20260101-000000'}, 'resolve needs', id='resolve'
+                {'action': 'resolve'}, 'request.resolve.run_id\n  Field required', id='resolve-run'
+            ),
+            pytest.param(
+                {'action': 'report'}, 'request.report.run_id\n  Field required', id='report-run'
+            ),
+            pytest.param(
+                {'action': 'add', 'run_id': '20260101-000000'},
+                'request.add.payload\n  Field required',
+                id='add',
+            ),
+            pytest.param(
+                {'action': 'dispose', 'run_id': '20260101-000000'},
+                'request.dispose.payload\n  Field required',
+                id='dispose',
+            ),
+            pytest.param(
+                {'action': 'resolve', 'run_id': '20260101-000000'},
+                'request.resolve.payload\n  Field required',
+                id='resolve',
             ),
             pytest.param(
                 {
@@ -107,7 +122,7 @@ class TestReviewCalls:
                     'run_id': '20260101-000000',
                     'payload': {'persona': 'merge-vader'},
                 },
-                'report needs no payload, or a payload holding only shape',
+                'request.report.payload.persona\n  Extra inputs are not permitted',
                 id='report-with-a-persona',
             ),
         ],

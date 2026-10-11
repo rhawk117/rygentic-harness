@@ -22,7 +22,7 @@ The engineer's form of whats-broken, for one worker with no one to dispatch. The
 **6. Record a fix that failed.** When the verification still fails, call `mcp__plugin_mightymodels_state__failed_fix` with action `record` before you try anything else (`SLUG` is the directory in the brief path `.mightymodels/<slug>/briefs/`, `T1` the task id from the dispatch):
 
 ```json
-{"action": "record", "slug": "SLUG", "payload": {"task_id": "T1", "change": {"hypothesis": "I believe the batch size is zero because the drain log shows an empty batch; the fix that set it did not change the log"}}}
+{"request": {"action": "record", "slug": "SLUG", "payload": {"task_id": "T1", "change": {"hypothesis": "I believe the batch size is zero because the drain log shows an empty batch; the fix that set it did not change the log"}}}}
 ```
 
 The answer says how many fixes are left. The hypothesis is stored redacted, so keep secrets out of it anyway.

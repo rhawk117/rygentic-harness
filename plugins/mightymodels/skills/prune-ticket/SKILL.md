@@ -27,7 +27,7 @@ files and delete the directory. Read `references/archive-schema.md` before the f
 Call `mcp__plugin_mightymodels_state__close` with action `check`:
 
 ```json
-{"action": "check", "slug": "SLUG"}
+{"request": {"action": "check", "slug": "SLUG"}}
 ```
 
 It answers `blocked` and lists every blocker it can see in the rows and git. Then check what it
@@ -40,8 +40,8 @@ it hides it.
 Write the three judgment lines the rows cannot hold, then call the tool with action `close`:
 
 ```json
-{"action": "close", "slug": "SLUG", "closing": {"shipped": "<what this ticket delivered, one line>",
- "pr": "<PR URL>", "gotchas": ["<what bit us, what to know before touching this area again>"]}}
+{"request": {"action": "close", "slug": "SLUG", "closing": {"shipped": "<what this ticket delivered, one line>",
+ "pr": "<PR URL>", "gotchas": ["<what bit us, what to know before touching this area again>"]}}}
 ```
 
 Take `shipped` from REPORT.md and the PR, the URL from `gh pr view`, and at most three gotchas

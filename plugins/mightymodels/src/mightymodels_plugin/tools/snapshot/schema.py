@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from mightymodels_plugin.core.routing import Depth, Scope
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.schema import EntryKind
+from mightymodels_plugin.tools.request import RequestModel
 from mightymodels_plugin.tools.review.schema import Decision
 from mightymodels_plugin.tools.ticket.schema import TicketStatus, Tracker
 
@@ -31,6 +32,11 @@ type NotYetRecorded = tuple[()]
 
 class SnapshotAction(StrEnum):
     TAKE = auto()
+
+
+class SnapshotRequest(RequestModel):
+    slug: Slug
+    limit: Limit = DEFAULT_LIMIT
 
 
 class TicketSummary(BaseModel):

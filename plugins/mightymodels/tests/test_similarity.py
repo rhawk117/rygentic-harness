@@ -286,20 +286,22 @@ class TestTheSimilarityTool:
             (
                 'crashout',
                 {
-                    'action': 'add',
-                    'entry': {
-                        'severity': 'heated',
-                        'verdict': 'deserved',
-                        'rant': 'why',
-                        'failures': ['did it'],
-                        'root_cause': THE_DRAIN_LOOP,
-                        'corrective_action': 'stop',
-                        'barked_back': False,
-                    },
+                    'request': {
+                        'action': 'add',
+                        'entry': {
+                            'severity': 'heated',
+                            'verdict': 'deserved',
+                            'rant': 'why',
+                            'failures': ['did it'],
+                            'root_cause': THE_DRAIN_LOOP,
+                            'corrective_action': 'stop',
+                            'barked_back': False,
+                        },
+                    }
                 },
             ),
-            ('similarity', {'action': 'search', 'query': THE_DRAIN_LOOP_REWORDED}),
-            ('similarity', {'action': 'search'}),
+            ('similarity', {'request': {'action': 'search', 'query': THE_DRAIN_LOOP_REWORDED}}),
+            ('similarity', {'request': {'action': 'search'}}),
         )
         assert not written.is_error
         return text_of(found), text_of(missed)
@@ -308,4 +310,4 @@ class TestTheSimilarityTool:
         assert 'crashout #1 (overlap' in searched[0]
 
     def test_search_without_a_query_says_what_it_needs(self, searched: tuple[str, str]) -> None:
-        assert 'search needs a query holding the text to look for' in searched[1]
+        assert 'request.query\n  Field required' in searched[1]

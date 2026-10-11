@@ -57,7 +57,10 @@ TICKET = Slug(SLUG)
 OTHER_SLUG = 'retry-queue-again'
 BRANCH = 'fix/retry'
 REPORT = '<report><verdict>VERIFIED</verdict><findings>the drain loop sleeps</findings></report>'
-SEARCH: ToolCall = ('similarity', {'action': 'search', 'query': 'the drain loop sleeps'})
+SEARCH: ToolCall = (
+    'similarity',
+    {'request': {'action': 'search', 'query': 'the drain loop sleeps'}},
+)
 SCOUTS = ('mightymodels:code-scout', 'mightymodels:web-scout')
 IMPLEMENTERS = ('mightymodels:engineer', 'mightymodels:architect')
 OTHER_AGENTS = (

@@ -1,4 +1,4 @@
-"""The `contract` tool: each handler checks the call's arguments and asks the contract service.
+"""The `contract` tool: each handler takes its action's request and asks the contract service.
 
 `approve` takes the approver from each command. A call whose commands name none asks the user
 through `AskedApproval`, and only a user who approves gets the commands recorded.
@@ -18,7 +18,6 @@ from typing import Annotated
 from mcp.server.elicitation import ElicitationResult
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.asking import chosen, needs_input_text
 from mightymodels_plugin.tools.contract.questions import (
     ApprovalAnswer,
@@ -29,14 +28,17 @@ from mightymodels_plugin.tools.contract.questions import (
 from mightymodels_plugin.tools.contract.schema import (
     USER_APPROVER,
     ApprovalChoice,
+    ApproveContract,
     ContractAction,
     ContractCommand,
+    ContractRequest,
     ContractView,
+    StatusContract,
 )
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
-    MissingArgumentsError,
     ServedState,
     ServiceHandler,
     dispatch_to_service,
@@ -45,9 +47,8 @@ from mightymodels_plugin.tools.protocol import (
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class ContractCall:
-    slug: Slug
-    commands: list[ContractCommand] | None
+class ContractServed:
+    contracts: ContractService
     asked: ElicitationResult[ApprovalAnswer]
 
 
@@ -57,21 +58,19 @@ def approved_by_user(command: ContractCommand) -> ContractCommand:
     return command.model_copy(update={'approved_by': USER_APPROVER})
 
 
-def approve_commands(contracts: ContractService, call: ContractCall) -> ContractView:
-    if call.commands is None:
-        raise MissingArgumentsError(ContractAction.APPROVE, 'the commands the user approved')
-    approval = chosen(call.asked)
+def approve_commands(served: ContractServed, request: ApproveContract) -> ContractView:
+    approval = chosen(served.asked)
     if approval in {ApprovalChoice.REMOVE, ApprovalChoice.EDIT}:
         text = f'not approved: the user chose to {approval}; revise the commands, then call again\n'
         return ContractView(text=text, passing=False)
-    if approval is None and not all_approved(call.commands):
-        text = needs_input_text([approval_question(call.commands)])
+    if approval is None and not all_approved(request.commands):
+        text = needs_input_text([approval_question(request.commands)])
         return ContractView(text=text, passing=False)
-    return contracts.approve(call.slug, list(map(approved_by_user, call.commands)))
+    return served.contracts.approve(request.slug, list(map(approved_by_user, request.commands)))
 
 
-def report_status(contracts: ContractService, call: ContractCall) -> ContractView:
-    return contracts.status(call.slug)
+def report_status(served: ContractServed, request: StatusContract) -> ContractView:
+    return served.contracts.status(request.slug)
 
 
 def lifespan_contracts(ctx: Context[ServedState]) -> ContractService:
@@ -79,12 +78,6 @@ def lifespan_contracts(ctx: Context[ServedState]) -> ContractService:
 
 
 ResolvedContracts = Annotated[ContractService, Resolve(lifespan_contracts)]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class ContractServed:
-    contracts: ContractService
-    asked: ElicitationResult[ApprovalAnswer]
 
 
 def serve_contracts(contracts: ResolvedContracts, asked: AskedApproval) -> ContractServed:
@@ -96,29 +89,21 @@ ServedContract = Annotated[ContractServed, Resolve(serve_contracts)]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ContractTool:
-    handlers: Mapping[ContractAction, ServiceHandler[ContractService, ContractCall, ContractView]]
+    handlers: Mapping[ContractAction, ServiceHandler[ContractServed, ContractRequest, ContractView]]
 
-    def contract(
-        self,
-        action: ContractAction,
-        slug: Slug,
-        commands: list[ContractCommand] | None = None,
-        *,
-        served: ServedContract,
-    ) -> ContractView:
+    def contract(self, request: ContractRequest, *, served: ServedContract) -> ContractView:
         """Approve verification commands, or report the latest result per command."""
-        call = ContractCall(slug=slug, commands=commands, asked=served.asked)
-        return dispatch_to_service(self.handlers, action, call, service=served.contracts)
+        return dispatch_to_service(self.handlers, request.action, request, service=served)
 
 
 contract_tool = ContractTool(
     handlers=MappingProxyType(
         {
-            ContractAction.APPROVE: approve_commands,
-            ContractAction.STATUS: report_status,
+            ContractAction.APPROVE: ActionHandler(variant=ApproveContract, handle=approve_commands),
+            ContractAction.STATUS: ActionHandler(variant=StatusContract, handle=report_status),
         }
     )
 )
-contract_action_tool: ActionTool[ContractAction, ContractService, ContractCall, ContractView] = (
+contract_action_tool: ActionTool[ContractAction, ContractServed, ContractRequest, ContractView] = (
     contract_tool
 )

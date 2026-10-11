@@ -151,7 +151,7 @@ SCOPE_OF_A_REVIEW = Row(
     reply={'choice': 'codebase'},
     shown={'enum': ['diff', 'branch', 'ticket', 'codebase'], 'type': 'string'},
     question='What should the review cover?',
-    argument='payload.scope',
+    argument='request.payload.scope',
     stored=review_runs,
     expected=[('codebase', 'deep', 'balanced')],
 )
@@ -164,7 +164,7 @@ DEPTH_OF_A_REVIEW = Row(
     reply={'choice': 'deep'},
     shown={'enum': ['quick', 'standard', 'deep'], 'type': 'string'},
     question='How deep should the review go?',
-    argument='payload.depth',
+    argument='request.payload.depth',
     stored=review_runs,
     expected=[('codebase', 'deep', 'balanced')],
 )
@@ -180,7 +180,7 @@ EMPHASIS_OF_A_REVIEW = Row(
         'type': 'string',
     },
     question='What should the review emphasize?',
-    argument='payload.emphasis',
+    argument='request.payload.emphasis',
     stored=review_runs,
     expected=[('codebase', 'deep', 'balanced')],
 )
@@ -193,7 +193,7 @@ DISPOSITION = Row(
     reply={'choice': 'fix'},
     shown={'enum': ['fix', 'defer', 'accept-risk', 'dismiss'], 'type': 'string'},
     question='What should happen to F1? accept-risk and dismiss need a reason.',
-    argument='payload.decisions {"F1"',
+    argument='request.payload.decisions {"F1"',
     stored=dispositions,
     expected=[('F1', 'fix', '', 'user')],
     needs_findings=True,
@@ -210,7 +210,7 @@ KIND_OF_A_TARGET = Row(
     reply={'choice': 'behavior'},
     shown={'enum': ['behavior', 'claim', 'research', 'change'], 'type': 'string'},
     question=f'What kind of target is this? {DRAIN}',
-    argument='payload.request.kind',
+    argument='request.payload.request.kind',
     stored=investigation_targets,
     expected=[('target', DRAIN, 'behavior')],
 )
@@ -223,7 +223,7 @@ SCOPE_OF_THE_WORK = Row(
     reply={'choice': 'large'},
     shown={'enum': ['sm', 'med', 'large'], 'type': 'string'},
     question='What is the scope of each anticipated task?',
-    argument='fields.scope',
+    argument='request.fields.scope',
     stored=ticket_handoff,
     expected=[('scope', '"large"'), ('plan-first', 'true'), ('branch-name', '"fix/retry-queue"')],
 )
@@ -236,7 +236,7 @@ COMPACTION = Row(
     reply={'choice': False},
     shown={'title': 'Choice', 'type': 'boolean'},
     question='Would implementing this likely cause at least one compaction?',
-    argument='fields.compaction',
+    argument='request.fields.compaction',
     stored=ticket_handoff,
     expected=[('scope', '"large"'), ('plan-first', 'false'), ('branch-name', '"fix/retry-queue"')],
 )
@@ -249,7 +249,7 @@ BRANCH = Row(
     reply={'choice': 'new', 'name': 'fix/drain'},
     shown={'enum': ['current', 'new'], 'type': 'string'},
     question='Run the work on the current branch, or on a new one? A new one needs a name.',
-    argument='fields.branch',
+    argument='request.fields.branch',
     stored=ticket_handoff,
     expected=[('scope', '"large"'), ('plan-first', 'true'), ('branch-name', '"fix/drain"')],
 )
@@ -316,7 +316,9 @@ async def exchange_with(
         build_server(server.root, server.data_directory), elicitation_callback=not_asked
     ) as client:
         before = stored(server)
-        first = await client.session.call_tool(tool, arguments, allow_input_required=True)
+        first = await client.session.call_tool(
+            tool, {'request': arguments}, allow_input_required=True
+        )
         between = stored(server)
         final = None
         if replies is not None and isinstance(first, InputRequiredResult):
@@ -324,7 +326,7 @@ async def exchange_with(
             answers: InputResponses = {key: replies(str(key)) for key in first.input_requests}
             final = await client.session.call_tool(
                 tool,
-                arguments,
+                {'request': arguments},
                 input_responses=answers,
                 request_state=first.request_state,
                 allow_input_required=True,
@@ -364,8 +366,10 @@ def row_in_a_run(server: StateServer, row: Row) -> Row:
         (
             'review',
             {
-                'action': 'start',
-                'payload': {'scope': 'codebase', 'depth': 'deep', 'emphasis': 'balanced'},
+                'request': {
+                    'action': 'start',
+                    'payload': {'scope': 'codebase', 'depth': 'deep', 'emphasis': 'balanced'},
+                }
             },
         )
     )
@@ -374,9 +378,8 @@ def row_in_a_run(server: StateServer, row: Row) -> Row:
     directory.joinpath('MERGE-VADER-REPORT.md').write_text(
         REPORT.read_text(encoding='utf-8'), encoding='utf-8'
     )
-    (added,) = server.call(
-        ('review', {'action': 'add', 'run_id': run, 'payload': {'persona': 'merge-vader'}})
-    )
+    add: Arguments = {'action': 'add', 'run_id': run, 'payload': {'persona': 'merge-vader'}}
+    (added,) = server.call(('review', {'request': add}))
     assert not added.is_error
     given = {'run_id': run}
     return replace(

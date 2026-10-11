@@ -185,12 +185,14 @@ class TestOverrideOnTheTool:
     def test_the_review_tool_accepts_the_override_once_per_run(
         self, state_server: StateServer
     ) -> None:
-        (started,) = state_server.call(('review', {'action': 'start', 'payload': START}))
+        (started,) = state_server.call(
+            ('review', {'request': {'action': 'start', 'payload': START}})
+        )
         run = started.structured_content['run_id']
 
         first, second = state_server.call(
-            ('review', {'action': 'override', 'run_id': run}),
-            ('review', {'action': 'override', 'run_id': run}),
+            ('review', {'request': {'action': 'override', 'run_id': run}}),
+            ('review', {'request': {'action': 'override', 'run_id': run}}),
         )
 
         assert not first.is_error

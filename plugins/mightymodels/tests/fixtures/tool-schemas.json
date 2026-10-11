@@ -4,6 +4,33 @@
     "input_schema": {
       "type": "object",
       "$defs": {
+        "ApproveContract": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "approve",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "commands": {
+              "items": {
+                "$ref": "#/$defs/ContractCommand"
+              },
+              "title": "Commands",
+              "type": "array"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "commands"
+          ],
+          "title": "ApproveContract",
+          "type": "object"
+        },
         "Argv": {
           "items": {
             "$ref": "#/$defs/ProseText"
@@ -13,14 +40,6 @@
         "CommandId": {
           "maxLength": 255,
           "pattern": "^[A-Za-z0-9._-]+$",
-          "type": "string"
-        },
-        "ContractAction": {
-          "enum": [
-            "approve",
-            "status"
-          ],
-          "title": "ContractAction",
           "type": "string"
         },
         "ContractCommand": {
@@ -53,6 +72,23 @@
           "title": "ContractCommand",
           "type": "object"
         },
+        "ContractRequest": {
+          "discriminator": {
+            "mapping": {
+              "approve": "#/$defs/ApproveContract",
+              "status": "#/$defs/StatusContract"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ApproveContract"
+            },
+            {
+              "$ref": "#/$defs/StatusContract"
+            }
+          ]
+        },
         "NameText": {
           "maxLength": 255,
           "type": "string"
@@ -70,6 +106,25 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "type": "string"
         },
+        "StatusContract": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "status",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "StatusContract",
+          "type": "object"
+        },
         "Timeout": {
           "maximum": 3600,
           "minimum": 1,
@@ -78,31 +133,12 @@
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/ContractAction"
-        },
-        "slug": {
-          "$ref": "#/$defs/Slug"
-        },
-        "commands": {
-          "anyOf": [
-            {
-              "items": {
-                "$ref": "#/$defs/ContractCommand"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Commands"
+        "request": {
+          "$ref": "#/$defs/ContractRequest"
         }
       },
       "required": [
-        "action",
-        "slug"
+        "request"
       ],
       "title": "contractArguments"
     },
@@ -179,6 +215,29 @@
           "title": "AddPayload",
           "type": "object"
         },
+        "AddReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "add",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "$ref": "#/$defs/AddPayload"
+            }
+          },
+          "required": [
+            "action",
+            "run_id",
+            "payload"
+          ],
+          "title": "AddReview",
+          "type": "object"
+        },
         "Approver": {
           "maxLength": 255,
           "minLength": 1,
@@ -245,6 +304,29 @@
           "title": "DisposeRequest",
           "type": "object"
         },
+        "DisposeReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "dispose",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "$ref": "#/$defs/DisposeRequest"
+            }
+          },
+          "required": [
+            "action",
+            "run_id",
+            "payload"
+          ],
+          "title": "DisposeReview",
+          "type": "object"
+        },
         "Disposition": {
           "additionalProperties": false,
           "properties": {
@@ -277,9 +359,62 @@
           "pattern": "^F[0-9]+$",
           "type": "string"
         },
+        "GateReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "gate",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            }
+          },
+          "required": [
+            "action",
+            "run_id"
+          ],
+          "title": "GateReview",
+          "type": "object"
+        },
+        "ListReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "list",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "ListReview",
+          "type": "object"
+        },
         "NameText": {
           "maxLength": 255,
           "type": "string"
+        },
+        "OverrideReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "override",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            }
+          },
+          "required": [
+            "action",
+            "run_id"
+          ],
+          "title": "OverrideReview",
+          "type": "object"
         },
         "Persona": {
           "enum": [
@@ -302,6 +437,36 @@
             }
           },
           "title": "ReportPayload",
+          "type": "object"
+        },
+        "ReportReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "report",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ReportPayload"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action",
+            "run_id"
+          ],
+          "title": "ReportReview",
           "type": "object"
         },
         "ResolvePayload": {
@@ -343,6 +508,29 @@
           "title": "ResolvePayload",
           "type": "object"
         },
+        "ResolveReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "resolve",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "$ref": "#/$defs/ResolvePayload"
+            }
+          },
+          "required": [
+            "action",
+            "run_id",
+            "payload"
+          ],
+          "title": "ResolveReview",
+          "type": "object"
+        },
         "Result": {
           "enum": [
             "fixed",
@@ -352,36 +540,44 @@
           "title": "Result",
           "type": "string"
         },
-        "ReviewAction": {
-          "enum": [
-            "start",
-            "override",
-            "add",
-            "gate",
-            "dispose",
-            "resolve",
-            "report",
-            "list"
-          ],
-          "title": "ReviewAction",
-          "type": "string"
-        },
-        "ReviewPayload": {
-          "anyOf": [
+        "ReviewRequest": {
+          "discriminator": {
+            "mapping": {
+              "add": "#/$defs/AddReview",
+              "dispose": "#/$defs/DisposeReview",
+              "gate": "#/$defs/GateReview",
+              "list": "#/$defs/ListReview",
+              "override": "#/$defs/OverrideReview",
+              "report": "#/$defs/ReportReview",
+              "resolve": "#/$defs/ResolveReview",
+              "start": "#/$defs/StartReview"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
             {
-              "$ref": "#/$defs/ReportPayload"
+              "$ref": "#/$defs/StartReview"
             },
             {
-              "$ref": "#/$defs/AddPayload"
+              "$ref": "#/$defs/OverrideReview"
             },
             {
-              "$ref": "#/$defs/DisposeRequest"
+              "$ref": "#/$defs/AddReview"
             },
             {
-              "$ref": "#/$defs/ResolvePayload"
+              "$ref": "#/$defs/GateReview"
             },
             {
-              "$ref": "#/$defs/StartRequest"
+              "$ref": "#/$defs/DisposeReview"
+            },
+            {
+              "$ref": "#/$defs/ResolveReview"
+            },
+            {
+              "$ref": "#/$defs/ReportReview"
+            },
+            {
+              "$ref": "#/$defs/ListReview"
             }
           ]
         },
@@ -510,38 +706,42 @@
           },
           "title": "StartRequest",
           "type": "object"
+        },
+        "StartReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "start",
+              "title": "Action",
+              "type": "string"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/StartRequest"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "StartReview",
+          "type": "object"
         }
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/ReviewAction"
-        },
-        "run_id": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RunId"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "payload": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReviewPayload"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/ReviewRequest"
         }
       },
       "required": [
-        "action"
+        "request"
       ],
       "title": "reviewArguments"
     },
@@ -624,6 +824,46 @@
           "title": "Implementer",
           "type": "string"
         },
+        "MarkTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "mark",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/MarkTaskPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "MarkTask",
+          "type": "object"
+        },
+        "MarkTaskPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/TaskMark"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "MarkTaskPayload",
+          "type": "object"
+        },
         "Markable": {
           "enum": [
             "failed",
@@ -647,6 +887,44 @@
           "maxLength": 4000,
           "type": "string"
         },
+        "ReadyTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "ready",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ReadyTask",
+          "type": "object"
+        },
+        "ShowTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "show",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ShowTask",
+          "type": "object"
+        },
         "Slug": {
           "$ref": "#/$defs/SlugText",
           "title": "Slug"
@@ -656,29 +934,45 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "type": "string"
         },
-        "TaskAction": {
-          "enum": [
-            "start",
-            "verify",
-            "mark",
-            "show",
-            "ready"
-          ],
-          "title": "TaskAction",
-          "type": "string"
-        },
-        "TaskChange": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TaskStart"
+        "StartTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "start",
+              "title": "Action",
+              "type": "string"
             },
-            {
-              "$ref": "#/$defs/TaskVerification"
+            "slug": {
+              "$ref": "#/$defs/Slug"
             },
-            {
-              "$ref": "#/$defs/TaskMark"
+            "payload": {
+              "$ref": "#/$defs/StartTaskPayload"
             }
-          ]
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "StartTask",
+          "type": "object"
+        },
+        "StartTaskPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/TaskStart"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "StartTaskPayload",
+          "type": "object"
         },
         "TaskId": {
           "pattern": "^[TCR][0-9]{1,6}$",
@@ -701,34 +995,34 @@
           "title": "TaskMark",
           "type": "object"
         },
-        "TaskPayload": {
-          "additionalProperties": false,
-          "properties": {
-            "task_id": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/TaskId"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
+        "TaskRequest": {
+          "discriminator": {
+            "mapping": {
+              "mark": "#/$defs/MarkTask",
+              "ready": "#/$defs/ReadyTask",
+              "show": "#/$defs/ShowTask",
+              "start": "#/$defs/StartTask",
+              "verify": "#/$defs/VerifyTask"
             },
-            "change": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/TaskChange"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
+            "propertyName": "action"
           },
-          "title": "TaskPayload",
-          "type": "object"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StartTask"
+            },
+            {
+              "$ref": "#/$defs/VerifyTask"
+            },
+            {
+              "$ref": "#/$defs/MarkTask"
+            },
+            {
+              "$ref": "#/$defs/ShowTask"
+            },
+            {
+              "$ref": "#/$defs/ReadyTask"
+            }
+          ]
         },
         "TaskStart": {
           "additionalProperties": false,
@@ -773,31 +1067,56 @@
           ],
           "title": "TaskVerification",
           "type": "object"
+        },
+        "VerifyTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "verify",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/VerifyTaskPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "VerifyTask",
+          "type": "object"
+        },
+        "VerifyTaskPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/TaskVerification"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "VerifyTaskPayload",
+          "type": "object"
         }
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/TaskAction"
-        },
-        "slug": {
-          "$ref": "#/$defs/Slug"
-        },
-        "payload": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TaskPayload"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/TaskRequest"
         }
       },
       "required": [
-        "action",
-        "slug"
+        "request"
       ],
       "title": "taskArguments"
     },
@@ -932,6 +1251,25 @@
           "title": "Scope",
           "type": "string"
         },
+        "ShowTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "show",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ShowTicket",
+          "type": "object"
+        },
         "Slug": {
           "$ref": "#/$defs/SlugText",
           "title": "Slug"
@@ -939,16 +1277,6 @@
         "SlugText": {
           "maxLength": 64,
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
-          "type": "string"
-        },
-        "TicketAction": {
-          "enum": [
-            "write",
-            "validate",
-            "show",
-            "update-context"
-          ],
-          "title": "TicketAction",
           "type": "string"
         },
         "TicketContext": {
@@ -968,17 +1296,7 @@
           "title": "TicketContext",
           "type": "object"
         },
-        "TicketFields": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TicketRequest"
-            },
-            {
-              "$ref": "#/$defs/TicketContext"
-            }
-          ]
-        },
-        "TicketRequest": {
+        "TicketInterview": {
           "additionalProperties": false,
           "properties": {
             "summary": {
@@ -1069,33 +1387,108 @@
             "summary",
             "context"
           ],
-          "title": "TicketRequest",
+          "title": "TicketInterview",
+          "type": "object"
+        },
+        "TicketRequest": {
+          "discriminator": {
+            "mapping": {
+              "show": "#/$defs/ShowTicket",
+              "update-context": "#/$defs/UpdateContextTicket",
+              "validate": "#/$defs/ValidateTicket",
+              "write": "#/$defs/WriteTicket"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/WriteTicket"
+            },
+            {
+              "$ref": "#/$defs/ValidateTicket"
+            },
+            {
+              "$ref": "#/$defs/ShowTicket"
+            },
+            {
+              "$ref": "#/$defs/UpdateContextTicket"
+            }
+          ]
+        },
+        "UpdateContextTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "update-context",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "fields": {
+              "$ref": "#/$defs/TicketContext"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "fields"
+          ],
+          "title": "UpdateContextTicket",
+          "type": "object"
+        },
+        "ValidateTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "validate",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ValidateTicket",
+          "type": "object"
+        },
+        "WriteTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "write",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "fields": {
+              "$ref": "#/$defs/TicketInterview"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "fields"
+          ],
+          "title": "WriteTicket",
           "type": "object"
         }
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/TicketAction"
-        },
-        "slug": {
-          "$ref": "#/$defs/Slug"
-        },
-        "fields": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TicketFields"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/TicketRequest"
         }
       },
       "required": [
-        "action",
-        "slug"
+        "request"
       ],
       "title": "ticketArguments"
     },
@@ -1295,20 +1688,33 @@
           "maxLength": 64,
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "type": "string"
+        },
+        "SnapshotRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "limit": {
+              "$ref": "#/$defs/Limit",
+              "default": 20
+            }
+          },
+          "required": [
+            "slug"
+          ],
+          "title": "SnapshotRequest",
+          "type": "object"
         }
       },
       "additionalProperties": false,
       "properties": {
-        "slug": {
-          "$ref": "#/$defs/Slug"
-        },
-        "limit": {
-          "$ref": "#/$defs/Limit",
-          "default": 20
+        "request": {
+          "$ref": "#/$defs/SnapshotRequest"
         }
       },
       "required": [
-        "slug"
+        "request"
       ],
       "title": "snapshotArguments"
     },
@@ -1832,13 +2238,64 @@
     "input_schema": {
       "type": "object",
       "$defs": {
-        "CloseAction": {
-          "enum": [
-            "check",
-            "close"
+        "CheckClose": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "check",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
           ],
-          "title": "CloseAction",
-          "type": "string"
+          "title": "CheckClose",
+          "type": "object"
+        },
+        "CloseClose": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "close",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "closing": {
+              "$ref": "#/$defs/Closing"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "closing"
+          ],
+          "title": "CloseClose",
+          "type": "object"
+        },
+        "CloseRequest": {
+          "discriminator": {
+            "mapping": {
+              "check": "#/$defs/CheckClose",
+              "close": "#/$defs/CloseClose"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CheckClose"
+            },
+            {
+              "$ref": "#/$defs/CloseClose"
+            }
+          ]
         },
         "Closing": {
           "additionalProperties": false,
@@ -1886,27 +2343,12 @@
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/CloseAction"
-        },
-        "slug": {
-          "$ref": "#/$defs/Slug"
-        },
-        "closing": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Closing"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/CloseRequest"
         }
       },
       "required": [
-        "action",
-        "slug"
+        "request"
       ],
       "title": "closeArguments"
     },
@@ -2341,6 +2783,50 @@
     "input_schema": {
       "type": "object",
       "$defs": {
+        "AddInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "add",
+              "title": "Action",
+              "type": "string"
+            },
+            "investigation_id": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/AddInvestigationPayload"
+            }
+          },
+          "required": [
+            "action",
+            "investigation_id",
+            "payload"
+          ],
+          "title": "AddInvestigation",
+          "type": "object"
+        },
+        "AddInvestigationPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "$ref": "#/$defs/LedgerEntry"
+              },
+              "title": "Entries",
+              "type": "array"
+            },
+            "request": {
+              "$ref": "#/$defs/LedgerRound"
+            }
+          },
+          "required": [
+            "entries",
+            "request"
+          ],
+          "title": "AddInvestigationPayload",
+          "type": "object"
+        },
         "Cite": {
           "maxLength": 4000,
           "minLength": 1,
@@ -2358,60 +2844,32 @@
           "title": "EntryKind",
           "type": "string"
         },
-        "InvestigationAction": {
-          "enum": [
-            "start",
-            "add",
-            "render",
-            "knowns",
-            "list"
-          ],
-          "title": "InvestigationAction",
-          "type": "string"
-        },
-        "InvestigationPayload": {
-          "additionalProperties": false,
-          "properties": {
-            "entries": {
-              "anyOf": [
-                {
-                  "items": {
-                    "$ref": "#/$defs/LedgerEntry"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Entries"
-            },
-            "request": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/InvestigationRequest"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null
-            }
-          },
-          "title": "InvestigationPayload",
-          "type": "object"
-        },
         "InvestigationRequest": {
-          "anyOf": [
+          "discriminator": {
+            "mapping": {
+              "add": "#/$defs/AddInvestigation",
+              "knowns": "#/$defs/KnownsInvestigation",
+              "list": "#/$defs/ListInvestigation",
+              "render": "#/$defs/RenderInvestigation",
+              "start": "#/$defs/StartInvestigation"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
             {
-              "$ref": "#/$defs/InvestigationStartRequest"
+              "$ref": "#/$defs/StartInvestigation"
             },
             {
-              "$ref": "#/$defs/LedgerRound"
+              "$ref": "#/$defs/AddInvestigation"
             },
             {
-              "$ref": "#/$defs/KnownsFilter"
+              "$ref": "#/$defs/RenderInvestigation"
+            },
+            {
+              "$ref": "#/$defs/KnownsInvestigation"
+            },
+            {
+              "$ref": "#/$defs/ListInvestigation"
             }
           ]
         },
@@ -2457,6 +2915,54 @@
             }
           },
           "title": "KnownsFilter",
+          "type": "object"
+        },
+        "KnownsInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "knowns",
+              "title": "Action",
+              "type": "string"
+            },
+            "investigation_id": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/KnownsInvestigationPayload"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action",
+            "investigation_id"
+          ],
+          "title": "KnownsInvestigation",
+          "type": "object"
+        },
+        "KnownsInvestigationPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/KnownsFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "title": "KnownsInvestigationPayload",
           "type": "object"
         },
         "KnownsLimit": {
@@ -2517,9 +3023,43 @@
           "title": "LedgerRound",
           "type": "object"
         },
+        "ListInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "list",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "ListInvestigation",
+          "type": "object"
+        },
         "ProseText": {
           "maxLength": 4000,
           "type": "string"
+        },
+        "RenderInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "render",
+              "title": "Action",
+              "type": "string"
+            },
+            "investigation_id": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "investigation_id"
+          ],
+          "title": "RenderInvestigation",
+          "type": "object"
         },
         "Slug": {
           "$ref": "#/$defs/SlugText",
@@ -2539,6 +3079,38 @@
           ],
           "title": "Source",
           "type": "string"
+        },
+        "StartInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "start",
+              "title": "Action",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/StartInvestigationPayload"
+            }
+          },
+          "required": [
+            "action",
+            "payload"
+          ],
+          "title": "StartInvestigation",
+          "type": "object"
+        },
+        "StartInvestigationPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/InvestigationStartRequest"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "title": "StartInvestigationPayload",
+          "type": "object"
         },
         "TableKind": {
           "enum": [
@@ -2569,34 +3141,12 @@
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/InvestigationAction"
-        },
-        "investigation_id": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Slug"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "payload": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/InvestigationPayload"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/InvestigationRequest"
         }
       },
       "required": [
-        "action"
+        "request"
       ],
       "title": "investigationArguments"
     },
@@ -2631,14 +3181,24 @@
     "input_schema": {
       "type": "object",
       "$defs": {
-        "CrashoutAction": {
-          "enum": [
-            "add",
-            "stats",
-            "last"
+        "AddCrashout": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "add",
+              "title": "Action",
+              "type": "string"
+            },
+            "entry": {
+              "$ref": "#/$defs/CrashoutEntry"
+            }
+          },
+          "required": [
+            "action",
+            "entry"
           ],
-          "title": "CrashoutAction",
-          "type": "string"
+          "title": "AddCrashout",
+          "type": "object"
         },
         "CrashoutEntry": {
           "additionalProperties": false,
@@ -2700,12 +3260,48 @@
           "title": "CrashoutEntry",
           "type": "object"
         },
+        "CrashoutRequest": {
+          "discriminator": {
+            "mapping": {
+              "add": "#/$defs/AddCrashout",
+              "last": "#/$defs/LastCrashout",
+              "stats": "#/$defs/StatsCrashout"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AddCrashout"
+            },
+            {
+              "$ref": "#/$defs/StatsCrashout"
+            },
+            {
+              "$ref": "#/$defs/LastCrashout"
+            }
+          ]
+        },
         "Failures": {
           "items": {
             "$ref": "#/$defs/NotBlank"
           },
           "minItems": 1,
           "type": "array"
+        },
+        "LastCrashout": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "last",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "LastCrashout",
+          "type": "object"
         },
         "NameText": {
           "maxLength": 255,
@@ -2735,6 +3331,21 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
           "type": "string"
         },
+        "StatsCrashout": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "stats",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "StatsCrashout",
+          "type": "object"
+        },
         "Stripped": {
           "maxLength": 4000,
           "minLength": 1,
@@ -2752,23 +3363,12 @@
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/CrashoutAction"
-        },
-        "entry": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CrashoutEntry"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/CrashoutRequest"
         }
       },
       "required": [
-        "action"
+        "request"
       ],
       "title": "crashoutArguments"
     },
@@ -2900,13 +3500,6 @@
           "maxLength": 4000,
           "type": "string"
         },
-        "SimilarityAction": {
-          "enum": [
-            "search"
-          ],
-          "title": "SimilarityAction",
-          "type": "string"
-        },
         "SimilarityKind": {
           "enum": [
             "ledger-entry",
@@ -2916,38 +3509,46 @@
           ],
           "title": "SimilarityKind",
           "type": "string"
+        },
+        "SimilarityRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "search",
+              "title": "Action",
+              "type": "string"
+            },
+            "query": {
+              "$ref": "#/$defs/ProseText"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/SimilarityKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action",
+            "query"
+          ],
+          "title": "SimilarityRequest",
+          "type": "object"
         }
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/SimilarityAction"
-        },
-        "query": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ProseText"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "kind": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SimilarityKind"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+        "request": {
+          "$ref": "#/$defs/SimilarityRequest"
         }
       },
       "required": [
-        "action"
+        "request"
       ],
       "title": "similarityArguments"
     },
@@ -3017,13 +3618,6 @@
     "input_schema": {
       "type": "object",
       "$defs": {
-        "FailedFixAction": {
-          "enum": [
-            "record"
-          ],
-          "title": "FailedFixAction",
-          "type": "string"
-        },
         "FailedFixPayload": {
           "additionalProperties": false,
           "properties": {
@@ -3039,6 +3633,29 @@
             "change"
           ],
           "title": "FailedFixPayload",
+          "type": "object"
+        },
+        "FailedFixRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/FailedFixPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "FailedFixRequest",
           "type": "object"
         },
         "ProseText": {
@@ -3074,20 +3691,12 @@
       },
       "additionalProperties": false,
       "properties": {
-        "action": {
-          "$ref": "#/$defs/FailedFixAction"
-        },
-        "slug": {
-          "$ref": "#/$defs/Slug"
-        },
-        "payload": {
-          "$ref": "#/$defs/FailedFixPayload"
+        "request": {
+          "$ref": "#/$defs/FailedFixRequest"
         }
       },
       "required": [
-        "action",
-        "slug",
-        "payload"
+        "request"
       ],
       "title": "failed_fixArguments"
     },

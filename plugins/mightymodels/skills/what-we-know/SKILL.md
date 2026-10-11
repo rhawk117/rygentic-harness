@@ -56,7 +56,7 @@ carries a citation is waste.
   change being the SWOT target) so the verdicts have somewhere to persist:
 
   ```json
-  {"action": "start", "payload": {"request": {"target": "<target line>", "kind": "change"}}}
+  {"request": {"action": "start", "payload": {"request": {"target": "<target line>", "kind": "change"}}}}
   ```
 
   Then bootstrap with one scout wave of
@@ -95,8 +95,8 @@ assumptions.
 `{"round": N}` (the next round after the ledger's latest):
 
 ```json
-{"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 2},
- "entries": [{"kind": "known", "text": "...", "cite": "src/queue.py:41", "source": "code-scout", "supersedes": [4]}]}}
+{"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 2},
+ "entries": [{"kind": "known", "text": "...", "cite": "src/queue.py:41", "source": "code-scout", "supersedes": [4]}]}}}
 ```
 
 The batch
@@ -167,7 +167,7 @@ Before a scout wave, search what the plugin already holds for this repository (l
 scout reports, review findings and crashouts) through `mcp__plugin_mightymodels_state__similarity`:
 
 ```json
-{"action": "search", "query": "<the target or the task's intent>"}
+{"request": {"action": "search", "query": "<the target or the task's intent>"}}
 ```
 
 A row it returns says where earlier work looked. It is a lead, never a citation: re-verify it at

@@ -42,7 +42,7 @@ carrying only what the conversation has already settled. The tool puts each of `
 and `emphasis` that the payload leaves out to the user and starts the run with the answers:
 
 ```json
-{"action": "start", "payload": {"scope": "ticket", "slug": "SLUG", "base": "main"}}
+{"request": {"action": "start", "payload": {"scope": "ticket", "slug": "SLUG", "base": "main"}}}
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put each question
@@ -58,7 +58,7 @@ names the run with `run_id`.
 A run may spend one override on its heavier-weighted reviewer (the first persona, merge-vader, on equal weights), moving it to fable. Ask for it only when the user wants the strongest reviewer, with action `override`:
 
 ```json
-{"action": "override", "run_id": "20261005-103000"}
+{"request": {"action": "override", "run_id": "20261005-103000"}}
 ```
 
 The answer names the reviewer and says to dispatch it with effort high; a second request on the run is refused. A ticket's reviewer keys change no review.
@@ -101,7 +101,7 @@ nothing else. Write each response unchanged to `RUNDIR/MERGE-VADER-REPORT.md` or
 Call `mcp__plugin_mightymodels_state__review` with action `add`, once per persona in the run:
 
 ```json
-{"action": "add", "run_id": "20261005-103000", "payload": {"persona": "merge-vader"}}
+{"request": {"action": "add", "run_id": "20261005-103000", "payload": {"persona": "merge-vader"}}}
 ```
 
 The tool reads that persona's report itself, so no step retypes a finding, and one finding it
@@ -124,7 +124,7 @@ the choices need a reason, which the tool asks with the choice. A severity confl
 here by the decision the user makes about it:
 
 ```json
-{"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "finding": "F1"}}
+{"request": {"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "finding": "F1"}}}
 ```
 
 The answer says which findings are still undecided. An answer starting `needs input` means no one
@@ -132,7 +132,7 @@ could be asked through the tool: put the question it names to the user in one `A
 dialog, then call again with `decisions` for that finding (several findings may go in one call):
 
 ```json
-{"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "decisions": {"F1": {"decision": "fix"}, "F2": {"decision": "accept-risk", "reason": "..."}}}}
+{"request": {"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "decisions": {"F1": {"decision": "fix"}, "F2": {"decision": "accept-risk", "reason": "..."}}}}}
 ```
 
 Nothing the user did not pick is remediated.
@@ -145,7 +145,7 @@ text and writes no file, so the primary writes the full report (the call without
 `RUNDIR/report.md` and this call's answer to `RUNDIR/pr-comment.md`:
 
 ```json
-{"action": "report", "run_id": "20261005-103000", "payload": {"shape": "comment"}}
+{"request": {"action": "report", "run_id": "20261005-103000", "payload": {"shape": "comment"}}}
 ```
 
 ```bash

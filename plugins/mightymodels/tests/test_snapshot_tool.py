@@ -7,7 +7,7 @@ class TestAnUnstagedTicket:
     def test_a_path_shaped_slug_is_refused(
         self, connected_server: StateServer, tree_after_the_connect: dict[str, bytes]
     ) -> None:
-        (refused,) = connected_server.call(('snapshot', {'slug': '../../etc'}))
+        (refused,) = connected_server.call(('snapshot', {'request': {'slug': '../../etc'}}))
 
         assert refused.is_error
         assert 'String should match pattern' in text_of(refused)

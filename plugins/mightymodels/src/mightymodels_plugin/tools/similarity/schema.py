@@ -9,13 +9,13 @@ earlier row it resembles.
 
 from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from mightymodels_plugin.core.declarative import REPORT_LIMIT
 from mightymodels_plugin.core.repository_key import RepositoryKey
-from mightymodels_plugin.tools.request import NameText, RequestModel
+from mightymodels_plugin.tools.request import NameText, ProseText, RequestModel
 
 type ReportText = Annotated[str, StringConstraints(pattern=r'\S', max_length=REPORT_LIMIT)]
 
@@ -29,6 +29,12 @@ class SimilarityKind(StrEnum):
     SCOUT_REPORT = 'scout-report'
     REVIEW_FINDING = 'review-finding'
     CRASHOUT = auto()
+
+
+class SimilarityRequest(RequestModel):
+    action: Literal[SimilarityAction.SEARCH]
+    query: ProseText
+    kind: SimilarityKind | None = None
 
 
 class Scout(StrEnum):

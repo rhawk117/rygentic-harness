@@ -52,7 +52,7 @@ Before diagnosing, look at whether this has happened before:
 Call `mcp__plugin_mightymodels_state__crashout` with action `stats`:
 
 ```json
-{"action": "stats"}
+{"request": {"action": "stats"}}
 ```
 
 It prints the journal's patterns: the entry count, severity and verdict counts, how often you
@@ -99,9 +99,9 @@ Append the entry before you respond, while the state is raw. Call
 `mcp__plugin_mightymodels_state__crashout` with action `add`; the tool validates the entry:
 
 ```json
-{"action": "add", "entry": {"severity": "crashout", "verdict": "deserved",
+{"request": {"action": "add", "entry": {"severity": "crashout", "verdict": "deserved",
   "rant": "...verbatim...", "failures": ["..."], "root_cause": "...",
-  "corrective_action": "...", "barked_back": false, "ticket": null, "branch": "feat/x"}}
+  "corrective_action": "...", "barked_back": false, "ticket": null, "branch": "feat/x"}}}
 ```
 
 The tool stamps the time it received the entry and stores it as a row of the `crashouts`
@@ -227,7 +227,7 @@ diary:
 Call `mcp__plugin_mightymodels_state__crashout` with action `stats`:
 
 ```json
-{"action": "stats"}
+{"request": {"action": "stats"}}
 ```
 
 The tool prints the deterministic facts (the entry count, severity and verdict counts, the
@@ -245,7 +245,7 @@ Present, compactly:
 For the most recent entry, call `mcp__plugin_mightymodels_state__crashout` with action `last`:
 
 ```json
-{"action": "last"}
+{"request": {"action": "last"}}
 ```
 
 It prints the entry one line per field, the rant and the failures indented under their names.

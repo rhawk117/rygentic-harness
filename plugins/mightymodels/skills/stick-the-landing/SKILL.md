@@ -35,7 +35,7 @@ loop stopped early. Say so and stop rather than papering over it. Then call
 `mcp__plugin_mightymodels_state__task` with action `ready`:
 
 ```json
-{"action": "ready", "slug": "SLUG"}
+{"request": {"action": "ready", "slug": "SLUG"}}
 ```
 
 It answers `ready` only when a plan task has been started, every plan task is verified or
@@ -87,7 +87,7 @@ tail alone?*
   Fix:/Verify: verbatim:
 
   ```json
-  {"action": "start", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"by": "engineer", "owned": ["<files the log tail names>"]}}}
+  {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"by": "engineer", "owned": ["<files the log tail names>"]}}}}
   ```
 
   When a local command reproduces the check, it is the Verify line and becomes contract id
@@ -121,7 +121,7 @@ Push, then gitty-up re-watches.
   `mcp__plugin_mightymodels_state__task` and action `verify`:
 
   ```json
-  {"action": "verify", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"commit": "<fix commit>", "assertions": {"AC-1": "<check link from gitty-up>"}}}}
+  {"request": {"action": "verify", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"commit": "<fix commit>", "assertions": {"AC-1": "<check link from gitty-up>"}}}}}
   ```
 
   Any `C1.*` contract command must also have passed at HEAD; the commit must stay inside the

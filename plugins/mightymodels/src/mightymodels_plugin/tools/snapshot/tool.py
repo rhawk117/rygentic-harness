@@ -1,6 +1,6 @@
 """The `snapshot` tool: it takes a ticket and a limit and asks the snapshot service.
 
-The model chooses no action, so the schema shows `slug` and `limit` only. The tool still holds
+The model chooses no action, so the request shows `slug` and `limit` only. The tool still holds
 its one handler under `SnapshotAction.TAKE` and dispatches through `dispatch_to_service`, so it
 is an `ActionTool` like the others and its failures cross the same one translation.
 
@@ -15,8 +15,8 @@ from typing import Annotated
 
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
     ServedState,
     ServiceHandler,
@@ -24,22 +24,15 @@ from mightymodels_plugin.tools.protocol import (
     served_services,
 )
 from mightymodels_plugin.tools.snapshot.schema import (
-    DEFAULT_LIMIT,
-    Limit,
     SnapshotAction,
+    SnapshotRequest,
     SnapshotView,
 )
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class SnapshotCall:
-    slug: Slug
-    limit: int
-
-
-def take_snapshot(snapshots: SnapshotService, call: SnapshotCall) -> SnapshotView:
-    return snapshots.take(call.slug, call.limit)
+def take_snapshot(snapshots: SnapshotService, request: SnapshotRequest) -> SnapshotView:
+    return snapshots.take(request.slug, request.limit)
 
 
 def lifespan_snapshots(ctx: Context[ServedState]) -> SnapshotService:
@@ -51,17 +44,20 @@ ResolvedSnapshots = Annotated[SnapshotService, Resolve(lifespan_snapshots)]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SnapshotTool:
-    handlers: Mapping[SnapshotAction, ServiceHandler[SnapshotService, SnapshotCall, SnapshotView]]
+    handlers: Mapping[
+        SnapshotAction, ServiceHandler[SnapshotService, SnapshotRequest, SnapshotView]
+    ]
 
-    def snapshot(
-        self, slug: Slug, limit: Limit = DEFAULT_LIMIT, *, snapshots: ResolvedSnapshots
-    ) -> SnapshotView:
+    def snapshot(self, request: SnapshotRequest, *, snapshots: ResolvedSnapshots) -> SnapshotView:
         """Return the ticket's objective state as JSON and Markdown text for baton-pass to write."""
-        call = SnapshotCall(slug=slug, limit=limit)
-        return dispatch_to_service(self.handlers, SnapshotAction.TAKE, call, service=snapshots)
+        return dispatch_to_service(self.handlers, SnapshotAction.TAKE, request, service=snapshots)
 
 
-snapshot_tool = SnapshotTool(handlers=MappingProxyType({SnapshotAction.TAKE: take_snapshot}))
-snapshot_action_tool: ActionTool[SnapshotAction, SnapshotService, SnapshotCall, SnapshotView] = (
+snapshot_tool = SnapshotTool(
+    handlers=MappingProxyType(
+        {SnapshotAction.TAKE: ActionHandler(variant=SnapshotRequest, handle=take_snapshot)}
+    )
+)
+snapshot_action_tool: ActionTool[SnapshotAction, SnapshotService, SnapshotRequest, SnapshotView] = (
     snapshot_tool
 )

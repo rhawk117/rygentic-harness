@@ -17,12 +17,13 @@ from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.investigation.service import InvestigationService
-from mightymodels_plugin.tools.protocol import ActionTool, LifespanState
+from mightymodels_plugin.tools.protocol import ActionTool, LifespanState, MisroutedRequestError
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
-from mightymodels_plugin.tools.task.schema import TaskStart
+from mightymodels_plugin.tools.task.schema import ReadyTask, ShowTask, TaskAction, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
+from mightymodels_plugin.tools.task.tool import task_tool
 from mightymodels_plugin.tools.tests.support import (
     ActivityKind,
     DatabaseActivity,
@@ -101,7 +102,10 @@ def published_schemas(tmp_path_factory: pytest.TempPathFactory) -> dict[str, dic
 
 
 def ticket_results(server: StateServer, *calls: ToolCall) -> list[CallToolResult]:
-    return server.call(*((name, {'slug': SLUG, **arguments}) for name, arguments in calls))
+    requests: list[ToolCall] = [
+        (name, {'request': {'slug': SLUG, **arguments}}) for name, arguments in calls
+    ]
+    return server.call(*requests)
 
 
 def served_actions(tool: object) -> type[StrEnum]:
@@ -115,53 +119,27 @@ class TestStateServer:
     def test_lists_its_tools_through_the_in_memory_client(self, state_server: StateServer) -> None:
         assert sorted(state_server.tools()) == TOOL_NAMES
 
-    @pytest.mark.parametrize(
-        ('name', 'arguments', 'required'),
-        [
-            pytest.param('ticket', ['action', 'slug', 'fields'], ['action', 'slug'], id='ticket'),
-            pytest.param('task', ['action', 'slug', 'payload'], ['action', 'slug'], id='task'),
-            pytest.param(
-                'contract', ['action', 'slug', 'commands'], ['action', 'slug'], id='contract'
-            ),
-            pytest.param('review', ['action', 'run_id', 'payload'], ['action'], id='review'),
-            pytest.param('snapshot', ['slug', 'limit'], ['slug'], id='snapshot'),
-            pytest.param('close', ['action', 'slug', 'closing'], ['action', 'slug'], id='close'),
-            pytest.param(
-                'investigation',
-                ['action', 'investigation_id', 'payload'],
-                ['action'],
-                id='investigation',
-            ),
-            pytest.param('crashout', ['action', 'entry'], ['action'], id='crashout'),
-            pytest.param('similarity', ['action', 'query', 'kind'], ['action'], id='similarity'),
-            pytest.param(
-                'failed_fix',
-                ['action', 'slug', 'payload'],
-                ['action', 'slug', 'payload'],
-                id='failed_fix',
-            ),
-        ],
-    )
+    @pytest.mark.parametrize('name', TOOL_NAMES)
     def test_each_tool_takes_the_arguments_the_surface_gives_it(
-        self, name: str, arguments: list[str], required: list[str], state_server: StateServer
+        self, name: str, state_server: StateServer
     ) -> None:
         schema = state_server.tools()[name].input_schema
 
-        assert list(schema['properties']) == arguments
-        assert schema['required'] == required
+        assert list(schema['properties']) == ['request']
+        assert schema['required'] == ['request']
 
     def test_review_offers_the_eight_actions(self, state_server: StateServer) -> None:
         schema = state_server.tools()['review'].input_schema
 
-        assert schema['$defs']['ReviewAction']['enum'] == [
-            'start',
-            'override',
+        assert list(schema['$defs']['ReviewRequest']['discriminator']['mapping']) == [
             'add',
-            'gate',
             'dispose',
-            'resolve',
-            'report',
+            'gate',
             'list',
+            'override',
+            'report',
+            'resolve',
+            'start',
         ]
 
     def test_each_tool_is_described_by_its_docstring(self, state_server: StateServer) -> None:
@@ -255,6 +233,17 @@ class TestToolProtocol:
     ) -> None:
         assert set(tool.handlers) == set(actions)
 
+    def test_a_request_routed_to_the_handler_of_another_action_is_refused(
+        self, task_service: TaskService
+    ) -> None:
+        ready = ReadyTask(action=TaskAction.READY, slug=Slug(SLUG))
+
+        with pytest.raises(MisroutedRequestError) as refused:
+            task_tool.handlers[TaskAction.SHOW](task_service, ready)
+
+        assert (refused.value.variant, refused.value.request) == (ShowTask, ready)
+        assert str(refused.value) == 'a ReadyTask request was routed to the handler of ShowTask'
+
     def test_the_lifespan_state_satisfies_what_the_tools_resolve(self, app_state: AppState) -> None:
         assert isinstance(app_state, LifespanState)
 
@@ -342,7 +331,6 @@ class TestToolCalls:
         ('similarity', {'action': 'search', 'query': 'the drain loop'}),
         ('failed_fix', FAILED_FIX),
     )
-    UNNAMED_ARGUMENT = 'not_in_the_schema'
 
     @pytest.fixture
     def server_with_a_started_task(
@@ -354,7 +342,10 @@ class TestToolCalls:
         return state_server
 
     def test_each_tool_answers_one_call(self, server_with_a_started_task: StateServer) -> None:
-        results = server_with_a_started_task.call(*self.ONE_CALL_OF_EACH_TOOL)
+        requests: list[ToolCall] = [
+            (name, {'request': arguments}) for name, arguments in self.ONE_CALL_OF_EACH_TOOL
+        ]
+        results = server_with_a_started_task.call(*requests)
 
         assert [name for name, _ in self.ONE_CALL_OF_EACH_TOOL] == [tool.__name__ for tool in TOOLS]
         assert [result.is_error for result in results] == [False] * len(TOOLS)
@@ -444,31 +435,41 @@ class TestToolCalls:
     @pytest.mark.parametrize(
         ('name', 'arguments', 'needs'),
         [
-            pytest.param('ticket', {'action': 'write'}, 'write needs fields', id='write'),
+            pytest.param(
+                'ticket', {'action': 'write'}, 'request.write.fields\n  Field required', id='write'
+            ),
             pytest.param(
                 'ticket',
                 {'action': 'update-context', 'fields': ANSWERS},
-                'update-context needs fields holding only the context lines',
+                'request.update-context.fields.summary\n  Extra inputs are not permitted',
                 id='update-context',
             ),
             pytest.param(
-                'task', {'action': 'start', 'payload': {'task_id': 'T1'}}, 'start needs', id='start'
+                'task',
+                {'action': 'start', 'payload': {'task_id': 'T1'}},
+                'request.start.payload.change\n  Field required',
+                id='start',
             ),
             pytest.param(
                 'task',
                 {'action': 'verify', 'payload': {'change': START}},
-                'verify needs',
+                'request.verify.payload.task_id\n  Field required',
                 id='verify',
             ),
             pytest.param(
-                'task', {'action': 'mark', 'payload': {'task_id': 'T1'}}, 'mark needs', id='mark'
+                'task',
+                {'action': 'mark', 'payload': {'task_id': 'T1'}},
+                'request.mark.payload.change\n  Field required',
+                id='mark',
             ),
-            pytest.param('contract', {'action': 'approve'}, 'approve needs', id='approve'),
             pytest.param(
-                'close',
-                {'action': 'close'},
-                'close needs a closing holding shipped, pr and gotchas',
-                id='close',
+                'contract',
+                {'action': 'approve'},
+                'request.approve.commands\n  Field required',
+                id='approve',
+            ),
+            pytest.param(
+                'close', {'action': 'close'}, 'request.close.closing\n  Field required', id='close'
             ),
         ],
     )
@@ -521,6 +522,11 @@ class TestToolCalls:
         assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
         assert connected_server.files_on_disk() == tree_after_the_connect
 
+
+class TestAnArgumentTheSchemaDoesNotName:
+    UNNAMED_ARGUMENT = 'not_in_the_schema'
+    ONE_CALL_OF_EACH_TOOL = TestToolCalls.ONE_CALL_OF_EACH_TOOL
+
     @pytest.mark.parametrize(
         ('name', 'arguments'),
         [pytest.param(name, arguments, id=name) for name, arguments in ONE_CALL_OF_EACH_TOOL],
@@ -533,7 +539,30 @@ class TestToolCalls:
         tree_after_the_connect: dict[str, bytes],
         database_activity: DatabaseActivity,
     ) -> None:
-        (result,) = connected_server.call((name, {**arguments, self.UNNAMED_ARGUMENT: True}))
+        (result,) = connected_server.call(
+            (name, {'request': arguments, self.UNNAMED_ARGUMENT: True})
+        )
+
+        assert result.is_error
+        assert self.UNNAMED_ARGUMENT in text_of(result)
+        assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
+        assert connected_server.files_on_disk() == tree_after_the_connect
+
+    @pytest.mark.parametrize(
+        ('name', 'arguments'),
+        [pytest.param(name, arguments, id=name) for name, arguments in ONE_CALL_OF_EACH_TOOL],
+    )
+    def test_an_argument_inside_the_request_that_the_schema_does_not_name_is_refused_by_name(
+        self,
+        name: str,
+        arguments: dict[str, object],
+        connected_server: StateServer,
+        tree_after_the_connect: dict[str, bytes],
+        database_activity: DatabaseActivity,
+    ) -> None:
+        (result,) = connected_server.call(
+            (name, {'request': {**arguments, self.UNNAMED_ARGUMENT: True}})
+        )
 
         assert result.is_error
         assert self.UNNAMED_ARGUMENT in text_of(result)

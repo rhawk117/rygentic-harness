@@ -57,13 +57,13 @@ order of preference:
    action `knowns`:
 
    ```json
-   {"action": "knowns", "investigation_id": "ID"}
+   {"request": {"action": "knowns", "investigation_id": "ID"}}
    ```
 
    With action `list` when the id is unknown:
 
    ```json
-   {"action": "list"}
+   {"request": {"action": "list"}}
    ```
 
    Rows marked `current` are findings. Rows marked `lead` were cited at an older HEAD: they go
@@ -130,9 +130,9 @@ the rollup and tracker answers under `fields`, and no `scope`, `compaction` or `
 asks the user for those three:
 
 ```json
-{"action": "write", "slug": "SLUG",
+{"request": {"action": "write", "slug": "SLUG",
  "fields": {"summary": "...", "context": ["...", "..."], "issue": 42, "jira": "PLAT-41",
-            "reference_urls": ["https://..."], "investigations": ["20260928-..."]}}
+            "reference_urls": ["https://..."], "investigations": ["20260928-..."]}}}
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put each question
@@ -149,7 +149,7 @@ edit wins over the derivation.
 Call `mcp__plugin_mightymodels_state__ticket` with action `validate`:
 
 ```json
-{"action": "validate", "slug": "SLUG"}
+{"request": {"action": "validate", "slug": "SLUG"}}
 ```
 
 It parses ticket.yml in the canonical subset the schema describes, checks every field and every

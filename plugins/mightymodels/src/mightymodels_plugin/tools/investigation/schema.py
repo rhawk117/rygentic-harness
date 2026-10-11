@@ -4,11 +4,13 @@
 round, the time and HEAD, and stores it; the target is the first entry of every ledger and only
 `start` writes it.
 
-`InvestigationRequest` is what an action needs beyond the investigation and the entries: the
+A payload's `request` is what an action needs beyond the investigation and the entries: the
 target and its kind for `start`, the round for `add`, the kinds and the limit for `knowns`. A
 `start` request may leave the kind out, and the tool asks the user; `InvestigationStart` is the
 complete form the service takes.
-`InvestigationPayload` carries the entries and the request as the tool's one payload argument.
+Each action that takes a payload has a payload model of its own, and `add` carries its entries
+there. `InvestigationRequest` is the tool's one argument: one model per action, told apart by
+`action`.
 """
 
 from enum import StrEnum, auto
@@ -17,6 +19,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.request import ProseText, RequestModel
 
 DEFAULT_KNOWNS_LIMIT = 40
@@ -95,12 +98,53 @@ class KnownsFilter(RequestModel):
     limit: KnownsLimit = DEFAULT_KNOWNS_LIMIT
 
 
-type InvestigationRequest = InvestigationStartRequest | LedgerRound | KnownsFilter
+class StartInvestigationPayload(RequestModel):
+    request: InvestigationStartRequest
 
 
-class InvestigationPayload(RequestModel):
-    entries: tuple[LedgerEntry, ...] | None = None
-    request: InvestigationRequest | None = None
+class AddInvestigationPayload(RequestModel):
+    entries: tuple[LedgerEntry, ...]
+    request: LedgerRound
+
+
+class KnownsInvestigationPayload(RequestModel):
+    request: KnownsFilter | None = None
+
+
+class StartInvestigation(RequestModel):
+    action: Literal[InvestigationAction.START]
+    payload: StartInvestigationPayload
+
+
+class AddInvestigation(RequestModel):
+    action: Literal[InvestigationAction.ADD]
+    investigation_id: Slug
+    payload: AddInvestigationPayload
+
+
+class RenderInvestigation(RequestModel):
+    action: Literal[InvestigationAction.RENDER]
+    investigation_id: Slug
+
+
+class KnownsInvestigation(RequestModel):
+    action: Literal[InvestigationAction.KNOWNS]
+    investigation_id: Slug
+    payload: KnownsInvestigationPayload | None = None
+
+
+class ListInvestigation(RequestModel):
+    action: Literal[InvestigationAction.LIST]
+
+
+type InvestigationRequest = Annotated[
+    StartInvestigation
+    | AddInvestigation
+    | RenderInvestigation
+    | KnownsInvestigation
+    | ListInvestigation,
+    Field(discriminator='action'),
+]
 
 
 class InvestigationView(BaseModel):

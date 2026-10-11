@@ -19,11 +19,12 @@ from mightymodels_plugin.tools.asking import AnswerProse, Choice, Question, enum
 from mightymodels_plugin.tools.review.schema import (
     Decision,
     DisposeRequest,
+    DisposeReview,
     Emphasis,
-    ReviewAction,
-    ReviewPayload,
+    ReviewRequest,
     ReviewScope,
     StartRequest,
+    StartReview,
 )
 
 ScopeChoices = Annotated[ReviewScope, enumerated(ReviewScope)]
@@ -41,72 +42,65 @@ class DispositionAnswer(Choice[DecisionChoices]):
 
 
 SCOPE = Question(
-    message='What should the review cover?', answer=ScopeAnswer, argument='payload.scope'
+    message='What should the review cover?', answer=ScopeAnswer, argument='request.payload.scope'
 )
 DEPTH = Question(
-    message='How deep should the review go?', answer=DepthAnswer, argument='payload.depth'
+    message='How deep should the review go?', answer=DepthAnswer, argument='request.payload.depth'
 )
 EMPHASIS = Question(
-    message='What should the review emphasize?', answer=EmphasisAnswer, argument='payload.emphasis'
+    message='What should the review emphasize?',
+    answer=EmphasisAnswer,
+    argument='request.payload.emphasis',
 )
 
 
 def disposition_question(finding: str) -> Question:
+    decision = '{"decision": <choice>, "reason": "<why>"}'
     return Question(
         message=f'What should happen to {finding}? accept-risk and dismiss need a reason.',
         answer=DispositionAnswer,
-        argument=f'payload.decisions {{"{finding}": {{"decision": <choice>, "reason": "<why>"}}}}',
+        argument=f'request.payload.decisions {{"{finding}": {decision}}}',
     )
 
 
-def start_request(action: ReviewAction, payload: ReviewPayload | None) -> StartRequest | None:
-    if action is not ReviewAction.START:
+def start_request(request: ReviewRequest) -> StartRequest | None:
+    if not isinstance(request, StartReview):
         return None
-    if payload is None:
-        return StartRequest()
-    return payload if isinstance(payload, StartRequest) else None
+    return StartRequest() if request.payload is None else request.payload
 
 
-def dispose_request(action: ReviewAction, payload: ReviewPayload | None) -> DisposeRequest | None:
-    if action is not ReviewAction.DISPOSE or not isinstance(payload, DisposeRequest):
+def dispose_request(request: ReviewRequest) -> DisposeRequest | None:
+    if not isinstance(request, DisposeReview):
         return None
-    return payload
+    return request.payload
 
 
-def ask_scope(
-    action: ReviewAction, payload: ReviewPayload | None
-) -> ScopeAnswer | Elicit[ScopeAnswer]:
-    request = start_request(action, payload)
-    if request is None or request.scope is not None:
+def ask_scope(request: ReviewRequest) -> ScopeAnswer | Elicit[ScopeAnswer]:
+    start = start_request(request)
+    if start is None or start.scope is not None:
         return ScopeAnswer(choice=None)
     return Elicit(SCOPE.message, ScopeAnswer)
 
 
-def ask_depth(
-    action: ReviewAction, payload: ReviewPayload | None
-) -> DepthAnswer | Elicit[DepthAnswer]:
-    request = start_request(action, payload)
-    if request is None or request.depth is not None:
+def ask_depth(request: ReviewRequest) -> DepthAnswer | Elicit[DepthAnswer]:
+    start = start_request(request)
+    if start is None or start.depth is not None:
         return DepthAnswer(choice=None)
     return Elicit(DEPTH.message, DepthAnswer)
 
 
-def ask_emphasis(
-    action: ReviewAction, payload: ReviewPayload | None
-) -> EmphasisAnswer | Elicit[EmphasisAnswer]:
-    request = start_request(action, payload)
-    if request is None or request.emphasis is not None:
+def ask_emphasis(request: ReviewRequest) -> EmphasisAnswer | Elicit[EmphasisAnswer]:
+    start = start_request(request)
+    if start is None or start.emphasis is not None:
         return EmphasisAnswer(choice=None)
     return Elicit(EMPHASIS.message, EmphasisAnswer)
 
 
-def ask_disposition(
-    action: ReviewAction, payload: ReviewPayload | None
-) -> DispositionAnswer | Elicit[DispositionAnswer]:
-    request = dispose_request(action, payload)
-    if request is None or request.decisions is not None or request.finding is None:
+def ask_disposition(request: ReviewRequest) -> DispositionAnswer | Elicit[DispositionAnswer]:
+    dispose = dispose_request(request)
+    if dispose is None or dispose.decisions is not None or dispose.finding is None:
         return DispositionAnswer(choice=None)
-    return Elicit(disposition_question(request.finding).message, DispositionAnswer)
+    return Elicit(disposition_question(dispose.finding).message, DispositionAnswer)
 
 
 AskedScope = Annotated[ElicitationResult[ScopeAnswer], Resolve(ask_scope)]

@@ -17,9 +17,9 @@ from mightymodels_plugin.core.routing import Scope
 from mightymodels_plugin.tools.asking import AnswerName, Choice, Question, enumerated
 from mightymodels_plugin.tools.ticket.schema import (
     BranchChoice,
-    TicketAction,
-    TicketFields,
+    TicketInterview,
     TicketRequest,
+    WriteTicket,
 )
 
 ScopeChoices = Annotated[Scope, enumerated(Scope)]
@@ -36,49 +36,43 @@ class BranchAnswer(Choice[BranchChoices]):
 SCOPE = Question(
     message='What is the scope of each anticipated task?',
     answer=ScopeAnswer,
-    argument='fields.scope',
+    argument='request.fields.scope',
 )
 COMPACTION = Question(
     message='Would implementing this likely cause at least one compaction?',
     answer=CompactionAnswer,
-    argument='fields.compaction',
+    argument='request.fields.compaction',
 )
 BRANCH = Question(
     message='Run the work on the current branch, or on a new one? A new one needs a name.',
     answer=BranchAnswer,
-    argument='fields.branch (the current branch name, or the new branch name)',
+    argument='request.fields.branch (the current branch name, or the new branch name)',
 )
 
 
-def write_request(action: TicketAction, fields: TicketFields | None) -> TicketRequest | None:
-    if action is not TicketAction.WRITE or not isinstance(fields, TicketRequest):
+def write_request(request: TicketRequest) -> TicketInterview | None:
+    if not isinstance(request, WriteTicket):
         return None
-    return fields
+    return request.fields
 
 
-def ask_scope(
-    action: TicketAction, fields: TicketFields | None
-) -> ScopeAnswer | Elicit[ScopeAnswer]:
-    request = write_request(action, fields)
-    if request is None or request.scope is not None:
+def ask_scope(request: TicketRequest) -> ScopeAnswer | Elicit[ScopeAnswer]:
+    interview = write_request(request)
+    if interview is None or interview.scope is not None:
         return ScopeAnswer(choice=None)
     return Elicit(SCOPE.message, ScopeAnswer)
 
 
-def ask_compaction(
-    action: TicketAction, fields: TicketFields | None
-) -> CompactionAnswer | Elicit[CompactionAnswer]:
-    request = write_request(action, fields)
-    if request is None or request.compaction is not None:
+def ask_compaction(request: TicketRequest) -> CompactionAnswer | Elicit[CompactionAnswer]:
+    interview = write_request(request)
+    if interview is None or interview.compaction is not None:
         return CompactionAnswer(choice=None)
     return Elicit(COMPACTION.message, CompactionAnswer)
 
 
-def ask_branch(
-    action: TicketAction, fields: TicketFields | None
-) -> BranchAnswer | Elicit[BranchAnswer]:
-    request = write_request(action, fields)
-    if request is None or request.branch is not None:
+def ask_branch(request: TicketRequest) -> BranchAnswer | Elicit[BranchAnswer]:
+    interview = write_request(request)
+    if interview is None or interview.branch is not None:
         return BranchAnswer(choice=None)
     return Elicit(BRANCH.message, BranchAnswer)
 

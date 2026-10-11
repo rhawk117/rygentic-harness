@@ -39,7 +39,7 @@ type Report = Mapping[str, object]
 
 OTHER_KEY = 'acme/gadgets'
 REPORT_TEXT = 'the drain loop sleeps between every retry batch'
-SEARCH: ToolCall = ('similarity', {'action': 'search', 'query': REPORT_TEXT})
+SEARCH: ToolCall = ('similarity', {'request': {'action': 'search', 'query': REPORT_TEXT}})
 CREDENTIALS = '://a:b@'
 WORDS = 'the drain loop sleeps between every retry batch '
 
@@ -125,7 +125,7 @@ class TestAReportFileOfThisRepository:
     ) -> None:
         spooled(spool, named(own_key, 'first'), report_for(own_key))
 
-        state_server.call(('crashout', {'action': 'stats'}))
+        state_server.call(('crashout', {'request': {'action': 'stats'}}))
         state_server.call(SEARCH)
 
         assert len(scout_reports(repository_database)) == 1
@@ -157,7 +157,7 @@ class TestAReportFileOfThisRepository:
     ) -> None:
         file = spooled(spool, named(own_key, 'first'), report_for(own_key))
 
-        (refused,) = state_server.call(('similarity', {'action': 'delete'}))
+        (refused,) = state_server.call(('similarity', {'request': {'action': 'delete'}}))
 
         assert refused.is_error
         assert file.exists()
@@ -406,9 +406,9 @@ class TestTheBoundOnAFileCount:
         state_server: StateServer,
         repository_database: Database,
     ) -> None:
-        state_server.call(('crashout', {'action': 'stats'}))
+        state_server.call(('crashout', {'request': {'action': 'stats'}}))
         after_one = len(scout_reports(repository_database))
-        state_server.call(('crashout', {'action': 'stats'}))
+        state_server.call(('crashout', {'request': {'action': 'stats'}}))
 
         assert after_one == SPOOL_FILES_PER_CALL
         assert len(scout_reports(repository_database)) == more_files_than_a_call_takes
@@ -516,7 +516,7 @@ class TestWhereNothingIsToBeTakenIn:
     def test_a_call_creates_no_spool(
         self, connected_server: StateServer, data_directory: Path, spool: Path
     ) -> None:
-        connected_server.call(('crashout', {'action': 'stats'}), SEARCH)
+        connected_server.call(('crashout', {'request': {'action': 'stats'}}), SEARCH)
 
         assert not spool.exists()
         assert sorted(tree(data_directory)) <= sorted(

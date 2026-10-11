@@ -15,6 +15,7 @@ from mightymodels_plugin.redaction import RedactedTextTooLongError
 from mightymodels_plugin.tools.failed_fix.schema import (
     FailedFixAction,
     FailedFixPayload,
+    FailedFixRequest,
     TaskFailedFix,
 )
 from mightymodels_plugin.tools.failed_fix.tool import failed_fix_tool
@@ -50,7 +51,8 @@ REDACTED_CREDENTIALS = '://[REDACTED:url-credentials]@'
 
 def record(tasks: TaskService, slug: Slug, task_id: str, hypothesis: str) -> TaskView:
     payload = FailedFixPayload(task_id=task_id, change=TaskFailedFix(hypothesis=hypothesis))
-    return failed_fix_tool.failed_fix(FailedFixAction.RECORD, slug, payload, tasks=tasks)
+    request = FailedFixRequest(action=FailedFixAction.RECORD, slug=slug, payload=payload)
+    return failed_fix_tool.failed_fix(request, tasks=tasks)
 
 
 def tried(tasks: TaskService, slug: Slug, task_id: str) -> list[str]:
@@ -162,7 +164,7 @@ class TestAFourthFailedFix:
             'payload': {'task_id': 'T1', 'change': {'hypothesis': 'a fourth idea'}},
         }
 
-        (result,) = connected_server.call(('failed_fix', arguments))
+        (result,) = connected_server.call(('failed_fix', {'request': arguments}))
 
         text = text_of(result)
         assert result.is_error
@@ -228,7 +230,7 @@ class TestTheTaskTool:
             'payload': {'task_id': 'T1', 'change': {'hypothesis': HYPOTHESES[0]}},
         }
 
-        (result,) = connected_server.call(('task', arguments))
+        (result,) = connected_server.call(('task', {'request': arguments}))
 
         assert result.is_error
         assert 'record-failed-fix' in text_of(result)

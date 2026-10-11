@@ -1,4 +1,4 @@
-"""The `ticket` tool: each handler checks the call's arguments and asks the ticket service.
+"""The `ticket` tool: each handler takes its action's request and asks the ticket service.
 
 `write` asks the user for the scope, the compaction and the branch when the fields leave them out,
 through the resolvers in `questions`. `ServedTicket` holds the service and the answers, which a
@@ -16,11 +16,10 @@ from typing import Annotated
 from mcp.server.elicitation import ElicitationResult
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.asking import answer_of, chosen, needs_input_text
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
-    MissingArgumentsError,
     ServedState,
     ServiceHandler,
     dispatch_to_service,
@@ -38,12 +37,15 @@ from mightymodels_plugin.tools.ticket.questions import (
     ScopeAnswer,
 )
 from mightymodels_plugin.tools.ticket.schema import (
+    ShowTicket,
     TicketAction,
     TicketAnswers,
-    TicketContext,
-    TicketFields,
+    TicketInterview,
     TicketRequest,
     TicketView,
+    UpdateContextTicket,
+    ValidateTicket,
+    WriteTicket,
 )
 from mightymodels_plugin.tools.ticket.service import TicketService
 
@@ -56,28 +58,27 @@ class TicketAsked:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class TicketCall:
-    slug: Slug
-    fields: TicketFields | None
+class TicketServed:
+    tickets: TicketService
     asked: TicketAsked
 
 
-def named_branch(tickets: TicketService, request: TicketRequest, asked: TicketAsked) -> str | None:
-    if request.branch is not None:
-        return request.branch
+def named_branch(
+    tickets: TicketService, interview: TicketInterview, asked: TicketAsked
+) -> str | None:
+    if interview.branch is not None:
+        return interview.branch
     answer = answer_of(asked.branch)
     if answer is None or answer.choice is None:
         return None
     return tickets.branch_named(answer.choice, answer.name)
 
 
-def write_ticket(tickets: TicketService, call: TicketCall) -> TicketView:
-    request = call.fields
-    if not isinstance(request, TicketRequest):
-        raise MissingArgumentsError(TicketAction.WRITE, 'fields holding the interview answers')
-    scope = request.scope or chosen(call.asked.scope)
-    compaction = chosen(call.asked.compaction) if request.compaction is None else request.compaction
-    branch = named_branch(tickets, request, call.asked)
+def write_ticket(served: TicketServed, request: WriteTicket) -> TicketView:
+    interview, asked = request.fields, served.asked
+    scope = interview.scope or chosen(asked.scope)
+    compaction = chosen(asked.compaction) if interview.compaction is None else interview.compaction
+    branch = named_branch(served.tickets, interview, asked)
     if scope is None or compaction is None or branch is None:
         unanswered = [
             question
@@ -86,25 +87,21 @@ def write_ticket(tickets: TicketService, call: TicketCall) -> TicketView:
         ]
         return TicketView(text=needs_input_text(unanswered))
     answers = TicketAnswers.model_validate(
-        request.model_dump() | {'scope': scope, 'compaction': compaction, 'branch': branch}
+        interview.model_dump() | {'scope': scope, 'compaction': compaction, 'branch': branch}
     )
-    return tickets.write(call.slug, answers)
+    return served.tickets.write(request.slug, answers)
 
 
-def validate_ticket(tickets: TicketService, call: TicketCall) -> TicketView:
-    return tickets.validate(call.slug)
+def validate_ticket(served: TicketServed, request: ValidateTicket) -> TicketView:
+    return served.tickets.validate(request.slug)
 
 
-def show_ticket(tickets: TicketService, call: TicketCall) -> TicketView:
-    return tickets.show(call.slug)
+def show_ticket(served: TicketServed, request: ShowTicket) -> TicketView:
+    return served.tickets.show(request.slug)
 
 
-def update_ticket_context(tickets: TicketService, call: TicketCall) -> TicketView:
-    if not isinstance(call.fields, TicketContext):
-        raise MissingArgumentsError(
-            TicketAction.UPDATE_CONTEXT, 'fields holding only the context lines'
-        )
-    return tickets.update_context(call.slug, call.fields)
+def update_ticket_context(served: TicketServed, request: UpdateContextTicket) -> TicketView:
+    return served.tickets.update_context(request.slug, request.fields)
 
 
 def lifespan_tickets(ctx: Context[ServedState]) -> TicketService:
@@ -112,12 +109,6 @@ def lifespan_tickets(ctx: Context[ServedState]) -> TicketService:
 
 
 ResolvedTickets = Annotated[TicketService, Resolve(lifespan_tickets)]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class TicketServed:
-    tickets: TicketService
-    asked: TicketAsked
 
 
 def serve_tickets(
@@ -132,29 +123,23 @@ ServedTicket = Annotated[TicketServed, Resolve(serve_tickets)]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TicketTool:
-    handlers: Mapping[TicketAction, ServiceHandler[TicketService, TicketCall, TicketView]]
+    handlers: Mapping[TicketAction, ServiceHandler[TicketServed, TicketRequest, TicketView]]
 
-    def ticket(
-        self,
-        action: TicketAction,
-        slug: Slug,
-        fields: TicketFields | None = None,
-        *,
-        served: ServedTicket,
-    ) -> TicketView:
+    def ticket(self, request: TicketRequest, *, served: ServedTicket) -> TicketView:
         """Create, validate, read or update a ticket's context lines; writes the fixed models."""
-        call = TicketCall(slug=slug, fields=fields, asked=served.asked)
-        return dispatch_to_service(self.handlers, action, call, service=served.tickets)
+        return dispatch_to_service(self.handlers, request.action, request, service=served)
 
 
 ticket_tool = TicketTool(
     handlers=MappingProxyType(
         {
-            TicketAction.WRITE: write_ticket,
-            TicketAction.VALIDATE: validate_ticket,
-            TicketAction.SHOW: show_ticket,
-            TicketAction.UPDATE_CONTEXT: update_ticket_context,
+            TicketAction.WRITE: ActionHandler(variant=WriteTicket, handle=write_ticket),
+            TicketAction.VALIDATE: ActionHandler(variant=ValidateTicket, handle=validate_ticket),
+            TicketAction.SHOW: ActionHandler(variant=ShowTicket, handle=show_ticket),
+            TicketAction.UPDATE_CONTEXT: ActionHandler(
+                variant=UpdateContextTicket, handle=update_ticket_context
+            ),
         }
     )
 )
-ticket_action_tool: ActionTool[TicketAction, TicketService, TicketCall, TicketView] = ticket_tool
+ticket_action_tool: ActionTool[TicketAction, TicketServed, TicketRequest, TicketView] = ticket_tool

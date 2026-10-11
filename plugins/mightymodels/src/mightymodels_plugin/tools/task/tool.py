@@ -1,4 +1,4 @@
-"""The `task` tool: each handler checks the call's arguments and asks the task service.
+"""The `task` tool: each handler takes its action's request and asks the task service.
 
 `ResolvedTasks` is a plain assignment because the SDK does not see a `Resolve` marker behind a
 PEP 695 `type` alias and would put the parameter in the tool's schema.
@@ -11,56 +11,45 @@ from typing import Annotated
 
 from mcp.server.mcpserver import Context, Resolve
 
-from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.protocol import (
+    ActionHandler,
     ActionTool,
-    MissingArgumentsError,
     ServedState,
     ServiceHandler,
     dispatch_to_service,
     served_services,
 )
 from mightymodels_plugin.tools.task.schema import (
+    MarkTask,
+    ReadyTask,
+    ShowTask,
+    StartTask,
     TaskAction,
-    TaskMark,
-    TaskPayload,
-    TaskStart,
-    TaskVerification,
+    TaskRequest,
     TaskView,
+    VerifyTask,
 )
 from mightymodels_plugin.tools.task.service import TaskService
 
 
-@dataclass(slots=True, kw_only=True, frozen=True)
-class TaskCall:
-    slug: Slug
-    payload: TaskPayload
+def start_task(tasks: TaskService, request: StartTask) -> TaskView:
+    return tasks.start(request.slug, request.payload.task_id, request.payload.change)
 
 
-def start_task(tasks: TaskService, call: TaskCall) -> TaskView:
-    if call.payload.task_id is None or not isinstance(call.payload.change, TaskStart):
-        raise MissingArgumentsError(TaskAction.START, 'task_id and a change holding by and owned')
-    return tasks.start(call.slug, call.payload.task_id, call.payload.change)
+def verify_task(tasks: TaskService, request: VerifyTask) -> TaskView:
+    return tasks.verify(request.slug, request.payload.task_id, request.payload.change)
 
 
-def verify_task(tasks: TaskService, call: TaskCall) -> TaskView:
-    if call.payload.task_id is None or not isinstance(call.payload.change, TaskVerification):
-        raise MissingArgumentsError(TaskAction.VERIFY, 'task_id and a change holding commit')
-    return tasks.verify(call.slug, call.payload.task_id, call.payload.change)
+def mark_task(tasks: TaskService, request: MarkTask) -> TaskView:
+    return tasks.mark(request.slug, request.payload.task_id, request.payload.change)
 
 
-def mark_task(tasks: TaskService, call: TaskCall) -> TaskView:
-    if call.payload.task_id is None or not isinstance(call.payload.change, TaskMark):
-        raise MissingArgumentsError(TaskAction.MARK, 'task_id and a change holding to and reason')
-    return tasks.mark(call.slug, call.payload.task_id, call.payload.change)
+def show_tasks(tasks: TaskService, request: ShowTask) -> TaskView:
+    return tasks.show(request.slug)
 
 
-def show_tasks(tasks: TaskService, call: TaskCall) -> TaskView:
-    return tasks.show(call.slug)
-
-
-def gate_readiness(tasks: TaskService, call: TaskCall) -> TaskView:
-    return tasks.ready(call.slug)
+def gate_readiness(tasks: TaskService, request: ReadyTask) -> TaskView:
+    return tasks.ready(request.slug)
 
 
 def lifespan_tasks(ctx: Context[ServedState]) -> TaskService:
@@ -72,30 +61,22 @@ ResolvedTasks = Annotated[TaskService, Resolve(lifespan_tasks)]
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TaskTool:
-    handlers: Mapping[TaskAction, ServiceHandler[TaskService, TaskCall, TaskView]]
+    handlers: Mapping[TaskAction, ServiceHandler[TaskService, TaskRequest, TaskView]]
 
-    def task(
-        self,
-        action: TaskAction,
-        slug: Slug,
-        payload: TaskPayload | None = None,
-        *,
-        tasks: ResolvedTasks,
-    ) -> TaskView:
+    def task(self, request: TaskRequest, *, tasks: ResolvedTasks) -> TaskView:
         """Start, mark, verify or list tasks, and gate the ticket on readiness."""
-        call = TaskCall(slug=slug, payload=TaskPayload() if payload is None else payload)
-        return dispatch_to_service(self.handlers, action, call, service=tasks)
+        return dispatch_to_service(self.handlers, request.action, request, service=tasks)
 
 
 task_tool = TaskTool(
     handlers=MappingProxyType(
         {
-            TaskAction.START: start_task,
-            TaskAction.VERIFY: verify_task,
-            TaskAction.MARK: mark_task,
-            TaskAction.SHOW: show_tasks,
-            TaskAction.READY: gate_readiness,
+            TaskAction.START: ActionHandler(variant=StartTask, handle=start_task),
+            TaskAction.VERIFY: ActionHandler(variant=VerifyTask, handle=verify_task),
+            TaskAction.MARK: ActionHandler(variant=MarkTask, handle=mark_task),
+            TaskAction.SHOW: ActionHandler(variant=ShowTask, handle=show_tasks),
+            TaskAction.READY: ActionHandler(variant=ReadyTask, handle=gate_readiness),
         }
     )
 )
-task_action_tool: ActionTool[TaskAction, TaskService, TaskCall, TaskView] = task_tool
+task_action_tool: ActionTool[TaskAction, TaskService, TaskRequest, TaskView] = task_tool

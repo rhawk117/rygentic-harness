@@ -29,7 +29,7 @@ git and returns the record and its Markdown, and you write them to `handoffs/sna
 `mcp__plugin_mightymodels_state__snapshot` (`limit`, 1 to 100, cuts each list; the default is 20):
 
 ```json
-{"slug": "SLUG", "limit": 20}
+{"request": {"slug": "SLUG", "limit": 20}}
 ```
 
 Write the record to the `record_path` the answer gives and the Markdown to its `markdown_path`.
@@ -79,7 +79,7 @@ a `decision` entry from `user` in the ticket's linked investigation. Call
 `mcp__plugin_mightymodels_state__investigation` with action `add`:
 
 ```json
-{"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [{"kind": "decision", "text": "<the decision>", "source": "user"}]}}
+{"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [{"kind": "decision", "text": "<the decision>", "source": "user"}]}}}
 ```
 
 `round` is the ledger's latest (`investigation` `render` shows it). A decision in the ledger
@@ -92,7 +92,7 @@ again, so they reflect the tree after the uncommitted-work action and the decisi
 recorded:
 
 ```json
-{"slug": "SLUG"}
+{"request": {"slug": "SLUG"}}
 ```
 
 If the call or a write fails, stop: say what failed and do not print a next-session prompt. A

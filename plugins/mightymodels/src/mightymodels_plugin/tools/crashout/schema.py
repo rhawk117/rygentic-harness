@@ -6,7 +6,7 @@ order the journal's text reads in.
 """
 
 from enum import StrEnum, auto
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -50,6 +50,24 @@ class CrashoutEntry(RequestModel):
     root_cause: Stripped
     corrective_action: Stripped
     barked_back: bool
+
+
+class AddCrashout(RequestModel):
+    action: Literal[CrashoutAction.ADD]
+    entry: CrashoutEntry
+
+
+class StatsCrashout(RequestModel):
+    action: Literal[CrashoutAction.STATS]
+
+
+class LastCrashout(RequestModel):
+    action: Literal[CrashoutAction.LAST]
+
+
+type CrashoutRequest = Annotated[
+    AddCrashout | StatsCrashout | LastCrashout, Field(discriminator='action')
+]
 
 
 class JournaledCrashout(BaseModel):

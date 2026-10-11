@@ -76,14 +76,16 @@ from mightymodels_plugin.tools.review.tables import (
     ReviewOutcomeRow,
     ReviewRunRow,
 )
-from mightymodels_plugin.tools.similarity.schema import SpooledReport
+from mightymodels_plugin.tools.similarity.schema import SimilarityRequest, SpooledReport
 from mightymodels_plugin.tools.similarity.tables import ScoutReportRow
 from mightymodels_plugin.tools.task.schema import (
+    MarkTaskPayload,
+    StartTaskPayload,
     Status,
     TaskMark,
-    TaskPayload,
     TaskStart,
     TaskVerification,
+    VerifyTaskPayload,
 )
 from mightymodels_plugin.tools.task.tables import FailedFixRow, TaskRow
 from mightymodels_plugin.tools.tests.support import (
@@ -94,7 +96,7 @@ from mightymodels_plugin.tools.tests.support import (
     table_of,
     text_of,
 )
-from mightymodels_plugin.tools.ticket.schema import TicketAnswers, TicketContext, TicketRequest
+from mightymodels_plugin.tools.ticket.schema import TicketAnswers, TicketContext, TicketInterview
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 from pydantic import ValidationError
@@ -169,6 +171,7 @@ VALID: Mapping[type[RequestModel], dict[str, object]] = MappingProxyType(
             'fix': 'drain in one pass',
             'verify': 'run the drain test',
         },
+        SimilarityRequest: {'action': 'search', 'query': 'the drain loop'},
         SpooledReport: {
             'repository_key': 'acme/widgets',
             'scout': 'code-scout',
@@ -186,7 +189,15 @@ VALID: Mapping[type[RequestModel], dict[str, object]] = MappingProxyType(
         TaskMark: {'to': 'failed', 'reason': 'the drain test fails'},
         FailedFixPayload: {'task_id': 'T1', 'change': {'hypothesis': 'the drain loop sleeps'}},
         TaskFailedFix: {'hypothesis': 'the drain loop sleeps between batches'},
-        TaskPayload: {},
+        StartTaskPayload: {
+            'task_id': 'T1',
+            'change': {'by': 'engineer', 'owned': ['src/queue.py']},
+        },
+        VerifyTaskPayload: {'task_id': 'T1', 'change': {'commit': 'abc1234'}},
+        MarkTaskPayload: {
+            'task_id': 'T1',
+            'change': {'to': 'failed', 'reason': 'the drain test fails'},
+        },
         TicketAnswers: {
             'summary': 'Retry queue drains slowly',
             'scope': 'large',
@@ -194,7 +205,7 @@ VALID: Mapping[type[RequestModel], dict[str, object]] = MappingProxyType(
             'branch': 'fix/retry-queue',
             'context': ['drain loop sleeps between batches'],
         },
-        TicketRequest: {
+        TicketInterview: {
             'summary': 'Retry queue drains slowly',
             'scope': 'large',
             'compaction': True,
@@ -404,11 +415,25 @@ class TestEveryStringOfARequestModel:
         stored(ResolvePayload, 'commit', ReviewOutcomeRow, 'commit'),
         stored(ResolvePayload, 'reason', ReviewOutcomeRow, 'reason'),
         stored(TaskVerification, 'commit', TaskRow, 'commit'),
-        stored(TicketRequest, 'summary', TicketRow, 'summary'),
-        stored(TicketRequest, 'branch', TicketRow, 'branch'),
-        stored(TicketRequest, 'jira', TicketRow, 'jira'),
+        stored(TicketInterview, 'summary', TicketRow, 'summary'),
+        stored(TicketInterview, 'branch', TicketRow, 'branch'),
+        stored(TicketInterview, 'jira', TicketRow, 'jira'),
         CallerText(
-            model=TaskPayload,
+            model=StartTaskPayload,
+            field='task_id',
+            limit=length_of(TaskRow, 'task_id'),
+            spelled=task_id,
+            refused_as=OFF_THE_PATTERN,
+        ),
+        CallerText(
+            model=VerifyTaskPayload,
+            field='task_id',
+            limit=length_of(TaskRow, 'task_id'),
+            spelled=task_id,
+            refused_as=OFF_THE_PATTERN,
+        ),
+        CallerText(
+            model=MarkTaskPayload,
             field='task_id',
             limit=length_of(TaskRow, 'task_id'),
             spelled=task_id,
@@ -459,18 +484,23 @@ class TestEveryStringOfARequestModel:
         ),
         CallerText(model=TaskMark, field='reason', limit=PROSE_LIMIT),
         CallerText(model=TaskFailedFix, field='hypothesis', limit=PROSE_LIMIT),
+        CallerText(model=SimilarityRequest, field='query', limit=PROSE_LIMIT),
         CallerText(
-            model=TicketRequest, field='context', limit=PROSE_LIMIT, part='item', placed=in_a_list
+            model=TicketInterview,
+            field='context',
+            limit=PROSE_LIMIT,
+            part='item',
+            placed=in_a_list,
         ),
         CallerText(
-            model=TicketRequest,
+            model=TicketInterview,
             field='reference_urls',
             limit=PROSE_LIMIT,
             part='item',
             placed=in_a_list,
         ),
         CallerText(
-            model=TicketRequest,
+            model=TicketInterview,
             field='investigations',
             limit=SLUG_LIMIT,
             part='item',
@@ -604,7 +634,7 @@ class TestATextOneCharacterTooLong:
         tree_after_the_connect: dict[str, bytes],
         database_activity: DatabaseActivity,
     ) -> None:
-        (result,) = connected_server.call((name, arguments))
+        (result,) = connected_server.call((name, {'request': arguments}))
 
         assert result.is_error
         assert f'String should have at most {limit} characters' in text_of(result)
@@ -820,7 +850,7 @@ class TestTextRedactionLengthensPastItsLimit:
     def test_is_refused_by_the_tool_by_name_and_no_row_is_written(
         self, call: RedactedCall, connected_server: StateServer, repository_database: Database
     ) -> None:
-        (result,) = connected_server.call((call.tool, call.arguments))
+        (result,) = connected_server.call((call.tool, {'request': call.arguments}))
 
         assert result.is_error
         assert call.refusal() in text_of(result)

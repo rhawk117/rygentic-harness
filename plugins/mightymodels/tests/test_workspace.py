@@ -96,8 +96,8 @@ VERIFY_TASK: ToolCall = (
 READY: ToolCall = ('task', {'action': 'ready'})
 APPROVE: ToolCall = ('contract', {'action': 'approve', 'commands': [MARKER_COMMAND]})
 STATUS: ToolCall = ('contract', {'action': 'status'})
-START_REVIEW: ToolCall = ('review', {'action': 'start', 'payload': REVIEW})
-LIST_REVIEWS: ToolCall = ('review', {'action': 'list'})
+START_REVIEW: ToolCall = ('review', {'request': {'action': 'start', 'payload': REVIEW}})
+LIST_REVIEWS: ToolCall = ('review', {'request': {'action': 'list'}})
 
 
 def snapshot_files(workspace: Workspace) -> RecordFiles:
@@ -113,7 +113,10 @@ def live_debug_note(workspace: Workspace) -> Path:
 
 
 def slug_results(server: StateServer, *calls: ToolCall) -> list[CallToolResult]:
-    return server.call(*((name, {'slug': SLUG, **arguments}) for name, arguments in calls))
+    requests: list[ToolCall] = [
+        (name, {'request': {'slug': SLUG, **arguments}}) for name, arguments in calls
+    ]
+    return server.call(*requests)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -185,7 +188,12 @@ def project(
 class TestSafeRevision:
     START_FROM_A_NEWLINE_BASE: ToolCall = (
         'review',
-        {'action': 'start', 'payload': {**REVIEW, 'scope': 'branch', 'base': 'main\n'}},
+        {
+            'request': {
+                'action': 'start',
+                'payload': {**REVIEW, 'scope': 'branch', 'base': 'main\n'},
+            }
+        },
     )
 
     @pytest.mark.parametrize(
@@ -500,7 +508,13 @@ class TestSymlinkedReviewDirectory:
         added, listed = run_directory_outside.server.call(
             (
                 'review',
-                {'action': 'add', 'run_id': started_run, 'payload': {'persona': 'merge-vader'}},
+                {
+                    'request': {
+                        'action': 'add',
+                        'run_id': started_run,
+                        'payload': {'persona': 'merge-vader'},
+                    }
+                },
             ),
             LIST_REVIEWS,
         )

@@ -14,7 +14,7 @@ column a finding id is stored in, `FINDING_ID_LIMIT`.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
@@ -197,7 +197,60 @@ class ReportPayload(RequestModel):
     shape: Shape = Shape.FULL
 
 
-type ReviewPayload = ReportPayload | AddPayload | DisposeRequest | ResolvePayload | StartRequest
+class StartReview(RequestModel):
+    action: Literal[ReviewAction.START]
+    payload: StartRequest | None = None
+
+
+class OverrideReview(RequestModel):
+    action: Literal[ReviewAction.OVERRIDE]
+    run_id: RunId
+
+
+class AddReview(RequestModel):
+    action: Literal[ReviewAction.ADD]
+    run_id: RunId
+    payload: AddPayload
+
+
+class GateReview(RequestModel):
+    action: Literal[ReviewAction.GATE]
+    run_id: RunId
+
+
+class DisposeReview(RequestModel):
+    action: Literal[ReviewAction.DISPOSE]
+    run_id: RunId
+    payload: DisposeRequest
+
+
+class ResolveReview(RequestModel):
+    action: Literal[ReviewAction.RESOLVE]
+    run_id: RunId
+    payload: ResolvePayload
+
+
+class ReportReview(RequestModel):
+    action: Literal[ReviewAction.REPORT]
+    run_id: RunId
+    payload: ReportPayload | None = None
+
+
+class ListReview(RequestModel):
+    action: Literal[ReviewAction.LIST]
+
+
+type ReviewRequest = Annotated[
+    StartReview
+    | OverrideReview
+    | AddReview
+    | GateReview
+    | DisposeReview
+    | ResolveReview
+    | ReportReview
+    | ListReview,
+    Field(discriminator='action'),
+]
 
 
 class ReviewView(BaseModel):

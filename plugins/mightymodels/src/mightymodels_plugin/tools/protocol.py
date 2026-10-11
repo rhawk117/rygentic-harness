@@ -2,16 +2,24 @@
 
 A tool is an instance holding a handler per action. The server registers the tool's bound method,
 the SDK fills that method's resolved parameter from the lifespan state, and the method hands its
-handlers and its arguments to a dispatch, which runs the one handler. The SDK shows the model the
+handlers and its request to a dispatch, which runs the one handler. The SDK shows the model the
 text of a `ToolError` and hides everything else as a crash, so the failures the services
 anticipate are translated in `state_errors_as_tool_errors` and nowhere else.
+
+A tool takes one argument, `request`: one model per action, joined in a union the `action` field
+discriminates, so the published schema states what each action takes and refuses a call that
+leaves an argument out or adds one. An entry of a tool's handlers is an `ActionHandler`, the
+action's variant paired with the function that serves it. Calling the entry narrows the request to
+that variant once and hands the function the exact variant; a request of another class was routed
+to the wrong entry, which is a fault in the tool and raises `MisroutedRequestError`.
 
 Each tool module binds its instance a second time under `ActionTool`, as `<domain>_action_tool`,
 which is what makes the type checker hold the tool to the interface. Annotating the instance
 itself would hide its registered method from the server.
 
-A handler takes its domain's service and the call. Each tool resolves the service the lifespan
-built and dispatches through `dispatch_to_service`, and the service opens its own transactions.
+A handler takes what its tool resolved, the domain's service and with it the answers a tool asked
+the user for, and the request. Each tool resolves the service the lifespan built and dispatches
+through `dispatch_to_service`, and the service opens its own transactions.
 
 `LifespanState` is what the tools need from the server's lifespan state: one service per tool
 and nothing else. The server's `AppState` satisfies it, and it is declared here because the server
@@ -46,8 +54,8 @@ from mightymodels_plugin.tools.ticket.service import TicketService
 
 
 @runtime_checkable
-class ServiceHandler[Service, Call, View](Protocol):
-    def __call__(self, service: Service, call: Call, /) -> View: ...
+class ServiceHandler[Served, Request, View](Protocol):
+    def __call__(self, served: Served, request: Request, /) -> View: ...
 
 
 class MissingArgumentsError(StateError):
@@ -57,10 +65,29 @@ class MissingArgumentsError(StateError):
         self.needs = needs
 
 
+class MisroutedRequestError(TypeError):
+    def __init__(self, variant: type, request: object) -> None:
+        routed = type(request).__name__
+        super().__init__(f'a {routed} request was routed to the handler of {variant.__name__}')
+        self.variant = variant
+        self.request = request
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class ActionHandler[Request, Served, View]:
+    variant: type[Request]
+    handle: ServiceHandler[Served, Request, View]
+
+    def __call__(self, served: Served, request: object, /) -> View:
+        if not isinstance(request, self.variant):
+            raise MisroutedRequestError(self.variant, request)
+        return self.handle(served, request)
+
+
 @runtime_checkable
-class ActionTool[Action, Service, Call, View](Protocol):
+class ActionTool[Action, Served, Request, View](Protocol):
     @property
-    def handlers(self) -> Mapping[Action, ServiceHandler[Service, Call, View]]: ...
+    def handlers(self) -> Mapping[Action, ServiceHandler[Served, Request, View]]: ...
 
 
 @runtime_checkable
@@ -117,12 +144,12 @@ def state_errors_as_tool_errors() -> Generator[None]:
         raise ToolError(str(error)) from error
 
 
-def dispatch_to_service[Action, Service, Call, View](
-    handlers: Mapping[Action, ServiceHandler[Service, Call, View]],
+def dispatch_to_service[Action, Served, Request, View](
+    handlers: Mapping[Action, ServiceHandler[Served, Request, View]],
     action: Action,
-    call: Call,
+    request: Request,
     *,
-    service: Service,
+    service: Served,
 ) -> View:
     with state_errors_as_tool_errors():
-        return handlers[action](service, call)
+        return handlers[action](service, request)

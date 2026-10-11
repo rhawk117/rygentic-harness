@@ -11,9 +11,8 @@ from mcp.server.mcpserver import Elicit, Resolve
 
 from mightymodels_plugin.tools.asking import Choice, Question, enumerated
 from mightymodels_plugin.tools.investigation.schema import (
-    InvestigationAction,
-    InvestigationPayload,
-    InvestigationStartRequest,
+    InvestigationRequest,
+    StartInvestigation,
     TargetKind,
 )
 
@@ -25,21 +24,16 @@ def kind_question(target: str) -> Question:
     return Question(
         message=f'What kind of target is this? {target}',
         answer=KindAnswer,
-        argument='payload.request.kind',
+        argument='request.payload.request.kind',
     )
 
 
-def ask_kind(
-    action: InvestigationAction, payload: InvestigationPayload | None
-) -> KindAnswer | Elicit[KindAnswer]:
-    request = None if payload is None else payload.request
-    if action is not InvestigationAction.START or not isinstance(
-        request, InvestigationStartRequest
-    ):
+def ask_kind(request: InvestigationRequest) -> KindAnswer | Elicit[KindAnswer]:
+    if not isinstance(request, StartInvestigation):
         return KindAnswer(choice=None)
-    if request.kind is not None:
+    if request.payload.request.kind is not None:
         return KindAnswer(choice=None)
-    return Elicit(kind_question(request.target).message, KindAnswer)
+    return Elicit(kind_question(request.payload.request.target).message, KindAnswer)
 
 
 AskedKind = Annotated[ElicitationResult[KindAnswer], Resolve(ask_kind)]

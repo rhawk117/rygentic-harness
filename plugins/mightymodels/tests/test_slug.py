@@ -3,9 +3,12 @@
 import inspect
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MethodType
+from typing import TypeAliasType, get_args
 
 import pytest
 import sqlalchemy as sql
+from mcp.types import Tool
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels_plugin.core.database import Database
@@ -33,7 +36,7 @@ from mightymodels_plugin.tools.tests.support import (
 )
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import InvalidTicketError, TicketService
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 REJECTED = 2
 OUTSIDE = '../../../outside'
@@ -157,6 +160,22 @@ def project(repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPa
     return repository
 
 
+def request_variants(tool: MethodType) -> tuple[type[BaseModel], ...]:
+    request = inspect.signature(tool).parameters['request'].annotation
+    if not isinstance(request, TypeAliasType):
+        return (request,)
+    joined, _discriminator = get_args(request.__value__)
+    return get_args(joined)
+
+
+def required_slugs(tool: Tool) -> list[object]:
+    return [
+        model['properties']['slug']
+        for model in tool.input_schema['$defs'].values()
+        if 'slug' in model.get('required', ())
+    ]
+
+
 class TestSlugType:
     @pytest.mark.parametrize('raw', HOSTILE)
     def test_slug_confinement_refuses_a_separator_or_a_parent_reference(self, raw: str) -> None:
@@ -177,12 +196,17 @@ class TestSlugType:
         )
 
     def test_slug_confinement_every_slug_taking_tool_uses_the_one_slug_type(self) -> None:
-        taking_a_slug = [tool for tool in TOOLS if 'slug' in inspect.signature(tool).parameters]
-        annotations = [
-            inspect.signature(tool).parameters['slug'].annotation for tool in taking_a_slug
-        ]
+        slugs = {
+            tool.__name__: [
+                variant.model_fields['slug'].annotation
+                for variant in request_variants(tool)
+                if 'slug' in variant.model_fields
+            ]
+            for tool in TOOLS
+        }
+        taking_a_slug = {name: annotations for name, annotations in slugs.items() if annotations}
 
-        assert [tool.__name__ for tool in taking_a_slug] == [
+        assert list(taking_a_slug) == [
             'ticket',
             'task',
             'contract',
@@ -190,7 +214,7 @@ class TestSlugType:
             'close',
             'failed_fix',
         ]
-        assert annotations == [Slug, Slug, Slug, Slug, Slug, Slug]
+        assert all(set(annotations) == {Slug} for annotations in taking_a_slug.values())
 
     def test_slug_confinement_the_one_slug_type_is_the_review_start_payloads_slug(self) -> None:
         assert StartPayload.model_fields['slug'].annotation == Slug | None
@@ -198,32 +222,38 @@ class TestSlugType:
     def test_slug_confinement_every_tool_schema_carries_the_slug_pattern(
         self, state_server: StateServer
     ) -> None:
-        schemas = {
-            name: tool.input_schema
-            for name, tool in state_server.tools().items()
-            if 'slug' in tool.input_schema['properties']
+        taking_a_slug = {
+            name: tool for name, tool in state_server.tools().items() if required_slugs(tool)
         }
 
-        assert sorted(schemas) == ['close', 'contract', 'failed_fix', 'snapshot', 'task', 'ticket']
+        assert sorted(taking_a_slug) == [
+            'close',
+            'contract',
+            'failed_fix',
+            'snapshot',
+            'task',
+            'ticket',
+        ]
         assert all(
             (
-                schema['properties']['slug'],
-                schema['$defs']['Slug']['$ref'],
-                schema['$defs']['SlugText'],
+                slug,
+                tool.input_schema['$defs']['Slug']['$ref'],
+                tool.input_schema['$defs']['SlugText'],
             )
             == (
                 {'$ref': '#/$defs/Slug'},
                 '#/$defs/SlugText',
                 {'maxLength': SLUG_LIMIT, 'pattern': SLUG_PATTERN, 'type': 'string'},
             )
-            for schema in schemas.values()
+            for tool in taking_a_slug.values()
+            for slug in required_slugs(tool)
         )
 
 
 class TestReservedName:
     WRITE_OF_THE_RESERVED_NAME: ToolCall = (
         'ticket',
-        {'action': 'write', 'fields': ANSWERS, 'slug': 'archives'},
+        {'request': {'action': 'write', 'fields': ANSWERS, 'slug': 'archives'}},
     )
 
     def test_slug_reservation_a_parsed_slug_says_the_name_is_reserved(self) -> None:
@@ -277,7 +307,7 @@ class TestHostileSlug:
         arguments: dict[str, object],
         raw: str,
     ) -> None:
-        (result,) = connected_server.call((name, {**arguments, 'slug': raw}))
+        (result,) = connected_server.call((name, {'request': {**arguments, 'slug': raw}}))
 
         assert result.is_error
         assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
@@ -303,7 +333,8 @@ class TestHostileSlug:
 
 class TestInsideTheStateDirectory:
     RETRY_QUEUE_CALLS: tuple[ToolCall, ...] = tuple(
-        (name, {**arguments, 'slug': 'retry-queue'}) for _, name, arguments in TOOL_CALLS
+        (name, {'request': {**arguments, 'slug': 'retry-queue'}})
+        for _, name, arguments in TOOL_CALLS
     )
 
     TARGET = InvestigationStart(target='Queue drains slowly', kind=TargetKind.BEHAVIOR)
@@ -357,7 +388,9 @@ class TestInsideTheStateDirectory:
 class TestReviewConfinement:
     @pytest.fixture
     def run_with_a_leaking_report(self, project: Path, state_server: StateServer) -> str:
-        (started,) = state_server.call(('review', {'action': 'start', 'payload': START_PAYLOAD}))
+        (started,) = state_server.call(
+            ('review', {'request': {'action': 'start', 'payload': START_PAYLOAD}})
+        )
         run = started.structured_content['run_id']
         report = project.joinpath('.mightymodels', '.runtime', 'reviews', run)
         report.joinpath('UNCLE-BOB-REPORT.md').write_text(LEAKING_REPORT, encoding='utf-8')
@@ -373,7 +406,9 @@ class TestReviewConfinement:
         raw: str,
     ) -> None:
         payload = {**START_PAYLOAD, 'scope': 'ticket', 'base': 'main', 'slug': raw}
-        (result,) = connected_server.call(('review', {'action': 'start', 'payload': payload}))
+        (result,) = connected_server.call(
+            ('review', {'request': {'action': 'start', 'payload': payload}})
+        )
 
         assert result.is_error
         assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
@@ -391,7 +426,7 @@ class TestReviewConfinement:
         arguments: dict[str, object],
         raw: str,
     ) -> None:
-        (result,) = connected_server.call(('review', {**arguments, 'run_id': raw}))
+        (result,) = connected_server.call(('review', {'request': {**arguments, 'run_id': raw}}))
 
         assert result.is_error
         assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
@@ -406,7 +441,7 @@ class TestReviewConfinement:
         database_activity: DatabaseActivity,
         arguments: dict[str, object],
     ) -> None:
-        call = ('review', {**arguments, 'run_id': NON_ASCII_DIGIT_RUN_ID})
+        call: ToolCall = ('review', {'request': {**arguments, 'run_id': NON_ASCII_DIGIT_RUN_ID}})
         (result,) = connected_server.call(call)
 
         assert result.is_error
@@ -422,7 +457,7 @@ class TestReviewConfinement:
         database_activity: DatabaseActivity,
         arguments: dict[str, object],
     ) -> None:
-        call = ('review', {**arguments, 'run_id': WELL_FORMED_RUN_ID})
+        call: ToolCall = ('review', {'request': {**arguments, 'run_id': WELL_FORMED_RUN_ID}})
         (result,) = connected_server.call(call)
 
         assert result.is_error
@@ -432,7 +467,9 @@ class TestReviewConfinement:
     def test_slug_confinement_a_run_without_a_ticket_keeps_its_directory_under_runtime(
         self, project: Path, state_server: StateServer
     ) -> None:
-        (result,) = state_server.call(('review', {'action': 'start', 'payload': START_PAYLOAD}))
+        (result,) = state_server.call(
+            ('review', {'request': {'action': 'start', 'payload': START_PAYLOAD}})
+        )
 
         run = result.structured_content['run_id']
         state = project.joinpath('.mightymodels')
@@ -444,7 +481,9 @@ class TestReviewConfinement:
         self, project: Path, state_server: StateServer
     ) -> None:
         payload = {**START_PAYLOAD, 'scope': 'ticket', 'base': 'main', 'slug': 'retry-queue'}
-        (result,) = state_server.call(('review', {'action': 'start', 'payload': payload}))
+        (result,) = state_server.call(
+            ('review', {'request': {'action': 'start', 'payload': payload}})
+        )
 
         run = result.structured_content['run_id']
         state = project.joinpath('.mightymodels')
@@ -462,9 +501,11 @@ class TestReviewConfinement:
             (
                 'review',
                 {
-                    'action': 'add',
-                    'run_id': run_with_a_leaking_report,
-                    'payload': {'persona': 'uncle-bob'},
+                    'request': {
+                        'action': 'add',
+                        'run_id': run_with_a_leaking_report,
+                        'payload': {'persona': 'uncle-bob'},
+                    }
                 },
             )
         )

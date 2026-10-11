@@ -61,8 +61,8 @@ open-ticket does. Call `mcp__plugin_mightymodels_state__ticket` with action `wri
 under `fields`, and no `scope` or `branch`; the tool asks the user for both:
 
 ```json
-{"action": "write", "slug": "SLUG",
- "fields": {"summary": "...", "compaction": false, "context": ["..."]}}
+{"request": {"action": "write", "slug": "SLUG",
+ "fields": {"summary": "...", "compaction": false, "context": ["..."]}}}
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put each question
@@ -74,7 +74,7 @@ Then call it again with action `validate`, which stages the ticket as a row in t
 database:
 
 ```json
-{"action": "validate", "slug": "SLUG"}
+{"request": {"action": "validate", "slug": "SLUG"}}
 ```
 
 open-ticket's schema reference,
@@ -107,8 +107,8 @@ executes only contract commands, so approve them with one call to
 asks the user and records the commands only when the user approves:
 
 ```json
-{"action": "approve", "slug": "SLUG",
- "commands": [{"id": "T1.AC-1", "argv": ["..."], "expect_exit": 0, "timeout": 300}]}
+{"request": {"action": "approve", "slug": "SLUG",
+ "commands": [{"id": "T1.AC-1", "argv": ["..."], "expect_exit": 0, "timeout": 300}]}}
 ```
 
 An answer starting `not approved` means the user wants the list changed: change it and call
