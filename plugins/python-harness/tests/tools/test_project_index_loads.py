@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 from mcp import Client
-from python_harness import server
 from python_harness.core.sources import LoadedSources, load_sources
 from python_harness.core.workspace import Workspace
+from python_harness.gate import services as gate_services
 from python_harness.gate.domain import GateReport, NotTracked, RuffConfigSource
 from python_harness.imports import services as imports_services
 
@@ -39,7 +39,7 @@ def index_loads(monkeypatch: pytest.MonkeyPatch) -> list[LoadedSources]:
 @pytest.fixture
 def gate_without_checks(monkeypatch: pytest.MonkeyPatch) -> None:
     report = GateReport(RuffConfigSource.FALLBACK, (), NotTracked())
-    monkeypatch.setattr(server, 'run_gate', lambda *_, **__: report)
+    monkeypatch.setattr(gate_services, 'run_gate', lambda *_, **__: report)
 
 
 @pytest.mark.anyio

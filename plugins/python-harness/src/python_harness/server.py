@@ -26,9 +26,7 @@ from python_harness.documentation.settings import Settings
 from python_harness.facts.domain import FactsReport
 from python_harness.gate.domain import GateOptions
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
-from python_harness.gate.policy import plan_gate
-from python_harness.gate.services import run_gate
-from python_harness.gate.util import gate_inputs_from
+from python_harness.gate.services import run_gate_for
 from python_harness.imports.domain import ProjectIndex
 from python_harness.imports.services import load_project_index
 from python_harness.survey.services import survey_document, survey_indexed_project
@@ -256,9 +254,8 @@ class ProjectTools:
         with tool_errors():
             workspace, index = self.open_indexed_project()
             options = GateOptions(fallback_ruff_config=RUFF_CONFIG, fallback_ty_config=TY_CONFIG)
-            inputs = gate_inputs_from(survey_indexed_project(workspace, index.graph))
-            plan = plan_gate(inputs, workspace.root, options)
-            report = run_gate(workspace, plan, options, environment=self.environment)
+            survey = survey_indexed_project(workspace, index.graph)
+            report = run_gate_for(workspace, survey, options, environment=self.environment)
             return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
     def plan_review_surface(

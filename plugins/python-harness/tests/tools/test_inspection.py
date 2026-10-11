@@ -6,10 +6,10 @@ from collections.abc import Mapping
 
 import pytest
 from mcp import Client
-from python_harness import server
 from python_harness.cli.inspection import add_gate_arguments
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
+from python_harness.gate import services as gate_services
 from python_harness.gate.domain import (
     Exited,
     GateCommand,
@@ -67,7 +67,7 @@ class TestGate:
             result = GateResult(command, Exited(1), 'error: line too long')
             return GateReport(RuffConfigSource.FALLBACK, (result,), NotTracked())
 
-        monkeypatch.setattr(server, 'run_gate', run_gate)
+        monkeypatch.setattr(gate_services, 'run_gate', run_gate)
         return given
 
     @pytest.mark.usefixtures('shop')

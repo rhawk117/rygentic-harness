@@ -57,7 +57,8 @@ def gate_options_from(arguments: argparse.Namespace, root: Path) -> GateOptions:
 def run_gate_command(arguments: argparse.Namespace, edge: ProcessEdge) -> ExitCode:
     workspace = open_workspace(arguments.root, uv_runner=run_uv_workspace)
     options = gate_options_from(arguments, workspace.root)
-    report = run_gate_for(workspace, options, environment=edge.environment)
+    survey = survey_project(workspace)
+    report = run_gate_for(workspace, survey, options, environment=edge.environment)
     write_document(report, edge.stdout)
     return exit_code_for(passed=report.passed)
 

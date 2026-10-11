@@ -25,6 +25,7 @@ from python_harness.gate.domain import (
 from python_harness.gate.errors import LauncherUnavailableError
 from python_harness.gate.services import run_gate, run_gate_for
 from python_harness.survey.errors import ManifestUnreadableError
+from python_harness.survey.services import survey_project
 
 NO_ENVIRONMENT = MappingProxyType({})
 POLL_SECONDS = 0.05
@@ -330,7 +331,11 @@ class TestUnreadableManifest:
         self, undecodable_workspace: Workspace
     ) -> None:
         with pytest.raises(ManifestUnreadableError) as caught:
-            run_gate_for(undecodable_workspace, environment=NO_ENVIRONMENT)
+            run_gate_for(
+                undecodable_workspace,
+                survey_project(undecodable_workspace),
+                environment=NO_ENVIRONMENT,
+            )
 
         expected = undecodable_workspace.root.joinpath('pyproject.toml')
         assert caught.value.path == expected

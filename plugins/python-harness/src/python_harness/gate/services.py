@@ -37,7 +37,7 @@ from python_harness.gate.util import (
     take_output_tail,
     untracked_paths_from_status,
 )
-from python_harness.survey.services import survey_project
+from python_harness.survey.domain import ProjectSurvey
 
 READ_CHUNK_BYTES = 65536
 REPOSITORY_PREFIX_QUERY = ('rev-parse', '--show-prefix')
@@ -182,10 +182,11 @@ def run_gate(
 
 def run_gate_for(
     workspace: Workspace,
+    survey: ProjectSurvey,
     options: GateOptions | None = None,
     *,
     environment: Mapping[str, str],
 ) -> GateReport:
-    inputs = gate_inputs_from(survey_project(workspace))
+    inputs = gate_inputs_from(survey)
     plan = plan_gate(inputs, workspace.root, options)
     return run_gate(workspace, plan, options, environment=environment)
