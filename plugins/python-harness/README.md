@@ -189,6 +189,7 @@ The launcher is a Python script whose first line runs it through `uv tool run`, 
 - The six project tools cannot be pointed at a sub-project. They read `CLAUDE_PROJECT_DIR` and take no other root, and from a parent directory they would resolve the sub-project's imports against the wrong root. To review a project nested in a larger repository, start Claude Code inside it.
 - A review's citations can be re-checked only by calling `check_citations`. No shell command does it. After editing `PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`, ask Claude Code, in a session started in the project with the plugin enabled, to call `check_citations` on the file.
 - No test sends a real request to `docs.python.org`. All HTTP in the tests is faked.
+- Each `gate` check runs in its own session, and the server does not stop its checks when it shuts down. A check still running when the MCP server is terminated keeps running, and the plugin no longer enforces its 600-second timeout. This was reproduced by terminating a process that was running the gate. It has not been observed through a stdio server.
 - There is no Windows launcher. The plugin needs a POSIX system.
 
 ## Develop
