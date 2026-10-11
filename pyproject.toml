@@ -27,7 +27,7 @@ test = [
     "pytest-mock>=3.16.0",
     "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
-    "python-harness-plugin[mcp]",
+    "python-harness-plugin[mcp,data]",
 ]
 dev = [{ include-group = "check" }, { include-group = "test" }]
 
