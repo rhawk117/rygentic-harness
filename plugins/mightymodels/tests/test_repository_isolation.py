@@ -23,11 +23,11 @@ from mightymodels_plugin.tools.contract.repository import contract_store
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
-from mightymodels_plugin.tools.crashout.repository import crashout_transaction
+from mightymodels_plugin.tools.crashout.repository import crashout_store
 from mightymodels_plugin.tools.crashout.schema import CrashoutEntry, Severity, Verdict
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.crashout.tables import CrashoutRow
-from mightymodels_plugin.tools.investigation.repository import investigation_transaction
+from mightymodels_plugin.tools.investigation.repository import investigation_store
 from mightymodels_plugin.tools.investigation.schema import (
     EntryKind,
     InvestigationStart,
@@ -37,7 +37,7 @@ from mightymodels_plugin.tools.investigation.schema import (
 )
 from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
-from mightymodels_plugin.tools.review.repository import review_transaction
+from mightymodels_plugin.tools.review.repository import review_store
 from mightymodels_plugin.tools.review.schema import (
     Decision,
     DisposePayload,
@@ -58,7 +58,7 @@ from mightymodels_plugin.tools.review.tables import (
     ReviewRunRow,
 )
 from mightymodels_plugin.tools.row_types import ROW_TYPES
-from mightymodels_plugin.tools.similarity.repository import similarity_transaction
+from mightymodels_plugin.tools.similarity.repository import similarity_store
 from mightymodels_plugin.tools.similarity.schema import Scout, SimilarityKind, SpooledReport
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
@@ -202,23 +202,23 @@ def receipts_read(database: Database) -> int:
 
 
 def runs_read(database: Database) -> int:
-    with review_transaction(database) as repository:
-        return len(repository.latest_run_rows().rows)
+    with review_store(database).transaction() as repository:
+        return len(repository.latest_runs().rows)
 
 
 def findings_read(database: Database) -> int:
-    with review_transaction(database) as repository:
-        return len(repository.finding_rows(RUN))
+    with review_store(database).transaction() as repository:
+        return len(repository.findings(RUN))
 
 
 def dispositions_read(database: Database) -> int:
-    with review_transaction(database) as repository:
-        return len(repository.decisions.disposition_rows(RUN))
+    with review_store(database).transaction() as repository:
+        return len(repository.decisions.dispositions(RUN))
 
 
 def outcomes_read(database: Database) -> int:
-    with review_transaction(database) as repository:
-        return len(repository.decisions.outcome_rows(RUN))
+    with review_store(database).transaction() as repository:
+        return len(repository.decisions.outcomes(RUN))
 
 
 def closings_read(database: Database) -> int:
@@ -227,22 +227,22 @@ def closings_read(database: Database) -> int:
 
 
 def ledger_entries_read(database: Database) -> int:
-    with investigation_transaction(database) as repository:
-        return len(repository.entry_rows(LEDGER))
+    with investigation_store(database).transaction() as repository:
+        return len(repository.entries(LEDGER))
 
 
 def crashouts_read(database: Database) -> int:
-    with crashout_transaction(database) as repository:
-        return len(repository.latest_rows().rows)
+    with crashout_store(database).transaction() as repository:
+        return len(repository.latest_crashouts().rows)
 
 
 def similar_rows_read(database: Database) -> int:
-    with similarity_transaction(database) as repository:
+    with similarity_store(database).transaction() as repository:
         return len(repository.search(SIMILAR_TO_EVERY_TEXT, kind=None))
 
 
 def scout_reports_read(database: Database) -> int:
-    with similarity_transaction(database) as repository:
+    with similarity_store(database).transaction() as repository:
         return len(repository.search(SIMILAR_TO_EVERY_TEXT, kind=SimilarityKind.SCOUT_REPORT))
 
 
@@ -316,7 +316,7 @@ class Clone:
             target='the drain loop',
             report=SCOUT_REPORT_TEXT,
         )
-        with similarity_transaction(self.database) as repository:
+        with similarity_store(self.database).transaction() as repository:
             repository.add_scout_report(report)
 
     def write_every_table(self) -> None:
@@ -360,12 +360,14 @@ def clone_of(state: OpenState) -> Clone:
             git=workspace.git,
             processes=process_runner(),
         ),
-        reviews=ReviewService(workspace=workspace, database=database),
+        reviews=ReviewService(workspace=workspace, store=review_store(database), git=workspace.git),
         closings=CloseService(workspace=workspace, database=database),
-        investigations=InvestigationService(workspace=workspace, database=database),
-        crashouts=CrashoutService(database=database),
+        investigations=InvestigationService(store=investigation_store(database), git=workspace.git),
+        crashouts=CrashoutService(store=crashout_store(database)),
         similarity=SimilarityService(
-            database=database, spool=state.data_directory.joinpath(SPOOL_DIRECTORY)
+            store=similarity_store(database),
+            spool=state.data_directory.joinpath(SPOOL_DIRECTORY),
+            repository_key=database.repository_key,
         ),
     )
 

@@ -42,15 +42,19 @@ from mightymodels_plugin.tools.close.tool import close_tool
 from mightymodels_plugin.tools.contract.repository import contract_store
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tool import contract_tool
+from mightymodels_plugin.tools.crashout.repository import crashout_store
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.crashout.tool import crashout_tool
 from mightymodels_plugin.tools.failed_fix.tool import failed_fix_tool
+from mightymodels_plugin.tools.investigation.repository import investigation_store
 from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.investigation.tool import investigation_tool
 from mightymodels_plugin.tools.protocol import ServedState, StartRefusal
+from mightymodels_plugin.tools.review.repository import review_store
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.review.tool import review_tool
 from mightymodels_plugin.tools.row_types import ROW_TYPES
+from mightymodels_plugin.tools.similarity.repository import similarity_store
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 from mightymodels_plugin.tools.similarity.tool import similarity_tool
@@ -129,12 +133,20 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
                     git=workspace.git,
                     processes=process_runner(),
                 ),
-                reviews=ReviewService(workspace=workspace, database=database),
+                reviews=ReviewService(
+                    workspace=workspace, store=review_store(database), git=workspace.git
+                ),
                 snapshots=SnapshotService(workspace=workspace, database=database),
                 closings=CloseService(workspace=workspace, database=database),
-                investigations=InvestigationService(workspace=workspace, database=database),
-                crashouts=CrashoutService(database=database),
-                similarity=SimilarityService(database=database, spool=spool),
+                investigations=InvestigationService(
+                    store=investigation_store(database), git=workspace.git
+                ),
+                crashouts=CrashoutService(store=crashout_store(database)),
+                similarity=SimilarityService(
+                    store=similarity_store(database),
+                    spool=spool,
+                    repository_key=database.repository_key,
+                ),
             )
 
     tools = list(map(tool_refusing_unknown_arguments, TOOLS))

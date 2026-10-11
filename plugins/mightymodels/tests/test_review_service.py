@@ -1,14 +1,16 @@
-"""The `review` tool's service against a real git repository, moved from review_state.py's tests."""
+"""The review service on the review store and the git history kept in memory.
+
+What needs a repository on disk is in test_review_in_a_repository.py.
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
-import sqlalchemy as sql
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.run_id import InvalidRunIdError, RunId, parsed_run_id
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
 from mightymodels_plugin.tools.review.schema import (
     DisposePayload,
     Disposition,
@@ -21,21 +23,10 @@ from mightymodels_plugin.tools.review.schema import (
     Verdict,
 )
 from mightymodels_plugin.tools.review.service import ReviewService
-from mightymodels_plugin.tools.review.tables import (
-    ReviewDispositionRow,
-    ReviewFindingRow,
-    ReviewOutcomeRow,
-    ReviewRunRow,
-)
-from mightymodels_plugin.tools.ticket.service import TicketService
 from pydantic import ValidationError
-
-type GitRunner = Callable[..., str]
-type DecisionRowType = type[ReviewDispositionRow | ReviewOutcomeRow]
 
 SLUG = 'retry-queue'
 ADVANCED, REJECTED = 0, 2
-IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
 BALANCED = {'scope': 'ticket', 'slug': SLUG, 'base': 'main', 'emphasis': 'balanced'}
 NON_ASCII_DIGIT_RUN_ID = '2026010\u0662-000000'
 
@@ -72,12 +63,7 @@ def finding(source: str, severity: str, location: str, **extra: object) -> Findi
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Workspace:
     reviews: ReviewService
-    tickets: TicketService
-    runner: GitRunner
-
-    @property
-    def root(self) -> Path:
-        return self.reviews.workspace.root
+    git: InMemoryGit
 
     def attempt(self, act: Callable[[ReviewService], ReviewView]) -> Outcome:
         try:
@@ -115,29 +101,29 @@ class Workspace:
 
 
 def run_state(workspace: Workspace, run: RunId) -> dict[str, object]:
-    database = workspace.reviews.database
-    with database.transaction() as session:
-        row = session.get(ReviewRunRow, (database.repository_key.root, run.root))
-        assert row is not None
-        return {
-            'personas': row.personas,
-            'models': row.models,
-            'head': row.head,
-            'slug': row.slug,
-        }
+    with workspace.reviews.store.transaction() as repository:
+        started = repository.started_run(run)
+    return {
+        'personas': list(started.personas),
+        'models': started.models,
+        'head': started.head,
+    }
 
 
 def stored_texts(workspace: Workspace, run: RunId) -> list[str]:
-    query = sql.select(ReviewFindingRow).where(ReviewFindingRow.run_id == run.root)
-    with workspace.reviews.database.transaction() as session:
-        rows = session.scalars(query).all()
-        return [str(getattr(row, c.name)) for row in rows for c in row.__table__.columns]
+    with workspace.reviews.store.transaction() as repository:
+        findings = repository.findings(run)
+    return [str(value) for finding in findings for value in finding.model_dump().values()]
 
 
-def stored_ids(workspace: Workspace, run: RunId, row_type: DecisionRowType) -> list[str]:
-    query = sql.select(row_type.finding_id).where(row_type.run_id == run.root)
-    with workspace.reviews.database.transaction() as session:
-        return sorted(session.scalars(query))
+def decided_ids(workspace: Workspace, run: RunId) -> list[str]:
+    with workspace.reviews.store.transaction() as repository:
+        return sorted(decided.finding_id for decided in repository.decisions.dispositions(run))
+
+
+def resolved_ids(workspace: Workspace, run: RunId) -> list[str]:
+    with workspace.reviews.store.transaction() as repository:
+        return sorted(resolved.finding_id for resolved in repository.decisions.outcomes(run))
 
 
 def gate_decisions(workspace: Workspace, run: RunId) -> dict[str, str]:
@@ -145,22 +131,13 @@ def gate_decisions(workspace: Workspace, run: RunId) -> dict[str, str]:
     return {line[0]: line[-1] for line in columns if line[0]}
 
 
-def commit(workspace: Workspace) -> str:
-    workspace.root.joinpath('queue.py').write_text('base\n', encoding='utf-8')
-    workspace.runner(workspace.root, 'add', 'queue.py')
-    workspace.runner(workspace.root, *IDENTITY, 'commit', '-q', '-m', 'base')
-    return workspace.runner(workspace.root, 'rev-parse', 'HEAD').strip()
-
-
 @pytest.fixture
-def workspace(
-    review_service: ReviewService, ticket_service: TicketService, git: GitRunner
-) -> Workspace:
-    return Workspace(reviews=review_service, tickets=ticket_service, runner=git)
+def workspace(in_memory_review_service: ReviewService, in_memory_git: InMemoryGit) -> Workspace:
+    return Workspace(reviews=in_memory_review_service, git=in_memory_git)
 
 
 def test_deep_review_runs_both_personas(workspace: Workspace) -> None:
-    head = commit(workspace)
+    head = workspace.git.commit()
     run = workspace.start(depth='deep')
     state = run_state(workspace, run)
     assert state['personas'] == ['merge-vader', 'uncle-bob']
@@ -198,17 +175,6 @@ def test_custom_weights_must_sum_to_one(workspace: Workspace) -> None:
         {'scope': 'codebase', 'depth': 'deep', 'emphasis': 'custom', 'weights': weights}
     )
     assert 'must sum to 1' in outcome.err
-
-
-def test_a_run_without_a_ticket_lives_under_runtime(workspace: Workspace) -> None:
-    outcome = workspace.try_start({'scope': 'codebase', 'depth': 'deep', 'emphasis': 'balanced'})
-    assert outcome.view is not None
-    run = RunId(outcome.view.run_id or '')
-    exclude = workspace.root.joinpath('.git', 'info', 'exclude').read_text(encoding='utf-8')
-    runtime = workspace.root.joinpath('.mightymodels', '.runtime', 'reviews', run.root)
-    assert runtime.is_dir()
-    assert run_state(workspace, run)['slug'] is None
-    assert '.mightymodels/' in exclude.splitlines()
 
 
 def test_findings_get_stable_ids_and_uncle_bob_blockers_become_high(
@@ -356,12 +322,9 @@ class TestDecidedBy:
         run = workspace.start(depth='deep')
         workspace.add(run, [finding('MV-1', 'High', 'a.py:1')])
         workspace.dispose(run, by=self.LEAKING_BY, decisions={'F1': {'decision': 'fix'}})
-        database = workspace.reviews.database
-        with database.transaction() as session:
-            key = (database.repository_key.root, run.root, 'F1')
-            row = session.get(ReviewDispositionRow, key)
-            assert row is not None
-            return row.by
+        with workspace.reviews.store.transaction() as repository:
+            (decided,) = repository.decisions.dispositions(run)
+        return decided.by
 
     def test_a_secret_in_by_is_redacted_in_the_stored_row(self, stored_by: str) -> None:
         assert stored_by == 'user [REDACTED:assignment]'
@@ -509,7 +472,7 @@ class TestReopenOnMerge:
     ) -> None:
         workspace.add(run, [self.RAISED])
         assert gate_decisions(workspace, run) == {'F1': 'undecided', 'F2': 'dismiss'}
-        assert stored_ids(workspace, run, ReviewDispositionRow) == ['F2']
+        assert decided_ids(workspace, run) == ['F2']
 
     @pytest.mark.usefixtures('fixed')
     def test_a_fixed_finding_a_merge_changes_loses_its_decision_and_its_outcome(
@@ -517,8 +480,8 @@ class TestReopenOnMerge:
     ) -> None:
         workspace.add(run, [self.RAISED])
         refused = workspace.resolve(run, finding='F1', result='fixed', commit='abc123')
-        assert stored_ids(workspace, run, ReviewDispositionRow) == []
-        assert stored_ids(workspace, run, ReviewOutcomeRow) == []
+        assert decided_ids(workspace, run) == []
+        assert resolved_ids(workspace, run) == []
         assert refused.err == 'F1: only a finding the user chose to fix is resolved'
 
     @pytest.mark.usefixtures('dismissed')
@@ -541,7 +504,7 @@ class TestReopenOnMerge:
     ) -> None:
         outcome = workspace.add(run, [incoming])
         assert outcome.out == '1 findings in, 1 recorded: F1; back to undecided: F1\n'
-        assert stored_ids(workspace, run, ReviewDispositionRow) == ['F2']
+        assert decided_ids(workspace, run) == ['F2']
 
     @pytest.mark.usefixtures('dismissed')
     def test_adding_the_same_batch_again_keeps_the_decisions(
@@ -550,7 +513,7 @@ class TestReopenOnMerge:
         outcome = workspace.add(run, [*self.RECORDED])
         assert outcome.out == '2 findings in, 2 recorded: F1, F2\n'
         assert gate_decisions(workspace, run) == {'F1': 'dismiss', 'F2': 'dismiss'}
-        assert stored_ids(workspace, run, ReviewDispositionRow) == ['F1', 'F2']
+        assert decided_ids(workspace, run) == ['F1', 'F2']
 
     def test_a_merge_into_an_undecided_finding_leaves_the_text_as_it_was(
         self, workspace: Workspace, run: RunId

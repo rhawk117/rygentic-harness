@@ -9,9 +9,9 @@ from dataclasses import dataclass
 
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.review.rendering import Standing
-from mightymodels_plugin.tools.review.repository import ReviewRepository
 from mightymodels_plugin.tools.review.schema import Decision, Disposition, Finding, Result
-from mightymodels_plugin.tools.review.service import findings_of, run_of, standing_of
+from mightymodels_plugin.tools.review.service import findings_of, standing_of
+from mightymodels_plugin.tools.review.store import ReviewRepository
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -43,10 +43,9 @@ class LatestReview:
 
 
 def latest_review_of(reviews: ReviewRepository, slug: Slug) -> LatestReview | None:
-    row = reviews.latest_run_row(slug)
-    if row is None:
+    run = reviews.latest_run(slug)
+    if run is None:
         return None
-    run = run_of(row)
     return LatestReview(
         findings=findings_of(reviews, run.run_id), standing=standing_of(reviews, run)
     )

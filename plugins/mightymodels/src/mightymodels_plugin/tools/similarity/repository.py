@@ -1,9 +1,11 @@
 """The similarity rows and scout reports, reached only through a repository.
 
-`similarity_transaction` opens a transaction on the database and hands out the repository. A
-domain that writes a text builds a `SimilarityRepository` on its own transaction's session, so the
-text and its similarity row are stored together or not at all. The repository holds the key of the
-git repository the database was opened for, and reads and writes under that key only.
+`SqliteSimilarityStore` is the similarity store over the database: its `transaction` opens one and
+hands out the repository, and `similarity_store` builds it as the `SimilarityStore` a service
+holds. A domain that writes a text builds a `SqliteSimilarityRepository` on its own transaction's
+session, so the text and its similarity row are stored together or not at all. The repository
+holds the key of the git repository the database was opened for, and reads and writes under that
+key only.
 
 `record` stores one text and answers the earlier row it resembles, if any: the candidates are read
 before the text is stored, so a text never matches itself, and a text stored again under its own
@@ -12,7 +14,8 @@ the column, and one that redaction lengthens past the column is refused. `search
 candidates for a query and answers every one.
 
 A candidate read returns at most `CANDIDATE_CAP` rows, best BM25 rank first, and every statement
-that reads the index binds its values.
+that reads the index binds its values. `candidates` and `stored_row` hand out rows, so they are
+methods of the SQLite repository alone and no part of the `SimilarityRepository` a service sees.
 """
 
 from collections.abc import Generator, Iterable
@@ -40,6 +43,7 @@ from mightymodels_plugin.tools.similarity.schema import (
     SimilarityKind,
     SpooledReport,
 )
+from mightymodels_plugin.tools.similarity.store import SimilarityStore, Written
 from mightymodels_plugin.tools.similarity.tables import ScoutReportRow, SimilarityRow
 
 CANDIDATES = """SELECT similarity.* FROM similarity_index
@@ -51,13 +55,6 @@ WHERE similarity_index MATCH :query
        OR similarity.kind != :excluded_kind OR similarity.reference != :excluded_reference)
 ORDER BY bm25(similarity_index)
 LIMIT :cap"""
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Written:
-    kind: SimilarityKind
-    reference: str
-    text: str
 
 
 def match_of(row: SimilarityRow, words: frozenset[str]) -> Match:
@@ -75,7 +72,7 @@ def closest(matches: Iterable[Match]) -> Match | None:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class SimilarityRepository:
+class SqliteSimilarityRepository:
     session: Session
     repository_key: RepositoryKey
 
@@ -151,7 +148,17 @@ class SimilarityRepository:
         return self.record_all([written])
 
 
-@contextmanager
-def similarity_transaction(database: Database) -> Generator[SimilarityRepository]:
-    with database.transaction() as session:
-        yield SimilarityRepository(session=session, repository_key=database.repository_key)
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SqliteSimilarityStore:
+    database: Database
+
+    @contextmanager
+    def transaction(self) -> Generator[SqliteSimilarityRepository]:
+        with self.database.transaction() as session:
+            yield SqliteSimilarityRepository(
+                session=session, repository_key=self.database.repository_key
+            )
+
+
+def similarity_store(database: Database) -> SimilarityStore:
+    return SqliteSimilarityStore(database=database)

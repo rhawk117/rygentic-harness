@@ -16,6 +16,8 @@ earlier, of any kind, the answer says so after its own line. The entry is stored
 HEAD is read from git when an entry is stored and when the knowns are asked for. Outside a
 repository, or with no git binary, it is absent and every entry reads as a lead.
 
+The service holds its store and the git queries it asks, and never a session or a row.
+
 Everything above the class reads no service state.
 """
 
@@ -27,11 +29,10 @@ from itertools import count
 from types import MappingProxyType
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import GitQueries
 from mightymodels_plugin.redaction import redact_within, redaction_within
 from mightymodels_plugin.tools.investigation.errors import (
     CiteRequiredError,
@@ -44,13 +45,7 @@ from mightymodels_plugin.tools.investigation.errors import (
 )
 from mightymodels_plugin.tools.investigation.ledger import Ledger, recorded_ledger
 from mightymodels_plugin.tools.investigation.rendering import knowns_table, ledger_text
-from mightymodels_plugin.tools.investigation.repository import (
-    INVESTIGATIONS_LISTED,
-    TARGET_SEQ,
-    InvestigationRepository,
-    LedgerRecord,
-    investigation_transaction,
-)
+from mightymodels_plugin.tools.investigation.repository import INVESTIGATIONS_LISTED, TARGET_SEQ
 from mightymodels_plugin.tools.investigation.schema import (
     EntryKind,
     InvestigationStart,
@@ -58,6 +53,11 @@ from mightymodels_plugin.tools.investigation.schema import (
     KnownsFilter,
     LedgerEntry,
     Source,
+)
+from mightymodels_plugin.tools.investigation.store import (
+    InvestigationRepository,
+    InvestigationStore,
+    LedgerRecord,
 )
 from mightymodels_plugin.tools.similarity.rendering import duplicates_text
 
@@ -170,8 +170,8 @@ def saved_text(investigation: Slug, batch: Sequence[RedactedRecord]) -> str:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InvestigationService:
-    workspace: Workspace
-    database: Database
+    store: InvestigationStore
+    git: GitQueries
 
     def start(self, request: InvestigationStart, *, started: datetime) -> InvestigationView:
         target = redact_within(request.target, 'target', PROSE_LIMIT)
@@ -184,10 +184,10 @@ class InvestigationService:
             cite=request.kind,
             supersedes=(),
             at=started.isoformat(timespec='seconds'),
-            head=self.workspace.git.resolve_head(),
+            head=self.git.resolve_head(),
         )
         stem = f'{started.strftime(DAY_FORMAT)}-{target_name(target)}'
-        with investigation_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             investigation = free_investigation(repository, stem)
             duplicates = repository.append(investigation, [record])
         return InvestigationView(
@@ -198,8 +198,8 @@ class InvestigationService:
     def add(
         self, investigation: Slug, round_number: int, entries: Sequence[LedgerEntry]
     ) -> InvestigationView:
-        stamp = EntryStamp(round=round_number, at=now(), head=self.workspace.git.resolve_head())
-        with investigation_transaction(self.database) as repository:
+        stamp = EntryStamp(round=round_number, at=now(), head=self.git.resolve_head())
+        with self.store.transaction() as repository:
             ledger = recorded_ledger(repository, investigation)
             if (error := batch_error(ledger, round_number, entries)) is not None:
                 raise error
@@ -212,19 +212,19 @@ class InvestigationService:
         )
 
     def render(self, investigation: Slug) -> InvestigationView:
-        with investigation_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             ledger = recorded_ledger(repository, investigation)
         return InvestigationView(text=ledger_text(ledger), investigation_id=investigation.root)
 
     def knowns(self, investigation: Slug, selection: KnownsFilter) -> InvestigationView:
-        head = self.workspace.git.resolve_head()
-        with investigation_transaction(self.database) as repository:
+        head = self.git.resolve_head()
+        with self.store.transaction() as repository:
             ledger = recorded_ledger(repository, investigation)
         text = knowns_table(ledger, selection, head)
         return InvestigationView(text=text, investigation_id=investigation.root)
 
     def listing(self) -> InvestigationView:
-        with investigation_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             listed = repository.latest_rounds()
         lines = [f'{investigation}\tround {latest}\n' for investigation, latest in listed.rows]
         note = OLDER_LEFT_OUT if listed.older_left_out else ''

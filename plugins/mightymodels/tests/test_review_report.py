@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sql
+from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.tools.review.schema import (
@@ -169,6 +170,7 @@ def uncle_bob(*blocks: str, severity: str = 'Medium') -> str:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Ingest:
     reviews: ReviewService
+    database: Database
     run: RunId
 
     def report(self, persona: Persona) -> Path:
@@ -190,7 +192,7 @@ class Ingest:
 
     def stored(self) -> list[Stored]:
         query = sql.select(ReviewFindingRow).order_by(ReviewFindingRow.finding_id)
-        with self.reviews.database.transaction() as session:
+        with self.database.transaction() as session:
             return [
                 (
                     row.sources[0],
@@ -207,9 +209,11 @@ class Ingest:
 
 
 @pytest.fixture
-def ingest(review_service: ReviewService) -> Ingest:
+def ingest(review_service: ReviewService, repository_database: Database) -> Ingest:
     view = review_service.start(START, started=datetime.now(tz=UTC))
-    return Ingest(reviews=review_service, run=RunId(view.run_id or ''))
+    return Ingest(
+        reviews=review_service, database=repository_database, run=RunId(view.run_id or '')
+    )
 
 
 def fixture_text(name: str) -> str:
@@ -440,7 +444,7 @@ class TestWhereTheReportComesFrom:
 
         ingest.add(MERGE_VADER)
 
-        with ingest.reviews.database.transaction() as session:
+        with ingest.database.transaction() as session:
             titles = [row.title for row in session.scalars(sql.select(ReviewFindingRow))]
         assert 'hunter22' not in ' '.join(titles)
         assert 'Hardcoded [REDACTED:assignment] in the store' in titles

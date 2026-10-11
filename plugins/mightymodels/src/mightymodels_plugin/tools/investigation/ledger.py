@@ -14,12 +14,8 @@ from dataclasses import dataclass
 
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.errors import UnknownInvestigationError
-from mightymodels_plugin.tools.investigation.repository import (
-    InvestigationRepository,
-    LedgerRecord,
-)
-from mightymodels_plugin.tools.investigation.schema import EntryKind, Source
-from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
+from mightymodels_plugin.tools.investigation.schema import EntryKind
+from mightymodels_plugin.tools.investigation.store import InvestigationRepository, LedgerRecord
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -56,25 +52,11 @@ class LinkedLedgers:
     missing: tuple[Slug, ...]
 
 
-def record_of(row: LedgerEntryRow) -> LedgerRecord:
-    return LedgerRecord(
-        seq=row.seq,
-        round=row.round,
-        kind=EntryKind(row.kind),
-        text=row.text,
-        source=Source(row.source),
-        cite=row.cite,
-        supersedes=tuple(row.supersedes),
-        at=row.at,
-        head=row.head,
-    )
-
-
 def ledger_of(investigations: InvestigationRepository, investigation: Slug) -> Ledger | None:
-    rows = investigations.entry_rows(investigation)
-    if not rows:
+    records = investigations.entries(investigation)
+    if not records:
         return None
-    return Ledger(investigation=investigation, records=tuple(map(record_of, rows)))
+    return Ledger(investigation=investigation, records=tuple(records))
 
 
 def linked_ledgers(investigations: InvestigationRepository, linked: Iterable[str]) -> LinkedLedgers:

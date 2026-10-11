@@ -13,8 +13,8 @@ from types import MappingProxyType
 
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.tools.investigation.ledger import Ledger
-from mightymodels_plugin.tools.investigation.repository import LedgerRecord
 from mightymodels_plugin.tools.investigation.schema import EntryKind, KnownsFilter
+from mightymodels_plugin.tools.investigation.store import LedgerRecord
 
 SECTION_TITLES: Mapping[EntryKind, str] = MappingProxyType(
     {

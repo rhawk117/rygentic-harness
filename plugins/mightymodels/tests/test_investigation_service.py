@@ -1,22 +1,22 @@
-"""The investigation service against a real git repository, with ledger.py's tests moved here."""
+"""The investigation service on the store and the git history kept in memory.
 
-from collections.abc import Callable, Generator
+What reaches the database file, and where HEAD is read from in a real repository, is in
+test_investigation_in_a_repository.py. The tool is in test_investigation_tool.py.
+"""
+
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 from mightymodels_plugin.core.slug import Slug
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
 from mightymodels_plugin.tools.investigation.errors import (
     RoundRegressionError,
     UnknownInvestigationError,
     UnknownSupersededError,
 )
 from mightymodels_plugin.tools.investigation.ledger import recorded_ledger
-from mightymodels_plugin.tools.investigation.repository import (
-    LedgerRecord,
-    investigation_transaction,
-)
 from mightymodels_plugin.tools.investigation.schema import (
     EntryKind,
     InvestigationStart,
@@ -26,24 +26,12 @@ from mightymodels_plugin.tools.investigation.schema import (
     TargetKind,
 )
 from mightymodels_plugin.tools.investigation.service import InvestigationService
-from mightymodels_plugin.tools.investigation.tests.support import investigation_service_at
-from mightymodels_plugin.tools.tests.support import (
-    ActivityKind,
-    DatabaseActivity,
-    StateServer,
-    stored_bytes,
-    text_of,
-)
-
-type GitRunner = Callable[..., str]
+from mightymodels_plugin.tools.investigation.store import LedgerRecord
 
 FAKE_TOKEN = 'ghp_' + 'a' * 36
-IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
 STARTED = datetime(2026, 9, 28, 12, tzinfo=UTC)
 TARGET = InvestigationStart(target='Queue drains slowly', kind=TargetKind.BEHAVIOR)
 EVERY_KIND = KnownsFilter()
-START_REQUEST = {'target': 'Queue drains slowly', 'kind': 'behavior'}
-VALID_ENTRY = {'kind': 'known', 'text': 'first', 'cite': 'a.py:1', 'source': 'code-scout'}
 
 
 def known(text: str, cite: str) -> LedgerEntry:
@@ -57,18 +45,10 @@ QUESTION = LedgerEntry(kind=EntryKind.OPEN, text='is backoff 30s?', source=Sourc
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Workspace:
     investigations: InvestigationService
-    runner: GitRunner
+    git: InMemoryGit
 
-    @property
-    def root(self) -> Path:
-        return self.investigations.workspace.root
-
-    def git(self, *arguments: str) -> str:
-        return self.runner(self.root, *IDENTITY, *arguments).strip()
-
-    def commit(self, message: str) -> str:
-        self.git('commit', '--quiet', '--allow-empty', '-m', message)
-        return self.git('rev-parse', 'HEAD')
+    def commit(self) -> str:
+        return self.git.commit()
 
     def start(self, target: InvestigationStart = TARGET) -> Slug:
         return Slug(str(self.investigations.start(target, started=STARTED).investigation_id))
@@ -86,11 +66,8 @@ class Workspace:
         return self.investigations.listing().text
 
     def stored(self, investigation: Slug) -> tuple[LedgerRecord, ...]:
-        with investigation_transaction(self.investigations.database) as repository:
+        with self.investigations.store.transaction() as repository:
             return recorded_ledger(repository, investigation).records
-
-    def database_bytes(self) -> bytes:
-        return stored_bytes(self.investigations.database)
 
 
 def added_empty_round(workspace: Workspace, investigation: Slug) -> str:
@@ -98,8 +75,10 @@ def added_empty_round(workspace: Workspace, investigation: Slug) -> str:
 
 
 @pytest.fixture
-def workspace(investigation_service: InvestigationService, git: GitRunner) -> Workspace:
-    return Workspace(investigations=investigation_service, runner=git)
+def workspace(
+    in_memory_investigation_service: InvestigationService, in_memory_git: InMemoryGit
+) -> Workspace:
+    return Workspace(investigations=in_memory_investigation_service, git=in_memory_git)
 
 
 @pytest.fixture
@@ -121,7 +100,7 @@ class Committed:
 
 @pytest.fixture
 def committed(workspace: Workspace) -> Committed:
-    return Committed(workspace=workspace, head=workspace.commit('base'))
+    return Committed(workspace=workspace, head=workspace.commit())
 
 
 class TestStart:
@@ -130,9 +109,6 @@ class TestStart:
     )
     PROPOSED_CHANGE = InvestigationStart(
         target='Replace the drain loop with a scheduler', kind=TargetKind.CHANGE
-    )
-    LEAKING_TARGET = InvestigationStart(
-        target=f'Why does {FAKE_TOKEN} reach the log', kind=TargetKind.BEHAVIOR
     )
     ONLY_PUNCTUATION = InvestigationStart(target='???', kind=TargetKind.CLAIM)
 
@@ -190,16 +166,6 @@ class TestStart:
             investigation
         )
 
-    def test_a_secret_in_the_target_reaches_neither_the_row_nor_the_id(
-        self, workspace: Workspace
-    ) -> None:
-        investigation = workspace.start(self.LEAKING_TARGET)
-        (target,) = workspace.stored(investigation)
-
-        assert target.text == 'Why does [REDACTED:github-token] reach the log'
-        assert investigation.root == '20260928-why-does-redacted-github-token-reach-the'
-        assert FAKE_TOKEN.encode() not in workspace.database_bytes()
-
 
 class TestAdd:
     @pytest.fixture
@@ -234,18 +200,7 @@ class TestAdd:
 
 
 class TestRedaction:
-    LEAKING = known(f'CI uses {FAKE_TOKEN} and password=hunter2', 'ci.yml:3')
     LEAKING_CITE = known('the token is in the workflow', f'ci.yml:3 {FAKE_TOKEN}')
-
-    def test_secrets_are_redacted_before_they_reach_disk(
-        self, workspace: Workspace, investigation: Slug
-    ) -> None:
-        saved = workspace.add(investigation, 1, self.LEAKING)
-        stored = workspace.database_bytes()
-
-        assert '(2 redacted)' in saved
-        assert FAKE_TOKEN.encode() not in stored
-        assert b'hunter2' not in stored
 
     def test_a_secret_in_a_cite_is_redacted_and_counted(
         self, workspace: Workspace, investigation: Slug
@@ -457,7 +412,7 @@ class TestHead:
     def investigation_spanning_two_heads(
         self, workspace: Workspace, investigation_with_a_known_at_head: Slug
     ) -> Slug:
-        workspace.commit('later')
+        workspace.commit()
         workspace.add(investigation_with_a_known_at_head, 2, known('b', 'b:1'))
         return investigation_with_a_known_at_head
 
@@ -484,327 +439,3 @@ class TestHead:
 
         assert f'## Knowns table, {investigation_with_a_known} at HEAD unknown' in table
         assert '| e2 | known | a | a:1 | code-scout | 1 | lead |' in table
-
-
-class TestWhereHeadIsRead:
-    @pytest.fixture
-    def packed(self, committed: Committed) -> Committed:
-        committed.workspace.git('pack-refs', '--all')
-        return committed
-
-    @pytest.fixture
-    def detached(self, committed: Committed) -> Committed:
-        committed.workspace.git('checkout', '--quiet', '--detach')
-        return committed
-
-    @pytest.fixture
-    def in_a_worktree(
-        self, committed: Committed, tmp_path: Path, data_directory: Path, git: GitRunner
-    ) -> Generator[Committed]:
-        linked = tmp_path.joinpath('feature')
-        committed.workspace.git('worktree', 'add', '--quiet', str(linked), '-b', 'feature')
-        with investigation_service_at(linked, data_directory) as investigations:
-            yield Committed(
-                workspace=Workspace(investigations=investigations, runner=git), head=committed.head
-            )
-
-    def test_head_resolves_through_packed_refs(self, packed: Committed) -> None:
-        (target,) = packed.workspace.stored(packed.workspace.start())
-        packed_refs = packed.workspace.root.joinpath('.git', 'packed-refs')
-
-        assert target.head == packed.head
-        assert packed.head in packed_refs.read_text(encoding='utf-8')
-
-    def test_head_resolves_from_a_worktree(self, in_a_worktree: Committed) -> None:
-        (target,) = in_a_worktree.workspace.stored(in_a_worktree.workspace.start())
-
-        assert target.head == in_a_worktree.head
-        assert in_a_worktree.workspace.root.joinpath('.git').is_file()
-
-    def test_detached_head_is_the_sha_itself(self, detached: Committed) -> None:
-        (target,) = detached.workspace.stored(detached.workspace.start())
-
-        assert target.head == detached.head
-        assert detached.workspace.git('rev-parse', '--abbrev-ref', 'HEAD') == 'HEAD'
-
-
-class TestOutsideARepository:
-    @pytest.fixture
-    def repository(self, tmp_path: Path) -> Path:
-        directory = tmp_path.joinpath('plain-directory')
-        directory.mkdir()
-        return directory
-
-    def test_outside_a_repository_an_investigation_is_stored_and_every_entry_is_a_lead(
-        self, workspace: Workspace, investigation_with_a_known: Slug
-    ) -> None:
-        table = workspace.knowns(investigation_with_a_known)
-
-        assert [record.head for record in workspace.stored(investigation_with_a_known)] == [
-            None,
-            None,
-        ]
-        assert '| e2 | known | a | a:1 | code-scout | 1 | lead |' in table
-        assert not workspace.root.joinpath('.git').exists()
-
-
-class TestTheTool:
-    UNKNOWN_KIND = "Input should be 'target', 'known', 'open', 'decision', 'resource' or 'next'"
-
-    @pytest.fixture
-    def started_through_the_tool(self, state_server: StateServer) -> Slug:
-        (started,) = state_server.call(
-            ('investigation', {'action': 'start', 'payload': {'request': START_REQUEST}})
-        )
-        return Slug(started.structured_content['investigation_id'])
-
-    def test_a_ledger_in_a_repository_is_never_tracked(
-        self, state_server: StateServer, started_through_the_tool: Slug, git: GitRunner
-    ) -> None:
-        exclude = state_server.root.joinpath('.git', 'info', 'exclude')
-
-        assert started_through_the_tool.root.endswith('queue-drains-slowly')
-        assert '.mightymodels/' in exclude.read_text(encoding='utf-8').splitlines()
-        assert git(state_server.root, 'status', '--porcelain') == ''
-
-    @pytest.mark.parametrize(
-        ('entry', 'reason'),
-        [
-            pytest.param(
-                {'kind': 'known', 'text': 'no cite', 'source': 'code-scout'},
-                'needs a cite',
-                id='no-cite',
-            ),
-            pytest.param(
-                {'kind': 'decision', 'text': 'use v2', 'source': 'primary'},
-                'cannot come from primary',
-                id='decision-from-primary',
-            ),
-            pytest.param(
-                {'kind': 'target', 'text': 'x', 'source': 'user'}, 'written by start', id='target'
-            ),
-            pytest.param(
-                {'kind': 'open', 'text': '  ', 'source': 'user'}, 'text is empty', id='blank-text'
-            ),
-            pytest.param(
-                {'kind': 'nonsense', 'text': 'x', 'source': 'user'}, UNKNOWN_KIND, id='unknown-kind'
-            ),
-            pytest.param(
-                {'kind': 'next', 'text': 'look again', 'source': 'primary'},
-                'a next entry cannot come from primary',
-                id='next-from-primary',
-            ),
-            pytest.param(
-                {'kind': 'resource', 'text': 'the runbook', 'source': 'user'},
-                'a resource entry needs a cite',
-                id='resource-without-a-cite',
-            ),
-        ],
-    )
-    def test_invalid_entry_is_rejected_without_writing(
-        self,
-        entry: dict[str, str],
-        reason: str,
-        state_server: StateServer,
-        started_through_the_tool: Slug,
-        workspace: Workspace,
-    ) -> None:
-        before = workspace.stored(started_through_the_tool)
-        (refused,) = state_server.call(
-            (
-                'investigation',
-                {
-                    'action': 'add',
-                    'investigation_id': started_through_the_tool.root,
-                    'payload': {'entries': [VALID_ENTRY, entry], 'request': {'round': 1}},
-                },
-            )
-        )
-        after = workspace.stored(started_through_the_tool)
-
-        assert refused.is_error
-        assert reason in text_of(refused)
-        assert before == after
-
-    def test_a_round_is_added_rendered_and_listed_through_the_tool(
-        self, state_server: StateServer, started_through_the_tool: Slug
-    ) -> None:
-        investigation = started_through_the_tool.root
-        added, rendered, knowns, listed = state_server.call(
-            (
-                'investigation',
-                {
-                    'action': 'add',
-                    'investigation_id': investigation,
-                    'payload': {'entries': [VALID_ENTRY], 'request': {'round': 1}},
-                },
-            ),
-            ('investigation', {'action': 'render', 'investigation_id': investigation}),
-            (
-                'investigation',
-                {
-                    'action': 'knowns',
-                    'investigation_id': investigation,
-                    'payload': {'request': {'kinds': ['open'], 'limit': 5}},
-                },
-            ),
-            ('investigation', {'action': 'list'}),
-        )
-
-        assert added.structured_content == {
-            'text': f'saved e2 to {investigation} (0 redacted)\n',
-            'investigation_id': investigation,
-        }
-        assert '- e2: first [a.py:1] (code-scout, round 1)' in rendered.structured_content['text']
-        assert '| e2 |' not in knowns.structured_content['text']
-        assert listed.structured_content == {
-            'text': f'{investigation}\tround 1\n',
-            'investigation_id': None,
-        }
-
-    def test_knowns_without_a_request_shows_the_whole_table(
-        self, state_server: StateServer, started_through_the_tool: Slug
-    ) -> None:
-        investigation = started_through_the_tool.root
-        _, knowns = state_server.call(
-            (
-                'investigation',
-                {
-                    'action': 'add',
-                    'investigation_id': investigation,
-                    'payload': {'entries': [VALID_ENTRY], 'request': {'round': 1}},
-                },
-            ),
-            ('investigation', {'action': 'knowns', 'investigation_id': investigation}),
-        )
-
-        assert (
-            '| e2 | known | first | a.py:1 | code-scout | 1 | lead |'
-            in (knowns.structured_content['text'])
-        )
-
-    @pytest.mark.parametrize(
-        ('arguments', 'needs'),
-        [
-            pytest.param(
-                {'action': 'start'},
-                'start needs a request holding target and kind',
-                id='start-without-a-request',
-            ),
-            pytest.param(
-                {'action': 'start', 'payload': {'request': {'round': 1}}},
-                'start needs a request holding target and kind',
-                id='start-with-a-round',
-            ),
-            pytest.param(
-                {'action': 'add', 'payload': {'entries': [], 'request': {'round': 1}}},
-                'add needs investigation_id',
-                id='add-without-an-investigation',
-            ),
-            pytest.param(
-                {'action': 'add', 'investigation_id': 'a', 'payload': {'request': {'round': 1}}},
-                'add needs entries and a request holding round',
-                id='add-without-entries',
-            ),
-            pytest.param(
-                {'action': 'add', 'investigation_id': 'a', 'payload': {'entries': []}},
-                'add needs entries and a request holding round',
-                id='add-without-a-round',
-            ),
-            pytest.param(
-                {'action': 'render'}, 'render needs investigation_id', id='render-of-nothing'
-            ),
-            pytest.param(
-                {'action': 'knowns'}, 'knowns needs investigation_id', id='knowns-of-nothing'
-            ),
-            pytest.param(
-                {'action': 'knowns', 'investigation_id': 'a', 'payload': {'request': {'round': 1}}},
-                'knowns needs no request, or a request holding only kinds and limit',
-                id='knowns-with-a-round',
-            ),
-        ],
-    )
-    def test_an_action_missing_its_part_says_what_it_needs(
-        self,
-        arguments: dict[str, object],
-        needs: str,
-        connected_server: StateServer,
-        database_activity: DatabaseActivity,
-    ) -> None:
-        (refused,) = connected_server.call(('investigation', arguments))
-
-        assert refused.is_error
-        assert needs in text_of(refused)
-        assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
-
-    @pytest.mark.parametrize(
-        'arguments',
-        [
-            pytest.param({'action': 'delete'}, id='unknown-action'),
-            pytest.param(
-                {'action': 'render', 'investigation_id': '../outside'}, id='path-shaped-id'
-            ),
-            pytest.param(
-                {'action': 'start', 'payload': {'request': {'target': 'x', 'kind': 'hunch'}}},
-                id='unknown-target-kind',
-            ),
-            pytest.param(
-                {
-                    'action': 'start',
-                    'payload': {'request': {**START_REQUEST, 'path': 'ledger.jsonl'}},
-                },
-                id='unknown-request-field',
-            ),
-            pytest.param(
-                {'action': 'knowns', 'investigation_id': 'a', 'payload': {'request': {'limit': 0}}},
-                id='knowns-limit-zero',
-            ),
-            pytest.param(
-                {
-                    'action': 'knowns',
-                    'investigation_id': 'a',
-                    'payload': {'request': {'kinds': ['target']}},
-                },
-                id='knowns-of-the-target',
-            ),
-            pytest.param(
-                {
-                    'action': 'knowns',
-                    'investigation_id': 'a',
-                    'payload': {'request': {'kinds': []}},
-                },
-                id='knowns-of-no-kind',
-            ),
-            pytest.param(
-                {
-                    'action': 'add',
-                    'investigation_id': 'a',
-                    'payload': {'request': {'round': 1}, 'entries': [{**VALID_ENTRY, 'seq': 7}]},
-                },
-                id='entry-numbering-itself',
-            ),
-            pytest.param(
-                {
-                    'action': 'add',
-                    'investigation_id': 'a',
-                    'payload': {
-                        'request': {'round': 1},
-                        'entries': [{**VALID_ENTRY, 'cite': '  '}],
-                    },
-                },
-                id='blank-cite',
-            ),
-        ],
-    )
-    def test_arguments_outside_the_schema_are_refused(
-        self,
-        arguments: dict[str, object],
-        connected_server: StateServer,
-        tree_after_the_connect: dict[str, bytes],
-        database_activity: DatabaseActivity,
-    ) -> None:
-        (refused,) = connected_server.call(('investigation', arguments))
-
-        assert refused.is_error
-        assert ActivityKind.TRANSACTION_OPENED not in database_activity.kinds()
-        assert connected_server.files_on_disk() == tree_after_the_connect

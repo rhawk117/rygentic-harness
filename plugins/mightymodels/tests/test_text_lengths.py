@@ -46,7 +46,7 @@ from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
 from mightymodels_plugin.tools.request import RequestModel
 from mightymodels_plugin.tools.review.errors import InvalidFieldError
-from mightymodels_plugin.tools.review.repository import DecidedFinding, review_transaction
+from mightymodels_plugin.tools.review.repository import review_store
 from mightymodels_plugin.tools.review.schema import (
     FINDING_ID_LIMIT,
     Decision,
@@ -69,6 +69,7 @@ from mightymodels_plugin.tools.review.schema import (
     StartRequest,
 )
 from mightymodels_plugin.tools.review.service import REPORT_FILES, ReviewService
+from mightymodels_plugin.tools.review.store import DecidedFinding
 from mightymodels_plugin.tools.review.tables import (
     ReviewDispositionRow,
     ReviewFindingRow,
@@ -654,7 +655,7 @@ class TestTextStoredLongerThanARequestMayCarry:
         decided = DecidedFinding(
             finding_id=finding.id, decision=Decision.DEFER, reason=self.REASON, by='user', at=now()
         )
-        with review_transaction(repository_database) as repository:
+        with review_store(repository_database).transaction() as repository:
             repository.record_run(STARTED)
             repository.record_findings(RUN, [finding])
             repository.decisions.record_dispositions(RUN, [decided])

@@ -17,8 +17,11 @@ from sqlalchemy.orm import Session
 
 from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.tools.contract.repository import SqliteContractRepository
-from mightymodels_plugin.tools.investigation.repository import InvestigationRepository
-from mightymodels_plugin.tools.review.repository import DecisionRepository, ReviewRepository
+from mightymodels_plugin.tools.investigation.repository import SqliteInvestigationRepository
+from mightymodels_plugin.tools.review.repository import (
+    SqliteDecisionRepository,
+    SqliteReviewRepository,
+)
 from mightymodels_plugin.tools.task.repository import SqliteTaskRepository
 from mightymodels_plugin.tools.ticket.repository import SqliteTicketRepository
 
@@ -29,8 +32,8 @@ class SnapshotRepository:
     tickets: SqliteTicketRepository
     tasks: SqliteTaskRepository
     contracts: SqliteContractRepository
-    reviews: ReviewRepository
-    investigations: InvestigationRepository
+    reviews: SqliteReviewRepository
+    investigations: SqliteInvestigationRepository
 
 
 @contextmanager
@@ -49,11 +52,13 @@ def snapshot_transaction(database: Database) -> Generator[SnapshotRepository]:
                 contracts=contracts,
             ),
             contracts=contracts,
-            reviews=ReviewRepository(
+            reviews=SqliteReviewRepository(
                 session=session,
                 repository_key=repository_key,
                 tickets=tickets,
-                decisions=DecisionRepository(session=session, repository_key=repository_key),
+                decisions=SqliteDecisionRepository(session=session, repository_key=repository_key),
             ),
-            investigations=InvestigationRepository(session=session, repository_key=repository_key),
+            investigations=SqliteInvestigationRepository(
+                session=session, repository_key=repository_key
+            ),
         )

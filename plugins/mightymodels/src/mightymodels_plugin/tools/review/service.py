@@ -12,15 +12,15 @@ Only the user's dispositions move a finding to remediation, and a decision stand
 as the user saw it: when a later `add` merges into a decided finding and changes it, its decision
 and its fix outcome are deleted and `add` names it as back to undecided.
 
-The service is built once by whoever owns the workspace and the database, the server in its
-lifespan, and holds both. Each action opens one transaction through `review_transaction`, which
-hands it the review repository and, on that repository, the ticket's row. Rows are read inside
-that transaction and mapped to values there, so what the rendering takes and what an action
-returns holds no row. Everything above the class reads no service state.
+The service is built once by whoever owns the workspace and the store, the server in its
+lifespan, and holds both with the git queries it asks for HEAD. Each action opens one transaction
+on its store, which hands it the review repository. That repository hands out values and never a
+row, so what the rendering takes and what an action returns holds none. Everything above the class
+reads no service state.
 
-A stored decision and a stored evidence are read back as they are and not validated as requests,
-so text longer than a request may carry, stored before the lengths were enforced or lengthened by
-redaction, does not make its run unreadable.
+A stored decision is read back as it is and not validated as a request, so text longer than a
+request may carry, stored before the lengths were enforced or lengthened by redaction, does not
+make its run unreadable.
 """
 
 from collections.abc import Collection, Mapping, Sequence
@@ -29,13 +29,11 @@ from datetime import datetime
 from types import MappingProxyType
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import EFFORT, OVERRIDE_MODEL, Depth, Worker, reviewer_model
 from mightymodels_plugin.core.run_id import RunId
-from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import Workspace, revision_error
+from mightymodels_plugin.core.workspace import GitQueries, Workspace, revision_error
 from mightymodels_plugin.redaction import redact_within
 from mightymodels_plugin.tools.review.errors import (
     BaseRequiredError,
@@ -56,34 +54,29 @@ from mightymodels_plugin.tools.review.errors import (
 from mightymodels_plugin.tools.review.finding_merge import fold, normalized
 from mightymodels_plugin.tools.review.rendering import Standing, gate_text, report_text, verdict_of
 from mightymodels_plugin.tools.review.report_parser import parse_report
-from mightymodels_plugin.tools.review.repository import (
-    RUNS_LISTED,
-    DecidedFinding,
-    ResolvedFinding,
-    ReviewRepository,
-    review_transaction,
-)
+from mightymodels_plugin.tools.review.repository import RUNS_LISTED
 from mightymodels_plugin.tools.review.schema import (
     Decision,
     DisposePayload,
     Disposition,
     Emphasis,
-    Evidence,
-    EvidenceKind,
     Finding,
     FindingInput,
-    Kind,
     Persona,
     ResolvePayload,
     Result,
     ReviewRun,
     ReviewScope,
     ReviewView,
-    Severity,
     Shape,
     StartPayload,
 )
-from mightymodels_plugin.tools.review.tables import ReviewFindingRow, ReviewRunRow
+from mightymodels_plugin.tools.review.store import (
+    DecidedFinding,
+    ResolvedFinding,
+    ReviewRepository,
+    ReviewStore,
+)
 from mightymodels_plugin.tools.similarity.rendering import duplicates_text
 
 STANDARD_THRESHOLD = 0.25
@@ -116,64 +109,25 @@ NO_RUNS = 'no review runs\n'
 OLDER_LEFT_OUT = f'older review runs are left out: these are the latest {RUNS_LISTED.rows}\n'
 
 
-def run_of(row: ReviewRunRow) -> ReviewRun:
-    return ReviewRun(
-        run_id=RunId(row.run_id),
-        slug=None if row.slug is None else Slug(row.slug),
-        scope=ReviewScope(row.scope),
-        base=row.base,
-        head=row.head,
-        depth=Depth(row.depth),
-        emphasis=Emphasis(row.emphasis),
-        weights={Persona(persona): weight for persona, weight in row.weights.items()},
-        personas=tuple(map(Persona, row.personas)),
-        models=dict(row.models),
-        created_at=row.created_at,
-    )
-
-
-def evidence_of(row: ReviewFindingRow) -> Evidence | None:
-    if row.evidence_kind is None:
-        return None
-    cite = '' if row.evidence_cite is None else row.evidence_cite
-    return Evidence.model_construct(kind=EvidenceKind(row.evidence_kind), cite=cite)
-
-
-def finding_of(row: ReviewFindingRow) -> Finding:
-    return Finding(
-        id=row.finding_id,
-        sources=tuple(row.sources),
-        severity=Severity(row.severity),
-        kind=Kind(row.kind),
-        security=row.security,
-        title=row.title,
-        location=row.location,
-        fix=row.fix,
-        verify=row.verify,
-        evidence=evidence_of(row),
-        conflict=row.conflict,
-    )
-
-
 def findings_of(repository: ReviewRepository, run: RunId) -> dict[str, Finding]:
-    return {row.finding_id: finding_of(row) for row in repository.finding_rows(run)}
+    return {finding.id: finding for finding in repository.findings(run)}
 
 
 def dispositions_of(repository: ReviewRepository, run: RunId) -> dict[str, Disposition]:
     return {
-        row.finding_id: Disposition.model_construct(
-            decision=Decision(row.decision), reason=row.reason
+        decided.finding_id: Disposition.model_construct(
+            decision=decided.decision, reason=decided.reason
         )
-        for row in repository.decisions.disposition_rows(run)
+        for decided in repository.decisions.dispositions(run)
     }
 
 
 def standing_of(repository: ReviewRepository, run: ReviewRun) -> Standing:
-    outcomes = repository.decisions.outcome_rows(run.run_id)
+    outcomes = repository.decisions.outcomes(run.run_id)
     return Standing(
         run=run,
         dispositions=dispositions_of(repository, run.run_id),
-        results={row.finding_id: Result(row.result) for row in outcomes},
+        results={resolved.finding_id: resolved.result for resolved in outcomes},
     )
 
 
@@ -300,7 +254,8 @@ def listing_line(repository: ReviewRepository, run: ReviewRun) -> str:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ReviewService:
     workspace: Workspace
-    database: Database
+    store: ReviewStore
+    git: GitQueries
 
     def start(self, payload: StartPayload, *, started: datetime) -> ReviewView:
         if (error := target_error(payload)) is not None:
@@ -308,15 +263,15 @@ class ReviewService:
         weights = weights_for(payload)
         personas = personas_for(payload.depth, weights, payload.persona)
         run = RunId(started.strftime(RUN_ID_FORMAT))
-        with review_transaction(self.database) as repository:
-            if repository.run_row(run) is not None:
+        with self.store.transaction() as repository:
+            if repository.run(run) is not None:
                 raise RunExistsError(run)
             started_run = ReviewRun(
                 run_id=run,
                 slug=payload.slug,
                 scope=payload.scope,
                 base=payload.base,
-                head=self.workspace.git.resolve_head(),
+                head=self.git.resolve_head(),
                 depth=payload.depth,
                 emphasis=payload.emphasis,
                 weights=weights,
@@ -331,8 +286,8 @@ class ReviewService:
         return ReviewView(text=text, run_id=run.root)
 
     def override(self, run: RunId) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            started_run = run_of(repository.started_run_row(run))
+        with self.store.transaction() as repository:
+            started_run = repository.started_run(run)
             if override_spent(started_run):
                 raise OverrideSpentError(run)
             reviewer = REVIEWERS[heavier_persona(started_run)]
@@ -342,8 +297,8 @@ class ReviewService:
         return ReviewView(text=overridden_text(run, reviewer), run_id=run.root)
 
     def add(self, run: RunId, persona: Persona) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            started_run = run_of(repository.started_run_row(run))
+        with self.store.transaction() as repository:
+            started_run = repository.started_run(run)
             report = self.workspace.persona_report(
                 started_run.slug, run, name=REPORT_FILES[persona]
             )
@@ -353,20 +308,20 @@ class ReviewService:
             return record_batch(repository, run, batch)
 
     def add_findings(self, run: RunId, batch: Sequence[FindingInput]) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            repository.started_run_row(run)
+        with self.store.transaction() as repository:
+            repository.started_run(run)
             return record_batch(repository, run, batch)
 
     def gate(self, run: RunId) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            started_run = run_of(repository.started_run_row(run))
+        with self.store.transaction() as repository:
+            started_run = repository.started_run(run)
             findings = list(findings_of(repository, run).values())
             standing = standing_of(repository, started_run)
         return ReviewView(text=gate_text(findings, standing), run_id=run.root)
 
     def dispose(self, run: RunId, payload: DisposePayload) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            repository.started_run_row(run)
+        with self.store.transaction() as repository:
+            repository.started_run(run)
             findings = findings_of(repository, run)
             unknown = next(
                 (finding_id for finding_id in payload.decisions if finding_id not in findings), None
@@ -384,8 +339,8 @@ class ReviewService:
         return ReviewView(text=f'{len(decided)} dispositions recorded{tail}\n', run_id=run.root)
 
     def resolve(self, run: RunId, payload: ResolvePayload) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            repository.started_run_row(run)
+        with self.store.transaction() as repository:
+            repository.started_run(run)
             if payload.finding not in findings_of(repository, run):
                 raise UnknownFindingError(payload.finding)
             chosen = dispositions_of(repository, run).get(payload.finding)
@@ -408,16 +363,16 @@ class ReviewService:
         return ReviewView(text=f'{payload.finding} {payload.result}\n', run_id=run.root)
 
     def report(self, run: RunId, shape: Shape) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            started_run = run_of(repository.started_run_row(run))
+        with self.store.transaction() as repository:
+            started_run = repository.started_run(run)
             findings = list(findings_of(repository, run).values())
             standing = standing_of(repository, started_run)
         text = report_text(shape, findings, standing)
         return ReviewView(text=text, run_id=run.root, verdict=verdict_of(findings, standing))
 
     def listing(self) -> ReviewView:
-        with review_transaction(self.database) as repository:
-            listed = repository.latest_run_rows()
-            lines = [listing_line(repository, run_of(row)) for row in listed.rows]
+        with self.store.transaction() as repository:
+            listed = repository.latest_runs()
+            lines = [listing_line(repository, run) for run in listed.rows]
         note = OLDER_LEFT_OUT if listed.older_left_out else ''
         return ReviewView(text=(''.join(lines) or NO_RUNS) + note)

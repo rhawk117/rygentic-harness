@@ -1,10 +1,11 @@
 """An investigation's ledger entries, reached only through a repository.
 
-`investigation_transaction` opens a transaction on the database and hands out the repository,
-which holds that transaction's session, so the investigation service never sees a session. A
-domain that reads a ledger inside its own transaction builds an `InvestigationRepository` on that
-transaction's session. The repository holds the key of the git repository the database was opened
-for, and reads and writes entries under that key only.
+`SqliteInvestigationStore` is the investigation store over the database: its `transaction` opens
+one and hands out the repository, which holds that transaction's session, so the investigation
+service never sees a session, and `investigation_store` builds it as the `InvestigationStore` a
+service holds. A domain that reads a ledger inside its own transaction builds a
+`SqliteInvestigationRepository` on that transaction's session. The repository holds the key of the
+git repository the database was opened for, and reads and writes entries under that key only.
 
 An investigation has no row of its own. It exists once its target is stored, which is entry 1 of
 its ledger, so `has_entries` asks for that row. `append` is the only write and nothing updates or
@@ -19,7 +20,7 @@ and then stores none of the entries it was given.
 `INVESTIGATIONS_LISTED` of them. `unrecorded` asks for the targets of all the investigations it
 is given in one read.
 
-`LedgerRecord` is one entry as it is stored.
+No row leaves the repository: a read hands out the `LedgerRecord` that `record_of` maps a row to.
 """
 
 from collections.abc import Collection, Generator, Iterable
@@ -33,28 +34,19 @@ from mightymodels_plugin.core.database import Database, Latest, ReadLimit
 from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.investigation.schema import EntryKind, Source
+from mightymodels_plugin.tools.investigation.store import (
+    InvestigationStore,
+    LatestRound,
+    LedgerRecord,
+)
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
-from mightymodels_plugin.tools.similarity.repository import SimilarityRepository, Written
+from mightymodels_plugin.tools.similarity.repository import SqliteSimilarityRepository
 from mightymodels_plugin.tools.similarity.schema import Duplicate, SimilarityKind
+from mightymodels_plugin.tools.similarity.store import Written
 
 TARGET_SEQ = 1
 ENTRIES = ReadLimit(rows=2000, kept='ledger entries')
 INVESTIGATIONS_LISTED = ReadLimit(rows=100, kept='investigations')
-
-type LatestRound = tuple[str, int]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class LedgerRecord:
-    seq: int
-    round: int
-    kind: EntryKind
-    text: str
-    source: Source
-    cite: str | None
-    supersedes: tuple[int, ...]
-    at: str
-    head: str | None
 
 
 def entry_row(
@@ -75,6 +67,20 @@ def entry_row(
     )
 
 
+def record_of(row: LedgerEntryRow) -> LedgerRecord:
+    return LedgerRecord(
+        seq=row.seq,
+        round=row.round,
+        kind=EntryKind(row.kind),
+        text=row.text,
+        source=Source(row.source),
+        cite=row.cite,
+        supersedes=tuple(row.supersedes),
+        at=row.at,
+        head=row.head,
+    )
+
+
 def written_entry(investigation: Slug, record: LedgerRecord) -> Written:
     return Written(
         kind=SimilarityKind.LEDGER_ENTRY,
@@ -84,7 +90,7 @@ def written_entry(investigation: Slug, record: LedgerRecord) -> Written:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
-class InvestigationRepository:
+class SqliteInvestigationRepository:
     session: Session
     repository_key: RepositoryKey
 
@@ -92,7 +98,7 @@ class InvestigationRepository:
         target = (self.repository_key.root, investigation.root, TARGET_SEQ)
         return self.session.get(LedgerEntryRow, target) is not None
 
-    def entry_rows(self, investigation: Slug) -> list[LedgerEntryRow]:
+    def entries(self, investigation: Slug) -> list[LedgerRecord]:
         query = (
             sql.select(LedgerEntryRow)
             .where(
@@ -105,7 +111,7 @@ class InvestigationRepository:
         rows = list(self.session.scalars(query))
         if (error := ENTRIES.error(rows, owner=f'investigation {investigation}')) is not None:
             raise error
-        return rows
+        return list(map(record_of, rows))
 
     def unrecorded(self, investigations: Collection[Slug]) -> list[Slug]:
         query = (
@@ -153,11 +159,23 @@ class InvestigationRepository:
         )
         if error is not None:
             raise error
-        similarity = SimilarityRepository(session=self.session, repository_key=self.repository_key)
+        similarity = SqliteSimilarityRepository(
+            session=self.session, repository_key=self.repository_key
+        )
         return similarity.record_all(written_entry(investigation, record) for record in appended)
 
 
-@contextmanager
-def investigation_transaction(database: Database) -> Generator[InvestigationRepository]:
-    with database.transaction() as session:
-        yield InvestigationRepository(session=session, repository_key=database.repository_key)
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SqliteInvestigationStore:
+    database: Database
+
+    @contextmanager
+    def transaction(self) -> Generator[SqliteInvestigationRepository]:
+        with self.database.transaction() as session:
+            yield SqliteInvestigationRepository(
+                session=session, repository_key=self.database.repository_key
+            )
+
+
+def investigation_store(database: Database) -> InvestigationStore:
+    return SqliteInvestigationStore(database=database)

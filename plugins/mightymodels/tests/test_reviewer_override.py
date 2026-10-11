@@ -3,9 +3,11 @@
 from datetime import UTC, datetime
 
 import pytest
+from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.review.errors import OverrideSpentError
+from mightymodels_plugin.tools.review.repository import SqliteReviewStore
 from mightymodels_plugin.tools.review.schema import StartPayload
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.review.tables import ReviewRunRow
@@ -35,7 +37,9 @@ def started_run(reviews: ReviewService, **payload: object) -> RunId:
 
 
 def stored_models(reviews: ReviewService, run: RunId) -> dict[str, str | None]:
-    database = reviews.database
+    store = reviews.store
+    assert isinstance(store, SqliteReviewStore)
+    database = store.database
     with database.transaction() as session:
         row = session.get(ReviewRunRow, (database.repository_key.root, run.root))
         assert row is not None
@@ -78,12 +82,11 @@ class TestReviewerModelsByDepth:
 
 class TestTicketReviewerEntries:
     @pytest.fixture
-    def pinned_ticket(self, review_service: ReviewService, ticket_service: TicketService) -> None:
+    def pinned_ticket(self, ticket_service: TicketService, repository_database: Database) -> None:
         ticket_service.write(Slug(SLUG), ANSWERS)
         ticket_service.validate(Slug(SLUG))
-        database = review_service.database
-        with database.transaction() as session:
-            row = session.get(TicketRow, (database.repository_key.root, SLUG))
+        with repository_database.transaction() as session:
+            row = session.get(TicketRow, (repository_database.repository_key.root, SLUG))
             assert row is not None
             row.models = {'merge-vader-reviewer': 'haiku', 'uncle-bob-reviewer': 'fable'}
 

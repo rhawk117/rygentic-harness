@@ -28,7 +28,7 @@ from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.core.routing import Scope
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.tools.investigation.repository import InvestigationRepository
+from mightymodels_plugin.tools.investigation.repository import SqliteInvestigationRepository
 from mightymodels_plugin.tools.ticket.schema import TicketSection, TicketStatus, Tracker, WorkUnit
 from mightymodels_plugin.tools.ticket.store import TicketStore
 from mightymodels_plugin.tools.ticket.tables import TicketRow
@@ -122,7 +122,7 @@ class SqliteTicketRepository:
         return unit_of(self.session.merge(row))
 
     def unrecorded_investigations(self, linked: Collection[Slug]) -> list[Slug]:
-        investigations = InvestigationRepository(
+        investigations = SqliteInvestigationRepository(
             session=self.session, repository_key=self.repository_key
         )
         return investigations.unrecorded(linked)

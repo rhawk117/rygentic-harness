@@ -10,7 +10,7 @@ returns the newest crashout, as fields and as text.
 When the root cause resembles a row stored earlier, of any kind, the answer says so after its own
 line. The crashout is journaled all the same.
 
-The service reads and writes the database and nothing else: no file, and nothing in git.
+The service reads and writes its store and nothing else: no file, and nothing in git.
 
 Everything above the class reads no service state.
 """
@@ -18,19 +18,16 @@ Everything above the class reads no service state.
 from dataclasses import dataclass
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import NAME_LIMIT, PROSE_LIMIT
 from mightymodels_plugin.redaction import redact_within
 from mightymodels_plugin.tools.crashout.rendering import crashout_text, patterns_text
-from mightymodels_plugin.tools.crashout.repository import JOURNAL_WINDOW, crashout_transaction
+from mightymodels_plugin.tools.crashout.repository import JOURNAL_WINDOW
 from mightymodels_plugin.tools.crashout.schema import (
     CrashoutEntry,
     CrashoutView,
     JournaledCrashout,
-    Severity,
-    Verdict,
 )
-from mightymodels_plugin.tools.crashout.tables import CrashoutRow
+from mightymodels_plugin.tools.crashout.store import CrashoutStore
 from mightymodels_plugin.tools.similarity.rendering import duplicates_text
 
 NOTHING_JOURNALED = 'no crashouts recorded yet.'
@@ -60,46 +57,29 @@ def journaled(entry: CrashoutEntry, *, at: str) -> JournaledCrashout:
     )
 
 
-def crashout_of(row: CrashoutRow) -> JournaledCrashout:
-    return JournaledCrashout(
-        at=row.at,
-        ticket=row.ticket,
-        branch=row.branch,
-        severity=Severity(row.severity),
-        verdict=Verdict(row.verdict),
-        rant=row.rant,
-        failures=tuple(row.failures),
-        root_cause=row.root_cause,
-        corrective_action=row.corrective_action,
-        barked_back=row.barked_back,
-    )
-
-
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CrashoutService:
-    database: Database
+    store: CrashoutStore
 
     def add(self, entry: CrashoutEntry) -> CrashoutView:
         crashout = journaled(entry, at=now())
-        with crashout_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             journaled_crashout = repository.journal(crashout)
         number = journaled_crashout.number
         text = f'journaled crashout #{number}\n{duplicates_text(journaled_crashout.duplicates)}'
         return CrashoutView(text=text)
 
     def stats(self) -> CrashoutView:
-        with crashout_transaction(self.database) as repository:
-            latest = repository.latest_rows()
-            journal = tuple(map(crashout_of, latest.rows))
-        if not journal:
+        with self.store.transaction() as repository:
+            latest = repository.latest_crashouts()
+        if not latest.rows:
             return CrashoutView(text=f'{SERENITY}\n')
         note = OLDER_LEFT_OUT if latest.older_left_out else ''
-        return CrashoutView(text=patterns_text(journal) + note)
+        return CrashoutView(text=patterns_text(latest.rows) + note)
 
     def last(self) -> CrashoutView:
-        with crashout_transaction(self.database) as repository:
-            row = repository.latest_row()
-            if row is None:
-                return CrashoutView(text=f'{NOTHING_JOURNALED}\n')
-            crashout = crashout_of(row)
+        with self.store.transaction() as repository:
+            crashout = repository.latest_crashout()
+        if crashout is None:
+            return CrashoutView(text=f'{NOTHING_JOURNALED}\n')
         return CrashoutView(text=crashout_text(crashout), entry=crashout)

@@ -30,7 +30,7 @@ from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, 
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from mightymodels_plugin.tools.crashout import service as crashouts
-from mightymodels_plugin.tools.crashout.repository import JOURNAL_WINDOW, crashout_transaction
+from mightymodels_plugin.tools.crashout.repository import JOURNAL_WINDOW, crashout_store
 from mightymodels_plugin.tools.crashout.schema import JournaledCrashout, Severity, Verdict
 from mightymodels_plugin.tools.crashout.service import CrashoutService
 from mightymodels_plugin.tools.investigation import service as investigations
@@ -38,8 +38,7 @@ from mightymodels_plugin.tools.investigation.repository import (
     ENTRIES,
     INVESTIGATIONS_LISTED,
     TARGET_SEQ,
-    LedgerRecord,
-    investigation_transaction,
+    investigation_store,
 )
 from mightymodels_plugin.tools.investigation.schema import (
     EntryKind,
@@ -48,14 +47,13 @@ from mightymodels_plugin.tools.investigation.schema import (
     TargetKind,
 )
 from mightymodels_plugin.tools.investigation.service import InvestigationService
+from mightymodels_plugin.tools.investigation.store import LedgerRecord
 from mightymodels_plugin.tools.investigation.tables import LedgerEntryRow
 from mightymodels_plugin.tools.review import service as reviews
 from mightymodels_plugin.tools.review.repository import (
     FINDINGS,
     RUNS_LISTED,
-    DecidedFinding,
-    ResolvedFinding,
-    review_transaction,
+    review_store,
 )
 from mightymodels_plugin.tools.review.schema import (
     Decision,
@@ -70,6 +68,7 @@ from mightymodels_plugin.tools.review.schema import (
 )
 from mightymodels_plugin.tools.review.schema import Severity as FindingSeverity
 from mightymodels_plugin.tools.review.service import ReviewService
+from mightymodels_plugin.tools.review.store import DecidedFinding, ResolvedFinding
 from mightymodels_plugin.tools.review.tables import (
     ReviewDispositionRow,
     ReviewFindingRow,
@@ -133,6 +132,15 @@ TARGET = LedgerRecord(
     supersedes=(),
     at='2026-09-28T12:00:00+00:00',
     head=None,
+)
+A_RUN = MappingProxyType(
+    {
+        'scope': ReviewScope.CODEBASE,
+        'depth': Depth.DEEP,
+        'emphasis': Emphasis.BALANCED,
+        'weights': {},
+        'models': {},
+    }
 )
 A_FINDING = MappingProxyType(
     {'run_id': RUN.root, 'sources': ['MV-1'], 'severity': FindingSeverity.HIGH}
@@ -202,46 +210,46 @@ def stuck_transitions(database: Database) -> list[str]:
 
 
 def run_row(database: Database) -> None:
-    with review_transaction(database) as repository:
-        repository.run_row(RUN)
+    with review_store(database).transaction() as repository:
+        repository.run(RUN)
 
 
 def latest_runs(database: Database) -> Latest[str]:
-    with review_transaction(database) as repository:
-        latest = repository.latest_run_rows()
+    with review_store(database).transaction() as repository:
+        latest = repository.latest_runs()
         return Latest(
-            rows=tuple(row.run_id for row in latest.rows), older_left_out=latest.older_left_out
+            rows=tuple(run.run_id.root for run in latest.rows), older_left_out=latest.older_left_out
         )
 
 
 def latest_run_of_the_ticket(database: Database) -> None:
-    with review_transaction(database) as repository:
-        repository.latest_run_row(TICKET)
+    with review_store(database).transaction() as repository:
+        repository.latest_run(TICKET)
 
 
 def finding_ids(database: Database) -> list[str]:
-    with review_transaction(database) as repository:
-        return [row.finding_id for row in repository.finding_rows(RUN)]
+    with review_store(database).transaction() as repository:
+        return [finding.id for finding in repository.findings(RUN)]
 
 
 def dispositions(database: Database) -> Sized:
-    with review_transaction(database) as repository:
-        return repository.decisions.disposition_rows(RUN)
+    with review_store(database).transaction() as repository:
+        return repository.decisions.dispositions(RUN)
 
 
 def outcomes(database: Database) -> Sized:
-    with review_transaction(database) as repository:
-        return repository.decisions.outcome_rows(RUN)
+    with review_store(database).transaction() as repository:
+        return repository.decisions.outcomes(RUN)
 
 
 def ledger_target(database: Database) -> None:
-    with investigation_transaction(database) as repository:
+    with investigation_store(database).transaction() as repository:
         repository.has_entries(LEDGER)
 
 
 def ledger_entries(database: Database) -> Sized:
-    with investigation_transaction(database) as repository:
-        return repository.entry_rows(LEDGER)
+    with investigation_store(database).transaction() as repository:
+        return repository.entries(LEDGER)
 
 
 def unrecorded_investigations(database: Database) -> list[Slug]:
@@ -250,7 +258,7 @@ def unrecorded_investigations(database: Database) -> list[Slug]:
 
 
 def latest_investigations(database: Database) -> Latest[str]:
-    with investigation_transaction(database) as repository:
+    with investigation_store(database).transaction() as repository:
         latest = repository.latest_rounds()
     return Latest(
         rows=tuple(investigation for investigation, _ in latest.rows),
@@ -259,16 +267,17 @@ def latest_investigations(database: Database) -> Latest[str]:
 
 
 def latest_crashouts(database: Database) -> Latest[str]:
-    with crashout_transaction(database) as repository:
-        latest = repository.latest_rows()
+    with crashout_store(database).transaction() as repository:
+        latest = repository.latest_crashouts()
         return Latest(
-            rows=tuple(row.at for row in latest.rows), older_left_out=latest.older_left_out
+            rows=tuple(crashout.at for crashout in latest.rows),
+            older_left_out=latest.older_left_out,
         )
 
 
 def latest_crashout(database: Database) -> None:
-    with crashout_transaction(database) as repository:
-        repository.latest_row()
+    with crashout_store(database).transaction() as repository:
+        repository.latest_crashout()
 
 
 def selects_of(read: Read, database: Database) -> SelectsSent:
@@ -325,7 +334,7 @@ class TestEveryRead:
 
 def journal_crashouts(database: Database, count: int) -> list[str]:
     times = [f'2026-09-28T12:{number // 60:02d}:{number % 60:02d}+00:00' for number in range(count)]
-    with crashout_transaction(database) as repository:
+    with crashout_store(database).transaction() as repository:
         for at in times:
             repository.journal(JOURNALED.model_copy(update={'at': at}))
     return times
@@ -349,7 +358,7 @@ def started(run: RunId) -> ReviewRun:
 
 def start_runs(database: Database, count: int) -> list[str]:
     runs = [RunId(f'20260928-{number:06d}') for number in range(count)]
-    with review_transaction(database) as repository:
+    with review_store(database).transaction() as repository:
         for run in runs:
             repository.record_run(started(run))
     return [run.root for run in runs]
@@ -357,22 +366,30 @@ def start_runs(database: Database, count: int) -> list[str]:
 
 def start_investigations(database: Database, count: int) -> list[str]:
     started = [Slug(f'20260928-queue-{number:04d}') for number in range(count)]
-    with investigation_transaction(database) as repository:
+    with investigation_store(database).transaction() as repository:
         for investigation in started:
             repository.append(investigation, [TARGET])
     return [investigation.root for investigation in started]
 
 
+def review_service(workspace: Workspace, database: Database) -> ReviewService:
+    return ReviewService(workspace=workspace, store=review_store(database), git=workspace.git)
+
+
+def investigation_service(workspace: Workspace, database: Database) -> InvestigationService:
+    return InvestigationService(store=investigation_store(database), git=workspace.git)
+
+
 def crashout_stats(_workspace: Workspace, database: Database) -> str:
-    return CrashoutService(database=database).stats().text
+    return CrashoutService(store=crashout_store(database)).stats().text
 
 
 def review_listing(workspace: Workspace, database: Database) -> str:
-    return ReviewService(workspace=workspace, database=database).listing().text
+    return review_service(workspace, database).listing().text
 
 
 def investigation_listing(workspace: Workspace, database: Database) -> str:
-    return InvestigationService(workspace=workspace, database=database).listing().text
+    return investigation_service(workspace, database).listing().text
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -511,8 +528,10 @@ def an_attempt_by_each_worker(database: Database) -> None:
 
 
 def twelve_findings_of(run: RunId, database: Database) -> None:
-    store(database, ReviewRunRow, [{'run_id': run.root}])
-    found = [{'run_id': run.root, 'finding_id': f'F{number}'} for number in range(12, 0, -1)]
+    store(database, ReviewRunRow, [{**A_RUN, 'run_id': run.root}])
+    found = [
+        {**A_FINDING, 'run_id': run.root, 'finding_id': f'F{number}'} for number in range(12, 0, -1)
+    ]
     store(database, ReviewFindingRow, found)
 
 
@@ -521,23 +540,23 @@ def twelve_findings(database: Database) -> None:
 
 
 def findings_of_two_other_runs(database: Database) -> None:
-    with review_transaction(database) as repository:
-        recorded = len(repository.latest_run_rows().rows)
+    with review_store(database).transaction() as repository:
+        recorded = len(repository.latest_runs().rows)
     for number in (recorded, recorded + 1):
         twelve_findings_of(RunId(f'20260929-{number:06d}'), database)
 
 
 def two_started_investigations(database: Database) -> None:
-    with investigation_transaction(database) as repository:
+    with investigation_store(database).transaction() as repository:
         repository.append(LEDGER, [TARGET])
         repository.append(OTHER_LEDGER, [TARGET])
 
 
 def twenty_more_entries_in_each_ledger(database: Database) -> None:
-    with investigation_transaction(database) as repository:
-        recorded = len(repository.entry_rows(LEDGER))
+    with investigation_store(database).transaction() as repository:
+        recorded = len(repository.entries(LEDGER))
     entries = [
-        {'investigation_id': ledger.root, 'seq': recorded + number}
+        {**AN_ENTRY, 'investigation_id': ledger.root, 'seq': recorded + number}
         for ledger in (LEDGER, OTHER_LEDGER)
         for number in range(1, 21)
     ]
@@ -716,7 +735,7 @@ def a_failed_fix_for_the_task(database: Database, count: int) -> None:
 
 
 def findings_of_the_run(database: Database, count: int) -> None:
-    with review_transaction(database) as repository:
+    with review_store(database).transaction() as repository:
         repository.record_run(started(RUN))
     found = [{**A_FINDING, 'finding_id': f'F{number}'} for number in range(count)]
     store(database, ReviewFindingRow, found)
@@ -902,7 +921,7 @@ def add_findings(workspace: Workspace, database: Database, numbers: range) -> No
         )
         for number in numbers
     ]
-    ReviewService(workspace=workspace, database=database).add_findings(RUN, found)
+    review_service(workspace, database).add_findings(RUN, found)
 
 
 def decide_findings(_workspace: Workspace, database: Database, numbers: range) -> None:
@@ -912,12 +931,12 @@ def decide_findings(_workspace: Workspace, database: Database, numbers: range) -
         )
         for number in numbers
     ]
-    with review_transaction(database) as repository:
+    with review_store(database).transaction() as repository:
         repository.decisions.record_dispositions(RUN, decided)
 
 
 def resolve_findings(_workspace: Workspace, database: Database, numbers: range) -> None:
-    with review_transaction(database) as repository:
+    with review_store(database).transaction() as repository:
         for number in numbers:
             repository.decisions.record_outcome(
                 RUN,
@@ -936,7 +955,7 @@ def add_entries(workspace: Workspace, database: Database, numbers: range) -> Non
         LedgerEntry(kind=EntryKind.OPEN, text=f'question {number}', source=Source.USER)
         for number in numbers
     ]
-    InvestigationService(workspace=workspace, database=database).add(LEDGER, 1, entries)
+    investigation_service(workspace, database).add(LEDGER, 1, entries)
 
 
 def contract_status(workspace: Workspace, database: Database) -> str:
@@ -961,11 +980,11 @@ def task_listing(workspace: Workspace, database: Database) -> str:
 
 
 def review_report(workspace: Workspace, database: Database) -> str:
-    return ReviewService(workspace=workspace, database=database).report(RUN, Shape.FULL).text
+    return review_service(workspace, database).report(RUN, Shape.FULL).text
 
 
 def rendered_ledger(workspace: Workspace, database: Database) -> str:
-    return InvestigationService(workspace=workspace, database=database).render(LEDGER).text
+    return investigation_service(workspace, database).render(LEDGER).text
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

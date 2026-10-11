@@ -12,18 +12,17 @@ aside and the call goes on. A scout's closing text is dropped when the report of
 target is already stored, so a handed-back report wins. The spool and its file format are in
 `spool.py`.
 
-The service reads and writes the database and the spool and nothing else.
+The service reads and writes its store and the spool and nothing else. It is built with the key of
+the repository it serves, which names the spool files it takes in.
 """
 
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
-from mightymodels_plugin.core.database import Database
-from mightymodels_plugin.core.repository_key import spool_file_prefix
+from mightymodels_plugin.core.repository_key import RepositoryKey, spool_file_prefix
 from mightymodels_plugin.redaction import RedactedTextTooLongError
 from mightymodels_plugin.tools.similarity.rendering import matches_text
-from mightymodels_plugin.tools.similarity.repository import similarity_transaction
 from mightymodels_plugin.tools.similarity.schema import (
     SimilarityKind,
     SimilarityView,
@@ -35,45 +34,47 @@ from mightymodels_plugin.tools.similarity.spool import (
     spooled_report,
     waiting_files,
 )
+from mightymodels_plugin.tools.similarity.store import SimilarityStore
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SimilarityService:
-    database: Database
+    store: SimilarityStore
     spool: Path
+    repository_key: RepositoryKey
 
     def search(self, query: str, kind: SimilarityKind | None) -> SimilarityView:
-        with similarity_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             matches = tuple(repository.search(query, kind=kind))
         return SimilarityView(text=matches_text(matches), matches=matches)
 
-    def store(self, report: SpooledReport) -> RedactedTextTooLongError | None:
+    def store_report(self, report: SpooledReport) -> RedactedTextTooLongError | None:
         try:
-            with similarity_transaction(self.database) as repository:
+            with self.store.transaction() as repository:
                 repository.add_scout_report(report)
         except RedactedTextTooLongError as error:
             return error
         return None
 
     def has_report_of(self, report: SpooledReport) -> bool:
-        with similarity_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             return repository.has_scout_report(report)
 
     def take_in(self, file: Path) -> None:
         report = spooled_report(file)
-        if report is None or report.repository_key != self.database.repository_key:
+        if report is None or report.repository_key != self.repository_key:
             set_aside(file, self.spool)
             return
-        prefix = spool_file_prefix(self.database.repository_key)
+        prefix = spool_file_prefix(self.repository_key)
         if is_closing_text(file, prefix) and self.has_report_of(report):
             file.unlink()
             return
-        if self.store(report) is not None:
+        if self.store_report(report) is not None:
             set_aside(file, self.spool)
             return
         file.unlink()
 
     def take_in_spool(self) -> None:
-        for file in waiting_files(self.spool, spool_file_prefix(self.database.repository_key)):
+        for file in waiting_files(self.spool, spool_file_prefix(self.repository_key)):
             with suppress(FileNotFoundError):
                 self.take_in(file)
