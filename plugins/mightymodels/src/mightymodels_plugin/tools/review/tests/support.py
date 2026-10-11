@@ -6,6 +6,7 @@ from mightymodels_plugin.core.workspace import Git, Workspace
 from mightymodels_plugin.tools.review.repository import review_store
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.review.tests.in_memory import InMemoryReviewStore
+from mightymodels_plugin.tools.review.tests.workspace import Workspace as ReviewWorkspace
 from mightymodels_plugin.tools.similarity.tests.in_memory import InMemorySimilarityStore
 
 
@@ -36,3 +37,10 @@ def in_memory_review_service(
     return ReviewService(
         workspace=gitless_workspace, store=in_memory_review_store, git=in_memory_git
     )
+
+
+@pytest.fixture
+def workspace(
+    in_memory_review_service: ReviewService, in_memory_git: InMemoryGit
+) -> ReviewWorkspace:
+    return ReviewWorkspace(reviews=in_memory_review_service, git=in_memory_git)
