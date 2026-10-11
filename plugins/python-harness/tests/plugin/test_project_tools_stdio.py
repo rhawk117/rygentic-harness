@@ -17,7 +17,10 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 PLUGIN_ROOT_VARIABLE = '${CLAUDE_PLUGIN_ROOT}'
 SERVER_NAME = 'python-harness'
 FIXTURE_PROJECT = {
-    'pyproject.toml': '[project]\nname = "shop"\nversion = "0"\nrequires-python = ">=3.14"\n',
+    'pyproject.toml': (
+        '[project]\nname = "shop"\nversion = "0"\nrequires-python = ">=3.14"\n'
+        '[dependency-groups]\ndev = ["pytest"]\n'
+    ),
     'src/shop/__init__.py': 'def price(total: int) -> int:\n    return total\n',
     'tests/test_price.py': 'def test_price() -> None:\n    total = 2 * 2\n    assert total == 4\n',
 }
@@ -38,7 +41,7 @@ def server_parameters(project: Path) -> StdioServerParameters:
         args=[
             argument.replace(PLUGIN_ROOT_VARIABLE, str(PLUGIN_ROOT)) for argument in server['args']
         ],
-        env={**os.environ, 'CLAUDE_PROJECT_DIR': str(project)},
+        env={**os.environ, 'CLAUDE_PROJECT_DIR': str(project), 'CLICOLOR_FORCE': '0'},
         cwd=project,
     )
 
@@ -148,6 +151,13 @@ class TestGateOverStdio:
             {'kind': 'exited', 'exit_code': 0},
             {'kind': 'exited', 'exit_code': 0},
         )
+
+    def test_no_output_tail_carries_an_escape_character_when_the_parent_forces_colour(
+        self, documents: ProjectDocuments
+    ) -> None:
+        tails = [item['output_tail'] for item in documents.gate['results']]
+
+        assert [tail for tail in tails if '\x1b' in tail] == []
 
     def test_the_gate_carries_the_workspace_diagnostics(self, documents: ProjectDocuments) -> None:
         assert documents.gate['workspace'] == {

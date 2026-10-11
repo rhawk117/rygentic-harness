@@ -167,7 +167,7 @@ Nothing is checked before the CLI starts:
 | `uv` is not on `PATH` | `env` prints `'uv': No such file or directory` and exits 127 |
 | `uv` cannot build the environment (no network on the first run, no Python 3.14) | `uv`'s own error and exit code |
 
-`uv tool run` puts its environment's `bin` first on `PATH` and sets `UV`. `inspect gate` removes both, and an inherited `VIRTUAL_ENV` with that virtualenv's `bin`, before running the reviewed project's tools. It runs them through `uv run --isolated` with caches and bytecode writing turned off, so the gate leaves no lockfile, `.venv` or cache behind. Some build backends still write into the tree (setuptools writes `*.egg-info`). The gate reports any path that appeared in `created_paths` and never deletes anything.
+`uv tool run` puts its environment's `bin` first on `PATH` and sets `UV`. `inspect gate` removes both, and an inherited `VIRTUAL_ENV` with that virtualenv's `bin`, before running the reviewed project's tools. It runs them through `uv run --isolated` with caches and bytecode writing turned off, so the gate leaves no lockfile, `.venv` or cache behind. It also sets `NO_COLOR=1` and removes `CLICOLOR_FORCE` and `FORCE_COLOR`, so output tails carry no colour codes. Some build backends still write into the tree (setuptools writes `*.egg-info`). The gate reports any path that appeared in `created_paths` and never deletes anything.
 
 Command groups load only when they run, so a hook never imports the `inspect` commands, and the interpreter hook never imports the session scan.
 

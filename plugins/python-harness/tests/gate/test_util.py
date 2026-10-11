@@ -13,6 +13,7 @@ import tomllib
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.gate.domain import (
+    COLOUR_FORCING_ENVIRONMENT,
     DEFAULT_RUFF_VERSION,
     RUFF_VERSION_OPTION,
     RUFF_VERSION_VARIABLE,
@@ -202,6 +203,7 @@ class TestBuildChildEnvironment:
                 {
                     'PATH': join_search_path('/usr/local/bin', '/usr/bin'),
                     'HOME': '/home/ryan',
+                    'NO_COLOR': '1',
                     'PYTHONDONTWRITEBYTECODE': '1',
                 },
                 id='active-virtualenv-scripts-leave-path-with-the-dropped-variables',
@@ -211,21 +213,32 @@ class TestBuildChildEnvironment:
                     'PATH': join_search_path('/usr/bin', f'{ACTIVE_SCRIPTS}/'),
                     'VIRTUAL_ENV': str(ACTIVE_VIRTUALENV),
                 },
-                {'PATH': '/usr/bin', 'PYTHONDONTWRITEBYTECODE': '1'},
+                {'PATH': '/usr/bin', 'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'},
                 id='trailing-separator-still-matches',
             ),
             pytest.param(
                 {'PATH': join_search_path(ACTIVE_SCRIPTS, '/usr/bin')},
                 {
                     'PATH': join_search_path(ACTIVE_SCRIPTS, '/usr/bin'),
+                    'NO_COLOR': '1',
                     'PYTHONDONTWRITEBYTECODE': '1',
                 },
                 id='path-untouched-without-a-virtualenv',
             ),
             pytest.param(
                 {'VIRTUAL_ENV': str(ACTIVE_VIRTUALENV)},
-                {'PYTHONDONTWRITEBYTECODE': '1'},
+                {'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'},
                 id='no-path-is-invented',
+            ),
+            pytest.param(
+                {
+                    'CLICOLOR_FORCE': '0',
+                    'FORCE_COLOR': '1',
+                    'NO_COLOR': '',
+                    'CLICOLOR': '1',
+                },
+                {'CLICOLOR': '1', 'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'},
+                id='colour-forcing-variables-leave-and-no-color-is-set',
             ),
         ],
     )
@@ -283,7 +296,10 @@ class TestLauncherEnvironment:
         environment, child = launched
 
         assert environment != session
-        assert child == session | dict(GateOptions().child_environment)
+        kept = {
+            name: value for name, value in session.items() if name not in COLOUR_FORCING_ENVIRONMENT
+        }
+        assert child == kept | dict(GateOptions().child_environment)
 
 
 class TestUntrackedPathsFromStatus:

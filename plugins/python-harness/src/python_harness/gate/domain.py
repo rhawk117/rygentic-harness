@@ -100,8 +100,11 @@ PYTHON_HARNESS_ENVIRONMENT = frozenset(
 )
 
 
+COLOUR_FORCING_ENVIRONMENT = frozenset({'CLICOLOR_FORCE', 'FORCE_COLOR'})
+
+
 def default_child_environment() -> Mapping[str, str]:
-    return MappingProxyType({'PYTHONDONTWRITEBYTECODE': '1'})
+    return MappingProxyType({'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'})
 
 
 def default_launcher_environment() -> Path | None:
@@ -113,7 +116,7 @@ def default_launcher_environment() -> Path | None:
 @dataclass(frozen=True, slots=True)
 class GateOptions:
     fallbacks: Mapping[ConfigKind, Path] = field(default_factory=dict)
-    dropped_environment: frozenset[str] = PYTHON_HARNESS_ENVIRONMENT
+    dropped_environment: frozenset[str] = PYTHON_HARNESS_ENVIRONMENT | COLOUR_FORCING_ENVIRONMENT
     launcher_environment: Path | None = field(default_factory=default_launcher_environment)
     child_environment: Mapping[str, str] = field(default_factory=default_child_environment)
     timeout_seconds: float = 600.0
