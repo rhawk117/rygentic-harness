@@ -23,7 +23,7 @@ from python_harness.survey.domain import (
 )
 from python_harness.survey.errors import ManifestUnreadableError
 from python_harness.survey.policy import detect_domains, infer_mode
-from python_harness.survey.util import declares_ruff_config, manifest_from_document
+from python_harness.survey.util import manifest_from_document
 
 
 def survey_document(survey: ProjectSurvey) -> JsonValue:
@@ -72,14 +72,20 @@ def read_layout(workspace: Workspace) -> LayoutFacts:
     )
 
 
-def ruff_config_name(directory: Path, pyproject: TomlTable | None) -> str | None:
-    candidates = (directory.joinpath(name) for name in RUFF_CONFIG_FILES)
+def config_name(
+    directory: Path, files: tuple[str, ...], pyproject: TomlTable | None, *, table: str
+) -> str | None:
+    candidates = (directory.joinpath(name) for name in files)
     dedicated = next((path.name for path in candidates if path.is_file()), None)
     if dedicated is not None:
         return dedicated
-    if pyproject is None or not declares_ruff_config(pyproject):
+    if pyproject is None or table not in read_table(pyproject, 'tool'):
         return None
     return PYPROJECT
+
+
+def ruff_config_name(directory: Path, pyproject: TomlTable | None) -> str | None:
+    return config_name(directory, RUFF_CONFIG_FILES, pyproject, table='ruff')
 
 
 def find_ruff_config(workspace: Workspace, pyproject: TomlTable | None) -> str | None:
@@ -87,13 +93,7 @@ def find_ruff_config(workspace: Workspace, pyproject: TomlTable | None) -> str |
 
 
 def ty_config_name(directory: Path, pyproject: TomlTable | None) -> str | None:
-    candidates = (directory.joinpath(name) for name in TY_CONFIG_FILES)
-    dedicated = next((path.name for path in candidates if path.is_file()), None)
-    if dedicated is not None:
-        return dedicated
-    if pyproject is None or 'ty' not in read_table(pyproject, 'tool'):
-        return None
-    return PYPROJECT
+    return config_name(directory, TY_CONFIG_FILES, pyproject, table='ty')
 
 
 def find_ty_config(workspace: Workspace, pyproject: TomlTable | None) -> str | None:
