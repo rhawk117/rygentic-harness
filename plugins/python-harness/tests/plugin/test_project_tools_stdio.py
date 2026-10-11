@@ -117,6 +117,13 @@ class TestGateOverStdio:
         assert RUFF_CONFIG.as_posix() in arguments['ruff_format']
         assert TY_CONFIG.as_posix() in arguments['ty']
 
+    def test_ty_accepts_the_packaged_fallback_config_and_exits_zero(
+        self, documents: ProjectDocuments
+    ) -> None:
+        outcomes = {item['command']['tool']: item['outcome'] for item in documents.gate['results']}
+
+        assert outcomes['ty'] == {'kind': 'exited', 'exit_code': 0}
+
     def test_the_gate_carries_the_workspace_diagnostics(self, documents: ProjectDocuments) -> None:
         assert documents.gate['diagnostics'] == {
             'source_roots': ['src'],
