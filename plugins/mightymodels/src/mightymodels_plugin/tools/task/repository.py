@@ -1,10 +1,14 @@
 """A ticket's tasks, their attempts and their transitions, reached only through a repository.
 
-`task_transaction` opens one transaction on the database and hands out the task repository, so the
-task service never sees a session. A task action also reads the ticket's row and the ticket's
-contract, so the repository carries a `TicketRepository` and a `ContractRepository`, both built
-here on that same session and nowhere else: one transaction serves the three. All three hold the
-key of the git repository the database was opened for, and every read and write is under it.
+`SqliteTaskStore` is the task store over the database: its `transaction` opens one and hands out
+the task repository, so the task service never sees a session, and `task_store` builds it as the
+`TaskStore` a service holds. A task action also reads the ticket and the ticket's contract, so the
+repository carries a `SqliteTicketRepository` and a `SqliteContractRepository`, both built here on
+that same session and nowhere else: one transaction serves the three. All three hold the key of
+the git repository the database was opened for, and every read and write is under it.
+
+No row leaves the repository: a task is handed out as a `TaskRecord` and a transition as the
+`Transition` it was written from.
 
 A method that changes a task takes the transition the change is part of and stores the
 transition's row with it, so no task moves without its record.
@@ -19,13 +23,14 @@ for.
 A task's failed fixes are read whole, up to `FAILED_FIX_LIMIT`, the most the service lets it hold.
 
 `in_progress_started_by` answers the in-progress tasks whose latest attempt was a worker's, so a
-hook that sees a worker stop can tell which tasks it left open.
+hook that sees a worker stop can tell which tasks it left open. It is a query over the SQLite
+repository and not a method of the seam, since only that hook asks it.
 
 A task's base is the HEAD of its first start that had one. A restart keeps it, so what the task
 changed is measured from where its first attempt began.
 """
 
-from collections.abc import Collection, Generator, Sequence
+from collections.abc import Collection, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -35,34 +40,16 @@ from sqlalchemy.orm import Session
 from mightymodels_plugin.core.database import Database, ReadLimit
 from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.tools.contract.repository import ContractRepository
-from mightymodels_plugin.tools.task.schema import ArchitectMode, Implementer, Status
+from mightymodels_plugin.tools.contract.repository import SqliteContractRepository
+from mightymodels_plugin.tools.task.schema import ArchitectMode, Implementer, Status, TaskRecord
+from mightymodels_plugin.tools.task.store import Attempt, AttemptCounts, TaskStore, Transition
 from mightymodels_plugin.tools.task.tables import AttemptRow, FailedFixRow, TaskRow, TransitionRow
-from mightymodels_plugin.tools.ticket.repository import TicketRepository
-
-type AttemptCounts = dict[str, dict[str, int]]
+from mightymodels_plugin.tools.ticket.repository import SqliteTicketRepository
 
 TASKS = ReadLimit(rows=1000, kept='tasks')
 ATTEMPT_COUNTS = ReadLimit(rows=TASKS.rows * len(Implementer), kept='attempt counts')
 FAILED_FIX_LIMIT = 3
 FAILED_FIXES = ReadLimit(rows=FAILED_FIX_LIMIT, kept='failed fixes')
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Transition:
-    task_id: str
-    before: Status
-    after: Status
-    reasons: Sequence[str]
-    head: str | None
-    at: str
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Attempt:
-    worker: Implementer
-    mode: ArchitectMode | None
-    owned: Sequence[str]
 
 
 def transition_row(
@@ -80,17 +67,40 @@ def transition_row(
     )
 
 
+def task_record(row: TaskRow) -> TaskRecord:
+    return TaskRecord(
+        id=row.task_id,
+        status=Status(row.status),
+        owned=tuple(row.owned),
+        base=row.base,
+        commit=row.commit,
+        reasons=tuple(row.reasons),
+    )
+
+
+def transition_of(row: TransitionRow) -> Transition:
+    return Transition(
+        task_id=row.task_id,
+        before=Status(row.before),
+        after=Status(row.after),
+        reasons=tuple(row.reasons),
+        head=row.head,
+        at=row.at,
+    )
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
-class TaskRepository:
+class SqliteTaskRepository:
     session: Session
     repository_key: RepositoryKey
-    tickets: TicketRepository
-    contracts: ContractRepository
+    tickets: SqliteTicketRepository
+    contracts: SqliteContractRepository
 
-    def row(self, slug: Slug, task_id: str) -> TaskRow | None:
-        return self.session.get(TaskRow, (self.repository_key.root, slug.root, task_id))
+    def task(self, slug: Slug, task_id: str) -> TaskRecord | None:
+        row = self.session.get(TaskRow, (self.repository_key.root, slug.root, task_id))
+        return None if row is None else task_record(row)
 
-    def rows(self, slug: Slug) -> list[TaskRow]:
+    def tasks(self, slug: Slug) -> list[TaskRecord]:
         query = (
             sql.select(TaskRow)
             .where(TaskRow.repository_key == self.repository_key.root, TaskRow.slug == slug.root)
@@ -99,7 +109,7 @@ class TaskRepository:
         rows = list(self.session.scalars(query))
         if (error := TASKS.error(rows, owner=f'ticket {slug}')) is not None:
             raise error
-        return rows
+        return list(map(task_record, rows))
 
     def attempts_by_worker(self, slug: Slug) -> AttemptCounts:
         query = (
@@ -152,7 +162,7 @@ class TaskRepository:
 
     def latest_transitions_into(
         self, slug: Slug, statuses: Collection[Status], limit: int
-    ) -> list[TransitionRow]:
+    ) -> list[Transition]:
         query = (
             sql.select(TransitionRow)
             .where(
@@ -163,10 +173,10 @@ class TaskRepository:
             .order_by(TransitionRow.id.desc())
             .limit(limit)
         )
-        return list(reversed(self.session.scalars(query).all()))
+        return list(map(transition_of, reversed(self.session.scalars(query).all())))
 
     def record_start(self, slug: Slug, transition: Transition, attempt: Attempt) -> None:
-        started = self.row(slug, transition.task_id)
+        started = self.task(slug, transition.task_id)
         first_base = None if started is None else started.base
         self.session.merge(
             TaskRow(
@@ -234,7 +244,7 @@ class TaskRepository:
 
 
 def in_progress_started_by(
-    repository: TaskRepository, slug: Slug, worker: Implementer
+    repository: SqliteTaskRepository, slug: Slug, worker: Implementer
 ) -> list[str]:
     latest_attempts = (
         sql.select(sql.func.max(AttemptRow.id))
@@ -267,13 +277,21 @@ def in_progress_started_by(
     return list(repository.session.scalars(query))
 
 
-@contextmanager
-def task_transaction(database: Database) -> Generator[TaskRepository]:
-    with database.transaction() as session:
-        repository_key = database.repository_key
-        yield TaskRepository(
-            session=session,
-            repository_key=repository_key,
-            tickets=TicketRepository(session=session, repository_key=repository_key),
-            contracts=ContractRepository(session=session, repository_key=repository_key),
-        )
+@dataclass(slots=True, kw_only=True, frozen=True)
+class SqliteTaskStore:
+    database: Database
+
+    @contextmanager
+    def transaction(self) -> Generator[SqliteTaskRepository]:
+        with self.database.transaction() as session:
+            repository_key = self.database.repository_key
+            yield SqliteTaskRepository(
+                session=session,
+                repository_key=repository_key,
+                tickets=SqliteTicketRepository(session=session, repository_key=repository_key),
+                contracts=SqliteContractRepository(session=session, repository_key=repository_key),
+            )
+
+
+def task_store(database: Database) -> TaskStore:
+    return SqliteTaskStore(database=database)

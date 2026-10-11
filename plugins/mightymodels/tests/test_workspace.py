@@ -24,6 +24,7 @@ from mightymodels_plugin.core.workspace import (
     revision_error,
     workspace_at,
 )
+from mightymodels_plugin.tools.contract.repository import contract_store
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.task.tables import TransitionRow
 from mightymodels_plugin.tools.tests.support import (
@@ -148,7 +149,10 @@ class Project:
         workspace = workspace_at(self.server.root)
         with workspace_database(workspace, self.data_directory) as database:
             status = ContractService(
-                workspace=workspace, database=database, processes=process_runner()
+                workspace=workspace,
+                store=contract_store(database),
+                git=workspace.git,
+                processes=process_runner(),
             ).status(TICKET)
         return [command.state for command in status.commands]
 

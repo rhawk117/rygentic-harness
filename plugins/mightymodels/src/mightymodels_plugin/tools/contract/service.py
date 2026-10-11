@@ -6,10 +6,10 @@
 what the user approved runs through it. It reads the commands in one transaction, runs them with
 no transaction open, and records a receipt for every run in a second.
 
-The service is built once by whoever owns the workspace and the database, the server in its
-lifespan and the `verify run` command for its one run, and holds both. A method opens a
-transaction through `contract_transaction`, which hands it the repository. Everything above the
-class reads no service state. The command line imports this module, so nothing it imports may
+The service is built once by whoever owns the workspace, the server in its lifespan and the
+`verify run` command for its one run, and holds it with the contract store, git and the process
+runner. A method opens a transaction on the store, which hands it the repository. Everything above
+the class reads no service state. The command line imports this module, so nothing it imports may
 load `mcp`.
 """
 
@@ -17,15 +17,13 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.process import ProcessRunner
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import GitQueries, Workspace
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.tools.contract.assessment import Assessment, ReceiptState, Taken
-from mightymodels_plugin.tools.contract.executor import receipt_for
-from mightymodels_plugin.tools.contract.repository import Approval, contract_transaction
+from mightymodels_plugin.tools.contract.executor import RunSite, receipt_for
 from mightymodels_plugin.tools.contract.schema import (
     ApprovedCommand,
     CommandState,
@@ -35,7 +33,7 @@ from mightymodels_plugin.tools.contract.schema import (
     Phase,
     Receipt,
 )
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
+from mightymodels_plugin.tools.contract.store import Approval, ContractStore, RecordedCommand
 
 type ArgvById = Mapping[str, tuple[str, ...]]
 
@@ -96,21 +94,21 @@ def changed_command_error(
     return None if changed is None else ChangedCommandError(changed)
 
 
-def assessment_of(latest: ReceiptRow | None, head: str | None) -> Assessment:
+def assessment_of(latest: Receipt | None, head: str | None) -> Assessment:
     taken = None if latest is None else Taken(outcome=latest.outcome, head=latest.head)
     return Assessment(taken=taken, head=head)
 
 
-def state_of(command: CommandRow, latest: ReceiptRow | None, assessment: Assessment) -> str:
+def state_of(command: RecordedCommand, latest: Receipt | None, assessment: Assessment) -> str:
     if latest is None or assessment.state is not ReceiptState.AT_HEAD:
         return assessment.text
     return f'{latest.outcome} {latest.phase} expect={command.expect_exit}'
 
 
 def approved_commands(
-    rows: Iterable[CommandRow], slug: Slug, ids: Sequence[str] | None
+    recorded: Iterable[RecordedCommand], slug: Slug, ids: Sequence[str] | None
 ) -> list[ApprovedCommand]:
-    commands = {row.command_id: row for row in rows}
+    commands = {command.id: command for command in recorded}
     if not commands:
         raise NoContractError(slug)
     selected = sorted(commands) if ids is None else list(ids)
@@ -120,7 +118,7 @@ def approved_commands(
     return [
         ApprovedCommand(
             id=command_id,
-            argv=tuple(commands[command_id].argv),
+            argv=commands[command_id].argv,
             expect_exit=commands[command_id].expect_exit,
             timeout=commands[command_id].timeout,
         )
@@ -140,15 +138,16 @@ def receipt_text(receipt: Receipt) -> str:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class ContractService:
     workspace: Workspace
-    database: Database
+    store: ContractStore
+    git: GitQueries
     processes: ProcessRunner
 
     def approve(self, slug: Slug, commands: Sequence[ContractCommand]) -> ContractView:
         if any(not command.approved_by.strip() for command in commands):
             raise MissingApprovalError
-        approval = Approval(at=now(), head=self.workspace.git.resolve_head())
-        with contract_transaction(self.database) as repository:
-            recorded = {row.command_id: tuple(row.argv) for row in repository.commands(slug)}
+        approval = Approval(at=now(), head=self.git.resolve_head())
+        with self.store.transaction() as repository:
+            recorded = {command.id: command.argv for command in repository.commands(slug)}
             new = new_commands(commands, recorded)
             approved = recorded | {command_id: command.argv for command_id, command in new.items()}
             if (error := changed_command_error(commands, approved)) is not None:
@@ -158,18 +157,16 @@ class ContractService:
         return ContractView(text=text, passing=True)
 
     def status(self, slug: Slug) -> ContractView:
-        head = self.workspace.git.resolve_head()
-        with contract_transaction(self.database) as repository:
+        head = self.git.resolve_head()
+        with self.store.transaction() as repository:
             latest = repository.latest_receipts(slug)
             commands = repository.commands(slug)
-            assessments = [
-                assessment_of(latest.get(command.command_id), head) for command in commands
-            ]
+            assessments = [assessment_of(latest.get(command.id), head) for command in commands]
             states = tuple(
                 CommandState(
-                    id=command.command_id,
-                    argv=tuple(command.argv),
-                    state=state_of(command, latest.get(command.command_id), assessment),
+                    id=command.id,
+                    argv=command.argv,
+                    state=state_of(command, latest.get(command.id), assessment),
                 )
                 for command, assessment in zip(commands, assessments, strict=True)
             )
@@ -182,13 +179,11 @@ class ContractService:
         )
 
     def run_approved(self, slug: Slug, request: RunRequest) -> RunResult:
-        with contract_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             commands = approved_commands(repository.commands(slug), slug, request.ids)
-        receipts = [
-            receipt_for(command, self.workspace, request.phase, processes=self.processes)
-            for command in commands
-        ]
-        with contract_transaction(self.database) as repository:
+        site = RunSite(root=self.workspace.root, git=self.git, processes=self.processes)
+        receipts = [receipt_for(command, site, request.phase) for command in commands]
+        with self.store.transaction() as repository:
             repository.record(slug, receipts)
         return RunResult(
             text=''.join(map(receipt_text, receipts)),

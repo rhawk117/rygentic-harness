@@ -2,7 +2,7 @@
 
 `review_transaction` opens one transaction on the database and hands out the review repository,
 so the review service never sees a session. Starting a run also reads the ticket's row, so the
-repository carries a `TicketRepository`, built here on that same session and nowhere else: one
+repository carries a `SqliteTicketRepository`, built here on that same session and nowhere else: one
 transaction serves the two. Each repository here holds the key of the git repository the database
 was opened for, and every read, write and delete is under that key.
 
@@ -47,7 +47,7 @@ from mightymodels_plugin.tools.review.tables import (
 )
 from mightymodels_plugin.tools.similarity.repository import SimilarityRepository, Written
 from mightymodels_plugin.tools.similarity.schema import Duplicate, SimilarityKind
-from mightymodels_plugin.tools.ticket.repository import TicketRepository
+from mightymodels_plugin.tools.ticket.repository import SqliteTicketRepository
 
 type RowOfARun = ReviewFindingRow | ReviewDispositionRow | ReviewOutcomeRow
 
@@ -222,7 +222,7 @@ class DecisionRepository:
 class ReviewRepository:
     session: Session
     repository_key: RepositoryKey
-    tickets: TicketRepository
+    tickets: SqliteTicketRepository
     decisions: DecisionRepository
 
     def run_row(self, run: RunId) -> ReviewRunRow | None:
@@ -294,6 +294,6 @@ def review_transaction(database: Database) -> Generator[ReviewRepository]:
         yield ReviewRepository(
             session=session,
             repository_key=repository_key,
-            tickets=TicketRepository(session=session, repository_key=repository_key),
+            tickets=SqliteTicketRepository(session=session, repository_key=repository_key),
             decisions=DecisionRepository(session=session, repository_key=repository_key),
         )

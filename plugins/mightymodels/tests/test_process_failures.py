@@ -21,6 +21,7 @@ from mightymodels_plugin.core.workspace import (
     git_at,
 )
 from mightymodels_plugin.tools.contract.executor import (
+    RunSite,
     execute,
     failure_outcome,
     receipt_for,
@@ -294,7 +295,10 @@ class TestExecuteFailures:
     ) -> None:
         command = failing.command(FailureKind.TIMED_OUT, OUTPUT_TIMEOUT)
 
-        receipt = receipt_for(command, repository_workspace, Phase.TASK, processes=failing.runner)
+        site = RunSite(
+            root=repository_workspace.root, git=repository_workspace.git, processes=failing.runner
+        )
+        receipt = receipt_for(command, site, Phase.TASK)
 
         assert (receipt.outcome, receipt.exit, receipt.stdout_tail, receipt.stderr_tail) == (
             Outcome.TIMEOUT,

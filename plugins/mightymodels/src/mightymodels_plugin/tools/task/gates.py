@@ -8,7 +8,7 @@ fix is stuck and every live contract command passed at HEAD. With no HEAD to com
 receipt counts as taken at it.
 
 Each function returns its problems as the lines the caller shows, and an empty list is a pass.
-They read git, the brief file and rows the caller already holds, and never the database.
+They read git, the brief file and records the caller already holds, and never the database.
 """
 
 import re
@@ -17,12 +17,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mightymodels_plugin.core.task_id import is_plan_task
-from mightymodels_plugin.core.workspace import Git
+from mightymodels_plugin.core.workspace import GitQueries
 from mightymodels_plugin.tools.contract.assessment import Assessment, Taken
-from mightymodels_plugin.tools.contract.schema import Outcome
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
+from mightymodels_plugin.tools.contract.schema import Outcome, Receipt
+from mightymodels_plugin.tools.contract.store import RecordedCommand
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
-from mightymodels_plugin.tools.task.tables import TaskRow
 
 DONE_HEADING = '## DONE'
 ASKED_CRITERION = re.compile(r'^\s*-\s*(AC-\d+)\s*:', re.MULTILINE)
@@ -36,11 +35,11 @@ class Evidence:
     commit: str
     brief: Path | None
     assertions: Mapping[str, str]
-    commands: Sequence[CommandRow]
-    receipts: Mapping[str, ReceiptRow]
+    commands: Sequence[RecordedCommand]
+    receipts: Mapping[str, Receipt]
 
 
-def commit_problems(git: Git, base: str | None, commit: str) -> list[str]:
+def commit_problems(git: GitQueries, base: str | None, commit: str) -> list[str]:
     if commit != git.resolve_head():
         return ['the reported commit must resolve to the current HEAD']
     if base is None or git.resolve_commit(base) is None:
@@ -56,7 +55,7 @@ def done_commit(brief_text: str) -> str | None:
     return str(named[1]) if separator and named is not None else None
 
 
-def brief_problems(git: Git, evidence: Evidence) -> list[str]:
+def brief_problems(git: GitQueries, evidence: Evidence) -> list[str]:
     if evidence.brief is None:
         return []
     if not evidence.brief.is_file():
@@ -67,7 +66,7 @@ def brief_problems(git: Git, evidence: Evidence) -> list[str]:
     return []
 
 
-def receipt_problem(command_id: str, receipt: ReceiptRow | None, head: str | None) -> str | None:
+def receipt_problem(command_id: str, receipt: Receipt | None, head: str | None) -> str | None:
     taken = None if receipt is None else Taken(outcome=receipt.outcome, head=receipt.head)
     outcome = Assessment(taken=taken, head=head).outcome_at_head
     if outcome is None:
@@ -78,12 +77,9 @@ def receipt_problem(command_id: str, receipt: ReceiptRow | None, head: str | Non
 
 
 def receipt_problems(
-    commands: Sequence[CommandRow], receipts: Mapping[str, ReceiptRow], head: str | None
+    commands: Sequence[RecordedCommand], receipts: Mapping[str, Receipt], head: str | None
 ) -> list[str]:
-    problems = (
-        receipt_problem(command.command_id, receipts.get(command.command_id), head)
-        for command in commands
-    )
+    problems = (receipt_problem(command.id, receipts.get(command.id), head) for command in commands)
     return [problem for problem in problems if problem is not None]
 
 
@@ -95,7 +91,7 @@ def criteria_in_brief(brief: Path | None) -> list[str]:
 
 
 def criteria_problems(evidence: Evidence) -> list[str]:
-    by_command = {command.command_id.split('.', 1)[1] for command in evidence.commands}
+    by_command = {command.id.split('.', 1)[1] for command in evidence.commands}
     proven = by_command | set(evidence.assertions)
     problems = [
         f'{criterion} has neither a contract command nor a citation'
@@ -107,13 +103,13 @@ def criteria_problems(evidence: Evidence) -> list[str]:
     return problems
 
 
-def ownership_problems(git: Git, row: TaskRow, *, base: str, commit: str) -> list[str]:
-    outside = sorted(git.changed_files(base, commit) - set(row.owned))
+def ownership_problems(git: GitQueries, task: TaskRecord, *, base: str, commit: str) -> list[str]:
+    outside = sorted(git.changed_files(base, commit) - set(task.owned))
     return [f'changed outside the owned set: {path}' for path in outside]
 
 
-def verification_problems(git: Git, row: TaskRow, evidence: Evidence) -> list[str]:
-    base = row.base
+def verification_problems(git: GitQueries, task: TaskRecord, evidence: Evidence) -> list[str]:
+    base = task.base
     problems = commit_problems(git, base, evidence.commit)
     if problems or base is None:
         return problems
@@ -121,7 +117,7 @@ def verification_problems(git: Git, row: TaskRow, evidence: Evidence) -> list[st
         *receipt_problems(evidence.commands, evidence.receipts, git.resolve_head()),
         *brief_problems(git, evidence),
         *criteria_problems(evidence),
-        *ownership_problems(git, row, base=base, commit=evidence.commit),
+        *ownership_problems(git, task, base=base, commit=evidence.commit),
     ]
 
 

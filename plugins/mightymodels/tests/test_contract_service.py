@@ -1,21 +1,24 @@
-"""The `contract` tool's service and `verify run`, moved from verification.py's tests."""
+"""The contract service on the store and the git history kept in memory.
+
+`run` is `ContractService.run_approved`, what `verify run` calls, and its commands are launched for
+real. The test of the command line itself is in test_verify_run_command_line.py.
+"""
 
 import errno
 import os
 import sys
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
-import sqlalchemy as sql
-from mightymodels_plugin.cli import main
-from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels_plugin.core.errors import StateError
+from mightymodels_plugin.core.process import ProcessRunner, RunOutcome
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.tools.contract.schema import ContractCommand
-from mightymodels_plugin.tools.contract.service import ContractService
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit, RecordedCommit
+from mightymodels_plugin.tools.contract.schema import ContractCommand, Phase
+from mightymodels_plugin.tools.contract.service import ContractService, RunRequest
+from mightymodels_plugin.tools.contract.tests.in_memory import InMemoryContractStore
 from pydantic import ValidationError
 
 SLUG = 'retry-queue'
@@ -52,19 +55,39 @@ class Recorded:
     digest: str
 
 
+def moved_to(history: InMemoryGit, sha: str) -> RecordedCommit:
+    return RecordedCommit(sha=sha, parent=history.resolve_head(), changed=frozenset())
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class HeadMovingRunner:
+    history: InMemoryGit
+    to: str
+    launcher: ProcessRunner
+
+    def run(self, argv: Sequence[str], *, timeout: float, cwd: Path | None = None) -> RunOutcome:
+        outcome = self.launcher.run(argv, timeout=timeout, cwd=cwd)
+        self.history.commits.append(moved_to(self.history, self.to))
+        return outcome
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Workspace:
     contracts: ContractService
-    capsys: pytest.CaptureFixture[str]
+    store: InMemoryContractStore
+    history: InMemoryGit
 
     @property
     def root(self) -> Path:
         return self.contracts.workspace.root
 
-    def run(self, *argv: str, slug: str = SLUG) -> Outcome:
-        code = main(['verify', 'run', '--slug', slug, *argv])
-        captured = self.capsys.readouterr()
-        return Outcome(code=code, out=captured.out, err=captured.err)
+    def run(self, *ids: str, phase: Phase = Phase.TASK, slug: str = SLUG) -> Outcome:
+        request = RunRequest(ids=ids or None, phase=phase)
+        try:
+            result = self.contracts.run_approved(Slug(slug), request)
+        except StateError as error:
+            return Outcome(code=REJECTED, out='', err=str(error))
+        return Outcome(code=PASSED if result.passed else FAILED, out=result.text, err='')
 
     def approve(self, *commands: Mapping[str, object], slug: str = SLUG) -> Outcome:
         try:
@@ -82,48 +105,50 @@ class Workspace:
         return Outcome(code=PASSED if view.passing else FAILED, out=view.text, err='')
 
     def receipts(self) -> list[Recorded]:
-        query = sql.select(ReceiptRow).order_by(ReceiptRow.id)
-        with self.contracts.database.transaction() as session:
-            return [
-                Recorded(
-                    slug=row.slug,
-                    id=row.command_id,
-                    argv=row.argv,
-                    outcome=row.outcome,
-                    exit=row.exit,
-                    head=row.head,
-                    phase=row.phase,
-                    stdout_tail=row.stdout_tail,
-                    stderr_tail=row.stderr_tail,
-                    digest=row.digest,
-                )
-                for row in session.scalars(query)
-            ]
+        return [
+            Recorded(
+                slug=recorded.slug.root,
+                id=recorded.receipt.id,
+                argv=list(recorded.receipt.argv),
+                outcome=recorded.receipt.outcome,
+                exit=recorded.receipt.exit,
+                head=recorded.receipt.head,
+                phase=recorded.receipt.phase,
+                stdout_tail=recorded.receipt.stdout_tail,
+                stderr_tail=recorded.receipt.stderr_tail,
+                digest=recorded.receipt.digest,
+            )
+            for recorded in self.store.receipts
+        ]
 
     def planned(self) -> dict[str, str | None]:
-        query = sql.select(CommandRow).order_by(CommandRow.command_id)
-        with self.contracts.database.transaction() as session:
-            return {row.command_id: row.task_id for row in session.scalars(query)}
+        return {
+            record.command.id: record.command.task_id for record in self.store.approved.values()
+        }
 
     def point_head(self, sha: str) -> None:
-        git = self.root.joinpath('.git')
-        git.joinpath('refs', 'heads').mkdir(parents=True, exist_ok=True)
-        git.joinpath('HEAD').write_text('ref: refs/heads/main\n', encoding='utf-8')
-        git.joinpath('refs', 'heads', 'main').write_text(f'{sha}\n', encoding='utf-8')
+        self.history.commits.append(moved_to(self.history, sha))
 
 
 @pytest.fixture
 def workspace(
-    contract_service: ContractService,
-    data_directory: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
+    in_memory_contract_service: ContractService,
+    in_memory_contract_store: InMemoryContractStore,
+    in_memory_git: InMemoryGit,
 ) -> Workspace:
-    monkeypatch.setenv('CLAUDE_PROJECT_DIR', str(contract_service.workspace.root))
-    monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
-    space = Workspace(contracts=contract_service, capsys=capsys)
+    space = Workspace(
+        contracts=in_memory_contract_service, store=in_memory_contract_store, history=in_memory_git
+    )
     space.point_head(SHA_A)
     return space
+
+
+@pytest.fixture
+def workspace_whose_head_moves(workspace: Workspace) -> Workspace:
+    moving = HeadMovingRunner(
+        history=workspace.history, to=SHA_B, launcher=workspace.contracts.processes
+    )
+    return replace(workspace, contracts=replace(workspace.contracts, processes=moving))
 
 
 def test_contract_requires_a_named_approver(workspace: Workspace) -> None:
@@ -140,7 +165,7 @@ def test_a_shell_string_is_refused(workspace: Workspace) -> None:
 
 def test_an_approved_command_runs_and_leaves_a_receipt(workspace: Workspace) -> None:
     workspace.approve({'id': 'T1.AC-1', 'argv': python('print("ok")')})
-    outcome = workspace.run('--id', 'T1.AC-1')
+    outcome = workspace.run('T1.AC-1')
     receipt = workspace.receipts()[0]
     assert outcome.code == PASSED
     assert outcome.out.startswith('T1.AC-1 pass exit=0')
@@ -153,7 +178,7 @@ def test_an_approved_command_runs_and_leaves_a_receipt(workspace: Workspace) -> 
 
 def test_ids_outside_the_contract_never_run(workspace: Workspace) -> None:
     workspace.approve({'id': 'T1.AC-1', 'argv': python('print(1)')})
-    outcome = workspace.run('--id', 'T1.AC-1', '--id', 'rm-everything')
+    outcome = workspace.run('T1.AC-1', 'rm-everything')
     assert outcome.code == REJECTED
     assert "not in the contract: ['rm-everything']" in outcome.err
     assert workspace.receipts() == []
@@ -162,14 +187,14 @@ def test_ids_outside_the_contract_never_run(workspace: Workspace) -> None:
 def test_arguments_reach_the_command_without_a_shell(workspace: Workspace) -> None:
     code = 'import sys; print(sys.argv[1])'
     workspace.approve({'id': 'I1', 'argv': python(code, '$HOME; echo pwned')})
-    workspace.run('--id', 'I1')
+    workspace.run('I1')
     assert workspace.receipts()[0].stdout_tail == '$HOME; echo pwned'
 
 
 def test_a_failing_command_reports_its_tail(workspace: Workspace) -> None:
     code = 'import sys; sys.stderr.write("boom\\n"); sys.exit(3)'
     workspace.approve({'id': 'T2.AC-1', 'argv': python(code)})
-    outcome = workspace.run('--id', 'T2.AC-1')
+    outcome = workspace.run('T2.AC-1')
     assert outcome.code == FAILED
     assert 'T2.AC-1 fail exit=3' in outcome.out
     assert '  | boom' in outcome.out
@@ -178,7 +203,7 @@ def test_a_failing_command_reports_its_tail(workspace: Workspace) -> None:
 def test_an_expected_red_command_passes_at_planning(workspace: Workspace) -> None:
     code = 'import sys; sys.exit(1)'
     workspace.approve({'id': 'T3.AC-1', 'argv': python(code), 'expect_exit': 1})
-    outcome = workspace.run('--id', 'T3.AC-1', '--phase', 'planning')
+    outcome = workspace.run('T3.AC-1', phase=Phase.PLANNING)
     assert outcome.code == PASSED
     assert workspace.receipts()[0].phase == 'planning'
 
@@ -186,25 +211,24 @@ def test_an_expected_red_command_passes_at_planning(workspace: Workspace) -> Non
 def test_a_hung_command_times_out(workspace: Workspace) -> None:
     code = 'import time; time.sleep(10)'
     workspace.approve({'id': 'slow', 'argv': python(code), 'timeout': 1})
-    outcome = workspace.run('--id', 'slow')
+    outcome = workspace.run('slow')
     assert outcome.code == FAILED
     assert workspace.receipts()[0].outcome == 'timeout'
 
 
 def test_a_missing_program_is_reported_not_raised(workspace: Workspace) -> None:
     workspace.approve({'id': 'gone', 'argv': ['no-such-program-xyz']})
-    outcome = workspace.run('--id', 'gone')
+    outcome = workspace.run('gone')
     assert outcome.code == FAILED
     assert workspace.receipts()[0].outcome == 'not-found'
 
 
 def test_head_changes_during_a_command_cannot_produce_a_passing_receipt(
-    workspace: Workspace,
+    workspace_whose_head_moves: Workspace,
 ) -> None:
-    code = f'from pathlib import Path; Path(".git/refs/heads/main").write_text("{SHA_B}\\n")'
-    workspace.approve({'id': 'T1.AC-1', 'argv': python(code)})
-    outcome = workspace.run('--id', 'T1.AC-1')
-    receipt = workspace.receipts()[0]
+    workspace_whose_head_moves.approve({'id': 'T1.AC-1', 'argv': python('print(1)')})
+    outcome = workspace_whose_head_moves.run('T1.AC-1')
+    receipt = workspace_whose_head_moves.receipts()[0]
     assert outcome.code == FAILED
     assert (receipt.outcome, receipt.head) == ('fail', SHA_A)
     assert 'HEAD changed during verification' in receipt.stderr_tail
@@ -220,7 +244,7 @@ def test_an_approved_id_cannot_change_its_argv(workspace: Workspace) -> None:
 def test_output_is_bounded_but_digested_whole(workspace: Workspace) -> None:
     code = 'print("\\n".join(str(n) for n in range(100)))'
     workspace.approve({'id': 'loud', 'argv': python(code)})
-    workspace.run('--id', 'loud')
+    workspace.run('loud')
     receipt = workspace.receipts()[0]
     assert receipt.stdout_tail.splitlines() == [str(n) for n in range(60, 100)]
     assert len(receipt.digest) == SHA256_HEX
@@ -231,7 +255,7 @@ def test_status_marks_results_from_an_older_head_stale(workspace: Workspace) -> 
         {'id': 'T1.AC-1', 'argv': python('print(1)')},
         {'id': 'T1.AC-2', 'argv': python('print(2)')},
     )
-    workspace.run('--id', 'T1.AC-1')
+    workspace.run('T1.AC-1')
     workspace.point_head(SHA_B)
     outcome = workspace.status()
     assert f'T1.AC-1 stale (pass at {SHA_A[:12]})' in outcome.out
@@ -241,7 +265,7 @@ def test_status_marks_results_from_an_older_head_stale(workspace: Workspace) -> 
 
 def test_status_passes_when_every_command_passed_at_head(workspace: Workspace) -> None:
     workspace.approve({'id': 'T1.AC-1', 'argv': python('print(1)')})
-    workspace.run('--id', 'T1.AC-1')
+    workspace.run('T1.AC-1')
     outcome = workspace.status()
     assert outcome.code == PASSED
     assert 'T1.AC-1 pass task expect=0' in outcome.out
@@ -252,7 +276,7 @@ def test_all_runs_every_approved_command_at_head(workspace: Workspace) -> None:
         {'id': 'I1', 'argv': python('print(1)')},
         {'id': 'T1.AC-1', 'argv': python('print(2)')},
     )
-    outcome = workspace.run('--all', '--phase', 'landing')
+    outcome = workspace.run(phase=Phase.LANDING)
     receipts = workspace.receipts()
     assert outcome.code == PASSED
     assert [(r.id, r.phase) for r in receipts] == [
@@ -342,7 +366,7 @@ class TestVerifyRunAllowlist:
         workspace.approve({'id': 'I1', 'argv': python('print(1)')})
         workspace.approve({'id': 'T1.AC-1', 'argv': self.touch()}, slug=OTHER_SLUG)
 
-        outcome = workspace.run('--id', 'T1.AC-1')
+        outcome = workspace.run('T1.AC-1')
 
         assert outcome.code == REJECTED
         assert "not in the contract: ['T1.AC-1']" in outcome.err
@@ -354,7 +378,7 @@ class TestVerifyRunAllowlist:
     ) -> None:
         workspace.approve({'id': 'T1.AC-1', 'argv': self.touch()}, slug=OTHER_SLUG)
 
-        outcome = workspace.run('--all')
+        outcome = workspace.run()
 
         assert outcome.code == REJECTED
         assert 'retry-queue has no approved commands' in outcome.err
@@ -365,7 +389,7 @@ class TestVerifyRunAllowlist:
     ) -> None:
         workspace.approve({'id': 'T1.AC-1', 'argv': self.touch()})
 
-        outcome = workspace.run('--id', 'T1.AC-1', '--id', 'T1.AC-2')
+        outcome = workspace.run('T1.AC-1', 'T1.AC-2')
 
         assert outcome.code == REJECTED
         assert not workspace.root.joinpath(self.MARKER).exists()
@@ -378,7 +402,7 @@ class TestVerifyRunAllowlist:
         workspace.approve({'id': 'T1.AC-1', 'argv': argv})
         workspace.approve({'id': 'T1.AC-1', 'argv': python('print("other")')}, slug=OTHER_SLUG)
 
-        outcome = workspace.run('--id', 'T1.AC-1')
+        outcome = workspace.run('T1.AC-1')
 
         receipt = workspace.receipts()[0]
         assert outcome.code == PASSED
@@ -386,18 +410,6 @@ class TestVerifyRunAllowlist:
         assert (receipt.slug, receipt.id, receipt.argv) == (SLUG, 'T1.AC-1', argv)
         assert (receipt.outcome, receipt.head, receipt.phase) == ('pass', SHA_A, 'task')
         assert len(workspace.receipts()) == 1
-
-    def test_verify_run_allowlist_takes_ids_and_never_a_command_line(
-        self, workspace: Workspace
-    ) -> None:
-        workspace.approve({'id': 'T1.AC-1', 'argv': python('print(1)')})
-
-        with pytest.raises(SystemExit) as exit_info:
-            workspace.run('--id', 'T1.AC-1', '--', *self.touch())
-
-        assert exit_info.value.code == REJECTED
-        assert not workspace.root.joinpath(self.MARKER).exists()
-        assert workspace.receipts() == []
 
 
 class TestLaunchAndDecodeFailures:
@@ -437,7 +449,7 @@ class TestLaunchAndDecodeFailures:
     def test_a_command_that_cannot_launch_or_decode_is_stored_as_an_outcome_of_its_own(
         self, workspace: Workspace, command_id: str, stored: str, cause: str
     ) -> None:
-        outcome = workspace.run('--id', command_id)
+        outcome = workspace.run(command_id)
 
         receipt = workspace.receipts()[0]
         assert (outcome.code, receipt.outcome, receipt.exit) == (FAILED, stored, None)
@@ -447,7 +459,7 @@ class TestLaunchAndDecodeFailures:
     def test_one_batch_stores_a_receipt_for_every_command_around_the_ones_that_cannot_run(
         self, workspace: Workspace
     ) -> None:
-        outcome = workspace.run('--all')
+        outcome = workspace.run()
 
         assert outcome.code == FAILED
         assert [(receipt.id, receipt.outcome) for receipt in workspace.receipts()] == list(

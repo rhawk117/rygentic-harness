@@ -27,8 +27,8 @@ from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import Git, GitRefusal, UntrackedFiles, Workspace
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.tools.contract.assessment import Assessment, Taken
-from mightymodels_plugin.tools.contract.schema import Outcome
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
+from mightymodels_plugin.tools.contract.schema import Outcome, Receipt
+from mightymodels_plugin.tools.contract.store import RecordedCommand
 from mightymodels_plugin.tools.investigation.ledger import Ledger, LinkedLedgers, linked_ledgers
 from mightymodels_plugin.tools.investigation.schema import EntryKind
 from mightymodels_plugin.tools.review.schema import Decision
@@ -51,9 +51,8 @@ from mightymodels_plugin.tools.snapshot.schema import (
 from mightymodels_plugin.tools.task.gates import STUCK
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
 from mightymodels_plugin.tools.task.service import records_of
-from mightymodels_plugin.tools.task.tables import TransitionRow
+from mightymodels_plugin.tools.task.store import Transition
 from mightymodels_plugin.tools.ticket.schema import WorkUnit
-from mightymodels_plugin.tools.ticket.service import unit_of
 
 NOT_STARTED = 'not started'
 
@@ -90,37 +89,37 @@ def task_state(record: TaskRecord) -> TaskState:
     )
 
 
-def check_state(receipt: ReceiptRow | None, head: str | None) -> str:
+def check_state(receipt: Receipt | None, head: str | None) -> str:
     taken = None if receipt is None else Taken(outcome=receipt.outcome, head=receipt.head)
     return Assessment(taken=taken, head=head).text
 
 
 def check_states(
-    commands: Sequence[CommandRow], receipts: Mapping[str, ReceiptRow], head: str | None
+    commands: Sequence[RecordedCommand], receipts: Mapping[str, Receipt], head: str | None
 ) -> tuple[CheckState, ...]:
     return tuple(
-        CheckState(id=command.command_id, state=check_state(receipts.get(command.command_id), head))
+        CheckState(id=command.id, state=check_state(receipts.get(command.id), head))
         for command in commands
     )
 
 
-def last_passed(command: CommandRow, receipts: Mapping[str, ReceiptRow]) -> bool:
-    receipt = receipts.get(command.command_id)
+def last_passed(command: RecordedCommand, receipts: Mapping[str, Receipt]) -> bool:
+    receipt = receipts.get(command.id)
     return receipt is not None and receipt.outcome == Outcome.PASSED
 
 
 def passing_commands(
-    commands: Sequence[CommandRow], receipts: Mapping[str, ReceiptRow], limit: int
+    commands: Sequence[RecordedCommand], receipts: Mapping[str, Receipt], limit: int
 ) -> tuple[PassingCommand, ...]:
     passing = (
-        PassingCommand(id=command.command_id, argv=tuple(command.argv))
+        PassingCommand(id=command.id, argv=command.argv)
         for command in commands
         if last_passed(command, receipts)
     )
     return tuple(islice(passing, limit))
 
 
-def failed_attempts(stuck: Sequence[TransitionRow]) -> tuple[FailedAttempt, ...]:
+def failed_attempts(stuck: Sequence[Transition]) -> tuple[FailedAttempt, ...]:
     return tuple(
         FailedAttempt(
             task=transition.task_id,
@@ -177,7 +176,7 @@ class SnapshotService:
         git = self.workspace.git
         repository_now = repository_state(git, limit)
         with snapshot_transaction(self.database) as repository:
-            unit = unit_of(repository.tickets.staged_row(slug))
+            unit = repository.tickets.staged_ticket(slug)
             commands = repository.contracts.commands(slug)
             receipts = repository.contracts.latest_receipts(slug)
             linked = linked_ledgers(repository.investigations, unit.investigations)

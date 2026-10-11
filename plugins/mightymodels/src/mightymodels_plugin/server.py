@@ -39,6 +39,7 @@ from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tool import close_tool
+from mightymodels_plugin.tools.contract.repository import contract_store
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tool import contract_tool
 from mightymodels_plugin.tools.crashout.service import CrashoutService
@@ -55,8 +56,10 @@ from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 from mightymodels_plugin.tools.similarity.tool import similarity_tool
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
 from mightymodels_plugin.tools.snapshot.tool import snapshot_tool
+from mightymodels_plugin.tools.task.repository import task_store
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.task.tool import task_tool
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tool import ticket_tool
 
@@ -114,10 +117,17 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
             workspace, database = state.workspace, state.database
             spool = state.data_directory.joinpath(SPOOL_DIRECTORY)
             yield AppState(
-                tickets=TicketService(workspace=workspace, database=database),
-                tasks=TaskService(workspace=workspace, database=database),
+                tickets=TicketService(
+                    workspace=workspace, store=ticket_store(database), git=workspace.git
+                ),
+                tasks=TaskService(
+                    workspace=workspace, store=task_store(database), git=workspace.git
+                ),
                 contracts=ContractService(
-                    workspace=workspace, database=database, processes=process_runner()
+                    workspace=workspace,
+                    store=contract_store(database),
+                    git=workspace.git,
+                    processes=process_runner(),
                 ),
                 reviews=ReviewService(workspace=workspace, database=database),
                 snapshots=SnapshotService(workspace=workspace, database=database),

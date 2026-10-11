@@ -3,17 +3,17 @@
 `write` renders the interview answers into ticket.yml and refuses to overwrite a ticket the
 user may have tweaked. `validate` reads the file back, hand edits included, and stages or
 refreshes the ticket's row without touching task progress. `update_context` replaces the
-context lines in the file and restages it. `show` reads the staged row back. `branch_named` turns
+context lines in the file and restages it. `show` reads the staged ticket back. `branch_named` turns
 the user's branch answer into the name `write` records.
 
 A ticket may link investigations, and each link must name one that has a ledger. `validate` and
 `update_context` read the ledgers in the transaction that stages the row. `write` stages nothing,
 so it opens a transaction only when its answers link an investigation.
 
-The service is built once by whoever owns the workspace and the database, and holds both. A
-method that touches the database opens one transaction through `ticket_transaction`, which hands
-it the repository. Everything above the class reads no service state: it checks a parsed ticket,
-or maps one shape of a ticket to another.
+The service is built once by whoever owns the workspace, and holds it with the ticket store and
+git. A method that reads or writes a ticket opens one transaction on the store, which hands it the
+repository. Everything above the class reads no service state: it checks a parsed ticket, or maps
+one shape of a ticket to another.
 """
 
 from collections.abc import Collection, Iterable, Sequence
@@ -23,23 +23,19 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import FIXED_WORKERS, Scope, Worker, fixed_model
 from mightymodels_plugin.core.slug import InvalidSlugError, Slug, parsed_slug
-from mightymodels_plugin.core.workspace import Workspace
-from mightymodels_plugin.tools.ticket.repository import TicketRepository, ticket_transaction
+from mightymodels_plugin.core.workspace import GitQueries, Workspace
 from mightymodels_plugin.tools.ticket.schema import (
     BranchChoice,
     TicketAnswers,
     TicketContext,
     TicketSection,
-    TicketStatus,
     TicketView,
-    Tracker,
     WorkUnit,
 )
-from mightymodels_plugin.tools.ticket.tables import TicketRow
+from mightymodels_plugin.tools.ticket.store import TicketRepository, TicketStore
 from mightymodels_plugin.tools.ticket.ticket_file import (
     CONTEXT_KEY,
     PRIMARY_AGENT,
@@ -234,26 +230,6 @@ def declared_investigations(tree: Tree) -> list[str]:
     return [str(investigation) for investigation in as_list(tree.get('investigations'))]
 
 
-def unit_of(row: TicketRow) -> WorkUnit:
-    section = TicketSection(
-        ticket=row.ticket,
-        summary=row.summary,
-        branch=row.branch,
-        scope=Scope(row.scope),
-        plan_first=row.plan_first,
-        models=row.models,
-        tracker=Tracker(issue=row.issue, jira=row.jira),
-        context=tuple(row.context),
-        validated_at=row.validated_at,
-    )
-    return WorkUnit(
-        slug=Slug(row.slug),
-        status=TicketStatus(row.status),
-        ticket=section,
-        investigations=tuple(row.investigations),
-    )
-
-
 def staged_text(unit: WorkUnit) -> str:
     return f'staged {unit.slug} (status {unit.status}, {len(unit.investigations)} investigations)\n'
 
@@ -263,7 +239,7 @@ def staged_unit(tickets: TicketRepository, tree: Tree, *, slug: Slug, ticket: st
     if (error := ticket_error(tree, slug, unrecorded)) is not None:
         raise error
     section = section_of(tree, ticket=ticket, validated_at=now())
-    return unit_of(tickets.stage(slug, section, declared_investigations(tree)))
+    return tickets.stage(slug, section, declared_investigations(tree))
 
 
 def atomic_write(path: Path, text: str, *, temporary: Path) -> None:
@@ -274,12 +250,13 @@ def atomic_write(path: Path, text: str, *, temporary: Path) -> None:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TicketService:
     workspace: Workspace
-    database: Database
+    store: TicketStore
+    git: GitQueries
 
     def unrecorded_investigations(self, linked: Sequence[Slug]) -> list[Slug]:
         if not linked:
             return []
-        with ticket_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             return repository.unrecorded_investigations(linked)
 
     def branch_named(self, choice: BranchChoice, name: str) -> str:
@@ -287,7 +264,7 @@ class TicketService:
             if not name.strip():
                 raise BranchNameRequiredError
             return name.strip()
-        if (current := self.workspace.git.current_branch()) is None:
+        if (current := self.git.current_branch()) is None:
             raise DetachedHeadError
         return current
 
@@ -311,13 +288,13 @@ class TicketService:
             raise MissingTicketError(path)
         tree = parse(path.read_text(encoding='utf-8'))
         ticket = self.workspace.relative_to_root(path)
-        with ticket_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             unit = staged_unit(repository, tree, slug=slug, ticket=ticket)
         return TicketView(text=f'valid; {staged_text(unit)}', unit=unit)
 
     def show(self, slug: Slug) -> TicketView:
-        with ticket_transaction(self.database) as repository:
-            unit = unit_of(repository.staged_row(slug))
+        with self.store.transaction() as repository:
+            unit = repository.staged_ticket(slug)
         return TicketView(text=staged_text(unit), unit=unit)
 
     def update_context(self, slug: Slug, change: TicketContext) -> TicketView:
@@ -327,7 +304,7 @@ class TicketService:
         text = with_context(path.read_text(encoding='utf-8'), change.context)
         tree = parse(text)
         ticket = self.workspace.relative_to_root(path)
-        with ticket_transaction(self.database) as repository:
+        with self.store.transaction() as repository:
             unit = staged_unit(repository, tree, slug=slug, ticket=ticket)
             atomic_write(path, text, temporary=self.workspace.ticket_draft(slug))
         return TicketView(text=f'context updated; {staged_text(unit)}', unit=unit)

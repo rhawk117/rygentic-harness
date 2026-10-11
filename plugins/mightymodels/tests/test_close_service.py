@@ -21,7 +21,6 @@ from mightymodels_plugin.tools.close.service import (
     TooManyGotchasError,
 )
 from mightymodels_plugin.tools.close.tables import ClosingRow
-from mightymodels_plugin.tools.contract.repository import contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.investigation.schema import (
@@ -45,13 +44,14 @@ from mightymodels_plugin.tools.review.schema import (
     StartPayload,
 )
 from mightymodels_plugin.tools.review.service import ReviewService
-from mightymodels_plugin.tools.task.repository import Attempt, Transition, task_transaction
+from mightymodels_plugin.tools.task.repository import task_store
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
+from mightymodels_plugin.tools.task.store import Attempt, Transition
 from mightymodels_plugin.tools.tests.support import StateServer
-from mightymodels_plugin.tools.ticket.repository import ticket_transaction
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
-from mightymodels_plugin.tools.ticket.service import TicketService, unit_of
+from mightymodels_plugin.tools.ticket.service import TicketService
 
 type GitRunner = Callable[..., str]
 
@@ -140,17 +140,17 @@ class Repo:
             phase=Phase.TASK,
             at=now(),
         )
-        with contract_transaction(self.contracts.database) as repository:
+        with self.contracts.store.transaction() as repository:
             repository.record(TICKET, [receipt])
 
     def record_task(self, task_id: str, after: Status, *workers: Implementer) -> None:
         started = transition_to(task_id, Status.IN_PROGRESS)
-        with task_transaction(self.closings.database) as repository:
+        with task_store(self.closings.database).transaction() as repository:
             repository.tickets.mark_in_progress(TICKET)
             for worker in workers:
                 attempt = Attempt(worker=worker, mode=None, owned=['queue.py'])
                 repository.record_start(TICKET, started, attempt)
-        with task_transaction(self.closings.database) as repository:
+        with task_store(self.closings.database).transaction() as repository:
             repository.record_mark(TICKET, transition_to(task_id, after))
 
     def record_verified_work(self) -> None:
@@ -166,8 +166,8 @@ class Repo:
         return run
 
     def ticket_status(self) -> str:
-        with ticket_transaction(self.closings.database) as repository:
-            return repository.staged_row(TICKET).status
+        with ticket_store(self.closings.database).transaction() as repository:
+            return repository.staged_ticket(TICKET).status
 
     def recorded_archive(self) -> str | None:
         with self.closings.database.transaction() as session:
@@ -221,8 +221,8 @@ def repo(committed: Repo) -> Repo:
 def repo_with_a_ledger_decision(repo: Repo, investigation_service: InvestigationService) -> Repo:
     investigation_service.start(LEDGER_TARGET, started=LEDGER_STARTED)
     investigation_service.add(Slug(LEDGER), 1, [LEDGER_DECISION])
-    with ticket_transaction(repo.closings.database) as repository:
-        section = unit_of(repository.staged_row(TICKET)).ticket
+    with ticket_store(repo.closings.database).transaction() as repository:
+        section = repository.staged_ticket(TICKET).ticket
         repository.stage(TICKET, section, [LEDGER])
     return repo
 

@@ -19,7 +19,7 @@ from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.service import CloseService
 from mightymodels_plugin.tools.close.tables import ClosingRow
-from mightymodels_plugin.tools.contract.repository import contract_transaction
+from mightymodels_plugin.tools.contract.repository import contract_store
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
@@ -63,8 +63,9 @@ from mightymodels_plugin.tools.similarity.schema import Scout, SimilarityKind, S
 from mightymodels_plugin.tools.similarity.service import SimilarityService
 from mightymodels_plugin.tools.similarity.spool import SPOOL_DIRECTORY
 from mightymodels_plugin.tools.similarity.tables import ScoutReportRow, SimilarityRow
-from mightymodels_plugin.tools.task.repository import Attempt, Transition, task_transaction
+from mightymodels_plugin.tools.task.repository import task_store
 from mightymodels_plugin.tools.task.schema import Implementer, Status
+from mightymodels_plugin.tools.task.store import Attempt, Transition
 from mightymodels_plugin.tools.task.tables import AttemptRow, FailedFixRow, TaskRow, TransitionRow
 from mightymodels_plugin.tools.tests.support import (
     FILES_OF_AN_OPEN_DATABASE,
@@ -73,7 +74,7 @@ from mightymodels_plugin.tools.tests.support import (
     text_of,
     tree,
 )
-from mightymodels_plugin.tools.ticket.repository import ticket_transaction
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
 from mightymodels_plugin.tools.ticket.tables import TicketRow
@@ -166,37 +167,37 @@ def transition_to(after: Status) -> Transition:
 
 
 def tickets_read(database: Database) -> int:
-    with ticket_transaction(database) as repository:
-        return int(repository.row(TICKET) is not None)
+    with ticket_store(database).transaction() as repository:
+        return int(repository.ticket(TICKET) is not None)
 
 
 def tasks_read(database: Database) -> int:
-    with task_transaction(database) as repository:
-        return len(repository.rows(TICKET))
+    with task_store(database).transaction() as repository:
+        return len(repository.tasks(TICKET))
 
 
 def attempts_read(database: Database) -> int:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         return len(repository.attempts_by_worker(TICKET))
 
 
 def failed_fixes_read(database: Database) -> int:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         return len(repository.failed_fixes(TICKET, TASK))
 
 
 def transitions_read(database: Database) -> int:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         return len(repository.latest_transitions_into(TICKET, tuple(Status), limit=2))
 
 
 def commands_read(database: Database) -> int:
-    with contract_transaction(database) as repository:
+    with contract_store(database).transaction() as repository:
         return len(repository.commands(TICKET))
 
 
 def receipts_read(database: Database) -> int:
-    with contract_transaction(database) as repository:
+    with contract_store(database).transaction() as repository:
         return len(repository.latest_receipts(TICKET))
 
 
@@ -287,19 +288,19 @@ class Clone:
 
     @property
     def database(self) -> Database:
-        return self.tickets.database
+        return self.closings.database
 
     def stage_the_ticket(self) -> None:
         self.tickets.write(TICKET, ANSWERS)
         self.tickets.validate(TICKET)
 
     def verify_the_task(self) -> None:
-        with task_transaction(self.database) as repository:
+        with task_store(self.database).transaction() as repository:
             repository.tickets.mark_in_progress(TICKET)
             attempt = Attempt(worker=Implementer.ENGINEER, mode=None, owned=['queue.py'])
             repository.record_start(TICKET, transition_to(Status.IN_PROGRESS), attempt)
             repository.record_failed_fix(TICKET, TASK, 'the drain loop sleeps', at=now())
-        with task_transaction(self.database) as repository:
+        with task_store(self.database).transaction() as repository:
             repository.record_mark(TICKET, transition_to(Status.VERIFIED))
 
     def settle_a_review(self) -> None:
@@ -321,7 +322,7 @@ class Clone:
     def write_every_table(self) -> None:
         self.stage_the_ticket()
         self.contracts.approve(TICKET, [COMMAND])
-        with contract_transaction(self.database) as repository:
+        with contract_store(self.database).transaction() as repository:
             repository.record(TICKET, [passing_receipt()])
         self.verify_the_task()
         self.settle_a_review()
@@ -332,8 +333,8 @@ class Clone:
         self.closings.close(TICKET, CLOSING)
 
     def ticket_status(self) -> str:
-        with ticket_transaction(self.database) as repository:
-            return repository.staged_row(TICKET).status
+        with ticket_store(self.database).transaction() as repository:
+            return repository.staged_ticket(TICKET).status
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -352,9 +353,12 @@ class Answers:
 def clone_of(state: OpenState) -> Clone:
     workspace, database = state.workspace, state.database
     return Clone(
-        tickets=TicketService(workspace=workspace, database=database),
+        tickets=TicketService(workspace=workspace, store=ticket_store(database), git=workspace.git),
         contracts=ContractService(
-            workspace=workspace, database=database, processes=process_runner()
+            workspace=workspace,
+            store=contract_store(database),
+            git=workspace.git,
+            processes=process_runner(),
         ),
         reviews=ReviewService(workspace=workspace, database=database),
         closings=CloseService(workspace=workspace, database=database),

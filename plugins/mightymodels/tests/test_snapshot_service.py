@@ -12,7 +12,6 @@ from mightymodels_plugin.core.routing import Depth
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import workspace_at
-from mightymodels_plugin.tools.contract.repository import contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.investigation.schema import (
@@ -36,13 +35,13 @@ from mightymodels_plugin.tools.review.schema import (
 from mightymodels_plugin.tools.review.service import ReviewService
 from mightymodels_plugin.tools.snapshot.schema import DEFAULT_LIMIT, SnapshotView
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
-from mightymodels_plugin.tools.task.repository import Attempt, Transition, task_transaction
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskMark, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
+from mightymodels_plugin.tools.task.store import Attempt, Transition
 from mightymodels_plugin.tools.tests.support import StateServer, text_of
-from mightymodels_plugin.tools.ticket.repository import NotStagedError, ticket_transaction
+from mightymodels_plugin.tools.ticket.repository import NotStagedError, ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
-from mightymodels_plugin.tools.ticket.service import TicketService, unit_of
+from mightymodels_plugin.tools.ticket.service import TicketService
 
 type GitRunner = Callable[..., str]
 
@@ -122,7 +121,7 @@ class Handoff:
             phase=Phase.TASK,
             at=now(),
         )
-        with contract_transaction(self.contracts.database) as repository:
+        with self.contracts.store.transaction() as repository:
             repository.record(TICKET, [receipt])
 
     def record_failed_attempt(self, task_id: str, reason: str) -> None:
@@ -143,9 +142,9 @@ class Handoff:
             at=now(),
         )
         attempt = Attempt(worker=Implementer.ENGINEER, mode=None, owned=['queue.py'])
-        with task_transaction(self.tasks.database) as repository:
+        with self.tasks.store.transaction() as repository:
             repository.record_start(TICKET, started, attempt)
-        with task_transaction(self.tasks.database) as repository:
+        with self.tasks.store.transaction() as repository:
             repository.record_mark(TICKET, failed)
 
     def review(self, started: datetime, findings: int) -> RunId:
@@ -186,8 +185,8 @@ def repo(handoff: Handoff) -> Handoff:
 
 @pytest.fixture
 def repo_linking_an_investigation(repo: Handoff) -> Handoff:
-    with ticket_transaction(repo.snapshots.database) as repository:
-        section = unit_of(repository.staged_row(TICKET)).ticket
+    with ticket_store(repo.snapshots.database).transaction() as repository:
+        section = repository.staged_ticket(TICKET).ticket
         repository.stage(TICKET, section, [LEDGER])
     return repo
 

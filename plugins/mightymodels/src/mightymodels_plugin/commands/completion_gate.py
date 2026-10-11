@@ -32,8 +32,9 @@ from mightymodels_plugin.core.task_id import is_plan_task, task_number
 from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.task.gates import done_commit
-from mightymodels_plugin.tools.task.repository import in_progress_started_by, task_transaction
+from mightymodels_plugin.tools.task.repository import SqliteTaskStore, in_progress_started_by
 from mightymodels_plugin.tools.task.schema import Implementer
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 
 IMPLEMENTERS = frozenset({Worker.ENGINEER, Worker.ARCHITECT})
 STOP_HOOK_ACTIVE_KEY = 'stop_hook_active'
@@ -50,7 +51,7 @@ def brief_lack(brief: Path, shown: str) -> str | None:
 
 
 def unfinished_lines(state: OpenState, slug: Slug, worker: Implementer) -> list[str]:
-    with task_transaction(state.database) as tasks:
+    with SqliteTaskStore(database=state.database).transaction() as tasks:
         started = in_progress_started_by(tasks, slug, worker)
     lines: list[str] = []
     for task_id in filter(is_plan_task, started):
@@ -62,7 +63,7 @@ def unfinished_lines(state: OpenState, slug: Slug, worker: Implementer) -> list[
 
 
 def unfinished_reason(state: OpenState, worker: Implementer) -> str | None:
-    slug = ticket_on_branch(state.database, state.workspace.git.current_branch())
+    slug = ticket_on_branch(ticket_store(state.database), state.workspace.git.current_branch())
     if slug is None:
         return None
     lines = unfinished_lines(state, slug, worker)

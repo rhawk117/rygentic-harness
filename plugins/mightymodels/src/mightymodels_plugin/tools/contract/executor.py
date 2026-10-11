@@ -4,9 +4,10 @@ The argv comes only from the ticket's contract, never from the caller. Every run
 with the exit code, duration, bounded output tails, a digest of the full output, and the HEAD it
 ran at. A run that HEAD moved under cannot pass.
 
-The process runner is handed in. A command that cannot be launched, outlives its timeout or prints
-what is not text still gets a receipt: no exit code, whatever it printed before a timeout, and the
-cause as the last line of stderr.
+Where a command runs is a `RunSite`: the directory it runs in, the git that says where HEAD is and
+the process runner that launches it, all handed in. A command that cannot be launched, outlives its
+timeout or prints what is not text still gets a receipt: no exit code, whatever it printed before a
+timeout, and the cause as the last line of stderr.
 """
 
 import hashlib
@@ -16,12 +17,19 @@ from pathlib import Path
 
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.process import FailedRun, FailureKind, ProcessRunner
-from mightymodels_plugin.core.workspace import Git, Workspace
+from mightymodels_plugin.core.workspace import GitQueries
 from mightymodels_plugin.tools.contract.schema import ApprovedCommand, Outcome, Phase, Receipt
 
 TAIL_LINES = 40
 TAIL_CHARS = 4000
 HEAD_MOVED = '\nHEAD changed during verification; rerun at the current HEAD.'
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class RunSite:
+    root: Path
+    git: GitQueries
+    processes: ProcessRunner
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -73,7 +81,7 @@ def execute(command: ApprovedCommand, root: Path, *, processes: ProcessRunner) -
     )
 
 
-def failed_if_head_moved(execution: Execution, head: str | None, git: Git) -> Execution:
+def failed_if_head_moved(execution: Execution, head: str | None, git: GitQueries) -> Execution:
     if git.resolve_head() == head:
         return execution
     return Execution(
@@ -84,13 +92,11 @@ def failed_if_head_moved(execution: Execution, head: str | None, git: Git) -> Ex
     )
 
 
-def receipt_for(
-    command: ApprovedCommand, workspace: Workspace, phase: Phase, *, processes: ProcessRunner
-) -> Receipt:
-    head = workspace.git.resolve_head()
+def receipt_for(command: ApprovedCommand, site: RunSite, phase: Phase) -> Receipt:
+    head = site.git.resolve_head()
     started = time.monotonic()
-    execution = execute(command, workspace.root, processes=processes)
-    result = failed_if_head_moved(execution, head, workspace.git)
+    execution = execute(command, site.root, processes=site.processes)
+    result = failed_if_head_moved(execution, head, site.git)
     elapsed = int((time.monotonic() - started) * 1000)
     return Receipt(
         id=command.id,

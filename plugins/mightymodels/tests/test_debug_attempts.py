@@ -17,7 +17,7 @@ from mightymodels_plugin.tools.failed_fix.schema import (
 )
 from mightymodels_plugin.tools.failed_fix.tool import failed_fix_tool
 from mightymodels_plugin.tools.task.errors import FixesSpentError, FixNotUnderwayError
-from mightymodels_plugin.tools.task.repository import FAILED_FIX_LIMIT, task_transaction
+from mightymodels_plugin.tools.task.repository import FAILED_FIX_LIMIT, task_store
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskStart, TaskView
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.tests.support import (
@@ -25,6 +25,7 @@ from mightymodels_plugin.tools.tests.support import (
     text_of,
     workspace_database,
 )
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
 
@@ -53,7 +54,7 @@ def record(tasks: TaskService, slug: Slug, task_id: str, hypothesis: str) -> Tas
 
 
 def tried(tasks: TaskService, slug: Slug, task_id: str) -> list[str]:
-    with task_transaction(tasks.database) as repository:
+    with tasks.store.transaction() as repository:
         return repository.failed_fixes(slug, task_id)
 
 
@@ -95,8 +96,10 @@ def another_repository(
     workspace.exclude_state_from_git()
     with workspace_database(workspace, data_directory) as database:
         yield AnotherRepository(
-            tasks=TaskService(workspace=workspace, database=database),
-            tickets=TicketService(workspace=workspace, database=database),
+            tasks=TaskService(workspace=workspace, store=task_store(database), git=workspace.git),
+            tickets=TicketService(
+                workspace=workspace, store=ticket_store(database), git=workspace.git
+            ),
         )
 
 

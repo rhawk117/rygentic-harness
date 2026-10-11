@@ -22,6 +22,7 @@ from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.process import process_runner
 from mightymodels_plugin.core.slug import InvalidSlugError, parsed_slug
 from mightymodels_plugin.core.workspace import find_root
+from mightymodels_plugin.tools.contract.repository import contract_store
 from mightymodels_plugin.tools.contract.schema import Phase
 from mightymodels_plugin.tools.contract.service import ContractService, RunRequest
 from mightymodels_plugin.tools.row_types import ROW_TYPES
@@ -40,7 +41,10 @@ def verify_run(arguments: argparse.Namespace) -> int:
     try:
         with open_state(start, data_directory, ROW_TYPES) as state:
             contracts = ContractService(
-                workspace=state.workspace, database=state.database, processes=process_runner()
+                workspace=state.workspace,
+                store=contract_store(state.database),
+                git=state.workspace.git,
+                processes=process_runner(),
             )
             result = contracts.run_approved(slug, request)
     except StateError as error:

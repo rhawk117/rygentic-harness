@@ -21,10 +21,11 @@ from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.snapshot.schema import DEFAULT_LIMIT
 from mightymodels_plugin.tools.snapshot.service import SnapshotService
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 
 
 def write_snapshot(state: OpenState) -> None:
-    slug = ticket_on_branch(state.database, state.workspace.git.current_branch())
+    slug = ticket_on_branch(ticket_store(state.database), state.workspace.git.current_branch())
     if slug is None:
         return
     view = SnapshotService(workspace=state.workspace, database=state.database).take(

@@ -1,4 +1,9 @@
-"""The `task` tool's service against a real git repository, moved from task_state.py's tests."""
+"""The task service on the stores and the git history kept in memory.
+
+A commit is one recorded in the history, a receipt goes in through the contract store, and a
+task's brief is a file under the workspace root. The test of a revision that git itself refuses is
+in test_task_revisions.py.
+"""
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -6,15 +11,13 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-import sqlalchemy as sql
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.tools.contract.repository import contract_transaction
+from mightymodels_plugin.core.tests.in_memory_git import InMemoryGit
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Phase, Receipt
 from mightymodels_plugin.tools.contract.schema import Outcome as ReceiptOutcome
 from mightymodels_plugin.tools.contract.service import ContractService
-from mightymodels_plugin.tools.task.repository import task_transaction
 from mightymodels_plugin.tools.task.schema import (
     TaskMark,
     TaskRecord,
@@ -23,20 +26,14 @@ from mightymodels_plugin.tools.task.schema import (
     TaskView,
 )
 from mightymodels_plugin.tools.task.service import TaskService, records_of
-from mightymodels_plugin.tools.task.tables import AttemptRow, TaskRow, TransitionRow
-from mightymodels_plugin.tools.ticket.repository import ticket_transaction
+from mightymodels_plugin.tools.task.tests.in_memory import InMemoryTaskStore
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
-from mightymodels_plugin.tools.ticket.tables import TicketRow
 from pydantic import BaseModel, ValidationError
-
-type GitRunner = Callable[..., str]
 
 SLUG = 'retry-queue'
 TICKET = Slug(SLUG)
 ADVANCED, BLOCKED, REJECTED = 0, 1, 2
-IDENTITY = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
-TASK_TABLES = (TaskRow, AttemptRow, TransitionRow)
 ANSWERS = TicketAnswers.model_validate(
     {
         'summary': 'Retry queue drains slowly',
@@ -92,7 +89,7 @@ def record_receipt(
         phase=Phase.TASK,
         at=now(),
     )
-    with contract_transaction(contracts.database) as repository:
+    with contracts.store.transaction() as repository:
         repository.record(TICKET, [entry])
 
 
@@ -100,22 +97,18 @@ def record_receipt(
 class Repo:
     tasks: TaskService
     contracts: ContractService
-    runner: GitRunner
+    store: InMemoryTaskStore
+    history: InMemoryGit
 
     @property
     def root(self) -> Path:
         return self.tasks.workspace.root
 
-    def git(self, *args: str) -> str:
-        return self.runner(self.root, *IDENTITY, *args).strip()
+    def head(self) -> str:
+        return self.history.commits[-1].sha
 
-    def commit(self, relative: str, text: str) -> str:
-        path = self.root.joinpath(relative)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding='utf-8')
-        self.git('add', relative)
-        self.git('commit', '-q', '-m', f'change {relative}')
-        return self.git('rev-parse', 'HEAD')
+    def commit(self, relative: str, *, unrelated: bool = False) -> str:
+        return self.history.commit(relative, unrelated=unrelated)
 
     def run(self, action: str, task_id: str | None = None, **change: object) -> Outcome:
         try:
@@ -129,13 +122,14 @@ class Repo:
         return self.root.joinpath('.mightymodels', SLUG)
 
     def task(self, task_id: str) -> TaskRecord:
-        with task_transaction(self.tasks.database) as repository:
+        with self.store.transaction() as repository:
             return records_of(repository, TICKET)[task_id]
 
     def transitions(self) -> list[tuple[str, str]]:
-        query = sql.select(TransitionRow).order_by(TransitionRow.id)
-        with self.tasks.database.transaction() as session:
-            return [(row.before, row.after) for row in session.scalars(query)]
+        return [
+            (recorded.transition.before, recorded.transition.after)
+            for recorded in self.store.transitions
+        ]
 
     def approve(self, *command_ids: str) -> None:
         commands = [
@@ -158,29 +152,38 @@ class Repo:
 
 
 @pytest.fixture
-def repo(
-    task_service: TaskService,
-    ticket_service: TicketService,
-    contract_service: ContractService,
-    git: GitRunner,
+def without_a_commit_or_a_ticket(
+    in_memory_task_service: TaskService,
+    in_memory_contract_service: ContractService,
+    in_memory_task_store: InMemoryTaskStore,
+    in_memory_git: InMemoryGit,
 ) -> Repo:
-    space = Repo(tasks=task_service, contracts=contract_service, runner=git)
-    space.commit('src/queue.py', 'base\n')
-    ticket_service.write(TICKET, ANSWERS)
-    ticket_service.validate(TICKET)
-    return space
+    return Repo(
+        tasks=in_memory_task_service,
+        contracts=in_memory_contract_service,
+        store=in_memory_task_store,
+        history=in_memory_git,
+    )
 
 
 @pytest.fixture
-def unborn(
-    task_service: TaskService,
-    ticket_service: TicketService,
-    contract_service: ContractService,
-    git: GitRunner,
-) -> Repo:
-    ticket_service.write(TICKET, ANSWERS)
-    ticket_service.validate(TICKET)
-    return Repo(tasks=task_service, contracts=contract_service, runner=git)
+def unstaged(without_a_commit_or_a_ticket: Repo) -> Repo:
+    without_a_commit_or_a_ticket.commit('src/queue.py')
+    return without_a_commit_or_a_ticket
+
+
+@pytest.fixture
+def repo(unstaged: Repo, in_memory_ticket_service: TicketService) -> Repo:
+    in_memory_ticket_service.write(TICKET, ANSWERS)
+    in_memory_ticket_service.validate(TICKET)
+    return unstaged
+
+
+@pytest.fixture
+def unborn(without_a_commit_or_a_ticket: Repo, in_memory_ticket_service: TicketService) -> Repo:
+    in_memory_ticket_service.write(TICKET, ANSWERS)
+    in_memory_ticket_service.validate(TICKET)
+    return without_a_commit_or_a_ticket
 
 
 def start(repo: Repo, worker: str = 'engineer') -> Outcome:
@@ -188,7 +191,7 @@ def start(repo: Repo, worker: str = 'engineer') -> Outcome:
 
 
 def test_start_records_the_attempt_and_its_base(repo: Repo) -> None:
-    base = repo.git('rev-parse', 'HEAD')
+    base = repo.head()
     outcome = start(repo)
     task = repo.task('T1')
     assert outcome.code == ADVANCED
@@ -202,7 +205,7 @@ def test_start_records_the_attempt_and_its_base(repo: Repo) -> None:
 def test_a_task_with_passing_receipts_and_owned_changes_verifies(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', head)
     outcome = repo.run('verify', 'T1', commit=head)
     assert (outcome.code, outcome.out.strip()) == (ADVANCED, 'T1 verified')
@@ -212,8 +215,8 @@ def test_a_task_with_passing_receipts_and_owned_changes_verifies(repo: Repo) -> 
 def test_changes_outside_the_owned_set_block_the_task(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    repo.commit('src/queue.py', 'fixed\n')
-    head = repo.commit('deploy/values.yaml', 'pool: 5\n')
+    repo.commit('src/queue.py')
+    head = repo.commit('deploy/values.yaml')
     repo.receipt('T1.AC-1', 'pass', head)
     outcome = repo.run('verify', 'T1', commit=head)
     assert outcome.code == BLOCKED
@@ -223,8 +226,8 @@ def test_changes_outside_the_owned_set_block_the_task(repo: Repo) -> None:
 def test_a_receipt_from_an_older_head_does_not_count(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    old = repo.git('rev-parse', 'HEAD')
-    head = repo.commit('src/queue.py', 'fixed\n')
+    old = repo.head()
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', old)
     outcome = repo.run('verify', 'T1', commit=head)
     assert outcome.code == BLOCKED
@@ -234,7 +237,7 @@ def test_a_receipt_from_an_older_head_does_not_count(repo: Repo) -> None:
 def test_a_failing_receipt_blocks_the_task(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'fail', head)
     outcome = repo.run('verify', 'T1', commit=head)
     assert 'T1.AC-1 fail at HEAD' in outcome.out
@@ -246,7 +249,7 @@ def test_brief_criteria_need_a_command_or_a_citation(repo: Repo) -> None:
     brief.parent.mkdir()
     brief.write_text('## ASKED\nacceptance:\n  - AC-1: tests pass\n  - AC-2: docs updated\n')
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', head)
     blocked = repo.run('verify', 'T1', commit=head)
     start(repo)
@@ -257,7 +260,7 @@ def test_brief_criteria_need_a_command_or_a_citation(repo: Repo) -> None:
 
 def test_a_task_needs_some_proof(repo: Repo) -> None:
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     outcome = repo.run('verify', 'T1', commit=head)
     assert 'no contract command and no cited assertion proves this task' in outcome.out
 
@@ -275,25 +278,15 @@ def test_architect_recovers_a_task_only_once(repo: Repo) -> None:
 def test_a_verified_task_cannot_restart(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', head)
     repo.run('verify', 'T1', commit=head)
     outcome = start(repo)
     assert 'cannot move from verified to in-progress' in outcome.err
 
 
-def test_option_shaped_revisions_are_refused(repo: Repo) -> None:
-    repo.approve('T1.AC-1')
-    start(repo)
-    outcome = repo.run('verify', 'T1', commit='--output=/tmp/pwned')
-    assert outcome.code == REJECTED
-    assert 'is not a plain revision name' in outcome.err
-
-
-def test_an_unstaged_ticket_is_refused(repo: Repo) -> None:
-    with repo.tasks.database.transaction() as session:
-        session.execute(sql.delete(TicketRow))
-    outcome = start(repo)
+def test_an_unstaged_ticket_is_refused(unstaged: Repo) -> None:
+    outcome = start(unstaged)
     assert 'stage the ticket with open-ticket first' in outcome.err
 
 
@@ -312,7 +305,7 @@ def test_an_approved_scope_expansion_allows_one_more_architect_pass(repo: Repo) 
 def verified_task(repo: Repo) -> str:
     repo.approve('T1.AC-1')
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', head)
     repo.run('verify', 'T1', commit=head)
     return head
@@ -335,7 +328,7 @@ def test_a_contract_task_never_started_is_not_ready(repo: Repo) -> None:
 def test_a_ci_fix_makes_earlier_receipts_stale(repo: Repo) -> None:
     verified_task(repo)
     repo.run('start', 'C1', by='engineer', owned=['src/lint.py'])
-    repo.commit('src/lint.py', 'clean\n')
+    repo.commit('src/lint.py')
     outcome = repo.run('ready')
     assert outcome.code == BLOCKED
     assert outcome.out.splitlines()[1:] == ['  - T1.AC-1 has no receipt at the current HEAD']
@@ -344,7 +337,7 @@ def test_a_ci_fix_makes_earlier_receipts_stale(repo: Repo) -> None:
 def test_a_ci_fix_verifies_on_the_check_it_repaired(repo: Repo) -> None:
     verified_task(repo)
     repo.run('start', 'C1', by='engineer', owned=['src/lint.py'])
-    head = repo.commit('src/lint.py', 'clean\n')
+    head = repo.commit('src/lint.py')
     repo.receipt('T1.AC-1', 'pass', head)
     check = {'AC-1': 'https://github.com/o/r/actions/runs/99'}
     outcome = repo.run('verify', 'C1', commit=head, assertions=check)
@@ -379,8 +372,8 @@ def test_a_failed_review_remediation_blocks_the_push(repo: Repo) -> None:
 def test_an_old_report_cannot_hide_new_outside_changes(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    old = repo.commit('src/queue.py', 'fixed\n')
-    head = repo.commit('deploy/values.yaml', 'pool: 5\n')
+    old = repo.commit('src/queue.py')
+    head = repo.commit('deploy/values.yaml')
     repo.receipt('T1.AC-1', 'pass', head)
     outcome = repo.run('verify', 'T1', commit=old)
     assert outcome.code == BLOCKED
@@ -402,8 +395,8 @@ def spoil_brief(repo: Repo, brief_state: str, old: str) -> None:
 def test_done_evidence_must_exist_and_match_head(repo: Repo, brief_state: str) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    old = repo.git('rev-parse', 'HEAD')
-    head = repo.commit('src/queue.py', 'fixed\n')
+    old = repo.head()
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', head)
     spoil_brief(repo, brief_state, old)
     assert repo.run('verify', 'T1', commit=head).code == BLOCKED
@@ -412,7 +405,7 @@ def test_done_evidence_must_exist_and_match_head(repo: Repo, brief_state: str) -
 def test_short_commit_ids_are_saved_as_full_ids(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    head = repo.commit('src/queue.py', 'fixed\n')
+    head = repo.commit('src/queue.py')
     repo.receipt('T1.AC-1', 'pass', head)
     repo.done('T1', head[:12])
     assert repo.run('verify', 'T1', commit=head[:12]).code == ADVANCED
@@ -422,8 +415,7 @@ def test_short_commit_ids_are_saved_as_full_ids(repo: Repo) -> None:
 def test_a_task_base_from_another_history_is_blocked(repo: Repo) -> None:
     repo.approve('T1.AC-1')
     start(repo)
-    repo.git('checkout', '--orphan', 'unrelated')
-    head = repo.commit('src/queue.py', 'other history\n')
+    head = repo.commit('src/queue.py', unrelated=True)
     repo.receipt('T1.AC-1', 'pass', head)
     outcome = repo.run('verify', 'T1', commit=head)
     assert outcome.code == BLOCKED
@@ -490,7 +482,7 @@ class TestEscalationLadder:
         repo.run('mark', 'T1', to='failed', reason='AC-1 cannot pass as planned')
         stuck = repo.run('ready')
         repo.run('start', 'T2', by='engineer', owned=['src/queue.py'])
-        head = repo.commit('src/queue.py', 'replanned\n')
+        head = repo.commit('src/queue.py')
         repo.receipt('T2.AC-1', 'pass', head)
         repo.run('verify', 'T2', commit=head)
 
@@ -551,14 +543,14 @@ class TestEscalationLadder:
 
 class TestVerify:
     def test_a_task_that_never_started_cannot_be_verified(self, repo: Repo) -> None:
-        outcome = repo.run('verify', 'T1', commit=repo.git('rev-parse', 'HEAD'))
+        outcome = repo.run('verify', 'T1', commit=repo.head())
 
         assert outcome.code == REJECTED
         assert 'T1 cannot move from pending to verified' in outcome.err
 
     def test_a_task_started_before_the_first_commit_has_no_base(self, unborn: Repo) -> None:
         start(unborn)
-        head = unborn.commit('src/queue.py', 'first\n')
+        head = unborn.commit('src/queue.py')
 
         outcome = unborn.run('verify', 'T1', commit=head, assertions={'AC-1': 'README.md:1'})
 
@@ -606,9 +598,9 @@ class TestARestart:
     @pytest.fixture
     def restarted(self, repo: Repo) -> Restarted:
         repo.approve('T1.AC-1')
-        first_base = repo.git('rev-parse', 'HEAD')
+        first_base = repo.head()
         start(repo)
-        head = repo.commit(self.OUTSIDE, 'pool: 5\n')
+        head = repo.commit(self.OUTSIDE)
         repo.receipt('T1.AC-1', 'pass', head)
         blocked = repo.run('verify', 'T1', commit=head)
         return Restarted(first_base=first_base, head=head, blocked=blocked, restart=start(repo))
@@ -637,14 +629,12 @@ class TestARestart:
 
 
 def ticket_status(repo: Repo) -> str:
-    with ticket_transaction(repo.tasks.database) as repository:
-        return repository.staged_row(TICKET).status
+    with repo.store.transaction() as repository:
+        return repository.tickets.staged_ticket(TICKET).status
 
 
-def task_row_counts(repo: Repo) -> list[int | None]:
-    queries = [sql.select(sql.func.count()).select_from(table) for table in TASK_TABLES]
-    with repo.tasks.database.transaction() as session:
-        return [session.scalar(query) for query in queries]
+def task_row_counts(repo: Repo) -> list[int]:
+    return [len(repo.store.held), len(repo.store.attempts), len(repo.store.transitions)]
 
 
 class TestAClosedTicket:
@@ -656,12 +646,12 @@ class TestAClosedTicket:
     @pytest.fixture
     def closed(self, repo: Repo) -> Repo:
         start(repo)
-        with ticket_transaction(repo.tasks.database) as repository:
-            repository.mark_closed(TICKET)
+        with repo.store.transaction() as repository:
+            repository.tickets.mark_closed(TICKET)
         return repo
 
     @pytest.fixture
-    def task_row_counts_when_closed(self, closed: Repo) -> list[int | None]:
+    def task_row_counts_when_closed(self, closed: Repo) -> list[int]:
         return task_row_counts(closed)
 
     @pytest.mark.parametrize(
@@ -675,7 +665,7 @@ class TestAClosedTicket:
     def test_a_closed_ticket_refuses_the_action_stays_closed_and_gains_no_row(
         self,
         closed: Repo,
-        task_row_counts_when_closed: list[int | None],
+        task_row_counts_when_closed: list[int],
         *,
         action: str,
         task_id: str,

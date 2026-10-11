@@ -30,7 +30,6 @@ from mightymodels_plugin.core.slug import SLUG_LIMIT, Slug
 from mightymodels_plugin.redaction import RedactedTextTooLongError, redact_within
 from mightymodels_plugin.tools.close.schema import Closing
 from mightymodels_plugin.tools.close.tables import ClosingRow
-from mightymodels_plugin.tools.contract.repository import contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tables import CommandRow
@@ -631,8 +630,8 @@ class TestATextAtTheLengthOfItsColumn:
     ) -> tuple[str, str]:
         command = ContractCommand(id=self.COMMAND, argv=('true',), approved_by=self.APPROVER)
         contract_service.approve(TICKET, [command])
-        with contract_transaction(repository_database) as repository:
-            (row,) = repository.commands(TICKET)
+        with repository_database.transaction() as session:
+            row = session.scalars(sql.select(CommandRow)).one()
             return row.command_id, row.approved_by
 
     def test_is_stored_whole_in_a_prose_column(self, journaled_rant: str | None) -> None:

@@ -8,7 +8,6 @@ import pytest
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.contract.assessment import Assessment, ReceiptState, Taken
-from mightymodels_plugin.tools.contract.repository import contract_transaction
 from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase, Receipt
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.snapshot.schema import DEFAULT_LIMIT
@@ -119,7 +118,7 @@ class TestWhileThereIsNoHead:
         ticket_service.validate(TICKET)
         approved = ContractCommand(id=COMMAND, argv=('true',), approved_by='user')
         contract_service.approve(TICKET, [approved])
-        with contract_transaction(contract_service.database) as repository:
+        with contract_service.store.transaction() as repository:
             repository.record(TICKET, [passing_receipt(taken_at)])
         return Callers(contracts=contract_service, snapshots=snapshot_service, tasks=task_service)
 

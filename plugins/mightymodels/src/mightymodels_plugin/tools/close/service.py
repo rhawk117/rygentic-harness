@@ -52,7 +52,8 @@ from mightymodels_plugin.tools.close.schema import (
     Closing,
 )
 from mightymodels_plugin.tools.contract.assessment import NEVER_RUN
-from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
+from mightymodels_plugin.tools.contract.schema import Receipt
+from mightymodels_plugin.tools.contract.store import RecordedCommand
 from mightymodels_plugin.tools.investigation.ledger import Ledger, linked_ledgers
 from mightymodels_plugin.tools.investigation.schema import EntryKind
 from mightymodels_plugin.tools.review.schema import Result
@@ -62,7 +63,6 @@ from mightymodels_plugin.tools.task.gates import plan_task_problem
 from mightymodels_plugin.tools.task.schema import Status, TaskRecord
 from mightymodels_plugin.tools.task.service import problem_lines, records_of
 from mightymodels_plugin.tools.ticket.schema import WorkUnit
-from mightymodels_plugin.tools.ticket.service import unit_of
 
 GOTCHA_LIMIT = 3
 NO_VERIFIED_WORK = 'no verified task work is recorded'
@@ -171,10 +171,10 @@ def blocked_view(heading: str, blockers: Sequence[str], refusal: GitRefusal | No
     return CloseView(text=text, blocked=True, blockers=tuple(blockers))
 
 
-def archived_command(command: CommandRow, receipt: ReceiptRow | None) -> ArchivedCommand:
+def archived_command(command: RecordedCommand, receipt: Receipt | None) -> ArchivedCommand:
     return ArchivedCommand(
-        id=command.command_id,
-        argv=tuple(command.argv),
+        id=command.id,
+        argv=command.argv,
         expect_exit=command.expect_exit,
         outcome=NEVER_RUN if receipt is None else receipt.outcome,
         head=None if receipt is None else receipt.head,
@@ -232,7 +232,7 @@ def archive_record(
             for record in records_of(recorded.tasks, slug).values()
         },
         verification=tuple(
-            archived_command(command, receipts.get(command.command_id))
+            archived_command(command, receipts.get(command.id))
             for command in recorded.contracts.commands(slug)
         ),
         decisions=archived_decisions(
@@ -268,7 +268,7 @@ class CloseService:
     def check(self, slug: Slug) -> CloseView:
         refusal = self.workspace.git.refusal()
         with close_transaction(self.database) as repository:
-            unit = unit_of(repository.recorded.tickets.staged_row(slug))
+            unit = repository.recorded.tickets.staged_ticket(slug)
             blockers = self.live_work(repository, unit, refusal)
         if blockers:
             return blocked_view('live work remains', blockers, refusal)
@@ -278,7 +278,7 @@ class CloseService:
         git = self.workspace.git
         refusal = git.refusal()
         with close_transaction(self.database) as repository:
-            unit = unit_of(repository.recorded.tickets.staged_row(slug))
+            unit = repository.recorded.tickets.staged_ticket(slug)
             blockers = self.live_work(repository, unit, refusal)
             if blockers:
                 return blocked_view('not closed; live work remains', blockers, refusal)

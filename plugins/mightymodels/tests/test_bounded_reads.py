@@ -21,12 +21,12 @@ from mightymodels_plugin.core.database import (
 )
 from mightymodels_plugin.core.declarative import Base
 from mightymodels_plugin.core.process import process_runner
-from mightymodels_plugin.core.routing import Depth
+from mightymodels_plugin.core.routing import Depth, Scope
 from mightymodels_plugin.core.run_id import RunId
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import Workspace
-from mightymodels_plugin.tools.contract.repository import COMMANDS, contract_transaction
-from mightymodels_plugin.tools.contract.schema import ContractCommand
+from mightymodels_plugin.tools.contract.repository import COMMANDS, contract_store
+from mightymodels_plugin.tools.contract.schema import ContractCommand, Outcome, Phase
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.contract.tables import CommandRow, ReceiptRow
 from mightymodels_plugin.tools.crashout import service as crashouts
@@ -81,7 +81,7 @@ from mightymodels_plugin.tools.task.repository import (
     ATTEMPT_COUNTS,
     FAILED_FIXES,
     TASKS,
-    task_transaction,
+    task_store,
 )
 from mightymodels_plugin.tools.task.schema import ArchitectMode, Implementer, Status, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
@@ -93,7 +93,7 @@ from mightymodels_plugin.tools.tests.support import (
     selects_sent_to,
     table_of,
 )
-from mightymodels_plugin.tools.ticket.repository import ticket_transaction
+from mightymodels_plugin.tools.ticket.repository import ticket_store
 from mightymodels_plugin.tools.ticket.tables import TicketRow
 
 type Read = Callable[[Database], object]
@@ -110,6 +110,7 @@ OTHER_LEDGER = Slug('20260928-drain')
 NEVER_STARTED = Slug('20260928-never-started')
 MODES = frozenset(ArchitectMode)
 SNAPSHOT_LIMIT = 3
+A_PASSING_RUN = MappingProxyType({'outcome': Outcome.PASSED, 'phase': Phase.TASK})
 JOURNALED = JournaledCrashout(
     at='2026-09-28T12:00:00+00:00',
     ticket=None,
@@ -149,33 +150,33 @@ def store(database: Database, row_type: type[Base], rows: Iterable[RowValues]) -
 
 
 def ticket_row(database: Database) -> None:
-    with ticket_transaction(database) as repository:
-        repository.row(TICKET)
+    with ticket_store(database).transaction() as repository:
+        repository.ticket(TICKET)
 
 
 def commands(database: Database) -> Sized:
-    with contract_transaction(database) as repository:
+    with contract_store(database).transaction() as repository:
         return repository.commands(TICKET)
 
 
 def latest_receipts(database: Database) -> dict[str, int]:
-    with contract_transaction(database) as repository:
+    with contract_store(database).transaction() as repository:
         latest = repository.latest_receipts(TICKET)
-        return {command: receipt.id for command, receipt in latest.items()}
+        return {command: receipt.duration_ms for command, receipt in latest.items()}
 
 
 def task_row(database: Database) -> None:
-    with task_transaction(database) as repository:
-        repository.row(TICKET, TASK)
+    with task_store(database).transaction() as repository:
+        repository.task(TICKET, TASK)
 
 
 def tasks(database: Database) -> Sized:
-    with task_transaction(database) as repository:
-        return repository.rows(TICKET)
+    with task_store(database).transaction() as repository:
+        return repository.tasks(TICKET)
 
 
 def attempt_counts(database: Database) -> list[tuple[str, str, int]]:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         counts = repository.attempts_by_worker(TICKET)
     return [
         (task, worker, count)
@@ -185,17 +186,17 @@ def attempt_counts(database: Database) -> list[tuple[str, str, int]]:
 
 
 def failed_fixes(database: Database) -> Sized:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         return repository.failed_fixes(TICKET, TASK)
 
 
 def attempts_in_modes(database: Database) -> int:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         return repository.attempts_in_modes(TICKET, TASK, MODES)
 
 
 def stuck_transitions(database: Database) -> list[str]:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         latest = repository.latest_transitions_into(TICKET, STUCK, SNAPSHOT_LIMIT)
         return [str(transition.head) for transition in latest]
 
@@ -244,7 +245,7 @@ def ledger_entries(database: Database) -> Sized:
 
 
 def unrecorded_investigations(database: Database) -> list[Slug]:
-    with ticket_transaction(database) as repository:
+    with ticket_store(database).transaction() as repository:
         return repository.unrecorded_investigations([LEDGER, OTHER_LEDGER, NEVER_STARTED])
 
 
@@ -479,7 +480,7 @@ class TestAReadOfARepositorysHistory:
 
 
 def a_ticket_with_two_tasks(database: Database) -> None:
-    store(database, TicketRow, [{'slug': SLUG}])
+    store(database, TicketRow, [{'slug': SLUG, 'scope': Scope.MED, 'models': {}}])
     store(database, TaskRow, [{'slug': SLUG, 'task_id': task} for task in (TASK, OTHER_TASK)])
 
 
@@ -488,7 +489,13 @@ def two_approved_commands(database: Database) -> None:
 
 
 def a_run_of_every_command(database: Database) -> None:
-    store(database, ReceiptRow, [{'slug': SLUG, 'command_id': name} for name in ('a', 'b')] * 5)
+    with database.transaction() as session:
+        taken = session.scalars(sql.select(sql.func.count()).select_from(ReceiptRow)).one()
+    run = [
+        {'slug': SLUG, 'command_id': name, 'duration_ms': taken + number, **A_PASSING_RUN}
+        for number, name in enumerate(('a', 'b') * 5, start=1)
+    ]
+    store(database, ReceiptRow, run)
 
 
 def an_attempt_by_each_worker(database: Database) -> None:
@@ -538,10 +545,16 @@ def twenty_more_entries_in_each_ledger(database: Database) -> None:
 
 
 def ten_failed_transitions(database: Database) -> None:
-    with task_transaction(database) as repository:
+    with task_store(database).transaction() as repository:
         recorded = len(repository.latest_transitions_into(TICKET, STUCK, limit=1000))
     failed = [
-        {'slug': SLUG, 'task_id': TASK, 'after': Status.FAILED, 'head': str(recorded + number)}
+        {
+            'slug': SLUG,
+            'task_id': TASK,
+            'before': Status.IN_PROGRESS,
+            'after': Status.FAILED,
+            'head': str(recorded + number),
+        }
         for number in range(10)
     ]
     store(database, TransitionRow, failed)
@@ -678,12 +691,12 @@ def commands_of_the_ticket(database: Database, count: int) -> None:
 
 def a_receipt_of_every_command(database: Database, count: int) -> None:
     commands_of_the_ticket(database, count)
-    run = [{'slug': SLUG, 'command_id': f'c{number}'} for number in range(count)]
+    run = [{'slug': SLUG, 'command_id': f'c{number}', **A_PASSING_RUN} for number in range(count)]
     store(database, ReceiptRow, run)
 
 
 def tasks_of_the_ticket(database: Database, count: int) -> None:
-    store(database, TicketRow, [{'slug': SLUG}])
+    store(database, TicketRow, [{'slug': SLUG, 'scope': Scope.MED, 'models': {}}])
     started = [
         {'slug': SLUG, 'task_id': f'T{number}', 'status': Status.VERIFIED}
         for number in range(count)
@@ -862,13 +875,16 @@ def approve_commands(workspace: Workspace, database: Database, numbers: range) -
     approved = [
         ContractCommand(id=f'c{number}', argv=('true',), approved_by='user') for number in numbers
     ]
-    ContractService(workspace=workspace, database=database, processes=process_runner()).approve(
-        TICKET, approved
-    )
+    ContractService(
+        workspace=workspace,
+        store=contract_store(database),
+        git=workspace.git,
+        processes=process_runner(),
+    ).approve(TICKET, approved)
 
 
 def start_tasks(workspace: Workspace, database: Database, numbers: range) -> None:
-    service = TaskService(workspace=workspace, database=database)
+    service = TaskService(workspace=workspace, store=task_store(database), git=workspace.git)
     change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
     for number in numbers:
         service.start(TICKET, f'T{number}', change)
@@ -925,14 +941,23 @@ def add_entries(workspace: Workspace, database: Database, numbers: range) -> Non
 
 def contract_status(workspace: Workspace, database: Database) -> str:
     return (
-        ContractService(workspace=workspace, database=database, processes=process_runner())
+        ContractService(
+            workspace=workspace,
+            store=contract_store(database),
+            git=workspace.git,
+            processes=process_runner(),
+        )
         .status(TICKET)
         .text
     )
 
 
 def task_listing(workspace: Workspace, database: Database) -> str:
-    return TaskService(workspace=workspace, database=database).show(TICKET).text
+    return (
+        TaskService(workspace=workspace, store=task_store(database), git=workspace.git)
+        .show(TICKET)
+        .text
+    )
 
 
 def review_report(workspace: Workspace, database: Database) -> str:

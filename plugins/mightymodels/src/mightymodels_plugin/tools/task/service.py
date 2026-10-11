@@ -15,10 +15,10 @@ more in systemic-refactor mode after an approved scope expansion, which may take
 that is still in progress, and diagnose-replan passes that never count against the limit. A
 replanned task closes as superseded, which `ready` treats as closed.
 
-The service is built once by whoever owns the workspace and the database, the server in its
-lifespan, and holds both. Each action opens one transaction through `task_transaction`, which
-hands it the task repository and, on that repository, the ticket's row and the ticket's contract.
-Everything above the class reads no service state.
+The service is built once by whoever owns the workspace, the server in its lifespan, and holds it
+with the task store and git. Each action opens one transaction on the store, which hands it the
+task repository and, on that repository, the ticket and the ticket's contract. Everything above
+the class reads no service state.
 """
 
 from collections.abc import Mapping, Sequence
@@ -26,12 +26,11 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from mightymodels_plugin.clock import now
-from mightymodels_plugin.core.database import Database
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.task_id import is_plan_task, task_number
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import GitQueries, Workspace
 from mightymodels_plugin.head import short_head
 from mightymodels_plugin.redaction import redact_within
 from mightymodels_plugin.tools.failed_fix.schema import TaskFailedFix
@@ -42,13 +41,7 @@ from mightymodels_plugin.tools.task.gates import (
     receipt_problems,
     verification_problems,
 )
-from mightymodels_plugin.tools.task.repository import (
-    FAILED_FIX_LIMIT,
-    Attempt,
-    TaskRepository,
-    Transition,
-    task_transaction,
-)
+from mightymodels_plugin.tools.task.repository import FAILED_FIX_LIMIT
 from mightymodels_plugin.tools.task.schema import (
     ArchitectMode,
     Implementer,
@@ -59,7 +52,7 @@ from mightymodels_plugin.tools.task.schema import (
     TaskVerification,
     TaskView,
 )
-from mightymodels_plugin.tools.task.tables import TaskRow
+from mightymodels_plugin.tools.task.store import Attempt, TaskRepository, TaskStore, Transition
 
 ARCHITECT_LIMIT = 1
 
@@ -109,25 +102,16 @@ def task_order(record: TaskRecord) -> tuple[bool, int]:
     return not is_plan_task(record.id), task_number(record.id)
 
 
-def status_of(row: TaskRow | None) -> Status:
-    return Status.PENDING if row is None else Status(row.status)
-
-
-def record_of(row: TaskRow, attempts: dict[str, int]) -> TaskRecord:
-    return TaskRecord(
-        id=row.task_id,
-        status=Status(row.status),
-        owned=tuple(row.owned),
-        base=row.base,
-        commit=row.commit,
-        attempts=attempts,
-        reasons=tuple(row.reasons),
-    )
+def status_of(task: TaskRecord | None) -> Status:
+    return Status.PENDING if task is None else task.status
 
 
 def records_of(repository: TaskRepository, slug: Slug) -> dict[str, TaskRecord]:
     attempts = repository.attempts_by_worker(slug)
-    started = [record_of(row, attempts.get(row.task_id, {})) for row in repository.rows(slug)]
+    started = [
+        task.model_copy(update={'attempts': attempts.get(task.id, {})})
+        for task in repository.tasks(slug)
+    ]
     known = {record.id for record in started}
     planned = {
         command.task_id
@@ -190,12 +174,13 @@ def record_line(record: TaskRecord) -> str:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class TaskService:
     workspace: Workspace
-    database: Database
+    store: TaskStore
+    git: GitQueries
 
     def evidence_for(
         self, repository: TaskRepository, slug: Slug, *, task_id: str, change: TaskVerification
     ) -> Evidence:
-        commit = self.workspace.git.resolve_commit(change.commit)
+        commit = self.git.resolve_commit(change.commit)
         planned = is_plan_task(task_id)
         return Evidence(
             commit=change.commit if commit is None else commit,
@@ -210,18 +195,18 @@ class TaskService:
         )
 
     def start(self, slug: Slug, task_id: str, change: TaskStart) -> TaskView:
-        with task_transaction(self.database) as repository:
-            repository.tickets.unclosed_row(slug)
+        with self.store.transaction() as repository:
+            repository.tickets.unclosed_ticket(slug)
             if (error := mode_error(change)) is not None:
                 raise error
             mode = architect_mode(change)
             spent = repository.attempts_in_modes(slug, task_id, IMPLEMENTATION_MODES)
             if (error := spent_error(task_id, mode, spent)) is not None:
                 raise error
-            before = status_of(repository.row(slug, task_id))
+            before = status_of(repository.task(slug, task_id))
             if (error := start_error(task_id, before, mode)) is not None:
                 raise error
-            head = self.workspace.git.resolve_head()
+            head = self.git.resolve_head()
             transition = Transition(
                 task_id=task_id,
                 before=before,
@@ -238,17 +223,17 @@ class TaskService:
         return TaskView(text=text, advanced=True, tasks=(record,))
 
     def verify(self, slug: Slug, task_id: str, change: TaskVerification) -> TaskView:
-        with task_transaction(self.database) as repository:
-            repository.tickets.unclosed_row(slug)
-            row = repository.row(slug, task_id)
-            before = status_of(row)
-            if row is None or Status.VERIFIED not in ALLOWED[before]:
+        with self.store.transaction() as repository:
+            repository.tickets.unclosed_ticket(slug)
+            task = repository.task(slug, task_id)
+            before = status_of(task)
+            if task is None or Status.VERIFIED not in ALLOWED[before]:
                 raise TransitionError(task_id, before, Status.VERIFIED)
-            if (refusal := self.workspace.git.refusal()) is not None:
+            if (refusal := self.git.refusal()) is not None:
                 raise refusal
-            head = self.workspace.git.resolve_head()
+            head = self.git.resolve_head()
             evidence = self.evidence_for(repository, slug, task_id=task_id, change=change)
-            problems = verification_problems(self.workspace.git, row, evidence)
+            problems = verification_problems(self.git, task, evidence)
             after = Status.BLOCKED if problems else Status.VERIFIED
             transition = Transition(
                 task_id=task_id, before=before, after=after, reasons=problems, head=head, at=now()
@@ -263,11 +248,11 @@ class TaskService:
         )
 
     def mark(self, slug: Slug, task_id: str, change: TaskMark) -> TaskView:
-        with task_transaction(self.database) as repository:
-            repository.tickets.unclosed_row(slug)
-            row = repository.row(slug, task_id)
-            before = status_of(row)
-            if row is None or change.to not in ALLOWED[before]:
+        with self.store.transaction() as repository:
+            repository.tickets.unclosed_ticket(slug)
+            task = repository.task(slug, task_id)
+            before = status_of(task)
+            if task is None or change.to not in ALLOWED[before]:
                 raise TransitionError(task_id, before, change.to)
             transition = Transition(
                 task_id=task_id,
@@ -285,9 +270,9 @@ class TaskService:
 
     def record_failed_fix(self, slug: Slug, task_id: str, change: TaskFailedFix) -> TaskView:
         hypothesis = redact_within(change.hypothesis, 'hypothesis', PROSE_LIMIT)
-        with task_transaction(self.database) as repository:
-            repository.tickets.unclosed_row(slug)
-            before = status_of(repository.row(slug, task_id))
+        with self.store.transaction() as repository:
+            repository.tickets.unclosed_ticket(slug)
+            before = status_of(repository.task(slug, task_id))
             tried = repository.failed_fixes(slug, task_id)
             if (error := fix_error(task_id, before, tried)) is not None:
                 raise error
@@ -298,16 +283,16 @@ class TaskService:
         return TaskView(text=text, advanced=False, tasks=(record,))
 
     def show(self, slug: Slug) -> TaskView:
-        with task_transaction(self.database) as repository:
-            repository.tickets.staged_row(slug)
+        with self.store.transaction() as repository:
+            repository.tickets.staged_ticket(slug)
             records = tuple(records_of(repository, slug).values())
         text = ''.join(map(record_line, records))
         return TaskView(text=text or 'no tasks started\n', advanced=True, tasks=records)
 
     def ready(self, slug: Slug) -> TaskView:
-        with task_transaction(self.database) as repository:
-            repository.tickets.staged_row(slug)
-            head = self.workspace.git.resolve_head()
+        with self.store.transaction() as repository:
+            repository.tickets.staged_ticket(slug)
+            head = self.git.resolve_head()
             records = tuple(records_of(repository, slug).values())
             superseded = {record.id for record in records if record.status is Status.SUPERSEDED}
             live = [

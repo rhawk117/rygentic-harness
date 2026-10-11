@@ -1,21 +1,19 @@
-"""The ticket service, with the tests moved from ticket_state.py's entry point."""
+"""The ticket service on the stores kept in memory, with no repository and no database.
 
-from collections.abc import Callable, Generator, Mapping
+The tests that need a real checkout are in test_ticket_in_a_repository.py.
+"""
+
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-import sqlalchemy as sql
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.tools.investigation.schema import InvestigationStart, TargetKind
-from mightymodels_plugin.tools.investigation.service import InvestigationService
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
-from mightymodels_plugin.tools.task.tables import TaskRow
-from mightymodels_plugin.tools.ticket.repository import ticket_transaction
+from mightymodels_plugin.tools.task.store import Transition
 from mightymodels_plugin.tools.ticket.schema import (
     TicketAnswers,
     TicketContext,
@@ -23,12 +21,11 @@ from mightymodels_plugin.tools.ticket.schema import (
     Tracker,
     WorkUnit,
 )
-from mightymodels_plugin.tools.ticket.service import TicketService, unit_of
-from mightymodels_plugin.tools.ticket.tests.support import ticket_service_at
+from mightymodels_plugin.tools.ticket.service import TicketService
+from mightymodels_plugin.tools.ticket.tests.in_memory import InMemoryTicketStore
 from mightymodels_plugin.tools.ticket.ticket_file import parse
 from pydantic import ValidationError
 
-type GitRunner = Callable[..., str]
 type Command = Callable[[TicketService, object], TicketView]
 
 REJECTED = 2
@@ -43,9 +40,15 @@ ANSWERS = {
     'context': CONTEXT,
     'issue': 42,
 }
-INVESTIGATION_TARGET = InvestigationStart(target='inv a', kind=TargetKind.BEHAVIOR)
-INVESTIGATION_STARTED = datetime(2026, 9, 28, tzinfo=UTC)
 STARTED_INVESTIGATION = '20260928-inv-a'
+FIRST_TASK_VERIFIED = Transition(
+    task_id='T1',
+    before=Status.IN_PROGRESS,
+    after=Status.VERIFIED,
+    reasons=(),
+    head=None,
+    at='2026-09-28T00:00:00+00:00',
+)
 
 
 def write(tickets: TicketService, answers: object) -> TicketView:
@@ -79,14 +82,11 @@ class Outcome:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Workspace:
     tickets: TicketService
+    tasks: TaskService
 
     @property
     def root(self) -> Path:
         return self.tickets.workspace.root
-
-    @property
-    def task_service(self) -> TaskService:
-        return TaskService(workspace=self.tickets.workspace, database=self.tickets.database)
 
     def run(self, command: str, answers: object = None) -> Outcome:
         try:
@@ -100,17 +100,17 @@ class Workspace:
         return self.root.joinpath('.mightymodels', SLUG, 'ticket.yml')
 
     def unit(self) -> WorkUnit:
-        with ticket_transaction(self.tickets.database) as repository:
-            return unit_of(repository.staged_row(TICKET))
+        with self.tickets.store.transaction() as repository:
+            return repository.staged_ticket(TICKET)
 
-    def tasks(self) -> dict[str, str]:
-        return {record.id: record.status for record in self.task_service.show(TICKET).tasks}
+    def task_statuses(self) -> dict[str, str]:
+        return {record.id: record.status for record in self.tasks.show(TICKET).tasks}
 
     def verify_first_task(self) -> None:
         change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
-        self.task_service.start(TICKET, 'T1', change)
-        with self.tickets.database.transaction() as session:
-            session.execute(sql.update(TaskRow).values(status=Status.VERIFIED))
+        self.tasks.start(TICKET, 'T1', change)
+        with self.tasks.store.transaction() as repository:
+            repository.record_verification(TICKET, FIRST_TASK_VERIFIED, 'HEAD')
 
     def edit(self, old: str, new: str) -> None:
         text = self.ticket.read_text(encoding='utf-8')
@@ -118,34 +118,15 @@ class Workspace:
 
 
 @pytest.fixture
-def workspace(ticket_service: TicketService) -> Workspace:
-    return Workspace(tickets=ticket_service)
+def workspace(
+    in_memory_ticket_service: TicketService, in_memory_task_service: TaskService
+) -> Workspace:
+    return Workspace(tickets=in_memory_ticket_service, tasks=in_memory_task_service)
 
 
 @pytest.fixture
-def started_investigation(investigation_service: InvestigationService) -> None:
-    investigation_service.start(INVESTIGATION_TARGET, started=INVESTIGATION_STARTED)
-
-
-@pytest.fixture
-def worktree_workspace(
-    repository: Path, tmp_path: Path, data_directory: Path, git: GitRunner
-) -> Generator[Workspace]:
-    identity = ('-c', 'user.name=test', '-c', 'user.email=test@example.com')
-    git(repository, *identity, 'commit', '--quiet', '--allow-empty', '-m', 'base')
-    worktree = tmp_path.joinpath('feature')
-    git(repository, 'worktree', 'add', '--quiet', str(worktree), '-b', 'feature')
-    repository.joinpath('.git', 'info', 'exclude').unlink(missing_ok=True)
-    with ticket_service_at(worktree, data_directory) as tickets:
-        yield Workspace(tickets=tickets)
-
-
-@pytest.fixture
-def workspace_outside_a_repository(tmp_path: Path, data_directory: Path) -> Generator[Workspace]:
-    directory = tmp_path.joinpath('plain-directory')
-    directory.mkdir()
-    with ticket_service_at(directory, data_directory) as tickets:
-        yield Workspace(tickets=tickets)
+def started_investigation(in_memory_ticket_store: InMemoryTicketStore) -> None:
+    in_memory_ticket_store.recorded_investigations.add(Slug(STARTED_INVESTIGATION))
 
 
 @pytest.mark.parametrize(
@@ -172,13 +153,6 @@ def test_write_derives_plan_first_from_the_compaction_answer(
 ) -> None:
     workspace.run('write', {**ANSWERS, 'compaction': True})
     assert '  plan-first: true' in workspace.ticket.read_text(encoding='utf-8')
-
-
-def test_write_keeps_mightymodels_out_of_git_once(workspace: Workspace) -> None:
-    workspace.run('write', ANSWERS)
-    workspace.run('validate')
-    exclude = workspace.root.joinpath('.git', 'info', 'exclude')
-    assert exclude.read_text(encoding='utf-8').splitlines().count('.mightymodels/') == 1
 
 
 def test_write_refuses_to_overwrite_a_tweaked_ticket(workspace: Workspace) -> None:
@@ -244,25 +218,8 @@ def test_revalidation_keeps_progress_and_only_adds_links(workspace: Workspace) -
     workspace.verify_first_task()
     workspace.run('validate')
     refreshed = workspace.unit()
-    assert (refreshed.status, workspace.tasks()) == ('in-progress', {'T1': 'verified'})
+    assert (refreshed.status, workspace.task_statuses()) == ('in-progress', {'T1': 'verified'})
     assert list(refreshed.investigations) == [STARTED_INVESTIGATION]
-
-
-def test_exclude_goes_to_the_common_dir_from_a_worktree(
-    worktree_workspace: Workspace, repository: Path
-) -> None:
-    worktree_workspace.run('write', ANSWERS)
-    exclude = repository.joinpath('.git', 'info', 'exclude')
-    assert exclude.read_text(encoding='utf-8') == '.mightymodels/\n'
-
-
-def test_outside_a_repository_the_ticket_is_still_written(
-    workspace_outside_a_repository: Workspace,
-) -> None:
-    outcome = workspace_outside_a_repository.run('write', ANSWERS)
-    assert outcome.code == 0
-    assert workspace_outside_a_repository.ticket.is_file()
-    assert not workspace_outside_a_repository.root.joinpath('.git').exists()
 
 
 def test_hashes_and_colons_inside_quoted_values_survive(workspace: Workspace) -> None:
