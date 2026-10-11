@@ -31,6 +31,7 @@ EIGHT_TOOLS = (
     'map_python_calls',
     'check_citations',
 )
+BUDGETED_TOOLS = ('collect_python_facts', 'map_python_calls')
 PROJECT_DIAGNOSTIC_ARGUMENTS = (
     pytest.param('survey', {}, id='survey'),
     pytest.param(
@@ -88,13 +89,24 @@ class TestToolSchemas:
         assert {tool.name: set(tool.input_schema['properties']) for tool in tools} == {
             'search_python_docs': {'version', 'query', 'limit'},
             'read_python_docs': {'version', 'symbol', 'offset', 'max_chars'},
-            'collect_python_facts': {'paths', 'with_function_shapes'},
-            'map_python_calls': {'paths', 'symbol'},
+            'collect_python_facts': {'paths', 'with_function_shapes', 'detail', 'budget'},
+            'map_python_calls': {'paths', 'symbol', 'detail', 'budget'},
             'check_citations': {'path', 'text'},
             'plan_review_surface': {'paths', 'diff_base', 'diff_head'},
             'survey': set(),
             'gate': set(),
         }
+
+    async def test_only_the_budgeted_tools_take_detail_and_budget(
+        self, docs_client: Client
+    ) -> None:
+        tools = (await docs_client.list_tools()).tools
+        budgeted = [
+            tool.name
+            for tool in tools
+            if {'detail', 'budget'} & set(tool.input_schema['properties'])
+        ]
+        assert sorted(budgeted) == sorted(BUDGETED_TOOLS)
 
     async def test_no_tool_takes_a_project_root(self, docs_client: Client) -> None:
         tools = (await docs_client.list_tools()).tools
@@ -144,7 +156,8 @@ class TestProjectDiagnostics:
         result = await project_client.call_tool(tool, arguments)
 
         assert result.is_error is False
-        diagnostics = document_of(result)['diagnostics']
+        document = document_of(result)
+        diagnostics = document['workspace' if tool in BUDGETED_TOOLS else 'diagnostics']
         assert diagnostics['source_roots'] == ['src']
         assert len(diagnostics['fallback_diagnostics']) == 1
         assert 'uv workspace discovery failed' in diagnostics['fallback_diagnostics'][0]

@@ -1,12 +1,14 @@
 """The survey and gate project tools return their inspection documents over MCP."""
 
 import argparse
+import json
 from collections.abc import Mapping
 
 import pytest
 from mcp import Client
 from python_harness import server
 from python_harness.cli.inspection import add_gate_arguments
+from python_harness.core.output import Detail, OutputOptions
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.gate.domain import (
@@ -94,3 +96,39 @@ class TestGate:
 
         (options,) = gate_options
         assert (options.timeout_seconds, parser.parse_args([]).timeout) == (600.0, 600.0)
+
+
+def keep(report: object) -> object:
+    return report
+
+
+class TestBudgetedProjectOutput:
+    @pytest.mark.usefixtures('shop')
+    def test_shared_project_path_returns_the_response_envelope(self, shop: Workspace) -> None:
+        rendered = server.render_project_document(
+            shop,
+            {'value': 'ok'},
+            output=server.ProjectOutput(
+                options=OutputOptions(detail=Detail.COUNTS, budget=256),
+                summary=keep,
+                counts=keep,
+                summary_truncated=bool,
+            ),
+        )
+
+        document = json.loads(rendered)
+        assert set(document) == {
+            'detail',
+            'budget',
+            'tokens',
+            'truncated',
+            'degraded',
+            'result',
+            'workspace',
+        }
+        assert (document['detail'], document['budget'], document['result']) == (
+            'counts',
+            256,
+            {'value': 'ok'},
+        )
+        assert document['tokens'] <= document['budget']

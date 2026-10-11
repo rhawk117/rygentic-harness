@@ -13,7 +13,19 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from python_harness.core.errors import PythonHarnessError
-from python_harness.core.output import COMPACT_SEPARATORS, JsonValue, to_json_value
+from python_harness.core.output import (
+    COMPACT_SEPARATORS,
+    DEFAULT_BUDGET,
+    Detail,
+    JsonValue,
+    OutputOptions,
+    OutputView,
+    OutputViews,
+    output_options,
+    output_view,
+    render_budgeted_document,
+    to_json_value,
+)
 from python_harness.core.workspace import Workspace
 from python_harness.documentation.repository import documentation_http_client
 from python_harness.documentation.services import (
@@ -33,8 +45,10 @@ from python_harness.tools.check_citations.schema import (
     DocumentPath,
     DocumentText,
 )
+from python_harness.tools.collect_python_facts import output as facts_output
 from python_harness.tools.collect_python_facts import use_case as facts_use_case
 from python_harness.tools.collect_python_facts.schema import FactsRequest, FunctionShapes
+from python_harness.tools.map_python_calls import output as calls_output
 from python_harness.tools.map_python_calls import use_case as calls_use_case
 from python_harness.tools.map_python_calls.schema import CallsRequest, SymbolReference
 from python_harness.tools.plan_review_surface import use_case as surface_use_case
@@ -95,12 +109,39 @@ def workspace_diagnostics(workspace: Workspace) -> dict[str, JsonValue]:
     }
 
 
-def render_project_document(workspace: Workspace, report: object) -> str:
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ProjectOutput:
+    options: OutputOptions
+    summary: Callable[[object], object]
+    counts: Callable[[object], object]
+    summary_truncated: Callable[[object], bool]
+
+    def summary_view(self, report: object) -> OutputView:
+        return output_view(self.summary(report), truncated=self.summary_truncated(report))
+
+    def counts_view(self, report: object) -> OutputView:
+        return output_view(self.counts(report))
+
+
+def render_project_document(
+    workspace: Workspace, report: object, *, output: ProjectOutput | None = None
+) -> str:
     document = to_json_value(report)
     if not isinstance(document, dict):
         msg = 'project reports must serialize to JSON objects'
         raise TypeError(msg)
-    return render_document(document | {'diagnostics': workspace_diagnostics(workspace)})
+    diagnostics = workspace_diagnostics(workspace)
+    if output is None:
+        return render_document(document | {'diagnostics': diagnostics})
+    return render_budgeted_document(
+        options=output.options,
+        workspace=diagnostics,
+        views=OutputViews(
+            full=output_view(report),
+            summary=output.summary_view(report),
+            counts=output.counts_view(report),
+        ),
+    )
 
 
 async def close_client(client: httpx.AsyncClient, timeout_seconds: float) -> None:
@@ -164,34 +205,78 @@ class DocumentationTools:
 class ProjectTools:
     environment: Mapping[str, str]
 
-    def answer[Request](self, run: Callable[[Workspace, Request], object], request: Request) -> str:
+    def answer[Request](
+        self,
+        run: Callable[[Workspace, Request], object],
+        request: Request,
+        output: ProjectOutput | None = None,
+    ) -> str:
         with tool_errors():
             workspace = open_project(self.environment)
-            return render_project_document(workspace, run(workspace, request))
+            return render_project_document(workspace, run(workspace, request), output=output)
 
     def collect_python_facts(
-        self, *, paths: ProjectPaths, with_function_shapes: FunctionShapes = False
+        self,
+        *,
+        paths: ProjectPaths,
+        with_function_shapes: FunctionShapes = False,
+        detail: Detail = Detail.SUMMARY,
+        budget: int = DEFAULT_BUDGET,
     ) -> str:
         """Collect mechanical AST facts for Python modules of the project, as JSON.
 
         Each module lists its facts by line and kind, with a count per kind; files that
-        cannot be read or parsed are listed under unparsable. Facts are observations,
-        never verdicts.
+        cannot be read or parsed are listed under unparsable. The default response is a
+        budgeted summary; request detail=full for facts from the requested paths. Facts
+        are observations, never verdicts.
         """
         request = FactsRequest(paths=paths, with_function_shapes=with_function_shapes)
-        return self.answer(facts_use_case.run, request)
+        with tool_errors():
+            options = output_options(detail=detail, budget=budget)
+
+        def summary(report: object) -> object:
+            return facts_output.facts_summary(
+                report, paths=paths, with_function_shapes=with_function_shapes
+            )
+
+        output = ProjectOutput(
+            options=options,
+            summary=summary,
+            counts=facts_output.facts_counts,
+            summary_truncated=facts_output.facts_summary_is_truncated,
+        )
+        return self.answer(facts_use_case.run, request, output)
 
     def map_python_calls(
-        self, *, paths: ProjectPaths, symbol: SymbolReference | None = None
+        self,
+        *,
+        paths: ProjectPaths,
+        symbol: SymbolReference | None = None,
+        detail: Detail = Detail.SUMMARY,
+        budget: int = DEFAULT_BUDGET,
     ) -> str:
         """Map where the project references the symbols of the given modules, as JSON.
 
         Without symbol, each module gets coupling metrics and its symbols grouped by who
         references them. With symbol, every reference of that one symbol is listed by
-        path and line. Resolution is static, so dynamic use is not seen.
+        path and line. The default response is a budgeted summary; request detail=full
+        for references and coupling facts from the requested paths. Resolution is static,
+        so dynamic use is not seen.
         """
         request = CallsRequest(paths=paths, symbol=symbol)
-        return self.answer(calls_use_case.run, request)
+        with tool_errors():
+            options = output_options(detail=detail, budget=budget)
+
+        def summary(report: object) -> object:
+            return calls_output.calls_summary(report, paths=paths, symbol=symbol)
+
+        output = ProjectOutput(
+            options=options,
+            summary=summary,
+            counts=calls_output.calls_counts,
+            summary_truncated=calls_output.calls_summary_is_truncated,
+        )
+        return self.answer(calls_use_case.run, request, output)
 
     def check_citations(self, *, path: DocumentPath = '', text: DocumentText = '') -> str:
         """Check every path.py:line citation and its backticked quote in Markdown, as JSON.
