@@ -5,10 +5,11 @@ from types import MappingProxyType
 import pytest
 from mcp import Client
 from python_harness import server
-from python_harness.core.output import MINIMUM_BUDGET, to_json_value
+from python_harness.core.output import to_json_value
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.facts.services import build_review_catalog, collect_facts
+from python_harness.tools.envelope import MINIMUM_BUDGET
 from python_harness.tools.tests.support import document_of, text_of
 
 TOOL = 'collect_python_facts'

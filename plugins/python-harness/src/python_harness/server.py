@@ -2,7 +2,7 @@
 
 import json
 import os
-from collections.abc import AsyncGenerator, Callable, Generator, Mapping
+from collections.abc import AsyncGenerator, Generator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass
 
@@ -13,19 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from python_harness.core.errors import PythonHarnessError
-from python_harness.core.output import (
-    COMPACT_SEPARATORS,
-    DEFAULT_BUDGET,
-    Detail,
-    JsonValue,
-    OutputOptions,
-    OutputView,
-    OutputViews,
-    output_options,
-    output_view,
-    render_budgeted_document,
-    to_json_value,
-)
+from python_harness.core.output import COMPACT_SEPARATORS, JsonValue, to_json_value
 from python_harness.core.uv import run_uv_workspace
 from python_harness.core.workspace import UvRunner, Workspace
 from python_harness.documentation.repository import documentation_http_client
@@ -35,6 +23,7 @@ from python_harness.documentation.services import (
     call_deadline,
 )
 from python_harness.documentation.settings import Settings
+from python_harness.facts.domain import FactsReport
 from python_harness.gate.domain import GateOptions
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.gate.policy import plan_gate
@@ -52,6 +41,13 @@ from python_harness.tools.check_citations.schema import (
 from python_harness.tools.collect_python_facts import output as facts_output
 from python_harness.tools.collect_python_facts import use_case as facts_use_case
 from python_harness.tools.collect_python_facts.schema import FactsRequest, FunctionShapes
+from python_harness.tools.envelope import (
+    DEFAULT_BUDGET,
+    Detail,
+    ProjectOutput,
+    output_options,
+    render_budgeted_project_document,
+)
 from python_harness.tools.map_python_calls import output as calls_output
 from python_harness.tools.map_python_calls import use_case as calls_use_case
 from python_harness.tools.map_python_calls.schema import CallsRequest, SymbolReference
@@ -101,40 +97,12 @@ def render_document(report: object) -> str:
     return json.dumps(to_json_value(report), separators=COMPACT_SEPARATORS)
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class ProjectOutput:
-    options: OutputOptions
-    summary: Callable[[object], object]
-    counts: Callable[[object], object]
-    summary_truncated: Callable[[object], bool]
-
-    def summary_view(self, report: object) -> OutputView:
-        return output_view(self.summary(report), truncated=self.summary_truncated(report))
-
-    def counts_view(self, report: object) -> OutputView:
-        return output_view(self.counts(report))
-
-
 def render_project_document(report: object, diagnostics: dict[str, JsonValue]) -> str:
     document = to_json_value(report)
     if not isinstance(document, dict):
         msg = 'project reports must serialize to JSON objects'
         raise TypeError(msg)
     return render_document(document | {'workspace': diagnostics})
-
-
-def render_budgeted_project_document(
-    report: object, diagnostics: dict[str, JsonValue], output: ProjectOutput
-) -> str:
-    return render_budgeted_document(
-        options=output.options,
-        workspace=diagnostics,
-        views=OutputViews(
-            full=output_view(report),
-            summary=output.summary_view(report),
-            counts=output.counts_view(report),
-        ),
-    )
 
 
 async def close_client(client: httpx.AsyncClient, timeout_seconds: float) -> None:
@@ -222,7 +190,7 @@ class ProjectTools:
         with tool_errors():
             options = output_options(detail=detail, budget=budget)
 
-        def summary(report: object) -> object:
+        def summary(report: FactsReport) -> object:
             return facts_output.facts_summary(
                 report, paths=paths, with_function_shapes=with_function_shapes
             )
@@ -258,21 +226,10 @@ class ProjectTools:
         request = CallsRequest(paths=paths, symbol=symbol)
         with tool_errors():
             options = output_options(detail=detail, budget=budget)
-
-        def summary(report: object) -> object:
-            return calls_output.calls_summary(report, paths=paths, symbol=symbol)
-
-        output = ProjectOutput(
-            options=options,
-            summary=summary,
-            counts=calls_output.calls_counts,
-            summary_truncated=calls_output.calls_summary_is_truncated,
-        )
-        with tool_errors():
             workspace, index = self.open_indexed_project()
             report = calls_use_case.run(workspace, index, request)
             diagnostics = workspace_diagnostics(workspace, index.graph)
-            return render_budgeted_project_document(report, diagnostics, output)
+            return calls_output.render_calls_document(report, request, diagnostics, options=options)
 
     def check_citations(self, *, path: DocumentPath = '', text: DocumentText = '') -> str:
         """Check every path.py:line citation and its backticked quote in Markdown, as JSON.

@@ -8,15 +8,7 @@ from python_harness.facts.domain import FactsReport, ModuleFacts
 SUMMARY_MODULE_LIMIT = 20
 
 
-def facts_report_of(report: object) -> FactsReport:
-    if isinstance(report, FactsReport):
-        return report
-    msg = 'collect_python_facts output requires a FactsReport'
-    raise TypeError(msg)
-
-
-def facts_counts(report: object) -> dict[str, object]:
-    facts = facts_report_of(report)
+def facts_counts(facts: FactsReport) -> dict[str, object]:
     fact_kinds = Counter(
         fact.detail.kind.value for module in facts.modules for fact in module.facts
     )
@@ -30,12 +22,11 @@ def facts_counts(report: object) -> dict[str, object]:
 
 
 def facts_summary(
-    report: object,
+    facts: FactsReport,
     *,
     paths: Sequence[str],
     with_function_shapes: bool,
 ) -> dict[str, object]:
-    facts = facts_report_of(report)
     ranked_modules = sorted(facts.modules, key=module_rank)
     return {
         'counts': facts_counts(facts),
@@ -55,8 +46,8 @@ def facts_summary(
     }
 
 
-def facts_summary_is_truncated(report: object) -> bool:
-    return len(facts_report_of(report).modules) > SUMMARY_MODULE_LIMIT
+def facts_summary_is_truncated(facts: FactsReport) -> bool:
+    return len(facts.modules) > SUMMARY_MODULE_LIMIT
 
 
 def module_rank(module: ModuleFacts) -> tuple[int, int, str]:

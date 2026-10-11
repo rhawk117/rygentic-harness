@@ -6,10 +6,11 @@ import pytest
 from mcp import Client
 from python_harness import server
 from python_harness.calls.services import find_symbol_references_for, map_call_sites_for
-from python_harness.core.output import MINIMUM_BUDGET, to_json_value
+from python_harness.core.output import to_json_value
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.imports.services import load_project_index
+from python_harness.tools.envelope import MINIMUM_BUDGET
 from python_harness.tools.map_python_calls.output import SUMMARY_SYMBOL_LIMIT
 from python_harness.tools.tests.support import document_of, text_of
 

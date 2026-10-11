@@ -8,7 +8,6 @@ import pytest
 from mcp import Client
 from python_harness import server
 from python_harness.cli.inspection import add_gate_arguments
-from python_harness.core.output import Detail, OutputOptions
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.gate.domain import (
@@ -23,6 +22,12 @@ from python_harness.gate.domain import (
     RuffConfigSource,
 )
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
+from python_harness.tools.envelope import (
+    Detail,
+    OutputOptions,
+    ProjectOutput,
+    render_budgeted_project_document,
+)
 from python_harness.tools.tests.support import document_of
 
 
@@ -110,10 +115,10 @@ def keep(report: object) -> object:
 
 class TestBudgetedProjectOutput:
     def test_shared_project_path_returns_the_response_envelope(self) -> None:
-        rendered = server.render_budgeted_project_document(
+        rendered = render_budgeted_project_document(
             {'value': 'ok'},
             {'source_roots': ['src']},
-            server.ProjectOutput(
+            ProjectOutput(
                 options=OutputOptions(detail=Detail.COUNTS, budget=256),
                 summary=keep,
                 counts=keep,
