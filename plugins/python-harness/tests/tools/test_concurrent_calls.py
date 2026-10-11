@@ -9,11 +9,14 @@ import pytest
 from mcp import Client
 from mcp.types import CallToolResult
 from python_harness.core.tests.fixtures import stubbed_uv
+from python_harness.core.workspace import Workspace
 from python_harness.documentation.settings import Settings
 from python_harness.documentation.tests.support import DOCS_VERSION, DocsSite
-from python_harness.server import ProjectTools, build_server, documentation_service
-from python_harness.tools.collect_python_facts.schema import FunctionShapes
-from python_harness.tools.project import ProjectPaths
+from python_harness.facts.domain import FactsReport
+from python_harness.imports.domain import ProjectIndex
+from python_harness.server import build_server, documentation_service
+from python_harness.tools.collect_python_facts import use_case as facts_use_case
+from python_harness.tools.collect_python_facts.use_case import FactsTarget
 
 PACKAGE = 'src/shop'
 HOLD_SECONDS = 5
@@ -40,21 +43,16 @@ class TestDocumentationCallDuringAHeldProjectCall:
         docs_site: DocsSite,
         project_environment: dict[str, str],
     ) -> AsyncGenerator[HeldProjectCall]:
-        original = ProjectTools.collect_python_facts
+        original = facts_use_case.run
         started = threading.Event()
         release = threading.Event()
 
-        def collect_python_facts(
-            project: ProjectTools,
-            *,
-            paths: ProjectPaths,
-            with_function_shapes: FunctionShapes = False,
-        ) -> str:
+        def run(workspace: Workspace, index: ProjectIndex, target: FactsTarget) -> FactsReport:
             started.set()
             release.wait(HOLD_SECONDS)
-            return original(project, paths=paths, with_function_shapes=with_function_shapes)
+            return original(workspace, index, target)
 
-        monkeypatch.setattr(ProjectTools, 'collect_python_facts', collect_python_facts)
+        monkeypatch.setattr(facts_use_case, 'run', run)
         async with (
             documentation_service(settings, docs_site.transport()) as service,
             Client(build_server(service, project_environment, uv_runner=stubbed_uv)) as client,

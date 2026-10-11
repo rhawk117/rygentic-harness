@@ -30,6 +30,7 @@ from python_harness.tools.envelope import (
     Detail,
     OutputOptions,
     ProjectOutput,
+    output_view,
     render_budgeted_project_document,
 )
 from python_harness.tools.tests.support import SHOP_PROJECT, document_of, text_of
@@ -193,9 +194,8 @@ class TestBudgetedProjectOutput:
             {'source_roots': ['src']},
             ProjectOutput(
                 options=OutputOptions(detail=Detail.COUNTS, budget=256),
-                summary=keep,
+                summary=output_view,
                 counts=keep,
-                summary_truncated=bool,
             ),
         )
 

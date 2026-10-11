@@ -14,7 +14,9 @@ from python_harness.calls.domain import (
 from python_harness.core.output import JsonValue
 from python_harness.tools.envelope import (
     OutputOptions,
+    OutputView,
     ProjectOutput,
+    output_view,
     render_budgeted_project_document,
 )
 from python_harness.tools.map_python_calls.schema import CallsRequest
@@ -46,7 +48,6 @@ def calls_report_output(
         options=options,
         summary=partial(calls_report_summary, paths=request.paths, symbol=request.symbol),
         counts=calls_report_counts,
-        summary_truncated=calls_report_summary_is_truncated,
     )
 
 
@@ -57,7 +58,6 @@ def symbol_references_output(
         options=options,
         summary=partial(symbol_references_summary, paths=request.paths, symbol=request.symbol),
         counts=symbol_references_counts,
-        summary_truncated=symbol_references_summary_is_truncated,
     )
 
 
@@ -84,41 +84,35 @@ def symbol_references_counts(report: SymbolReferencesReport) -> dict[str, object
     }
 
 
-def calls_report_summary_is_truncated(report: CallsReport) -> bool:
-    return (
-        len(report.modules) > SUMMARY_MODULE_LIMIT
-        or len(external_symbols(report)) > SUMMARY_SYMBOL_LIMIT
-    )
-
-
-def symbol_references_summary_is_truncated(report: SymbolReferencesReport) -> bool:
-    return len(report.symbols) > SUMMARY_SYMBOL_LIMIT
-
-
 def calls_report_summary(
     report: CallsReport,
     *,
     paths: Sequence[str],
     symbol: str | None,
-) -> dict[str, object]:
+) -> OutputView:
     ranked_modules = sorted(report.modules, key=module_rank)
     ranked_symbols = sorted(external_symbols(report), key=external_symbol_rank)
-    return {
-        'counts': calls_report_counts(report),
-        'modules': [
-            {
-                'path': module.metrics.path,
-                'fan_in': module.metrics.fan_in,
-                'fan_out': module.metrics.fan_out,
-                'max_function_statements': module.metrics.max_function_statements,
-            }
-            for module in ranked_modules[:SUMMARY_MODULE_LIMIT]
-        ],
-        'top_referenced_symbols': [
-            external_symbol_document(item) for item in ranked_symbols[:SUMMARY_SYMBOL_LIMIT]
-        ],
-        'narrowing': narrowing(paths=paths, symbol=symbol),
-    }
+    return output_view(
+        {
+            'counts': calls_report_counts(report),
+            'modules': [
+                {
+                    'path': module.metrics.path,
+                    'fan_in': module.metrics.fan_in,
+                    'fan_out': module.metrics.fan_out,
+                    'max_function_statements': module.metrics.max_function_statements,
+                }
+                for module in ranked_modules[:SUMMARY_MODULE_LIMIT]
+            ],
+            'top_referenced_symbols': [
+                external_symbol_document(item) for item in ranked_symbols[:SUMMARY_SYMBOL_LIMIT]
+            ],
+            'narrowing': narrowing(paths=paths, symbol=symbol),
+        },
+        truncated=(
+            len(ranked_modules) > SUMMARY_MODULE_LIMIT or len(ranked_symbols) > SUMMARY_SYMBOL_LIMIT
+        ),
+    )
 
 
 def symbol_references_summary(
@@ -126,15 +120,18 @@ def symbol_references_summary(
     *,
     paths: Sequence[str],
     symbol: str | None,
-) -> dict[str, object]:
+) -> OutputView:
     ranked_symbols = sorted(report.symbols, key=symbol_usage_rank)
-    return {
-        'counts': symbol_references_counts(report),
-        'top_referenced_symbols': [
-            symbol_usage_document(item) for item in ranked_symbols[:SUMMARY_SYMBOL_LIMIT]
-        ],
-        'narrowing': narrowing(paths=paths, symbol=symbol),
-    }
+    return output_view(
+        {
+            'counts': symbol_references_counts(report),
+            'top_referenced_symbols': [
+                symbol_usage_document(item) for item in ranked_symbols[:SUMMARY_SYMBOL_LIMIT]
+            ],
+            'narrowing': narrowing(paths=paths, symbol=symbol),
+        },
+        truncated=len(ranked_symbols) > SUMMARY_SYMBOL_LIMIT,
+    )
 
 
 def external_symbols(report: CallsReport) -> tuple[ExternalSymbol, ...]:

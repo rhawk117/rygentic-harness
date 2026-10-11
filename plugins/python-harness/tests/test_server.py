@@ -109,6 +109,24 @@ class TestToolSchemas:
         ]
         assert sorted(budgeted) == sorted(BUDGETED_TOOLS)
 
+    @pytest.mark.parametrize('name', BUDGETED_TOOLS)
+    async def test_budget_and_detail_describe_themselves_in_the_schema(
+        self, docs_client: Client, name: str
+    ) -> None:
+        tools = {tool.name: tool for tool in (await docs_client.list_tools()).tools}
+        schema = tools[name].input_schema
+        budget = dereferenced(schema, schema['properties']['budget'])
+        detail = dereferenced(schema, schema['properties']['detail'])
+        assert (budget['minimum'], budget['default'], bool(budget['description'])) == (
+            256,
+            4000,
+            True,
+        )
+        assert (detail['enum'], bool(detail['description'])) == (
+            ['full', 'summary', 'counts'],
+            True,
+        )
+
     async def test_no_tool_takes_a_project_root(self, docs_client: Client) -> None:
         tools = (await docs_client.list_tools()).tools
         rooted = [tool.name for tool in tools if 'project_root' in tool.input_schema['properties']]

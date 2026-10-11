@@ -1,6 +1,5 @@
 """The python-harness MCP server over stdio: Python documentation, and facts about one project."""
 
-import json
 import os
 from collections.abc import AsyncGenerator, Generator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
@@ -13,7 +12,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from python_harness.core.errors import PythonHarnessError
-from python_harness.core.output import COMPACT_SEPARATORS, JsonValue, to_json_value
+from python_harness.core.output import JsonValue, to_json_value
 from python_harness.core.uv import run_uv_workspace
 from python_harness.core.workspace import UvRunner, Workspace
 from python_harness.documentation.repository import documentation_http_client
@@ -23,7 +22,6 @@ from python_harness.documentation.services import (
     call_deadline,
 )
 from python_harness.documentation.settings import Settings
-from python_harness.facts.domain import FactsReport
 from python_harness.gate.domain import ConfigKind, GateOptions
 from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
 from python_harness.gate.services import run_gate_for
@@ -42,10 +40,11 @@ from python_harness.tools.collect_python_facts import use_case as facts_use_case
 from python_harness.tools.collect_python_facts.schema import FactsRequest, FunctionShapes
 from python_harness.tools.envelope import (
     DEFAULT_BUDGET,
+    Budget,
     Detail,
-    ProjectOutput,
-    output_options,
-    render_budgeted_project_document,
+    DetailLevel,
+    OutputOptions,
+    compact_json,
 )
 from python_harness.tools.map_python_calls import output as calls_output
 from python_harness.tools.map_python_calls import use_case as calls_use_case
@@ -92,16 +91,12 @@ def tool_errors() -> Generator[None]:
         raise ToolError(str(error)) from error
 
 
-def render_document(report: object) -> str:
-    return json.dumps(to_json_value(report), separators=COMPACT_SEPARATORS)
-
-
 def render_project_document(report: object, diagnostics: dict[str, JsonValue]) -> str:
     document = to_json_value(report)
     if not isinstance(document, dict):
         msg = 'project reports must serialize to JSON objects'
         raise TypeError(msg)
-    return render_document(document | {'workspace': diagnostics})
+    return compact_json(document | {'workspace': diagnostics})
 
 
 async def close_client(client: httpx.AsyncClient, timeout_seconds: float) -> None:
@@ -175,8 +170,8 @@ class ProjectTools:
         *,
         paths: ProjectPaths,
         with_function_shapes: FunctionShapes = False,
-        detail: Detail = Detail.SUMMARY,
-        budget: int = DEFAULT_BUDGET,
+        detail: DetailLevel = Detail.SUMMARY,
+        budget: Budget = DEFAULT_BUDGET,
     ) -> str:
         """Collect mechanical AST facts for Python modules of the project, as JSON.
 
@@ -187,34 +182,21 @@ class ProjectTools:
         """
         request = FactsRequest(paths=paths, with_function_shapes=with_function_shapes)
         with tool_errors():
-            options = output_options(detail=detail, budget=budget)
-
-        def summary(report: FactsReport) -> object:
-            return facts_output.facts_summary(
-                report, paths=paths, with_function_shapes=with_function_shapes
-            )
-
-        output = ProjectOutput(
-            options=options,
-            summary=summary,
-            counts=facts_output.facts_counts,
-            summary_truncated=facts_output.facts_summary_is_truncated,
-        )
-        with tool_errors():
+            options = OutputOptions(detail=detail, budget=budget)
             workspace = open_project(self.environment, self.uv_runner)
             target = facts_use_case.target_for(workspace, request)
             index = load_project_index(workspace)
             report = facts_use_case.run(workspace, index, target)
             diagnostics = workspace_diagnostics(workspace, index.graph)
-            return render_budgeted_project_document(report, diagnostics, output)
+            return facts_output.render_facts_document(report, request, diagnostics, options=options)
 
     def map_python_calls(
         self,
         *,
         paths: ProjectPaths,
         symbol: SymbolReference | None = None,
-        detail: Detail = Detail.SUMMARY,
-        budget: int = DEFAULT_BUDGET,
+        detail: DetailLevel = Detail.SUMMARY,
+        budget: Budget = DEFAULT_BUDGET,
     ) -> str:
         """Map where the project references the symbols of the given modules, as JSON.
 
@@ -226,7 +208,7 @@ class ProjectTools:
         """
         request = CallsRequest(paths=paths, symbol=symbol)
         with tool_errors():
-            options = output_options(detail=detail, budget=budget)
+            options = OutputOptions(detail=detail, budget=budget)
             workspace, index = self.open_indexed_project()
             report = calls_use_case.run(workspace, index, request)
             diagnostics = workspace_diagnostics(workspace, index.graph)
