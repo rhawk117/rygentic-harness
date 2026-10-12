@@ -44,6 +44,8 @@ problem in one pass:
 
 - `ruff format --check` and `ruff check --no-fix`, both with `.ruff.toml`
 - `mdformat --check` on `docs/` and the root `*.md` files only
+- `scripts/check-python-line-cap.sh`, which fails when a tracked Python file under
+  `plugins/mightymodels` is over 500 lines
 - `ty` at Python 3.14, then a second `ty` pass at Python 3.12 over the skills trees and
   `plugins/vibe-code/src` and `plugins/vibe-code/tests`
 - `pytest`, which runs the vibe-code tests in `plugins/vibe-code/tests` and the python-harness
@@ -54,8 +56,9 @@ problem in one pass:
 The `claude` check fails if the CLI is not on your `PATH`, so install it first (see Setup).
 
 Pre-commit runs the standard file hygiene hooks, `ruff format`, `mdformat` on markdown outside
-`plugins/`, and a `quality` hook that runs `scripts/quality.sh --lint` on every commit. Only the
-pre-commit hook type is installed, so commit messages are not checked by a hook.
+`plugins/`, a `python-line-cap` hook that runs the same line-cap script, and a `quality` hook that
+runs `scripts/quality.sh --lint` on every commit. Only the pre-commit hook type is installed, so
+commit messages are not checked by a hook.
 
 CI runs on pull requests to `main` with three jobs: `labeler`, `quality`, and `workflow-narrator`.
 The `quality` job runs `uv run pre-commit run --all-files`, which is the same gate as `make check`,

@@ -52,22 +52,22 @@ class TestReviewerModelsByDepth:
         [
             pytest.param(
                 {'depth': 'quick', 'persona': 'merge-vader'},
-                {'merge-vader-reviewer': 'sonnet'},
+                {'merge-vader': 'sonnet'},
                 id='quick-merge-vader',
             ),
             pytest.param(
                 {'depth': 'quick', 'persona': 'uncle-bob'},
-                {'uncle-bob-reviewer': 'sonnet'},
+                {'uncle-bob': 'sonnet'},
                 id='quick-uncle-bob',
             ),
             pytest.param(
                 {'depth': 'standard'},
-                {'merge-vader-reviewer': 'opus', 'uncle-bob-reviewer': 'opus'},
+                {'merge-vader': 'opus', 'uncle-bob': 'opus'},
                 id='standard',
             ),
             pytest.param(
                 {'depth': 'deep'},
-                {'merge-vader-reviewer': 'opus', 'uncle-bob-reviewer': 'opus'},
+                {'merge-vader': 'opus', 'uncle-bob': 'opus'},
                 id='deep',
             ),
         ],
@@ -88,7 +88,7 @@ class TestTicketReviewerEntries:
         with repository_database.transaction() as session:
             row = session.get(TicketRow, (repository_database.repository_key.root, SLUG))
             assert row is not None
-            row.models = {'merge-vader-reviewer': 'haiku', 'uncle-bob-reviewer': 'fable'}
+            row.models = {'merge-vader': 'haiku', 'uncle-bob': 'fable'}
 
     @pytest.mark.parametrize('depth', ['standard', 'deep'])
     @pytest.mark.usefixtures('pinned_ticket')
@@ -98,8 +98,8 @@ class TestTicketReviewerEntries:
         run = started_run(review_service, scope='ticket', slug=SLUG, base='HEAD', depth=depth)
 
         assert stored_models(review_service, run) == {
-            'merge-vader-reviewer': 'opus',
-            'uncle-bob-reviewer': 'opus',
+            'merge-vader': 'opus',
+            'uncle-bob': 'opus',
         }
 
 
@@ -109,17 +109,17 @@ class TestOverride:
         [
             pytest.param(
                 {'depth': 'deep', 'emphasis': 'release-readiness'},
-                {'merge-vader-reviewer': 'fable', 'uncle-bob-reviewer': 'opus'},
+                {'merge-vader': 'fable', 'uncle-bob': 'opus'},
                 id='release-readiness-leads',
             ),
             pytest.param(
                 {'depth': 'deep', 'emphasis': 'maintainability'},
-                {'merge-vader-reviewer': 'opus', 'uncle-bob-reviewer': 'fable'},
+                {'merge-vader': 'opus', 'uncle-bob': 'fable'},
                 id='maintainability-leads',
             ),
             pytest.param(
                 {'depth': 'deep', 'emphasis': 'balanced'},
-                {'merge-vader-reviewer': 'fable', 'uncle-bob-reviewer': 'opus'},
+                {'merge-vader': 'fable', 'uncle-bob': 'opus'},
                 id='a-tie-favours-merge-vader',
             ),
             pytest.param(
@@ -128,12 +128,12 @@ class TestOverride:
                     'emphasis': 'custom',
                     'weights': {'merge-vader': 0.2, 'uncle-bob': 0.8},
                 },
-                {'uncle-bob-reviewer': 'fable'},
+                {'uncle-bob': 'fable'},
                 id='standard-runs-only-the-heavier',
             ),
             pytest.param(
                 {'depth': 'quick', 'emphasis': 'release-readiness', 'persona': 'uncle-bob'},
-                {'uncle-bob-reviewer': 'fable'},
+                {'uncle-bob': 'fable'},
                 id='quick-runs-the-chosen-persona',
             ),
         ],
@@ -154,9 +154,7 @@ class TestOverride:
 
         view = review_service.override(run)
 
-        assert view.text == (
-            f'run {run}: merge-vader-reviewer on fable\ndispatch it with effort high\n'
-        )
+        assert view.text == f'run {run}: merge-vader on fable\ndispatch it with effort high\n'
 
     def test_a_second_request_on_the_same_run_is_refused_and_changes_nothing(
         self, review_service: ReviewService
@@ -196,7 +194,7 @@ class TestOverrideOnTheTool:
         )
 
         assert not first.is_error
-        assert 'merge-vader-reviewer on fable' in first.structured_content['text']
+        assert 'merge-vader on fable' in first.structured_content['text']
         assert 'effort high' in first.structured_content['text']
         assert second.is_error
         assert 'has used its one reviewer override' in text_of(second)

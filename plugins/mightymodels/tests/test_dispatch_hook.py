@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.commands.dispatch_hook import DISPATCH_RULES, check_dispatch
-from mightymodels_plugin.core.routing import Worker
+from mightymodels_plugin.core.routing import ROUTING, Worker
 
 AGENTS = Path(__file__).parent.parent.joinpath('agents')
 ROW_LINE = re.compile(r'^- (?:Delegate|Dispatch) only (?:to )?(?P<names>[^.]*)\.', re.MULTILINE)
@@ -60,9 +60,9 @@ class TestWorkerRow:
         [
             pytest.param('engineer', 'code-scout', id='engineer-to-code-scout'),
             pytest.param('architect', 'code-scout', id='architect-to-code-scout'),
-            pytest.param('merge-vader-reviewer', 'web-scout', id='merge-vader-to-web-scout'),
-            pytest.param('merge-vader-reviewer', 'qualitylens', id='merge-vader-to-qualitylens'),
-            pytest.param('uncle-bob-reviewer', 'qualitylens', id='uncle-bob-to-qualitylens'),
+            pytest.param('merge-vader', 'web-scout', id='merge-vader-to-web-scout'),
+            pytest.param('merge-vader', 'qualitylens', id='merge-vader-to-qualitylens'),
+            pytest.param('uncle-bob', 'qualitylens', id='uncle-bob-to-qualitylens'),
         ],
     )
     def test_a_target_inside_the_row_is_allowed(self, caller: str, target: str) -> None:
@@ -77,13 +77,13 @@ class TestWorkerRow:
             pytest.param('engineer', 'engineer', 'code-scout', id='engineer-to-engineer'),
             pytest.param('architect', 'engineer', 'code-scout', id='architect-to-engineer'),
             pytest.param(
-                'uncle-bob-reviewer',
+                'uncle-bob',
                 'web-scout',
                 'code-scout, qualitylens',
                 id='uncle-bob-to-web-scout',
             ),
             pytest.param(
-                'merge-vader-reviewer',
+                'merge-vader',
                 'architect',
                 'code-scout, qualitylens, web-scout',
                 id='merge-vader-to-architect',
@@ -283,3 +283,24 @@ class TestAgentFiles:
 
     def test_every_worker_has_a_row(self) -> None:
         assert set(DISPATCH_RULES) == set(Worker)
+
+
+class TestReviewerTypes:
+    REVIEWERS = frozenset({f'{PREFIX}merge-vader', f'{PREFIX}uncle-bob'})
+
+    @pytest.mark.parametrize(
+        'workers',
+        [
+            pytest.param(frozenset(ROUTING), id='routing-table'),
+            pytest.param(
+                frozenset(DISPATCH_RULES).union(*DISPATCH_RULES.values()), id='dispatch-rules'
+            ),
+        ],
+    )
+    def test_names_the_two_reviewers_and_no_type_ending_in_reviewer(
+        self, workers: frozenset[Worker]
+    ) -> None:
+        types = {f'{PREFIX}{worker}' for worker in workers}
+
+        assert types >= self.REVIEWERS
+        assert [name for name in types if name.endswith('-reviewer')] == []

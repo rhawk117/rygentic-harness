@@ -49,14 +49,14 @@ def test_deep_review_runs_both_personas(review_workspace: Workspace) -> None:
 def test_deep_review_runs_both_personas_on_opus(review_workspace: Workspace) -> None:
     run = review_workspace.start(depth='deep')
     assert run_state(review_workspace, run)['models'] == {
-        'merge-vader-reviewer': 'opus',
-        'uncle-bob-reviewer': 'opus',
+        'merge-vader': 'opus',
+        'uncle-bob': 'opus',
     }
 
 
 def test_quick_review_runs_the_heavier_persona_on_sonnet(review_workspace: Workspace) -> None:
     run = review_workspace.start(depth='quick', emphasis='maintainability')
-    assert run_state(review_workspace, run)['models'] == {'uncle-bob-reviewer': 'sonnet'}
+    assert run_state(review_workspace, run)['models'] == {'uncle-bob': 'sonnet'}
 
 
 def test_quick_review_with_tied_weights_needs_a_persona(review_workspace: Workspace) -> None:
@@ -70,7 +70,7 @@ def test_quick_review_with_tied_weights_needs_a_persona(review_workspace: Worksp
 def test_standard_review_drops_a_persona_below_the_threshold(review_workspace: Workspace) -> None:
     weights = {'merge-vader': 0.8, 'uncle-bob': 0.2}
     run = review_workspace.start(depth='standard', emphasis='custom', weights=weights)
-    assert run_state(review_workspace, run)['models'] == {'merge-vader-reviewer': 'opus'}
+    assert run_state(review_workspace, run)['models'] == {'merge-vader': 'opus'}
 
 
 def test_custom_weights_must_sum_to_one(review_workspace: Workspace) -> None:

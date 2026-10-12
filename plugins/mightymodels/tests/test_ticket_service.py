@@ -187,7 +187,7 @@ def test_validate_stages_the_work_unit(workspace: Workspace) -> None:
     assert 'status staged' in outcome.out
     assert (unit.status, unit.ticket.branch) == ('staged', 'fix/retry-queue')
     assert unit.ticket.tracker == Tracker(issue=42, jira=None)
-    assert unit.ticket.models['uncle-bob-reviewer'] == 'opus'
+    assert unit.ticket.models['uncle-bob'] == 'opus'
 
 
 def test_hand_edits_inside_the_subset_validate(workspace: Workspace) -> None:

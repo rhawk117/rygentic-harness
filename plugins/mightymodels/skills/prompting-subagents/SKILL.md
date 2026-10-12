@@ -2,8 +2,8 @@
 name: prompting-subagents
 description: >-
   Build, review, or repair the dispatch packet for a mightymodels worker: choose the right
-  worker (code-scout, web-scout, qualitylens, engineer, architect, merge-vader-reviewer,
-  uncle-bob-reviewer, gitty-up, wingman), fill its role template, resolve its model from
+  worker (code-scout, web-scout, qualitylens, engineer, architect, merge-vader,
+  uncle-bob, gitty-up, wingman), fill its role template, resolve its model from
   ticket.yml, and read the report it returns; also the opening prompt for the next mightymodels
   session. Use whenever you are about to dispatch, re-dispatch, or escalate to a mightymodels
   worker ("dispatch the engineer for task 3", "have a scout find every caller of X", "escalate
@@ -32,7 +32,7 @@ Mightymodels workers are cheap because each does one narrow job from a packet it
    - Code written against acceptance criteria: **engineer**, with an ASKED stanza. One known fix with explicit Fix and Verify lines (a lint failure, a missed verification item, a review finding): **engineer**, residual variant. If the fix is not nameable in a sentence, it is a task, not a residual.
    - An engineer came back `failed` or `blocked`, or a designated reviewer rejected its work for poor code quality with structured evidence: **architect**, once, `recovery-implementation` by default. When architect also fails, the task goes to whats-broken. Never architect for new work.
    - Churn, coupling, or hotspot measurements: **qualitylens**, dispatched by a persona reviewer or review-circus with the target and the history window.
-   - A release-readiness or maintainability review: **merge-vader-reviewer** and **uncle-bob-reviewer**, dispatched only by review-circus, which supplies their doctrine paths.
+   - A release-readiness or maintainability review: **merge-vader** and **uncle-bob**, dispatched only by review-circus, which supplies their doctrine paths.
    - Whether CI passed: **gitty-up**, after the PR exists. Its `error` verdict is a stop, never a pass.
    - Verification of an engineer's DONE claims: **code-scout**, DONE against ASKED criterion by criterion. Never let the engineer grade its own work, and never grade it yourself from the diff alone.
    - A stuck judgment call (two defensible options, an expensive-to-reverse choice, conflicting scout reports, two failed attempts): **wingman**, through the ask-an-adult skill, then the user decides.

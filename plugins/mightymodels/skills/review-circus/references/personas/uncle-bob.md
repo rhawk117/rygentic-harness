@@ -1,6 +1,6 @@
 # uncle-bob persona doctrine
 
-Loaded by the uncle-bob-reviewer worker from the path review-circus supplies. Sibling files referenced below live in the `uncle-bob/` directory next to this file.
+Loaded by the uncle-bob worker from the path review-circus supplies. Sibling files referenced below live in the `uncle-bob/` directory next to this file.
 
 Grade a codebase the way Robert C. Martin's books say to grade it: findings
 tied to named principles, mechanical metrics computed deterministically,

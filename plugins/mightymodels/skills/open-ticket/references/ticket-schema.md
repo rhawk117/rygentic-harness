@@ -22,8 +22,8 @@ subagent-models:
   architect: "<derived>"         # see derivation rules
   gitty-up: "haiku"
   wingman: "fable"
-  merge-vader-reviewer: "opus"   # ignored: a review run sets reviewer models
-  uncle-bob-reviewer: "opus"     # ignored: a review run sets reviewer models
+  merge-vader: "opus"            # ignored: a review run sets reviewer models
+  uncle-bob: "opus"              # ignored: a review run sets reviewer models
 handoff-context:
   scope: "<sm|med|large>"
   plan-first: <true|false>       # derived from the compaction answer

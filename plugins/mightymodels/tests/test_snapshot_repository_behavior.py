@@ -59,7 +59,7 @@ RUN = ReviewRun(
     emphasis=Emphasis.BALANCED,
     weights={Persona.MERGE_VADER: 0.5, Persona.UNCLE_BOB: 0.5},
     personas=(Persona.MERGE_VADER, Persona.UNCLE_BOB),
-    models={'merge-vader-reviewer': 'opus', 'uncle-bob-reviewer': None},
+    models={'merge-vader': 'opus', 'uncle-bob': None},
     created_at=AT,
 )
 TARGET = LedgerRecord(

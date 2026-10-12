@@ -101,8 +101,8 @@ REPORT_FILES: Mapping[Persona, str] = MappingProxyType(
 )
 REVIEWERS: Mapping[Persona, Worker] = MappingProxyType(
     {
-        Persona.MERGE_VADER: Worker.MERGE_VADER_REVIEWER,
-        Persona.UNCLE_BOB: Worker.UNCLE_BOB_REVIEWER,
+        Persona.MERGE_VADER: Worker.MERGE_VADER,
+        Persona.UNCLE_BOB: Worker.UNCLE_BOB,
     }
 )
 NO_RUNS = 'no review runs\n'

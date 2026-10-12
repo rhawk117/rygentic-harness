@@ -4,7 +4,7 @@ description: >-
   Review a diff, branch, ticket, or whole codebase with the mightymodels persona reviewers. One
   AskUserQuestion gate sets depth (quick runs its reviewers on sonnet, standard and deep on opus), persona
   emphasis, and scope; the `review` tool records the run, mightymodels review-metrics and review-signals
-  measure, merge-vader-reviewer and uncle-bob-reviewer report, and the tool reads their reports
+  measure, merge-vader and uncle-bob report, and the tool reads their reports
   and merges overlapping findings, presented by id through AskUserQuestion. Only the findings
   the user picks go to remediation, risk first, through the `task` tool; an abridged PR comment
   is always posted. Use for
@@ -65,7 +65,7 @@ The answer names the reviewer and says to dispatch it with effort high; a second
 
 ## 2. Measure
 
-When uncle-bob-reviewer is in the run, measure structure into the run directory:
+When uncle-bob is in the run, measure structure into the run directory:
 
 ```bash
 mightymodels review-metrics <repo root> --out RUNDIR/uncle-bob-metrics.json

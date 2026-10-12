@@ -54,7 +54,7 @@ RUN = ReviewRun(
     emphasis=Emphasis.BALANCED,
     weights={Persona.MERGE_VADER: 0.5, Persona.UNCLE_BOB: 0.5},
     personas=(Persona.MERGE_VADER, Persona.UNCLE_BOB),
-    models={'merge-vader-reviewer': 'opus', 'uncle-bob-reviewer': None},
+    models={'merge-vader': 'opus', 'uncle-bob': None},
     created_at=AT,
 )
 LATER_RUN = replace(RUN, run_id=RunId('20260928-120005'), depth=Depth.QUICK)
@@ -67,7 +67,7 @@ WITHOUT_A_TICKET = replace(
     head=None,
 )
 NEVER_STARTED = RunId('20260101-000000')
-REROUTED = {'merge-vader-reviewer': 'sonnet'}
+REROUTED = {'merge-vader': 'sonnet'}
 FIRST = Finding(
     id='F1',
     sources=('MV-1',),

@@ -45,8 +45,8 @@ class Worker(StrEnum):
     ARCHITECT = 'architect'
     GITTY_UP = 'gitty-up'
     WINGMAN = 'wingman'
-    MERGE_VADER_REVIEWER = 'merge-vader-reviewer'
-    UNCLE_BOB_REVIEWER = 'uncle-bob-reviewer'
+    MERGE_VADER = 'merge-vader'
+    UNCLE_BOB = 'uncle-bob'
 
 
 type ScopeRouting = Mapping[Scope, Model]
@@ -65,8 +65,8 @@ ROUTING: Mapping[Worker, ScopeRouting] = MappingProxyType(
         Worker.ARCHITECT: at_every_scope(Model.OPUS),
         Worker.GITTY_UP: at_every_scope(Model.HAIKU),
         Worker.WINGMAN: at_every_scope(Model.FABLE),
-        Worker.MERGE_VADER_REVIEWER: at_every_scope(Model.OPUS),
-        Worker.UNCLE_BOB_REVIEWER: at_every_scope(Model.OPUS),
+        Worker.MERGE_VADER: at_every_scope(Model.OPUS),
+        Worker.UNCLE_BOB: at_every_scope(Model.OPUS),
     }
 )
 EFFORT: Mapping[Model, Effort] = MappingProxyType(
@@ -77,7 +77,7 @@ EFFORT: Mapping[Model, Effort] = MappingProxyType(
         Model.FABLE: Effort.HIGH,
     }
 )
-REVIEWER_WORKERS = frozenset({Worker.MERGE_VADER_REVIEWER, Worker.UNCLE_BOB_REVIEWER})
+REVIEWER_WORKERS = frozenset({Worker.MERGE_VADER, Worker.UNCLE_BOB})
 FIXED_WORKERS = frozenset(Worker) - REVIEWER_WORKERS
 
 

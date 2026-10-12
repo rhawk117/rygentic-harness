@@ -5,7 +5,7 @@ model: opus
 effort: medium
 description: >-
   Higher-cost recovery implementer. Use only after engineer returns failed or blocked on a
-  task, or a designated merge-vader-reviewer or uncle-bob-reviewer rejects an implementation
+  task, or a designated merge-vader or uncle-bob rejects an implementation
   for poor code quality with structured evidence. Diagnoses the root cause, makes binding
   design decisions, implements and verifies within the original ownership envelope, and
   requests scope expansion instead of taking it. Not for new work; new work starts with

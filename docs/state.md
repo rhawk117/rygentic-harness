@@ -147,8 +147,8 @@ subagent-models:
   architect: sonnet # derived: large scope would pull opus
   gitty-up: haiku
   wingman: opus
-  merge-vader-reviewer: opus
-  uncle-bob-reviewer: sonnet
+  merge-vader: opus
+  uncle-bob: sonnet
 handoff-context:
   scope: sm # sm | med | large
   plan-first: false # true when a compaction is expected

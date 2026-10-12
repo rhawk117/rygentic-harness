@@ -32,8 +32,8 @@ class TestRoutingTable:
             pytest.param('gitty-up', ('haiku', 'haiku', 'haiku'), id='gitty-up'),
             pytest.param('engineer', ('sonnet', 'sonnet', 'sonnet'), id='engineer'),
             pytest.param('architect', ('opus', 'opus', 'opus'), id='architect'),
-            pytest.param('uncle-bob-reviewer', ('opus', 'opus', 'opus'), id='uncle-bob'),
-            pytest.param('merge-vader-reviewer', ('opus', 'opus', 'opus'), id='merge-vader'),
+            pytest.param('uncle-bob', ('opus', 'opus', 'opus'), id='uncle-bob'),
+            pytest.param('merge-vader', ('opus', 'opus', 'opus'), id='merge-vader'),
             pytest.param('wingman', ('fable', 'fable', 'fable'), id='wingman'),
         ],
     )
