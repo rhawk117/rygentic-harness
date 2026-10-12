@@ -48,7 +48,10 @@ BIN = PLUGIN.joinpath('bin')
 PLUGIN_ROOT = '${CLAUDE_PLUGIN_ROOT}'
 LONGEST_TIMEOUT_SECONDS = 10
 SUBCOMMANDS_OF_WRAPPERS_WITHOUT_ARGUMENTS = MappingProxyType(
-    {'mightymodels-dispatch-hook': 'dispatch-hook'}
+    {
+        'mightymodels-dispatch-hook': 'dispatch-hook',
+        'mightymodels-main-thread-hook': 'main-thread-hook',
+    }
 )
 
 SEARCH: ToolCall = (

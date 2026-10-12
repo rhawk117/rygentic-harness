@@ -5,6 +5,9 @@ set -uo pipefail
 readonly PLUGIN_NAME=mightymodels
 readonly PLUGIN_DIRECTORY=plugins/${PLUGIN_NAME}
 readonly STATE_TOOL_PREFIX=mcp__plugin_${PLUGIN_NAME}_state__
+readonly ASK_TICKET=hook-ask
+readonly ASK_BRANCH=live-check/hook-ask
+readonly ASK_FILE=asked-edit.txt
 
 repository_root=$(git rev-parse --show-toplevel) || exit 1
 cd "${repository_root}" || exit 1
@@ -73,6 +76,18 @@ Call no tool. Your context holds a list of the skills available to you, each ent
 PROMPT
 }
 
+hook_ask_prompt() {
+  cat <<PROMPT
+Make three tool calls, one per message, in the order below. Never retry a call, and go on to the next one whatever the call before it returned.
+
+1. Call the ${STATE_TOOL_PREFIX}ticket tool with action "write", slug "${ASK_TICKET}" and these fields: summary "Live check of what a hook's ask does", context ["a scratch repository made by scripts/live-plugin-check.sh"], scope "sm", compaction false, branch "${ASK_BRANCH}".
+2. Call the Bash tool with the command: git push
+3. Call the Write tool with file_path "$1" and content "asked".
+
+When the third call has returned, write the one word DONE.
+PROMPT
+}
+
 nested_session() {
   local session_name=$1
   local prompt=$2
@@ -81,6 +96,23 @@ nested_session() {
   claude -p --plugin-dir "${PLUGIN_DIRECTORY}" --setting-sources project,local \
     --model haiku --output-format stream-json --verbose --allowedTools 'Agent' \
     -- "${prompt}" </dev/null >"${work_directory}/${session_name}.jsonl"
+}
+
+# A session started in another repository, with the tools the hook ask check calls allowed, so
+# that a Write that does not happen there was stopped by a hook and not by a missing permission.
+session_in_repository() {
+  local session_name=$1
+  local directory=$2
+  local prompt=$3
+
+  log::info "nested session: ${session_name}"
+  (
+    cd "${directory}" || exit 1
+    claude -p --plugin-dir "${repository_root}/${PLUGIN_DIRECTORY}" \
+      --setting-sources project,local --model haiku --output-format stream-json --verbose \
+      --allowedTools "${STATE_TOOL_PREFIX}ticket" 'Write' 'Bash(git push)' \
+      -- "${prompt}" </dev/null >"${work_directory}/${session_name}.jsonl"
+  )
 }
 
 last_message() {
@@ -126,20 +158,23 @@ expect_line() {
   FAILURES+=("${check}")
 }
 
-# What the stream of a session holds for its first Agent call of an agent type, whatever the worker
-# wrote: ANSWERED when the call has a tool_result that is not an error, REFUSED when its
-# tool_result is an error, NO-RESULT when the call has no tool_result and NO-CALL when the type was
-# never called. A denial by a hook arrives as an error result. No plugin hook runs in a sandboxed
-# session, so it is the run with --require-state outside the sandbox that proves REFUSED.
-dispatch_seen() {
+# What the stream of a session holds for the main thread's first call of a tool, or for its first
+# Agent call of an agent type when one is named, whatever the worker wrote: ANSWERED when the call
+# has a tool_result that is not an error, REFUSED when its tool_result is an error, NO-RESULT when
+# the call has no tool_result and NO-CALL when it was never made. A denial by a hook arrives as an
+# error result. No plugin hook runs in a sandboxed session, so it is the run with --require-state
+# outside the sandbox that proves REFUSED.
+call_seen() {
   local session_name=$1
-  local agent_type=$2
+  local tool_name=$2
+  local agent_type=${3:-}
 
-  jq -rs --arg agent_type "${agent_type}" '
+  jq -rs --arg tool_name "${tool_name}" --arg agent_type "${agent_type}" '
     def blocks(kind): .message.content | arrays | .[] | select(.type == kind);
     [
       .[] | select(.type == "assistant" and .parent_tool_use_id == null) | blocks("tool_use")
-      | select(.name == "Agent" and .input.subagent_type == $agent_type) | .id
+      | select(.name == $tool_name and ($agent_type == "" or .input.subagent_type == $agent_type))
+      | .id
     ][0] as $call
     | [.[] | select(.type == "user") | blocks("tool_result") | select(.tool_use_id == $call)][0]
       as $result
@@ -161,7 +196,7 @@ check_dispatch() {
       requires_state "${check}" dispatch || continue
     fi
     expected_outcome=${hook_decided_outcome:-ANSWERED}
-    seen_outcome=$(dispatch_seen dispatch "${agent_type}")
+    seen_outcome=$(call_seen dispatch Agent "${agent_type}")
     if [[ ${seen_outcome} == "${expected_outcome}" ]]; then
       printf 'ok %s\n' "${check}"
       continue
@@ -215,6 +250,48 @@ check_skill_listing_describes_every_skill() {
   done
 }
 
+# Records what a PreToolUse hook's `ask` does under `claude -p`. A scratch repository under the
+# work directory gets its own branch and, through the session's first call, an unclosed ticket on
+# it, so the main-thread hook holds the session's `git push` and answers `ask` to its Write of a
+# file outside the ticket directory. The refusal of the push, read from the stream, shows that the
+# hook ran and saw the ticket; without it nothing is recorded and the check fails. The outcome is
+# EDITED when the file was written, REFUSED when the Write came back as an error and STOPPED when
+# the Write has no result. The ticket's row stays in the plugin's data directory under the scratch
+# repository's key.
+check_hook_ask_under_print_mode() {
+  local check=hook-ask-under-print-mode
+  local scratch_repository=${work_directory}/hook-ask-repository
+  local write_seen outcome
+
+  requires_state "${check}" dispatch || return 0
+  if ! git init --quiet --initial-branch "${ASK_BRANCH}" "${scratch_repository}"; then
+    printf 'FAIL %s (no scratch repository)\n' "${check}"
+    FAILURES+=("${check}")
+    return
+  fi
+  session_in_repository hook-ask "${scratch_repository}" \
+    "$(hook_ask_prompt "${scratch_repository}/${ASK_FILE}")"
+  if ! grep -Fq "was refused: ticket ${ASK_TICKET}" "${work_directory}/hook-ask.jsonl"; then
+    printf 'FAIL %s (the push was not held for ticket %s, so no ask was reached)\n' \
+      "${check}" "${ASK_TICKET}"
+    FAILURES+=("${check}")
+    return
+  fi
+  write_seen=$(call_seen hook-ask Write)
+  outcome=${write_seen}
+  [[ ${write_seen} == NO-RESULT ]] && outcome=STOPPED
+  [[ ${write_seen} != NO-CALL && -e ${scratch_repository}/${ASK_FILE} ]] && outcome=EDITED
+  case "${outcome}" in
+    EDITED | REFUSED | STOPPED)
+      printf 'ok %s (a hook ask under claude -p: %s)\n' "${check}" "${outcome}"
+      ;;
+    *)
+      printf 'FAIL %s (the Write call was %s and wrote no file)\n' "${check}" "${write_seen}"
+      FAILURES+=("${check}")
+      ;;
+  esac
+}
+
 mapfile -t expected_agent_types < <(agent_types_on_disk)
 
 while (($# > 0)); do
@@ -253,6 +330,7 @@ check_engineer_preloaded_skills
 check_reviewer_preloaded_doctrine uncle-bob
 check_reviewer_preloaded_doctrine merge-vader
 check_skill_listing_describes_every_skill
+check_hook_ask_under_print_mode
 
 if ((${#FAILURES[@]} > 0)); then
   log::error "live plugin checks failed; the nested sessions' output is in ${work_directory}"

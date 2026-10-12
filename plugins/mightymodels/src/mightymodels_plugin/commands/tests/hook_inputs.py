@@ -24,6 +24,17 @@ OTHER_AGENTS = (
     'general-purpose',
     '',
 )
+ENGINEER = 'mightymodels:workers:engineer'
+MAIN_THREAD_CALLERS = (
+    pytest.param({}, id='no-agent-type'),
+    pytest.param({'agent_type': 7}, id='agent-type-a-number'),
+    pytest.param({'agent_type': None}, id='agent-type-null'),
+    pytest.param({'agent_type': [ENGINEER]}, id='agent-type-a-list'),
+    pytest.param({'agent_type': {'name': ENGINEER}}, id='agent-type-an-object'),
+    pytest.param({'agent_type': ''}, id='agent-type-empty'),
+    pytest.param({'agent_type': 'general-purpose'}, id='built-in'),
+    pytest.param({'agent_type': 'other:engineer'}, id='another-plugins-agent'),
+)
 ENGINEER_STOP_HOLDING = '{{"agent_type": "mightymodels:workers:engineer", "elapsed": {value}}}'
 UNREADABLE_INPUTS = (
     pytest.param('', id='empty'),
@@ -56,6 +67,10 @@ def dispatch(target: str, agent_type: str | None = None) -> str:
     return hook_input(
         'PreToolUse', agent_type, tool_name='Agent', tool_input={'subagent_type': target}
     )
+
+
+def tool_call(tool: str, agent_type: str | None = None, **tool_input: object) -> str:
+    return hook_input('PreToolUse', agent_type, tool_name=tool, tool_input=tool_input)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

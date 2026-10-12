@@ -65,7 +65,7 @@ agents-assemble. Nothing is pushed on old evidence.
 
 ## 2. Push and open the PR
 
-The primary pushes the branch. A rejected push is reported and the skill stops; never force-push around it.
+The primary pushes the branch. The main-thread hook refuses a `git push` while the ticket is unclosed unless no plan task is open and every live contract command has a passing landing-phase receipt at HEAD, so when it refuses, close what it names, run step 1's command again and push. A rejected push is reported and the skill stops; never force-push around it.
 
 Write the PR body to `.mightymodels/SLUG/pr-body.md`: the repository's pull request template
 (`.github/pull_request_template.md` or `.github/PULL_REQUEST_TEMPLATE/`) filled from REPORT.md,

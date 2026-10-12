@@ -12,11 +12,13 @@ from types import MappingProxyType
 
 from mightymodels_plugin.commands.dispatch_hook import check_dispatch
 from mightymodels_plugin.commands.hook_context import HookContext
+from mightymodels_plugin.commands.main_thread_hook import check_main_thread
 from mightymodels_plugin.commands.session_start import export_data_directory
 
 SERVE_COMMAND = 'serve'
 SESSION_START_COMMAND = 'session-start'
 DISPATCH_HOOK_COMMAND = 'dispatch-hook'
+MAIN_THREAD_HOOK_COMMAND = 'main-thread-hook'
 SUBAGENT_RECORD_COMMAND = 'subagent-record'
 SUBAGENT_HANDBACK_COMMAND = 'subagent-handback'
 COMPLETION_GATE_COMMAND = 'completion-gate'
@@ -36,6 +38,9 @@ DEFAULT_MAX_LISTED = 50
 DEFAULT_PACKAGE_DEPTH = 1
 PHASES = ('planning', 'task', 'review', 'landing')
 DEFAULT_PHASE = 'task'
+TOOL_CHECKS = MappingProxyType(
+    {DISPATCH_HOOK_COMMAND: check_dispatch, MAIN_THREAD_HOOK_COMMAND: check_main_thread}
+)
 HOOK_MODULES = MappingProxyType(
     {
         SUBAGENT_RECORD_COMMAND: 'mightymodels_plugin.commands.subagent_record',
@@ -127,6 +132,11 @@ def build_parser() -> argparse.ArgumentParser:
         'file; the PreToolUse hook on Agent',
     )
     commands.add_parser(
+        MAIN_THREAD_HOOK_COMMAND,
+        help="ask on the main thread's edit outside the ticket directories and deny its push "
+        'until the ticket is ready to land; the PreToolUse hook on Edit, Write and Bash',
+    )
+    commands.add_parser(
         SUBAGENT_RECORD_COMMAND,
         help="leave a scout's report in the spool for the state server; the SubagentStop hook",
     )
@@ -155,8 +165,8 @@ def session_hook_context() -> HookContext:
 def run_hook_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == SESSION_START_COMMAND:
         return export_data_directory(os.environ)
-    if arguments.command == DISPATCH_HOOK_COMMAND:
-        return check_dispatch(sys.stdin, sys.stdout.buffer, session_hook_context())
+    if (check := TOOL_CHECKS.get(arguments.command)) is not None:
+        return check(sys.stdin, sys.stdout.buffer, session_hook_context())
     if arguments.command not in HOOK_MODULES:
         return None
     hook = import_module(HOOK_MODULES[arguments.command])

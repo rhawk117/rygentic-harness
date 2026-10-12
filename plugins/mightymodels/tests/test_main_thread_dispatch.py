@@ -15,6 +15,7 @@ from mightymodels_plugin.commands.dispatch_hook import (
     agent_type,
     check_dispatch,
 )
+from mightymodels_plugin.commands.tests.hook_inputs import MAIN_THREAD_CALLERS
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import Worker
 from sqlalchemy.exc import OperationalError
@@ -28,16 +29,6 @@ ONE_STARTED = BranchTickets(unclosed=(TICKET,), in_progress=('T1',))
 NO_TICKET = BranchTickets()
 SEVERAL_TICKETS = BranchTickets(unclosed=('drain-loop', TICKET))
 NO_DECISION = b''
-MAIN_THREAD_CALLERS = (
-    pytest.param({}, id='no-agent-type'),
-    pytest.param({'agent_type': 7}, id='agent-type-a-number'),
-    pytest.param({'agent_type': None}, id='agent-type-null'),
-    pytest.param({'agent_type': [ENGINEER]}, id='agent-type-a-list'),
-    pytest.param({'agent_type': {'name': ENGINEER}}, id='agent-type-an-object'),
-    pytest.param({'agent_type': ''}, id='agent-type-empty'),
-    pytest.param({'agent_type': 'general-purpose'}, id='built-in'),
-    pytest.param({'agent_type': 'other:engineer'}, id='another-plugins-agent'),
-)
 TYPE_OF_TARGET = MappingProxyType(
     {ENGINEER: ENGINEER, ARCHITECT: ARCHITECT, 'engineer': ENGINEER, 'architect': ARCHITECT}
 )

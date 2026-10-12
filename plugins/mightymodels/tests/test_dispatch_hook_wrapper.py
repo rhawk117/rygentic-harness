@@ -3,22 +3,29 @@ is killed or runs past its limit: it refuses one of this plugin's workers, refus
 caller's dispatch of an implementer where `.mightymodels` exists at the project directory, and
 lets every other dispatch through."""
 
-import asyncio
 import json
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from mightymodels_plugin.commands.tests.hook_wrappers import (
+    CUT_OFF_SECONDS,
+    HUNG,
+    STATE_DIRECTORY,
+    Outcome,
+    Wrapped,
+    WrapperScript,
+    launcher_running,
+)
 
 WRAPPER = Path(__file__).parent.parent.joinpath('bin', 'mightymodels-dispatch-hook')
 HOOKS = Path(__file__).parent.parent.joinpath('hooks', 'hooks.json')
-LAUNCHER_VARIABLE = 'MIGHTYMODELS_DISPATCH_LAUNCHER'
 LIMIT_VARIABLE = 'MIGHTYMODELS_DISPATCH_SECONDS'
+DISPATCH = WrapperScript(
+    path=WRAPPER, launcher_variable='MIGHTYMODELS_DISPATCH_LAUNCHER', limit_variable=LIMIT_VARIABLE
+)
 DEFAULT_LIMIT = re.compile(rf'\$\{{{LIMIT_VARIABLE}:-(?P<seconds>\d+)\}}')
-PROJECT_VARIABLE = 'CLAUDE_PROJECT_DIR'
-STATE_DIRECTORY = '.mightymodels'
 WORKER_INPUT = (
     '{"agent_type": "mightymodels:workers:engineer", "tool_input": {"subagent_type": "x"}}'
 )
@@ -73,59 +80,6 @@ FAILURES = {
     'killed': 'kill -9 $$',
     'missing': None,
 }
-HUNG = 'exec sleep 30'
-CUT_OFF_SECONDS = '1'
-HUNG_FOR_AT_MOST = 10.0
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Outcome:
-    code: int
-    stdout: str
-    stderr: str
-
-    def last_line(self) -> str:
-        return self.stderr.splitlines()[-1]
-
-
-@dataclass(slots=True, kw_only=True, frozen=True)
-class Wrapped:
-    launcher: Path
-    project: Path | None
-    limit: str | None = None
-
-    def environment(self) -> dict[str, str]:
-        given = {
-            LAUNCHER_VARIABLE: str(self.launcher),
-            PROJECT_VARIABLE: None if self.project is None else str(self.project),
-            LIMIT_VARIABLE: self.limit,
-        }
-        inherited = {name: value for name, value in os.environ.items() if name not in given}
-        return inherited | {name: value for name, value in given.items() if value is not None}
-
-    async def spawn(self, text: str) -> Outcome:
-        process = await asyncio.create_subprocess_exec(
-            WRAPPER,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=self.environment(),
-        )
-        stdout, stderr = await asyncio.wait_for(
-            process.communicate(text.encode()), HUNG_FOR_AT_MOST
-        )
-        return Outcome(code=process.returncode or 0, stdout=stdout.decode(), stderr=stderr.decode())
-
-    def run(self, text: str) -> Outcome:
-        return asyncio.run(self.spawn(text))
-
-
-def launcher_running(directory: Path, body: str | None) -> Path:
-    launcher = directory.joinpath('launcher')
-    if body is not None:
-        launcher.write_text(f'#!/bin/sh\n{body}\n', encoding='utf-8')
-        launcher.chmod(0o755)
-    return launcher
 
 
 @pytest.fixture
@@ -144,7 +98,9 @@ def project_with_state(project: Path) -> Path:
 @pytest.fixture(params=FAILURES, ids=list(FAILURES))
 def failing(request: pytest.FixtureRequest, tmp_path: Path, project_with_state: Path) -> Wrapped:
     return Wrapped(
-        launcher=launcher_running(tmp_path, FAILURES[request.param]), project=project_with_state
+        script=DISPATCH,
+        launcher=launcher_running(tmp_path, FAILURES[request.param]),
+        project=project_with_state,
     )
 
 
@@ -156,7 +112,9 @@ def failing(request: pytest.FixtureRequest, tmp_path: Path, project_with_state: 
 )
 def broken(request: pytest.FixtureRequest, tmp_path: Path, project: Path) -> Wrapped:
     body, limit = request.param
-    return Wrapped(launcher=launcher_running(tmp_path, body), project=project, limit=limit)
+    return Wrapped(
+        script=DISPATCH, launcher=launcher_running(tmp_path, body), project=project, limit=limit
+    )
 
 
 class TestWrapperFile:
@@ -167,10 +125,14 @@ class TestWrapperFile:
     def test_its_own_limit_is_under_the_timeout_of_its_entry_in_hooks_json(self) -> None:
         limit = DEFAULT_LIMIT.search(WRAPPER.read_text(encoding='utf-8'))
         entries = json.loads(HOOKS.read_text(encoding='utf-8'))['hooks']['PreToolUse']
-        (entry,) = [entry for group in entries for entry in group['hooks']]
+        (entry,) = [
+            entry
+            for group in entries
+            for entry in group['hooks']
+            if f'/{WRAPPER.name}"' in entry['command']
+        ]
 
         assert limit is not None
-        assert WRAPPER.name in entry['command']
         assert 0 < int(limit['seconds']) < entry['timeout']
 
 
@@ -219,7 +181,11 @@ class TestFailingLauncher:
     def test_what_the_launcher_wrote_on_standard_error_is_passed_through(
         self, tmp_path: Path, project: Path
     ) -> None:
-        wrapped = Wrapped(launcher=launcher_running(tmp_path, FAILURES['exit-2']), project=project)
+        wrapped = Wrapped(
+            script=DISPATCH,
+            launcher=launcher_running(tmp_path, FAILURES['exit-2']),
+            project=project,
+        )
 
         assert wrapped.run(MAIN_INPUT).stderr.splitlines() == ['rejected', NOT_CHECKED]
 
@@ -259,6 +225,7 @@ class TestHungLauncher:
     @pytest.fixture
     def hung(self, tmp_path: Path, project_with_state: Path) -> Wrapped:
         return Wrapped(
+            script=DISPATCH,
             launcher=launcher_running(tmp_path, HUNG),
             project=project_with_state,
             limit=CUT_OFF_SECONDS,
@@ -281,7 +248,9 @@ class TestWorkingDirectoryAsTheProject:
         self, tmp_path: Path, project_with_state: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(project_with_state)
-        wrapped = Wrapped(launcher=launcher_running(tmp_path, 'exit 1'), project=None)
+        wrapped = Wrapped(
+            script=DISPATCH, launcher=launcher_running(tmp_path, 'exit 1'), project=None
+        )
 
         assert wrapped.run(ENGINEER_INPUT).code == DENIED_ON_FAILURE
 
@@ -293,29 +262,29 @@ class TestSucceedingLauncher:
     ) -> None:
         launcher = launcher_running(tmp_path, 'printf \'{"decision": "%s"}\\n\' "$1"')
 
-        assert Wrapped(launcher=launcher, project=project).run(text) == Outcome(
+        assert Wrapped(script=DISPATCH, launcher=launcher, project=project).run(text) == Outcome(
             code=0, stdout='{"decision": "dispatch-hook"}\n', stderr=''
         )
 
     def test_passes_the_launchers_stderr_through(self, tmp_path: Path, project: Path) -> None:
         launcher = launcher_running(tmp_path, 'echo "{}"; echo two tickets >&2')
 
-        assert Wrapped(launcher=launcher, project=project).run(MAIN_INPUT) == Outcome(
-            code=0, stdout='{}\n', stderr='two tickets\n'
-        )
+        assert Wrapped(script=DISPATCH, launcher=launcher, project=project).run(
+            MAIN_INPUT
+        ) == Outcome(code=0, stdout='{}\n', stderr='two tickets\n')
 
     def test_keeps_the_hook_input_for_the_launcher(self, tmp_path: Path, project: Path) -> None:
         launcher = launcher_running(tmp_path, 'cat')
 
-        assert Wrapped(launcher=launcher, project=project).run(WORKER_INPUT).stdout == (
-            f'{WORKER_INPUT}\n'
-        )
+        assert Wrapped(script=DISPATCH, launcher=launcher, project=project).run(
+            WORKER_INPUT
+        ).stdout == (f'{WORKER_INPUT}\n')
 
     def test_prints_nothing_when_the_launcher_prints_nothing(
         self, tmp_path: Path, project: Path
     ) -> None:
         launcher = launcher_running(tmp_path, 'exit 0')
 
-        assert Wrapped(launcher=launcher, project=project).run(WORKER_INPUT) == Outcome(
-            code=0, stdout='', stderr=''
-        )
+        assert Wrapped(script=DISPATCH, launcher=launcher, project=project).run(
+            WORKER_INPUT
+        ) == Outcome(code=0, stdout='', stderr='')

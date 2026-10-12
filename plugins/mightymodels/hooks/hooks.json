@@ -1,5 +1,5 @@
 {
-  "description": "mightymodels: export the plugin data directory to the session's commands, so `mightymodels verify run` opens the database the state server keeps; deny a dispatch by one of this plugin's workers (agent_type mightymodels:<folder>:<worker>) outside the workers its agent file allows, and a dispatch of the engineer or the architect by any other caller, the main thread included, while the one unclosed ticket on the checked-out branch has no task in progress or the state cannot be read; keep a scout's report for search, from its hand-back or else its closing text; hold an implementer's stop once while its task has no DONE brief; and write the snapshot of the ticket on the checked-out branch before a compaction. Every entry is cancelled after 10 seconds, and the dispatch wrapper stops its own command after 8 so that a stalled check still refuses.",
+  "description": "mightymodels: export the plugin data directory to the session's commands, so `mightymodels verify run` opens the database the state server keeps; deny a dispatch by one of this plugin's workers (agent_type mightymodels:<folder>:<worker>) outside the workers its agent file allows, and a dispatch of the engineer or the architect by any other caller, the main thread included, while the one unclosed ticket on the checked-out branch has no task in progress or the state cannot be read; while that branch has one unclosed ticket, ask on an Edit or Write outside the ticket directories by a caller that is none of this plugin's workers, and deny such a caller's `git push` until every plan task is closed and every live contract command has a passing landing-phase receipt at HEAD, or while the state cannot be read; keep a scout's report for search, from its hand-back or else its closing text; hold an implementer's stop once while its task has no DONE brief; and write the snapshot of the ticket on the checked-out branch before a compaction. Every entry is cancelled after 10 seconds, and the dispatch wrapper and the main-thread wrapper stop their own commands after 8 so that a stalled check still refuses a dispatch or a push.",
   "hooks": {
     "SessionStart": [
       {
@@ -19,6 +19,16 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-dispatch-hook\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-main-thread-hook\"",
             "timeout": 10
           }
         ]

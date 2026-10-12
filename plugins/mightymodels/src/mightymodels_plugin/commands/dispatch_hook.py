@@ -40,6 +40,7 @@ PLUGIN_CALLER = re.compile(rf'"{AGENT_TYPE_KEY}"\s*:\s*"{re.escape(PLUGIN_PREFIX
 UNREADABLE = 'a dispatch was refused: the hook input is not the expected JSON'
 HOOK_EVENT = 'PreToolUse'
 DENY = 'deny'
+ASK = 'ask'
 NO_TARGETS = frozenset[Worker]()
 TINY_OWNED_FILES = 1
 NO_STARTED_TASK = 'no task is started for the intern on the ticket whose branch is checked out'
@@ -108,11 +109,16 @@ class Denied:
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
+class Asked:
+    reason: str
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
 class Unjudged:
     warning: str
 
 
-type Ruling = Denied | Unjudged | None
+type Ruling = Denied | Asked | Unjudged | None
 
 
 def agent_type(worker: Worker) -> str:
@@ -217,21 +223,23 @@ def dispatch_ruling(text: str, started: StartedTasks) -> Ruling:
     return None if worker is None else started_ruling(caller, worker, started)
 
 
-def hook_output(ruling: Denied | Unjudged) -> dict[str, object]:
+def hook_output(ruling: Denied | Asked | Unjudged) -> dict[str, object]:
     if isinstance(ruling, Unjudged):
         return {'systemMessage': ruling.warning}
     return {
         'hookSpecificOutput': {
             'hookEventName': HOOK_EVENT,
-            'permissionDecision': DENY,
+            'permissionDecision': ASK if isinstance(ruling, Asked) else DENY,
             'permissionDecisionReason': ruling.reason,
         }
     }
 
 
-def check_dispatch(stdin: TextIO, output: BinaryIO, started: StartedTasks) -> int:
-    ruling = dispatch_ruling(stdin.read(), started)
-    if ruling is None:
-        return 0
-    output.write(encode_compact(hook_output(ruling)) + b'\n')
+def write_ruling(output: BinaryIO, ruling: Ruling) -> int:
+    if ruling is not None:
+        output.write(encode_compact(hook_output(ruling)) + b'\n')
     return 0
+
+
+def check_dispatch(stdin: TextIO, output: BinaryIO, started: StartedTasks) -> int:
+    return write_ruling(output, dispatch_ruling(stdin.read(), started))
