@@ -36,11 +36,11 @@ agent_types_on_disk() {
 
 dispatch_prompt() {
   cat <<'PROMPT'
-Dispatch every agent type listed at the end of this message with the Agent tool: one call per type, all of the calls in one message, each with model "haiku" and the prompt below, in which TYPE stands for the agent type being called.
+Dispatch every agent type listed at the end of this message with the Agent tool: one call per type, all of the calls in one message, each with model "haiku" and the prompt below.
 
-Call no tool except the one that hands your answer back. Your whole answer is this one line: ANSWERED TYPE
+This only checks that you can be dispatched. Do no work and call no tool except the one that hands your answer back. Answer in one short line.
 
-Call each type exactly as it is spelled. Never retry a call and never call a type that is not listed. When every call has returned, write one final message of one line per listed type and nothing else, with no code fence and no list markers. A type's line is the agent's answer, copied verbatim, when the call returned one, and REFUSED TYPE when the call failed or was denied.
+Call each type exactly as it is spelled. Never retry a call and never call a type that is not listed. When every call has returned, write the one word DONE.
 
 Agent types:
 PROMPT
@@ -126,17 +126,48 @@ expect_line() {
   FAILURES+=("${check}")
 }
 
+# What the stream of a session holds for its first Agent call of an agent type, whatever the worker
+# wrote: ANSWERED when the call has a tool_result that is not an error, REFUSED when its
+# tool_result is an error, NO-RESULT when the call has no tool_result and NO-CALL when the type was
+# never called. A denial by a hook arrives as an error result. No plugin hook runs in a sandboxed
+# session, so it is the run with --require-state outside the sandbox that proves REFUSED.
+dispatch_seen() {
+  local session_name=$1
+  local agent_type=$2
+
+  jq -rs --arg agent_type "${agent_type}" '
+    def blocks(kind): .message.content | arrays | .[] | select(.type == kind);
+    [
+      .[] | select(.type == "assistant" and .parent_tool_use_id == null) | blocks("tool_use")
+      | select(.name == "Agent" and .input.subagent_type == $agent_type) | .id
+    ][0] as $call
+    | [.[] | select(.type == "user") | blocks("tool_result") | select(.tool_use_id == $call)][0]
+      as $result
+    | if $call == null then "NO-CALL"
+      elif $result == null then "NO-RESULT"
+      elif $result.is_error == true then "REFUSED"
+      else "ANSWERED" end
+  ' "${work_directory}/${session_name}.jsonl"
+}
+
 check_dispatch() {
-  local agent_type hook_decided_outcome
+  local agent_type check hook_decided_outcome expected_outcome seen_outcome
 
   nested_session dispatch "$(dispatch_prompt "$@")"
   for agent_type in "$@"; do
+    check=dispatch-${agent_type}
     hook_decided_outcome=${DISPATCH_OUTCOME[${agent_type}]:-}
     if [[ -n ${hook_decided_outcome} ]]; then
-      requires_state "dispatch-${agent_type}" dispatch || continue
+      requires_state "${check}" dispatch || continue
     fi
-    expect_line "dispatch-${agent_type}" \
-      "${hook_decided_outcome:-ANSWERED} ${agent_type}" dispatch
+    expected_outcome=${hook_decided_outcome:-ANSWERED}
+    seen_outcome=$(dispatch_seen dispatch "${agent_type}")
+    if [[ ${seen_outcome} == "${expected_outcome}" ]]; then
+      printf 'ok %s\n' "${check}"
+      continue
+    fi
+    printf 'FAIL %s (expected %s, saw %s)\n' "${check}" "${expected_outcome}" "${seen_outcome}"
+    FAILURES+=("${check}")
   done
 }
 
