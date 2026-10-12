@@ -222,6 +222,26 @@ class TestUnclosedOnBranch:
         with one_of_two_closed.transaction() as repository:
             assert repository.unclosed_on_branch(BRANCH) == OTHER
 
+    def test_every_unclosed_ticket_on_a_branch_is_named_in_slug_order(
+        self, two_on_the_branch: TicketStore
+    ) -> None:
+        with two_on_the_branch.transaction() as repository:
+            assert repository.all_unclosed_on_branch(BRANCH) == [OTHER, TICKET]
+            assert repository.all_unclosed_on_branch('main') == []
+
+    def test_naming_every_ticket_on_a_branch_leaves_out_a_closed_one(
+        self, one_of_two_closed: TicketStore
+    ) -> None:
+        with one_of_two_closed.transaction() as repository:
+            assert repository.all_unclosed_on_branch(BRANCH) == [OTHER]
+
+    def test_naming_every_ticket_on_a_branch_leaves_out_another_branchs(
+        self, one_on_each_branch: TicketStore
+    ) -> None:
+        with one_on_each_branch.transaction() as repository:
+            assert repository.all_unclosed_on_branch(BRANCH) == [TICKET]
+            assert repository.all_unclosed_on_branch(ELSEWHERE.branch) == [OTHER]
+
 
 class TestAFailedTransaction:
     @pytest.fixture

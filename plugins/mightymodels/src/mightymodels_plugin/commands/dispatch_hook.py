@@ -3,20 +3,26 @@
 Claude Code lets a subagent dispatch any subagent type and ignores an allow-list in a subagent's
 definition, so the plugin enforces the "delegate only to" lines of its agent files here. The hook
 input is JSON on standard input; a call made inside a subagent carries `agent_type`, and the main
-conversation's does not. The hook polices only this plugin's workers, whose `agent_type` begins
+conversation's does not. The rows police only this plugin's workers, whose `agent_type` begins
 `mightymodels:`: a worker's dispatch outside its row is denied, a name under that prefix that is
 no worker has no row, and unreadable input that names such an `agent_type` is denied. A worker's
 type is `mightymodels:<folder>:<name>`, the folder being the one its agent file is in, so a type
-without the folder or with another folder is no worker. Every other caller (a built-in subagent,
-another plugin's agent, a main thread started with `--agent`) and input without `agent_type` get no
-decision from the rows, as if the plugin were not installed.
+without the folder or with another folder is no worker. A target is a worker under its type or
+under its bare name.
 
-One rule holds whoever the caller is, the main conversation included. The intern takes only a tiny
-task, so a dispatch of `mightymodels:workers:intern` that the rows let through is denied unless the
-intern has a task in progress on the ticket whose branch is checked out and every such task owns
-exactly one file. The denial says why and names the engineer, which takes a task of any size. When
-the started tasks cannot be read the dispatch is denied with the reason they could not. No other
-dispatch asks for the started tasks, so no other dispatch opens the state.
+Every other caller is judged as the main thread: input without `agent_type`, one whose `agent_type`
+is not a string, a built-in subagent, another plugin's agent. Its dispatch of the engineer or the
+architect is denied, with the step to take, while the one unclosed ticket on the checked-out branch
+has no task in progress, and when the tickets cannot be read. With no unclosed ticket on the branch
+it gets no decision, as if the plugin were not installed. With several it gets no decision either,
+and the user is shown one line naming them. Its dispatch of any other worker but the intern, and of
+a type that is no worker, gets no decision and reads no state.
+
+One rule holds whoever the caller is. The intern takes only a tiny task, so a dispatch of the
+intern that the rows let through is denied unless the intern has a task in progress on the ticket
+whose branch is checked out and every such task owns exactly one file. The denial says why and
+names the engineer, which takes a task of any size. When the started tasks cannot be read the
+dispatch is denied with the reason they could not.
 """
 
 import re
@@ -38,6 +44,19 @@ NO_TARGETS = frozenset[Worker]()
 TINY_OWNED_FILES = 1
 NO_STARTED_TASK = 'no task is started for the intern on the ticket whose branch is checked out'
 STARTED_UNREADABLE = 'the started task could not be read ({error})'
+NO_TASK_IN_PROGRESS = (
+    '{target} was refused: ticket {slug}, whose branch is checked out, has no task in progress. '
+    'Start the task with the `task` tool (action `start`, `by` naming this worker), then dispatch '
+    'again.'
+)
+TICKETS_UNREADABLE = (
+    '{target} was refused: the tasks in progress could not be read ({error}), so a started task '
+    'cannot be told from none. Dispatch again once the state can be read.'
+)
+SEVERAL_TICKETS = (
+    'mightymodels did not check the dispatch of {target} for a started task: the checked-out '
+    'branch has {count} unclosed tickets ({names}), and the hook acts only when it has one'
+)
 
 DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
     {
@@ -55,6 +74,7 @@ DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
         Worker.UNCLE_BOB: frozenset({Worker.CODE_SCOUT, Worker.QUALITYLENS}),
     }
 )
+STARTED_BEFORE_DISPATCH = frozenset({Worker.ENGINEER, Worker.ARCHITECT})
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -66,9 +86,33 @@ class StartedTask:
 type StartedOrUnreadable = Sequence[StartedTask] | Exception
 
 
+@dataclass(slots=True, kw_only=True, frozen=True)
+class BranchTickets:
+    unclosed: tuple[str, ...] = ()
+    in_progress: tuple[str, ...] = ()
+
+
+type BranchTicketsOrUnreadable = BranchTickets | Exception
+
+
 @runtime_checkable
 class StartedTasks(Protocol):
     def started_by(self, worker: Worker) -> StartedOrUnreadable: ...
+
+    def tickets_on_branch(self) -> BranchTicketsOrUnreadable: ...
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Denied:
+    reason: str
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class Unjudged:
+    warning: str
+
+
+type Ruling = Denied | Unjudged | None
 
 
 def agent_type(worker: Worker) -> str:
@@ -113,11 +157,9 @@ def denial_for_worker(caller: str, target: object) -> str | None:
     return f'{caller} may not dispatch {target}; it may dispatch: {allowed_names(allowed)}'
 
 
-def row_denial(fields: Mapping[str, object]) -> str | None:
+def plugin_caller(fields: Mapping[str, object]) -> str | None:
     caller = fields.get(AGENT_TYPE_KEY)
-    if not isinstance(caller, str) or not caller.startswith(PLUGIN_PREFIX):
-        return None
-    return denial_for_worker(caller, target_of(fields))
+    return caller if isinstance(caller, str) and caller.startswith(PLUGIN_PREFIX) else None
 
 
 def intern_refusal(why: str) -> str:
@@ -140,26 +182,56 @@ def intern_denial(started: StartedOrUnreadable) -> str | None:
     return intern_refusal('; '.join(not_tiny)) if not_tiny else None
 
 
-def dispatch_denial(text: str, started: StartedTasks) -> str | None:
+def unstarted_ruling(target: str, tickets: BranchTicketsOrUnreadable) -> Ruling:
+    if isinstance(tickets, Exception):
+        return Denied(reason=TICKETS_UNREADABLE.format(target=target, error=tickets))
+    if len(tickets.unclosed) > 1:
+        return Unjudged(
+            warning=SEVERAL_TICKETS.format(
+                target=target, count=len(tickets.unclosed), names=', '.join(tickets.unclosed)
+            )
+        )
+    if len(tickets.unclosed) == 0 or tickets.in_progress:
+        return None
+    return Denied(reason=NO_TASK_IN_PROGRESS.format(target=target, slug=tickets.unclosed[0]))
+
+
+def started_ruling(caller: str | None, target: Worker, started: StartedTasks) -> Ruling:
+    if target is Worker.INTERN:
+        refused = intern_denial(started.started_by(Worker.INTERN))
+        return None if refused is None else Denied(reason=refused)
+    if caller is None and target in STARTED_BEFORE_DISPATCH:
+        return unstarted_ruling(agent_type(target), started.tickets_on_branch())
+    return None
+
+
+def dispatch_ruling(text: str, started: StartedTasks) -> Ruling:
     fields = decoded_object(text)
     if fields is None:
-        return UNREADABLE if PLUGIN_CALLER.search(text) else None
-    denial = row_denial(fields)
-    if denial is not None or target_of(fields) != agent_type(Worker.INTERN):
-        return denial
-    return intern_denial(started.started_by(Worker.INTERN))
+        return Denied(reason=UNREADABLE) if PLUGIN_CALLER.search(text) else None
+    caller = plugin_caller(fields)
+    target = target_of(fields)
+    if caller is not None and (refused := denial_for_worker(caller, target)) is not None:
+        return Denied(reason=refused)
+    worker = worker_named(target) if isinstance(target, str) else None
+    return None if worker is None else started_ruling(caller, worker, started)
 
 
-def check_dispatch(stdin: TextIO, output: BinaryIO, started: StartedTasks) -> int:
-    reason = dispatch_denial(stdin.read(), started)
-    if reason is None:
-        return 0
-    decision = {
+def hook_output(ruling: Denied | Unjudged) -> dict[str, object]:
+    if isinstance(ruling, Unjudged):
+        return {'systemMessage': ruling.warning}
+    return {
         'hookSpecificOutput': {
             'hookEventName': HOOK_EVENT,
             'permissionDecision': DENY,
-            'permissionDecisionReason': reason,
+            'permissionDecisionReason': ruling.reason,
         }
     }
-    output.write(encode_compact(decision) + b'\n')
+
+
+def check_dispatch(stdin: TextIO, output: BinaryIO, started: StartedTasks) -> int:
+    ruling = dispatch_ruling(stdin.read(), started)
+    if ruling is None:
+        return 0
+    output.write(encode_compact(hook_output(ruling)) + b'\n')
     return 0

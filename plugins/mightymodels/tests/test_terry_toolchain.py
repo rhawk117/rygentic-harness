@@ -12,9 +12,12 @@ from pathlib import Path
 import pytest
 from mightymodels_plugin.commands.dispatch_hook import (
     DISPATCH_RULES,
+    BranchTickets,
+    BranchTicketsOrUnreadable,
+    Denied,
     StartedOrUnreadable,
     agent_type,
-    dispatch_denial,
+    dispatch_ruling,
 )
 from mightymodels_plugin.core.routing import Worker
 
@@ -25,11 +28,15 @@ TERRY_TOOLCHAIN = 'mightymodels:triage:terry-toolchain'
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class NoStartedTasks:
-    asked: list[Worker] = field(default_factory=list)
+    asked: list[Worker | None] = field(default_factory=list)
 
     def started_by(self, worker: Worker) -> StartedOrUnreadable:
         self.asked.append(worker)
         return ()
+
+    def tickets_on_branch(self) -> BranchTicketsOrUnreadable:
+        self.asked.append(None)
+        return BranchTickets()
 
 
 def hook_input(caller: str | None, target: str) -> str:
@@ -59,10 +66,10 @@ class TestDispatchOfIt:
     def test_every_workers_dispatch_of_it_is_denied(self, caller: Worker, target: str) -> None:
         dispatcher = agent_type(caller)
 
-        denial = dispatch_denial(hook_input(dispatcher, target), NoStartedTasks())
+        ruling = dispatch_ruling(hook_input(dispatcher, target), NoStartedTasks())
 
-        assert denial == (
-            f'{dispatcher} may not dispatch {target}; it may dispatch: {row_named(caller)}'
+        assert ruling == Denied(
+            reason=f'{dispatcher} may not dispatch {target}; it may dispatch: {row_named(caller)}'
         )
 
     def test_the_main_conversations_dispatch_of_it_gets_no_decision_and_reads_no_state(
@@ -70,7 +77,7 @@ class TestDispatchOfIt:
     ) -> None:
         started = NoStartedTasks()
 
-        assert dispatch_denial(hook_input(None, TERRY_TOOLCHAIN), started) is None
+        assert dispatch_ruling(hook_input(None, TERRY_TOOLCHAIN), started) is None
         assert started.asked == []
 
 

@@ -2,6 +2,8 @@
 
 A hook's ticket is the one ticket of this repository, not closed, whose `branch` is the checked-out
 branch. A detached HEAD, no match and more than one match mean no ticket, and the hook does nothing.
+`unclosed_tickets_on_branch` names every match, so a hook can tell no ticket from several and say
+which they are.
 """
 
 from mightymodels_plugin.core.slug import Slug
@@ -13,3 +15,10 @@ def ticket_on_branch(tickets: TicketStore, branch: str | None) -> Slug | None:
         return None
     with tickets.transaction() as repository:
         return repository.unclosed_on_branch(branch)
+
+
+def unclosed_tickets_on_branch(tickets: TicketStore, branch: str | None) -> list[Slug]:
+    if branch is None:
+        return []
+    with tickets.transaction() as repository:
+        return repository.all_unclosed_on_branch(branch)

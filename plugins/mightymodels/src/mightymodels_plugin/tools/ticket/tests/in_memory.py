@@ -66,6 +66,14 @@ class InMemoryTicketRepository:
         ]
         return on_branch[0] if len(on_branch) == 1 else None
 
+    def all_unclosed_on_branch(self, branch: str) -> list[Slug]:
+        on_branch = [
+            unit.slug
+            for unit in self.units.values()
+            if unit.ticket.branch == branch and unit.status is not TicketStatus.CLOSED
+        ]
+        return sorted(on_branch, key=str)
+
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class InMemoryTicketStore:

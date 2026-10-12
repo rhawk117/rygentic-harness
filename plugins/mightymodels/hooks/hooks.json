@@ -1,12 +1,13 @@
 {
-  "description": "mightymodels: export the plugin data directory to the session's commands, so `mightymodels verify run` opens the database the state server keeps; deny a dispatch by one of this plugin's workers (agent_type mightymodels:<folder>:<worker>) outside the workers its agent file allows, and leave every other caller alone; keep a scout's report for search, from its hand-back or else its closing text; hold an implementer's stop once while its task has no DONE brief; and write the snapshot of the ticket on the checked-out branch before a compaction.",
+  "description": "mightymodels: export the plugin data directory to the session's commands, so `mightymodels verify run` opens the database the state server keeps; deny a dispatch by one of this plugin's workers (agent_type mightymodels:<folder>:<worker>) outside the workers its agent file allows, and a dispatch of the engineer or the architect by any other caller, the main thread included, while the one unclosed ticket on the checked-out branch has no task in progress or the state cannot be read; keep a scout's report for search, from its hand-back or else its closing text; hold an implementer's stop once while its task has no DONE brief; and write the snapshot of the ticket on the checked-out branch before a compaction. Every entry is cancelled after 10 seconds, and the dispatch wrapper stops its own command after 8 so that a stalled check still refuses.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels\" session-start"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels\" session-start",
+            "timeout": 10
           }
         ]
       }
@@ -17,7 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-dispatch-hook\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-dispatch-hook\"",
+            "timeout": 10
           }
         ]
       }
@@ -28,7 +30,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" subagent-record"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" subagent-record",
+            "timeout": 10
           }
         ]
       },
@@ -37,7 +40,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" completion-gate"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" completion-gate",
+            "timeout": 10
           }
         ]
       }
@@ -48,7 +52,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" subagent-handback"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" subagent-handback",
+            "timeout": 10
           }
         ]
       }
@@ -58,7 +63,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" pre-compact"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/mightymodels-hook\" pre-compact",
+            "timeout": 10
           }
         ]
       }

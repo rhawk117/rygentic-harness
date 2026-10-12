@@ -14,7 +14,7 @@ from mightymodels_plugin.commands.tests.hook_inputs import (
 from mightymodels_plugin.core.data_directory import PLUGIN_DATA_VARIABLE
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.tests.support import GitRunner
-from mightymodels_plugin.core.workspace import Workspace
+from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE, Workspace
 from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskMark, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
@@ -196,7 +196,7 @@ class TestDispatchOfTheIntern(TestTheStateOfATicket):
     ENGINEER = 'mightymodels:workers:engineer'
     NO_TASK_STARTED = 'no task is started for the intern on the ticket whose branch is checked out'
     NOTHING_FOR_THE_INTERN = ('on_the_branch', 'engineer_on_t1')
-    WHATEVER_IS_STARTED = (*NOTHING_FOR_THE_INTERN, 'intern_on_one_file', 'intern_on_two_files')
+    WHATEVER_IS_STARTED = ('engineer_on_t1', 'intern_on_one_file', 'intern_on_two_files')
 
     @pytest.fixture
     def intern_on_one_file(self, on_the_branch: Slug, task_service: TaskService) -> None:
@@ -275,12 +275,107 @@ class TestDispatchOfTheIntern(TestTheStateOfATicket):
         assert str(under_a_file) in reason
 
     @pytest.mark.parametrize('started', WHATEVER_IS_STARTED)
-    def test_an_engineer_dispatch_is_allowed_whatever_is_started(
+    def test_an_engineer_dispatch_is_allowed_whatever_task_is_in_progress(
         self, started: str, request: pytest.FixtureRequest, hook_command: Hook
     ) -> None:
         request.getfixturevalue(started)
 
         assert hook_command.run('dispatch-hook', dispatch(self.ENGINEER)) == (0, '', '')
+
+
+@pytest.mark.usefixtures('on_the_branch')
+class TestDispatchFromTheMainThread(TestTheStateOfATicket):
+    STARTED_FIRST = ('mightymodels:workers:engineer', 'mightymodels:workers:architect')
+    NO_TASK_IN_PROGRESS = f'ticket {SLUG}, whose branch is checked out, has no task in progress'
+
+    def refusal(self, hook_command: Hook, target: str) -> str:
+        code, out, err = hook_command.run('dispatch-hook', dispatch(target))
+        decision = json.loads(out)['hookSpecificOutput']
+
+        assert (code, err) == (0, '')
+        assert decision['permissionDecision'] == 'deny'
+        assert decision['permissionDecisionReason'].startswith(f'{target} was refused: ')
+        return decision['permissionDecisionReason']
+
+    @pytest.mark.parametrize('target', STARTED_FIRST)
+    def test_with_no_task_in_progress_it_is_refused_naming_the_ticket_and_the_step(
+        self, target: str, hook_command: Hook
+    ) -> None:
+        reason = self.refusal(hook_command, target)
+
+        assert self.NO_TASK_IN_PROGRESS in reason
+        assert 'Start the task with the `task` tool' in reason
+
+    @pytest.mark.usefixtures('engineer_on_t1')
+    @pytest.mark.parametrize('target', STARTED_FIRST)
+    def test_with_a_task_in_progress_it_gets_no_decision(
+        self, target: str, hook_command: Hook
+    ) -> None:
+        assert hook_command.run('dispatch-hook', dispatch(target)) == (0, '', '')
+
+    @pytest.mark.parametrize('target', STARTED_FIRST)
+    def test_off_the_ticket_branch_it_gets_no_decision(
+        self, target: str, hook_command: Hook, git: GitRunner
+    ) -> None:
+        git(hook_command.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
+
+        assert hook_command.run('dispatch-hook', dispatch(target)) == (0, '', '')
+
+    @pytest.mark.parametrize('target', STARTED_FIRST)
+    def test_with_two_tickets_on_the_branch_it_gets_no_decision_and_one_line_naming_them(
+        self, target: str, hook_command: Hook, ticket_service: TicketService
+    ) -> None:
+        other = Slug(OTHER_SLUG)
+        ticket_service.write(other, ANSWERS)
+        ticket_service.validate(other)
+
+        code, out, err = hook_command.run('dispatch-hook', dispatch(target))
+
+        assert (code, err, out.count('\n')) == (0, '', 1)
+        assert list(json.loads(out)) == ['systemMessage']
+        assert f'2 unclosed tickets ({SLUG}, {OTHER_SLUG})' in json.loads(out)['systemMessage']
+
+    @pytest.mark.usefixtures('engineer_on_t1')
+    @pytest.mark.parametrize('target', STARTED_FIRST)
+    def test_when_the_state_cannot_be_read_it_is_refused_saying_so(
+        self, target: str, hook_command: Hook
+    ) -> None:
+        hook_command.monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
+
+        reason = self.refusal(hook_command, target)
+
+        assert f'could not be read ({PLUGIN_DATA_VARIABLE} is not set' in reason
+
+    @pytest.mark.usefixtures('engineer_on_t1')
+    def test_when_the_data_directory_cannot_be_created_it_is_refused_saying_so(
+        self, hook_command: Hook, tmp_path: Path
+    ) -> None:
+        regular_file = tmp_path.joinpath('a-regular-file')
+        regular_file.write_text('', encoding='utf-8')
+        under_a_file = regular_file.joinpath('plugin-data')
+        hook_command.monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(under_a_file))
+
+        assert str(under_a_file) in self.refusal(hook_command, self.STARTED_FIRST[0])
+
+    def test_with_a_detached_head_it_gets_no_decision(
+        self, hook_command: Hook, git: GitRunner
+    ) -> None:
+        identity = ('-c', 'user.name=t', '-c', 'user.email=t@example.com')
+        git(hook_command.repository, *identity, 'commit', '--allow-empty', '-q', '-m', 'base')
+        git(hook_command.repository, 'checkout', '-q', '--detach')
+
+        assert hook_command.run('dispatch-hook', dispatch(self.STARTED_FIRST[0])) == (0, '', '')
+
+    @pytest.mark.usefixtures('engineer_on_t1')
+    def test_a_project_directory_under_the_repository_still_finds_the_ticket_directory(
+        self, hook_command: Hook
+    ) -> None:
+        below = hook_command.repository.joinpath('src', 'queue')
+        below.mkdir(parents=True)
+        hook_command.monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(below))
+        hook_command.monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
+
+        assert 'could not be read' in self.refusal(hook_command, self.STARTED_FIRST[0])
 
 
 def snapshot_files(repository: Path) -> list[str]:

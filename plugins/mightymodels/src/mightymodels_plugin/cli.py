@@ -122,8 +122,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands.add_parser(
         DISPATCH_HOOK_COMMAND,
-        help="deny a worker's dispatch outside its allowed targets, and an intern's unless its "
-        'task owns one file; the PreToolUse hook on Agent',
+        help="deny a worker's dispatch outside its allowed targets, the main thread's of an "
+        "engineer or architect with no task in progress, and an intern's unless its task owns one "
+        'file; the PreToolUse hook on Agent',
     )
     commands.add_parser(
         SUBAGENT_RECORD_COMMAND,

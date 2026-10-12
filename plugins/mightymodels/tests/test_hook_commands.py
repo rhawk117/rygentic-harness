@@ -46,6 +46,7 @@ PLUGIN = Path(__file__).parent.parent
 HOOKS = PLUGIN.joinpath('hooks', 'hooks.json')
 BIN = PLUGIN.joinpath('bin')
 PLUGIN_ROOT = '${CLAUDE_PLUGIN_ROOT}'
+LONGEST_TIMEOUT_SECONDS = 10
 SUBCOMMANDS_OF_WRAPPERS_WITHOUT_ARGUMENTS = MappingProxyType(
     {'mightymodels-dispatch-hook': 'dispatch-hook'}
 )
@@ -73,7 +74,23 @@ def hooks_registered() -> list[tuple[str, str, str]]:
     ]
 
 
+def timeouts_registered() -> dict[str, object]:
+    registered = json.loads(HOOKS.read_text(encoding='utf-8'))['hooks']
+    groups = [group for event_groups in registered.values() for group in event_groups]
+    return {entry['command']: entry.get('timeout') for group in groups for entry in group['hooks']}
+
+
 class TestHooksJson:
+    def test_every_entry_has_a_timeout_of_at_most_ten_seconds(self) -> None:
+        timeouts = timeouts_registered()
+
+        assert len(timeouts) == len(hooks_registered())
+        assert [
+            command
+            for command, timeout in timeouts.items()
+            if not isinstance(timeout, int) or not 0 < timeout <= LONGEST_TIMEOUT_SECONDS
+        ] == []
+
     @pytest.fixture(params=hooks_registered(), ids=lambda registered: registered[2].split('/')[-1])
     def command(self, request: pytest.FixtureRequest) -> list[str]:
         return shlex.split(request.param[2].replace(PLUGIN_ROOT, str(PLUGIN)))

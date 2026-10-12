@@ -1,5 +1,6 @@
 """The PreToolUse hook on Agent denies a worker's dispatch outside the row its agent file states,
-and a dispatch of the intern unless every task started for it owns exactly one file."""
+and a dispatch of the intern unless every task started for it owns exactly one file. The tickets
+on the branch are none here; `test_main_thread_dispatch.py` has the rule that reads them."""
 
 import io
 import json
@@ -11,6 +12,8 @@ import pytest
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.commands.dispatch_hook import (
     DISPATCH_RULES,
+    BranchTickets,
+    BranchTicketsOrUnreadable,
     StartedOrUnreadable,
     StartedTask,
     StartedTasks,
@@ -31,6 +34,7 @@ MERGE_VADER = 'mightymodels:review:merge-vader'
 UNCLE_BOB = 'mightymodels:review:uncle-bob'
 CODE_SCOUT = 'mightymodels:triage:code-scout'
 WEB_SCOUT = 'mightymodels:triage:web-scout'
+IMPLEMENTERS = (Worker.ENGINEER, Worker.ARCHITECT, Worker.INTERN)
 EMPTY_ROW = (
     Worker.CODE_SCOUT,
     Worker.WEB_SCOUT,
@@ -59,11 +63,15 @@ def hook_input(caller: str | None, target: str | None) -> str:
 @dataclass(slots=True, kw_only=True, frozen=True)
 class FakeStartedTasks:
     answer: StartedOrUnreadable = ()
-    asked: list[Worker] = field(default_factory=list)
+    asked: list[Worker | None] = field(default_factory=list)
 
     def started_by(self, worker: Worker) -> StartedOrUnreadable:
         self.asked.append(worker)
         return self.answer
+
+    def tickets_on_branch(self) -> BranchTicketsOrUnreadable:
+        self.asked.append(None)
+        return BranchTickets()
 
 
 def run_hook(text: str, started: StartedTasks | None = None) -> Verdict:
@@ -249,9 +257,8 @@ class TestInternDispatch:
         pytest.param('other:engineer', id='another-plugins-agent'),
     )
     OTHER_TARGETS = (
-        *(agent_type(worker) for worker in Worker if worker is not Worker.INTERN),
+        *(agent_type(worker) for worker in Worker if worker not in IMPLEMENTERS),
         'general-purpose',
-        'intern',
         f'{PREFIX}intern',
         f'{INTERN}:extra',
     )
@@ -290,13 +297,19 @@ class TestInternDispatch:
     @pytest.mark.parametrize(
         'started', [*TINY, *(pytest.param(*case.values[:1], id=case.id) for case in NOT_TINY)]
     )
-    def test_an_engineer_dispatch_is_allowed_whatever_is_started_and_reads_no_state(
+    def test_an_engineer_dispatch_never_asks_for_what_the_intern_started(
         self, started: StartedOrUnreadable
     ) -> None:
         tasks = FakeStartedTasks(answer=started)
 
         assert run_hook(hook_input(None, ENGINEER), tasks) == Verdict(decision=None, reason='')
-        assert tasks.asked == []
+        assert Worker.INTERN not in tasks.asked
+
+    def test_a_bare_target_is_held_as_the_typed_one_is(self) -> None:
+        started = FakeStartedTasks()
+
+        assert run_hook(hook_input(None, 'intern'), started).decision == 'deny'
+        assert started.asked == [Worker.INTERN]
 
     @pytest.mark.parametrize('target', OTHER_TARGETS)
     @pytest.mark.parametrize('caller', [*OUTSIDE_CALLERS, pytest.param(ENGINEER, id='worker')])

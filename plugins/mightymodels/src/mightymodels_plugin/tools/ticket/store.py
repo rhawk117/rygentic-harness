@@ -7,7 +7,8 @@ store in test support holds work units in memory, so the ticket service runs on 
 A repository hands out `WorkUnit` and `Slug`, the frozen types the domain already has, and never a
 row. `staged_ticket` refuses a ticket that was never staged and `unclosed_ticket` refuses a closed
 one as well. `unclosed_on_branch` is the one ticket, not closed, whose branch is the one named,
-and no ticket when none or more than one is.
+and no ticket when none or more than one is. `all_unclosed_on_branch` names every one of them, in
+slug order.
 """
 
 from collections.abc import Collection, Sequence
@@ -35,6 +36,8 @@ class TicketRepository(Protocol):
     def mark_closed(self, slug: Slug) -> None: ...
 
     def unclosed_on_branch(self, branch: str) -> Slug | None: ...
+
+    def all_unclosed_on_branch(self, branch: str) -> list[Slug]: ...
 
 
 @runtime_checkable

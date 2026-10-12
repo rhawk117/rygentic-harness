@@ -12,7 +12,7 @@ This breaks with earlier versions, which kept the database inside the repository
 
 ## The hooks
 
-Under GitHub Copilot the plugin ran five hooks. Each has a counterpart now. A hook command exits 0 whatever happens and says on standard error why it did nothing (no data directory, not a git work tree, a database it refuses); only the completion gate ever answers a block, and only as below. The three that can stop something go through `bin/mightymodels-hook`, a `sh` wrapper that turns any failure of the Python process into exit 0 with one line on standard error, because exit 2 from a `SubagentStop` or `PreCompact` hook blocks.
+Under GitHub Copilot the plugin ran five hooks. Each has a counterpart now. Each of those hook commands exits 0 whatever happens and says on standard error why it did nothing (no data directory, not a git work tree, a database it refuses); only the completion gate ever answers a block, and only as below. The three that can stop something go through `bin/mightymodels-hook`, a `sh` wrapper that turns any failure of the Python process into exit 0 with one line on standard error, because exit 2 from a `SubagentStop` or `PreCompact` hook blocks.
 
 | Former behaviour    | Claude Code event (matcher)                                   | Command (script)                                  | Reads                                                                                                                      | Writes                                                                                                                                                 |
 | ------------------- | ------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -22,7 +22,27 @@ Under GitHub Copilot the plugin ran five hooks. Each has a counterpart now. A ho
 | completion gate     | `SubagentStop` (`^mightymodels:workers:(engineer\|architect\|intern)$`) | `completion-gate` (`bin/mightymodels-hook`)       | the hook input (`agent_type`, `stop_hook_active`), the ticket on the checked-out branch, its in-progress tasks, the briefs | on standard output `{"decision": "block", "reason": ...}` when a task the worker started has no brief DONE half naming a commit; no file, no row        |
 | pre-compact snapshot | `PreCompact` (any trigger)                                    | `pre-compact` (`bin/mightymodels-hook`)           | the ticket on the checked-out branch, its tasks, contract receipts, ledgers and review, and git                            | `.mightymodels/SLUG/handoffs/snapshot.json` and `snapshot.md`, the record and Markdown the `snapshot` tool serves                                       |
 
-The plugin also has a `PreToolUse` hook on `Agent`, `dispatch-hook` (`bin/mightymodels-dispatch-hook`), which has no Copilot counterpart: it denies a plugin worker's dispatch outside the workers its agent file allows, and fails closed for a worker.
+The plugin also has a `PreToolUse` hook on `Agent`, `dispatch-hook` (`bin/mightymodels-dispatch-hook`), which has no Copilot counterpart. It is the one hook that refuses, and "The dispatch hook" below has its rules.
+
+Every entry in `hooks/hooks.json` has a `timeout` of 10 seconds. Claude Code cancels a hook at its timeout and goes on as if the hook had answered nothing: the recorder keeps no report, the completion gate does not hold the stop, the snapshot is not written, and a dispatch is not checked. The dispatch wrapper therefore stops its own command after 8 seconds and answers for it, as below.
+
+### The dispatch hook
+
+A caller whose `agent_type` begins `mightymodels:` is a plugin worker. Any other caller is judged as the main thread: no `agent_type`, one that is not a string, a built-in subagent, another plugin's agent. A target is a worker under its type or its bare name.
+
+| Caller        | Target                       | State                                                                                              | Answer                                         |
+| ------------- | ---------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| plugin worker | outside its agent file's row | not read                                                                                           | deny, naming the row                           |
+| anyone        | intern                       | the intern has no task in progress, or one owning other than one file, or the state cannot be read | deny, naming the engineer                      |
+| main thread   | engineer or architect        | no ticket directory, or no unclosed ticket on the branch                                           | no decision                                    |
+| main thread   | engineer or architect        | one unclosed ticket on the branch with no task in progress                                         | deny, naming the `task` tool's `start`         |
+| main thread   | engineer or architect        | several unclosed tickets on the branch                                                             | no decision, and a `systemMessage` naming them |
+| main thread   | engineer or architect        | the state cannot be read                                                                           | deny until it can                              |
+| main thread   | any other type               | not read                                                                                           | no decision                                    |
+
+A ticket directory is a directory under `.mightymodels/` other than `archives`, at the project directory or above it. A repository without one has no ticket, so the hook opens no database there and runs no git command.
+
+The wrapper answers when its command fails, is killed or runs past 8 seconds (`MIGHTYMODELS_DISPATCH_SECONDS` sets another limit). It exits 2, which refuses the dispatch, for a plugin worker, and for any other caller whose target is the engineer, the architect or the intern when `.mightymodels` exists at the project directory (`CLAUDE_PROJECT_DIR`, or else the working directory). Every other dispatch goes ahead with one line on standard error saying it was not checked. The command's own standard error is passed through.
 
 ### The branch ticket
 

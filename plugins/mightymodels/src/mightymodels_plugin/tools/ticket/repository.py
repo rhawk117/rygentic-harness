@@ -146,6 +146,18 @@ class SqliteTicketRepository:
         slugs = list(self.session.scalars(query))
         return Slug(slugs[0]) if len(slugs) == 1 else None
 
+    def all_unclosed_on_branch(self, branch: str) -> list[Slug]:
+        query = (
+            sql.select(TicketRow.slug)
+            .where(
+                TicketRow.repository_key == self.repository_key.root,
+                TicketRow.branch == branch,
+                TicketRow.status != TicketStatus.CLOSED,
+            )
+            .order_by(TicketRow.slug)
+        )
+        return list(map(Slug, self.session.scalars(query)))
+
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class SqliteTicketStore:
