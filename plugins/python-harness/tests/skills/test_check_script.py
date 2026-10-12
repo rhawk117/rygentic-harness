@@ -2,6 +2,7 @@
 
 import ast
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -12,6 +13,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 SCRIPT = Path(__file__).resolve().parents[2] / 'skills' / 'automate-task' / 'scripts'
+TEMPLATE = SCRIPT.parent / 'assets' / 'script.template.py'
 
 
 def load_script(path: Path, name: str) -> ModuleType:
@@ -117,6 +119,13 @@ class TestStructuralChecks:
 
         assert finding.status is STATUS.SKIP
 
+    def test_the_script_template_passes_every_structural_check(self) -> None:
+        source = make_source(TEMPLATE.read_text(encoding='utf-8'))
+
+        statuses = {check(source).status for check in check_script.STRUCTURAL_CHECKS}
+
+        assert statuses <= {STATUS.OK, STATUS.SKIP}
+
     def test_violation_details_name_the_offending_lines(self) -> None:
         text = 'import subprocess\nsubprocess.run(["x"], shell=True)\n'
 
@@ -125,6 +134,53 @@ class TestStructuralChecks:
 
         assert shell.detail == 'shell=True on lines [2]'
         assert timeout.detail == 'add timeout= on lines [2]'
+
+
+class TestImportResolution:
+    def test_a_logger_from_another_module_does_not_satisfy_the_logging_check(self) -> None:
+        source = make_source('import structlog\nlog = structlog.getLogger()\n')
+
+        finding = check_script.check_logging(source)
+
+        assert finding.status is STATUS.FAIL
+        assert finding.detail.startswith('create logger')
+
+    @pytest.mark.parametrize(
+        'text',
+        [
+            'from subprocess import run\nrun(["x"])\n',
+            'import subprocess as sp\nsp.run(["x"])\n',
+            'from subprocess import check_output as out\nout(["x"])\n',
+        ],
+    )
+    def test_aliased_subprocess_calls_need_a_timeout(self, text: str) -> None:
+        finding = check_script.check_subprocess_timeouts(make_source(text))
+
+        assert finding.status is STATUS.FAIL
+
+    def test_an_aliased_subprocess_call_with_a_timeout_passes(self) -> None:
+        text = 'from subprocess import run\nrun(["x"], timeout=3)\n'
+
+        assert check_script.check_subprocess_timeouts(make_source(text)).status is STATUS.OK
+
+    @pytest.mark.parametrize(
+        'text',
+        [
+            'from logging import getLogger\nlogger = getLogger(__name__)\n',
+            'import logging as log\nlogger = log.getLogger(__name__)\n',
+        ],
+    )
+    def test_an_aliased_get_logger_satisfies_the_logging_check(self, text: str) -> None:
+        assert check_script.check_logging(make_source(text)).status is STATUS.OK
+
+    @pytest.mark.parametrize(
+        'text',
+        ['from concurrent import futures\n', 'import multiprocessing.pool\n'],
+    )
+    def test_submodule_imports_count_as_concurrent(self, text: str) -> None:
+        finding = check_script.check_workers_flag(make_source(text))
+
+        assert finding.status is STATUS.FAIL
 
 
 class TestResolveTool:
@@ -205,6 +261,33 @@ class TestRunTool:
 
         assert (finding.status, finding.detail) == (STATUS.SKIP, 'file excluded by project config')
 
+    def test_a_timeout_is_a_finding_that_names_the_seconds(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(check_script, 'resolve_tool', return_value=['ruff'])
+        mocker.patch.object(
+            check_script.subprocess, 'run', side_effect=subprocess.TimeoutExpired('ruff', 7.5)
+        )
+        options = check_script.CheckOptions(tool_timeout_seconds=7.5)
+
+        finding = check_script.run_tool('ruff', ['check'], options)
+
+        assert (finding.status, finding.detail) == (STATUS.FAIL, 'timed out after 7.5s')
+
+    def test_a_type_checker_timeout_is_only_a_warning(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(check_script, 'resolve_tool', return_value=['ty'])
+        mocker.patch.object(
+            check_script.subprocess, 'run', side_effect=subprocess.TimeoutExpired('ty', 120.0)
+        )
+
+        finding = check_script.run_type_check(Path('a.py'), check_script.CheckOptions())
+
+        assert finding.status is STATUS.WARN
+        assert finding.detail.endswith('timed out after 120s')
+
+    def test_the_output_of_a_run_is_summarised_on_its_own(self) -> None:
+        finding = check_script.summarize_tool_run('ruff', completed(1, stdout='bad\n'))
+
+        assert (finding.check, finding.status, finding.detail) == ('ruff', STATUS.FAIL, 'bad')
+
 
 class TestToolFindings:
     def test_a_type_check_failure_is_only_a_warning(self, mocker: MockerFixture) -> None:
@@ -236,8 +319,19 @@ class TestToolFindings:
 
         assert runner.call_args.args[:2] == (
             'ty',
-            ['check', '--output-format', 'concise', 'a.py'],
+            ['check', '--output-format', 'concise', str(Path('a.py').resolve())],
         )
+
+    def test_the_linter_receives_the_resolved_path(self, mocker: MockerFixture) -> None:
+        runner = mocker.patch.object(
+            check_script,
+            'run_tool',
+            return_value=check_script.Finding(check='ruff', status=STATUS.OK, detail='clean'),
+        )
+
+        list(check_script.iter_tool_findings(Path('a.py'), check_script.CheckOptions()))
+
+        assert runner.call_args_list[0].args[1][-1] == str(Path('a.py').resolve())
 
     def test_both_tools_run_when_enabled(self, mocker: MockerFixture) -> None:
         mocker.patch.object(
@@ -324,6 +418,31 @@ class TestMain:
         path.write_text('def (:\n', encoding='utf-8')
 
         assert check_script.main([str(path), '--no-tools']) == check_script.ExitCode.UNREADABLE
+
+    def test_a_file_that_is_not_utf8_is_unreadable_too(self, tmp_path: Path) -> None:
+        path = tmp_path / 'binary.py'
+        path.write_bytes(b'\xff\xfe')
+
+        assert check_script.main([str(path), '--no-tools']) == check_script.ExitCode.UNREADABLE
+
+    def test_a_tool_timeout_keeps_the_structural_lines(
+        self, tmp_path: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        path = tmp_path / 'good.py'
+        path.write_text(GOOD_SCRIPT, encoding='utf-8')
+        mocker.patch.object(check_script, 'resolve_tool', return_value=['tool'])
+        mocker.patch.object(
+            check_script.subprocess, 'run', side_effect=subprocess.TimeoutExpired('tool', 120.0)
+        )
+
+        code = check_script.main([str(path)])
+
+        output = capsys.readouterr().out.splitlines()
+        assert code == check_script.ExitCode.FAILED
+        assert 'PASS pep723: inline metadata with requires-python' in output
+        assert 'FAIL ruff: timed out after 120s' in output
+        assert output[-2].startswith('WARN ty: ')
+        assert output[-1] == 'FAILED: ruff'
 
     def test_tool_findings_are_reported_and_a_tool_failure_fails_the_run(
         self, tmp_path: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]

@@ -28,7 +28,10 @@ MAIN_GUARD = re.compile(
 )
 CLI_MODULES = frozenset({'argparse', 'click', 'typer'})
 CONCURRENCY_MODULES = frozenset({'asyncio', 'concurrent.futures', 'multiprocessing', 'threading'})
-SUBPROCESS_CALLS = frozenset({'run', 'check_output', 'check_call', 'call'})
+SUBPROCESS_CALLS = frozenset(
+    {'subprocess.run', 'subprocess.check_output', 'subprocess.check_call', 'subprocess.call'}
+)
+LOAD_ERRORS = (OSError, SyntaxError, UnicodeDecodeError)
 
 
 class ExitCode(IntEnum):
@@ -66,6 +69,12 @@ class ScriptSource:
         return frozenset(iter_imported_modules(self.tree))
 
     @property
+    def import_aliases(self) -> dict[str, str]:
+        return dict(
+            binding for node in ast.walk(self.tree) for binding in iter_import_bindings(node)
+        )
+
+    @property
     def string_constants(self) -> frozenset[str]:
         return frozenset(
             node.value
@@ -83,31 +92,78 @@ class CheckOptions:
 type Check = Callable[[ScriptSource], Finding]
 
 
+def iter_import_targets(node: ast.AST) -> Iterator[str]:
+    if isinstance(node, ast.Import):
+        yield from (alias.name for alias in node.names)
+    elif isinstance(node, ast.ImportFrom) and node.module:
+        yield node.module
+        yield from (f'{node.module}.{alias.name}' for alias in node.names)
+
+
+def iter_dotted_prefixes(name: str) -> Iterator[str]:
+    parts = name.split('.')
+    return ('.'.join(parts[:end]) for end in range(1, len(parts) + 1))
+
+
 def iter_imported_modules(tree: ast.Module) -> Iterator[str]:
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            yield from (alias.name for alias in node.names)
-        if isinstance(node, ast.ImportFrom) and node.module:
-            yield node.module
+        for target in iter_import_targets(node):
+            yield from iter_dotted_prefixes(target)
+
+
+def iter_import_bindings(node: ast.AST) -> Iterator[tuple[str, str]]:
+    if isinstance(node, ast.Import):
+        for alias in node.names:
+            top = alias.name.partition('.')[0]
+            yield (alias.asname, alias.name) if alias.asname else (top, top)
+    elif isinstance(node, ast.ImportFrom) and node.module:
+        for alias in node.names:
+            yield alias.asname or alias.name, f'{node.module}.{alias.name}'
 
 
 def iter_calls(tree: ast.Module) -> Iterator[ast.Call]:
     return (node for node in ast.walk(tree) if isinstance(node, ast.Call))
 
 
-def judge(check: str, *, passed: bool, detail: str) -> Finding:
-    return Finding(check=check, status=Status.OK if passed else Status.FAIL, detail=detail)
+def dotted_name(node: ast.expr) -> str | None:
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    return '.'.join([node.id, *reversed(parts)])
+
+
+def resolve_callee(call: ast.Call, aliases: dict[str, str]) -> str:
+    name = dotted_name(call.func)
+    if name is None:
+        return ''
+    head, _, rest = name.partition('.')
+    resolved = aliases.get(head, head)
+    return f'{resolved}.{rest}' if rest else resolved
+
+
+def iter_resolved_calls(source: ScriptSource) -> Iterator[tuple[ast.Call, str]]:
+    aliases = source.import_aliases
+    return ((call, resolve_callee(call, aliases)) for call in iter_calls(source.tree))
+
+
+def judge(check: str, *, ok: bool, ok_detail: str, fail_detail: str) -> Finding:
+    return Finding(
+        check=check,
+        status=Status.OK if ok else Status.FAIL,
+        detail=ok_detail if ok else fail_detail,
+    )
 
 
 def check_inline_metadata(source: ScriptSource) -> Finding:
     block = PEP723_BLOCK.search(source.text)
-    has_python = bool(block) and 'requires-python' in block.group('body')
     return judge(
         'pep723',
-        passed=has_python,
-        detail='inline metadata with requires-python'
-        if has_python
-        else "add a '# /// script' block declaring requires-python and dependencies",
+        ok=bool(block) and 'requires-python' in block.group('body'),
+        ok_detail='inline metadata with requires-python',
+        fail_detail="add a '# /// script' block declaring requires-python and dependencies",
     )
 
 
@@ -115,31 +171,27 @@ def check_cli(source: ScriptSource) -> Finding:
     found = CLI_MODULES & source.imported_modules
     return judge(
         'cli',
-        passed=bool(found),
-        detail=f'uses {", ".join(sorted(found))}' if found else 'no argparse/click/typer import',
+        ok=bool(found),
+        ok_detail=f'uses {", ".join(sorted(found))}',
+        fail_detail='no argparse/click/typer import',
     )
 
 
 def check_dry_run(source: ScriptSource) -> Finding:
-    present = '--dry-run' in source.string_constants
     return judge(
         'dry-run',
-        passed=present,
-        detail='--dry-run flag declared' if present else 'declare a --dry-run flag',
+        ok='--dry-run' in source.string_constants,
+        ok_detail='--dry-run flag declared',
+        fail_detail='declare a --dry-run flag',
     )
 
 
 def check_logging(source: ScriptSource) -> Finding:
-    calls_get_logger = any(
-        isinstance(call.func, ast.Attribute) and call.func.attr == 'getLogger'
-        for call in iter_calls(source.tree)
-    )
     return judge(
         'logging',
-        passed='logging' in source.imported_modules and calls_get_logger,
-        detail='module logger via logging.getLogger'
-        if calls_get_logger
-        else 'create logger = logging.getLogger(__name__)',
+        ok=any(callee == 'logging.getLogger' for _, callee in iter_resolved_calls(source)),
+        ok_detail='module logger via logging.getLogger',
+        fail_detail='create logger = logging.getLogger(__name__)',
     )
 
 
@@ -153,13 +205,11 @@ def check_main_exit_code(source: ScriptSource) -> Finding:
         None,
     )
     returns_int = main is not None and ast.unparse(main.returns or ast.Constant(None)) == 'int'
-    guarded = bool(MAIN_GUARD.search(source.text))
     return judge(
         'main',
-        passed=returns_int and guarded,
-        detail='main() -> int behind raise SystemExit(main())'
-        if returns_int and guarded
-        else 'define main(argv) -> int and end with raise SystemExit(main())',
+        ok=returns_int and bool(MAIN_GUARD.search(source.text)),
+        ok_detail='main() -> int behind raise SystemExit(main())',
+        fail_detail='define main(argv) -> int and end with raise SystemExit(main())',
     )
 
 
@@ -167,23 +217,11 @@ def check_workers_flag(source: ScriptSource) -> Finding:
     concurrent = CONCURRENCY_MODULES & source.imported_modules
     if not concurrent:
         return Finding(check='workers', status=Status.SKIP, detail='script is sequential')
-    present = '--workers' in source.string_constants
     return judge(
         'workers',
-        passed=present,
-        detail=f'--workers exposed for {", ".join(sorted(concurrent))}'
-        if present
-        else 'concurrent script must expose --workers with the mapped default',
-    )
-
-
-def is_subprocess_call(call: ast.Call) -> bool:
-    func = call.func
-    return (
-        isinstance(func, ast.Attribute)
-        and func.attr in SUBPROCESS_CALLS
-        and isinstance(func.value, ast.Name)
-        and func.value.id == 'subprocess'
+        ok='--workers' in source.string_constants,
+        ok_detail=f'--workers exposed for {", ".join(sorted(concurrent))}',
+        fail_detail='concurrent script must expose --workers with the mapped default',
     )
 
 
@@ -200,23 +238,23 @@ def check_no_shell(source: ScriptSource) -> Finding:
     offending = [call.lineno for call in iter_calls(source.tree) if has_true_keyword(call, 'shell')]
     return judge(
         'no-shell',
-        passed=not offending,
-        detail='no shell=True' if not offending else f'shell=True on lines {offending}',
+        ok=not offending,
+        ok_detail='no shell=True',
+        fail_detail=f'shell=True on lines {offending}',
     )
 
 
 def check_subprocess_timeouts(source: ScriptSource) -> Finding:
     missing = [
         call.lineno
-        for call in iter_calls(source.tree)
-        if is_subprocess_call(call) and all(keyword.arg != 'timeout' for keyword in call.keywords)
+        for call, callee in iter_resolved_calls(source)
+        if callee in SUBPROCESS_CALLS and all(keyword.arg != 'timeout' for keyword in call.keywords)
     ]
     return judge(
         'subprocess-timeout',
-        passed=not missing,
-        detail='every subprocess call has a timeout'
-        if not missing
-        else f'add timeout= on lines {missing}',
+        ok=not missing,
+        ok_detail='every subprocess call has a timeout',
+        fail_detail=f'add timeout= on lines {missing}',
     )
 
 
@@ -240,25 +278,34 @@ def resolve_tool(tool: str) -> list[str] | None:
     return None
 
 
-def run_tool(name: str, arguments: Sequence[str], options: CheckOptions) -> Finding:
-    if (launcher := resolve_tool(name)) is None:
-        return Finding(check=name, status=Status.SKIP, detail=f'{name} and uvx not installed')
-    completed = subprocess.run(  # noqa: S603  fixed tool argv, no shell.
-        [*launcher, *arguments],
-        capture_output=True,
-        text=True,
-        timeout=options.tool_timeout_seconds,
-        check=False,
-    )
+def summarize_tool_run(name: str, completed: subprocess.CompletedProcess[str]) -> Finding:
     output = (completed.stdout + completed.stderr).strip().splitlines()
     tail = ' | '.join(output[-5:]) or 'clean'
     if 'No Python files found' in tail:
         return Finding(check=name, status=Status.SKIP, detail='file excluded by project config')
-    return judge(name, passed=completed.returncode == 0, detail=tail)
+    return judge(name, ok=completed.returncode == 0, ok_detail=tail, fail_detail=tail)
+
+
+def run_tool(name: str, arguments: Sequence[str], options: CheckOptions) -> Finding:
+    if (launcher := resolve_tool(name)) is None:
+        return Finding(check=name, status=Status.SKIP, detail=f'{name} and uvx not installed')
+    try:
+        completed = subprocess.run(  # noqa: S603  tool and flags fixed, path resolved, no shell
+            [*launcher, *arguments],
+            capture_output=True,
+            text=True,
+            timeout=options.tool_timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        detail = f'timed out after {options.tool_timeout_seconds:g}s'
+        return Finding(check=name, status=Status.FAIL, detail=detail)
+    return summarize_tool_run(name, completed)
 
 
 def run_type_check(path: Path, options: CheckOptions) -> Finding:
-    finding = run_tool('ty', ['check', '--output-format', 'concise', str(path)], options)
+    resolved = str(path.resolve())
+    finding = run_tool('ty', ['check', '--output-format', 'concise', resolved], options)
     if finding.status is not Status.FAIL:
         return finding
     return Finding(
@@ -271,7 +318,8 @@ def run_type_check(path: Path, options: CheckOptions) -> Finding:
 def iter_tool_findings(path: Path, options: CheckOptions) -> Iterator[Finding]:
     if not options.run_tools:
         return
-    yield run_tool('ruff', ['check', '--no-fix', '--output-format', 'concise', str(path)], options)
+    resolved = str(path.resolve())
+    yield run_tool('ruff', ['check', '--no-fix', '--output-format', 'concise', resolved], options)
     yield run_type_check(path, options)
 
 
@@ -280,11 +328,16 @@ def load_source(path: Path) -> ScriptSource:
     return ScriptSource(path=path, text=text, tree=ast.parse(text, filename=str(path)))
 
 
-def try_load_source(path: Path) -> ScriptSource | OSError | SyntaxError:
+def try_load_source(path: Path) -> ScriptSource | OSError | SyntaxError | UnicodeDecodeError:
     try:
         return load_source(path)
-    except (OSError, SyntaxError) as error:
+    except LOAD_ERRORS as error:
         return error
+
+
+def write_findings(findings: Sequence[Finding]) -> None:
+    sys.stdout.write(''.join(f'{finding.line}\n' for finding in findings))
+    sys.stdout.flush()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -299,12 +352,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
     options = CheckOptions(run_tools=not arguments.no_tools)
     source = try_load_source(arguments.script)
-    if isinstance(source, OSError | SyntaxError):
+    if isinstance(source, LOAD_ERRORS):
         logger.error('cannot check %s: %s', arguments.script, source)
         return ExitCode.UNREADABLE
-    findings = [check(source) for check in STRUCTURAL_CHECKS]
-    findings.extend(iter_tool_findings(source.path, options))
-    sys.stdout.write('\n'.join(finding.line for finding in findings) + '\n')
+    structural = [check(source) for check in STRUCTURAL_CHECKS]
+    write_findings(structural)
+    tools = list(iter_tool_findings(source.path, options))
+    write_findings(tools)
+    findings = [*structural, *tools]
     failed = [finding.check for finding in findings if finding.status is Status.FAIL]
     sys.stdout.write(
         f'{"FAILED: " + ", ".join(failed) if failed else "ALL REQUIRED CHECKS PASSED"}\n'
