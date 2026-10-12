@@ -1,0 +1,96 @@
+- request: "review my Python PR 42 before I merge it"
+  skills: [tactical-slop-review]
+- request: "this branch has a lot of AI-written Python, can you find the slop in it"
+  skills: [tactical-slop-review]
+- request: "go through src/billing and tell me what a senior Python engineer would flag"
+  skills: [tactical-slop-review]
+- request: "the orders package works now, plan a cleanup refactor for it"
+  skills: [tactical-slop-review]
+- request: "check the Python changes on feature/retry against main and write up the findings"
+  skills: [tactical-slop-review]
+- request: "I need a FastAPI service for invoices with auth and a Postgres database, help me build it"
+  skills: [build-web-service]
+- request: "add endpoints to our Python API for team invitations, with roles and permissions"
+  skills: [build-web-service]
+- request: "we're starting a Python HTTP service that takes webhooks and processes them in a background queue"
+  skills: [build-web-service]
+- request: "extend our FastAPI app with rate limiting and a health check that knows about the DB pool"
+  skills: [build-web-service]
+- request: "build a REST backend in Python for a booking system, async SQLAlchemy, deployed in containers"
+  skills: [build-web-service]
+- request: "before we code refunds, pin down the business rules: partial refunds, who can approve, what happens when the gateway fails"
+  skills: [enterprise-design]
+- request: "design the public API of our Python pricing library: what is exported and what errors callers see"
+  skills: [enterprise-design]
+- request: "the import feature can half-succeed, some rows load and some don't. decide how the Python code should represent that"
+  skills: [enterprise-design]
+- request: "which module should own subscription renewal logic in our Python codebase, billing or accounts"
+  skills: [enterprise-design]
+- request: "make the expected failures of the transfer feature concrete before implementation: insufficient funds, duplicate request, frozen account"
+  skills: [enterprise-design]
+- request: "design the tables and uniqueness rules for orders and line items in our Python app"
+  skills: [design-persistence]
+- request: "we need soft delete and an audit history on customer records, plan it and the Alembic migration"
+  skills: [design-persistence]
+- request: "two workers can update the same inventory row, who owns the transaction and how do we stop lost updates"
+  skills: [design-persistence]
+- request: "plan a backwards-compatible migration that splits the name column into first and last without downtime, Django ORM"
+  skills: [design-persistence]
+- request: "what records does the job scheduler need to store durably and what are its state transitions"
+  skills: [design-persistence]
+- request: "our pytest suite mocks everything and still misses bugs, fix the test design"
+  skills: [design-tests]
+- request: "write scenario tests for the checkout contract before I implement it"
+  skills: [design-tests]
+- request: "I think a broken implementation of parse_duration would still pass these tests, prove it or tighten them"
+  skills: [design-tests]
+- request: "these tests break every time I refactor internals, make them test behavior instead"
+  skills: [design-tests]
+- request: "what tests would prove the retry policy does what its interface promises"
+  skills: [design-tests]
+- request: "automate this: every night download yesterday's logs from S3 and gzip anything older than 7 days"
+  skills: [automate-task]
+- request: "write a script that renames all the photos in a folder by their EXIF date"
+  skills: [automate-task]
+- request: "I do this by hand every release: bump the version, tag, build, upload. make it a script"
+  skills: [automate-task]
+- request: "make this a cron script: check 40 URLs and email me the ones that are down, do it in parallel"
+  skills: [automate-task]
+- request: "write a Python script to clean this messy CSV export: trim whitespace, fix dates, drop duplicate rows"
+  skills: [automate-task]
+- request: "is model B significantly better than model A on these paired eval runs"
+  skills: [data-analysis]
+- request: "error rate went up after Tuesday's deploy, what does the data say caused it"
+  skills: [data-analysis]
+- request: "estimate our weekly churn rate with a confidence interval from this parquet file"
+  skills: [data-analysis]
+- request: "forecast next month's ticket volume from the last two years of daily counts"
+  skills: [data-analysis]
+- request: "how long do incidents take to resolve, given a lot of them are still open"
+  skills: [data-analysis]
+- request: "this pandas groupby over a 30 GB parquet runs out of memory, fix it"
+  skills: [data-engineering]
+- request: "my Polars join produces way more rows than either input, find out why and add a check"
+  skills: [data-engineering]
+- request: "should this pipeline be pandas, Polars or DuckDB? it reads 200 CSVs and aggregates by day"
+  skills: [data-engineering]
+- request: "write schema validation and test fixtures for the events table loader"
+  skills: [data-engineering]
+- request: "the bootstrap in our metrics code takes 20 minutes, make it faster without changing the answer"
+  skills: [data-engineering]
+- request: "write a haiku about autumn"
+  skills: []
+- request: "build an Express.js API in TypeScript for user signups"
+  skills: []
+- request: "explain what a Python decorator is with a small example"
+  skills: []
+- request: "fix the typo in the README title"
+  skills: []
+- request: "why is test_get_user failing with KeyError: 'id'"
+  skills: []
+- request: "write the SQL query that returns the top ten customers by revenue last quarter"
+  skills: []
+- request: "rebase my branch onto main and resolve the conflict in setup.cfg"
+  skills: []
+- request: "review this Go pull request for concurrency bugs"
+  skills: []
