@@ -29,6 +29,7 @@ EMPTY_ROW = (
     Worker.CODE_SCOUT,
     Worker.WEB_SCOUT,
     Worker.QUALITYLENS,
+    Worker.INTERN,
     Worker.GITTY_UP,
     Worker.WINGMAN,
 )
@@ -128,6 +129,8 @@ class TestNames:
         pytest.param(f'{PREFIX}code-scout', id='flat-code-scout'),
         pytest.param(f'{PREFIX}triage:engineer', id='engineer-in-another-folder'),
         pytest.param(f'{PREFIX}workers:code-scout', id='code-scout-in-another-folder'),
+        pytest.param(f'{PREFIX}intern', id='flat-intern'),
+        pytest.param(f'{PREFIX}triage:intern', id='intern-in-another-folder'),
         pytest.param(f'{PREFIX}triage:stranger', id='unknown-name-in-a-folder'),
         pytest.param(f'{CODE_SCOUT}:extra', id='a-segment-after-the-name'),
         pytest.param(f'{PREFIX}{CODE_SCOUT}', id='the-prefix-twice'),

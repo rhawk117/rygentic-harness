@@ -64,7 +64,7 @@ class TestSubagentStopMatchers:
     SERVED = MappingProxyType(
         {
             'subagent-record': frozenset({'code-scout', 'web-scout'}),
-            'completion-gate': frozenset({'engineer', 'architect'}),
+            'completion-gate': frozenset({'engineer', 'architect', 'intern'}),
         }
     )
 

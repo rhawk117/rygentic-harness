@@ -13,7 +13,7 @@ from mightymodels_plugin.commands.tests.hook_inputs import (
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import Workspace
-from mightymodels_plugin.tools.task.schema import Implementer, TaskStart
+from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskMark, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers
 from mightymodels_plugin.tools.ticket.service import TicketService
@@ -129,6 +129,57 @@ class TestCompletionGate(TestTheStateOfATicket):
         git(hook_command.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
 
         assert hook_command.run('completion-gate', implementer_stop()) == (0, '', '')
+
+
+@pytest.mark.usefixtures('intern_on_t1')
+class TestCompletionGateOnTheIntern(TestTheStateOfATicket):
+    INTERN = 'mightymodels:workers:intern'
+
+    @pytest.fixture
+    def intern_on_t1(self, on_the_branch: Slug, task_service: TaskService) -> Slug:
+        task_service.start(
+            on_the_branch, 'T1', TaskStart(by=Implementer.INTERN, owned=('src/queue.py',))
+        )
+        return on_the_branch
+
+    @pytest.fixture
+    def taken_over_by_the_engineer(self, intern_on_t1: Slug, task_service: TaskService) -> None:
+        task_service.mark(intern_on_t1, 'T1', TaskMark(to=Status.BLOCKED, reason='AC-1 still red'))
+        task_service.start(
+            intern_on_t1, 'T1', TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
+        )
+
+    def test_it_blocks_the_interns_stop_naming_the_task_and_the_missing_brief(
+        self, hook_command: Hook
+    ) -> None:
+        code, out, err = hook_command.run('completion-gate', implementer_stop(self.INTERN))
+        decision = json.loads(out)
+
+        assert (code, err) == (0, '')
+        assert decision['decision'] == 'block'
+        assert 'T1' in decision['reason']
+        assert 'task-01.md is missing' in decision['reason']
+
+    def test_with_a_done_half_naming_a_commit_it_lets_the_intern_stop(
+        self, hook_command: Hook, brief: Path
+    ) -> None:
+        self.write_brief(brief, DONE_WITH_A_COMMIT)
+
+        assert hook_command.run('completion-gate', implementer_stop(self.INTERN)) == (0, '', '')
+
+    def test_the_engineer_that_did_not_start_the_task_is_let_through(
+        self, hook_command: Hook
+    ) -> None:
+        assert hook_command.run('completion-gate', implementer_stop()) == (0, '', '')
+
+    @pytest.mark.usefixtures('taken_over_by_the_engineer')
+    def test_once_the_engineer_took_the_task_over_it_holds_the_engineer_and_not_the_intern(
+        self, hook_command: Hook
+    ) -> None:
+        _, held, _ = hook_command.run('completion-gate', implementer_stop())
+
+        assert json.loads(held)['decision'] == 'block'
+        assert hook_command.run('completion-gate', implementer_stop(self.INTERN)) == (0, '', '')
 
 
 def snapshot_files(repository: Path) -> list[str]:

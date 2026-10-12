@@ -119,6 +119,9 @@ class TestToolsOfTheAgents:
     def test_web_scout_holds_no_shell(self) -> None:
         assert 'Bash' not in self.HELD[Worker.WEB_SCOUT]
 
+    def test_the_intern_holds_the_tools_to_read_edit_and_run_and_no_other(self) -> None:
+        assert self.HELD[Worker.INTERN] == ('Read', 'Grep', 'Glob', 'Bash', 'Edit', 'Write')
+
 
 class TestStateToolsOfTheAgents:
     REGISTERED = frozenset(
@@ -241,6 +244,7 @@ class TestKeysOfTheAgents:
             Worker.QUALITYLENS: RETRIEVAL,
             Worker.ENGINEER: DISPATCHER,
             Worker.ARCHITECT: DISPATCHER,
+            Worker.INTERN: SHARED,
             Worker.GITTY_UP: SHARED,
             Worker.WINGMAN: SHARED,
             Worker.MERGE_VADER: DISPATCHER,

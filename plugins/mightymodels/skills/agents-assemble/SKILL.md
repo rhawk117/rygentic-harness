@@ -43,6 +43,8 @@ Call `mcp__plugin_mightymodels_state__task` with action `start` (`T1` stands for
 
 The owned set recorded here is what step 5 checks the commit against, so it is the stanza's `files-in-scope`, not a guess. Then dispatch `mightymodels:workers:engineer` through the `Agent` tool, its `model` the engineer's fixed alias, `sonnet`, which `subagent-models` repeats. The dispatch names the brief path; the engineer appends `## DONE` before reporting and commits, and never pushes: only the primary pushes.
 
+A task given to the intern is opened the same way with `by` `intern` and dispatched as `mightymodels:workers:intern` on `haiku`, with prompting-subagents' intern template. The intern gets one attempt at a task: `task` `start` refuses a second one by it.
+
 **4. Mechanical checks before judgment.** On `done`, run the task's contract commands at the new HEAD:
 
 ```bash
@@ -64,6 +66,7 @@ It passes only when the commit is the current HEAD, every `Tn.*` contract comman
 **6. Route what did not verify.**
 
 - Bounded, mechanical, one-concern residual (the gate's reasons name it) → **engineer**, residual variant of its template, Fix:/Verify: verbatim, after `task` `start` with `by` `engineer` and `owned` the files the Fix touches.
+- Intern returns `blocked`, or the gate blocks after its attempt → `task` `mark` with `to` `blocked` and a `reason` (a task the gate blocked already is `blocked`), then **engineer**: `task` `start` with `by` `engineer` and the same owned set, and the engineer template with the intern's blocker in its context. The task goes to the engineer with no question to the user, and never back to the intern.
 - Engineer returns `failed` or `blocked`, or the gate blocks after its attempt (an engineer's `blocked` after three failed fixes lists the hypotheses it tried; put them in the architect's ASKED so none is tried again) → `task` `mark` with `to` `failed` or `blocked` and a `reason` (a task the gate blocked already is `blocked`), then **architect** once: `task` `start` with `by` `architect` and `owned` the same owned set (the mode defaults to `recovery-implementation`), and the architect template (trigger, ASKED, mode, brief path). Architect replaces the brief's DONE half and is gated by step 5 like the engineer.
   - `scope-expansion-requested`: put the requested files to the user. On approval, hand the task, still in progress, to the architect again: `task` `start` with `by` `architect`, `mode` `systemic-refactor` and the expanded `owned` set, and dispatch in that mode; the tool allows exactly one such extra pass.
   - `replanned`: `task` `mark` with `to` `superseded` closes the old task so `ready` can pass, and the revised ASKED becomes a new task (next free `T` id) with its own contract commands, approved like any other.

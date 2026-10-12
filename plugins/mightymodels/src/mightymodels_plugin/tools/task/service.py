@@ -10,10 +10,10 @@ gate before any push.
 A closed ticket is final. `start`, `verify` and `mark` refuse one before they read a task, and
 `show` and `ready` still answer for it.
 
-The ladder is the skills': an engineer attempt, one architect implementation attempt, one
-more in systemic-refactor mode after an approved scope expansion, which may take over a task
-that is still in progress, and diagnose-replan passes that never count against the limit. A
-replanned task closes as superseded, which `ready` treats as closed.
+The ladder is the skills': at most one intern attempt, an engineer attempt, one architect
+implementation attempt, one more in systemic-refactor mode after an approved scope expansion,
+which may take over a task that is still in progress, and diagnose-replan passes that never count
+against the limit. A replanned task closes as superseded, which `ready` treats as closed.
 
 The service is built once by whoever owns the workspace, the server in its lifespan, and holds it
 with the task store and git. Each action opens one transaction on the store, which hands it the
@@ -55,6 +55,7 @@ from mightymodels_plugin.tools.task.schema import (
 from mightymodels_plugin.tools.task.store import Attempt, TaskRepository, TaskStore, Transition
 
 ARCHITECT_LIMIT = 1
+INTERN_LIMIT = 1
 
 TERMINAL = frozenset[Status]()
 ALLOWED: Mapping[Status, frozenset[Status]] = MappingProxyType(
@@ -88,6 +89,14 @@ class ArchitectSpentError(StateError):
             f'{task_id} already had its architect recovery; route it to whats-broken, start it '
             f'in {ArchitectMode.SYSTEMIC_REFACTOR} mode after the user approves a scope '
             f'expansion, or in {ArchitectMode.DIAGNOSE_REPLAN} mode for a revised contract'
+        )
+        self.task_id = task_id
+
+
+class InternSpentError(StateError):
+    def __init__(self, task_id: str) -> None:
+        super().__init__(
+            f'{task_id} already had its intern attempt; start it by {Implementer.ENGINEER}'
         )
         self.task_id = task_id
 
@@ -151,6 +160,14 @@ def spent_error(task_id: str, mode: ArchitectMode | None, spent: int) -> Archite
     return None
 
 
+def intern_spent_error(
+    task_id: str, worker: Implementer, attempts: Mapping[str, int]
+) -> InternSpentError | None:
+    if worker is Implementer.INTERN and attempts.get(Implementer.INTERN, 0) >= INTERN_LIMIT:
+        return InternSpentError(task_id)
+    return None
+
+
 def start_error(task_id: str, before: Status, mode: ArchitectMode | None) -> TransitionError | None:
     expanded = mode is ArchitectMode.SYSTEMIC_REFACTOR
     if Status.IN_PROGRESS in ALLOWED[before] or (expanded and before is Status.IN_PROGRESS):
@@ -202,6 +219,9 @@ class TaskService:
             mode = architect_mode(change)
             spent = repository.attempts_in_modes(slug, task_id, IMPLEMENTATION_MODES)
             if (error := spent_error(task_id, mode, spent)) is not None:
+                raise error
+            tried = repository.attempts_by_worker(slug).get(task_id, {})
+            if (error := intern_spent_error(task_id, change.by, tried)) is not None:
                 raise error
             before = status_of(repository.task(slug, task_id))
             if (error := start_error(task_id, before, mode)) is not None:

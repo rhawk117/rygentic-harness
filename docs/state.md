@@ -145,6 +145,7 @@ subagent-models:
   qualitylens: haiku
   engineer: sonnet # sonnet at every scope
   architect: sonnet # derived: large scope would pull opus
+  intern: haiku
   gitty-up: haiku
   wingman: opus
   merge-vader: opus

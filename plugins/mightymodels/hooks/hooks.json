@@ -33,7 +33,7 @@
         ]
       },
       {
-        "matcher": "^mightymodels:workers:(engineer|architect)$",
+        "matcher": "^mightymodels:workers:(engineer|architect|intern)$",
         "hooks": [
           {
             "type": "command",

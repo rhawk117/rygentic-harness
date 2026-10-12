@@ -32,6 +32,7 @@ class TestRoutingTable:
             pytest.param('gitty-up', ('haiku', 'haiku', 'haiku'), id='gitty-up'),
             pytest.param('engineer', ('sonnet', 'sonnet', 'sonnet'), id='engineer'),
             pytest.param('architect', ('opus', 'opus', 'opus'), id='architect'),
+            pytest.param('intern', ('haiku', 'haiku', 'haiku'), id='intern'),
             pytest.param('uncle-bob', ('opus', 'opus', 'opus'), id='uncle-bob'),
             pytest.param('merge-vader', ('opus', 'opus', 'opus'), id='merge-vader'),
             pytest.param('wingman', ('fable', 'fable', 'fable'), id='wingman'),
@@ -66,6 +67,7 @@ class TestFixedWorkers:
             pytest.param(Worker.QUALITYLENS, 'sonnet', id='qualitylens'),
             pytest.param(Worker.ENGINEER, 'opus', id='engineer'),
             pytest.param(Worker.ARCHITECT, 'sonnet', id='architect'),
+            pytest.param(Worker.INTERN, 'sonnet', id='intern'),
             pytest.param(Worker.GITTY_UP, 'fable', id='gitty-up'),
             pytest.param(Worker.WINGMAN, 'opus', id='wingman'),
         ],
@@ -87,6 +89,7 @@ class TestFixedWorkers:
             pytest.param(Worker.QUALITYLENS, 'haiku', id='qualitylens'),
             pytest.param(Worker.ENGINEER, 'sonnet', id='engineer'),
             pytest.param(Worker.ARCHITECT, 'opus', id='architect'),
+            pytest.param(Worker.INTERN, 'haiku', id='intern'),
             pytest.param(Worker.GITTY_UP, 'haiku', id='gitty-up'),
             pytest.param(Worker.WINGMAN, 'fable', id='wingman'),
         ],
@@ -98,13 +101,14 @@ class TestFixedWorkers:
 
         assert model_problems(models) == []
 
-    def test_fixes_the_seven_workers_a_ticket_cannot_move(self) -> None:
+    def test_fixes_the_eight_workers_a_ticket_cannot_move(self) -> None:
         assert {worker.value for worker in FIXED_WORKERS} == {
             'code-scout',
             'web-scout',
             'qualitylens',
             'engineer',
             'architect',
+            'intern',
             'gitty-up',
             'wingman',
         }

@@ -34,6 +34,7 @@ class Status(StrEnum):
 class Implementer(StrEnum):
     ENGINEER = 'engineer'
     ARCHITECT = 'architect'
+    INTERN = 'intern'
 
 
 class ArchitectMode(StrEnum):

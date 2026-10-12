@@ -35,6 +35,7 @@ DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
         Worker.QUALITYLENS: NO_TARGETS,
         Worker.ENGINEER: frozenset({Worker.CODE_SCOUT}),
         Worker.ARCHITECT: frozenset({Worker.CODE_SCOUT}),
+        Worker.INTERN: NO_TARGETS,
         Worker.GITTY_UP: NO_TARGETS,
         Worker.WINGMAN: NO_TARGETS,
         Worker.MERGE_VADER: frozenset({Worker.CODE_SCOUT, Worker.WEB_SCOUT, Worker.QUALITYLENS}),

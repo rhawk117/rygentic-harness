@@ -106,7 +106,7 @@ class TestHooksJson:
 
         assert matchers == {
             'subagent-record': '^mightymodels:triage:(code-scout|web-scout)$',
-            'completion-gate': '^mightymodels:workers:(engineer|architect)$',
+            'completion-gate': '^mightymodels:workers:(engineer|architect|intern)$',
         }
 
 

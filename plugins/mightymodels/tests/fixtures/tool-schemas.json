@@ -819,7 +819,8 @@
         "Implementer": {
           "enum": [
             "engineer",
-            "architect"
+            "architect",
+            "intern"
           ],
           "title": "Implementer",
           "type": "string"

@@ -43,6 +43,9 @@ class TestEscalationLadder:
             pytest.param(
                 'engineer', 'systemic-refactor', 'is an architect mode', id='not-architect'
             ),
+            pytest.param(
+                'intern', 'systemic-refactor', 'is an architect mode', id='intern-in-a-mode'
+            ),
         ],
     )
     def test_only_an_architect_scope_expansion_takes_over_an_in_progress_task(
@@ -135,6 +138,46 @@ class TestEscalationLadder:
         task_repo.run('mark', 'T1', to='blocked', reason='revised contract approved')
 
         assert start(task_repo, 'architect').code == ADVANCED
+
+
+class TestTheInternsOneAttempt:
+    @pytest.fixture
+    def blocked_after_the_intern(self, task_repo: TaskRepo) -> TaskRepo:
+        start(task_repo, 'intern')
+        task_repo.run('mark', 'T1', to='blocked', reason='AC-1 still red')
+        return task_repo
+
+    def test_a_second_intern_attempt_is_refused_naming_the_engineer(
+        self, blocked_after_the_intern: TaskRepo
+    ) -> None:
+        outcome = start(blocked_after_the_intern, 'intern')
+
+        task = blocked_after_the_intern.task('T1')
+        assert outcome.code == REJECTED
+        assert outcome.err == 'T1 already had its intern attempt; start it by engineer'
+        assert (task.status, task.attempts) == ('blocked', {'intern': 1})
+
+    def test_the_engineer_takes_over_the_task_the_intern_blocked_on(
+        self, blocked_after_the_intern: TaskRepo
+    ) -> None:
+        outcome = start(blocked_after_the_intern)
+
+        task = blocked_after_the_intern.task('T1')
+        assert outcome.code == ADVANCED
+        assert (task.status, task.attempts) == ('in-progress', {'intern': 1, 'engineer': 1})
+        assert blocked_after_the_intern.transitions() == [
+            ('pending', 'in-progress'),
+            ('in-progress', 'blocked'),
+            ('blocked', 'in-progress'),
+        ]
+
+    def test_an_intern_attempt_on_one_task_leaves_its_attempt_on_another(
+        self, blocked_after_the_intern: TaskRepo
+    ) -> None:
+        outcome = blocked_after_the_intern.run('start', 'T2', by='intern', owned=['src/queue.py'])
+
+        assert outcome.code == ADVANCED
+        assert blocked_after_the_intern.task('T2').attempts == {'intern': 1}
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

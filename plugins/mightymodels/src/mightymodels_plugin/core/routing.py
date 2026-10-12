@@ -46,6 +46,7 @@ class Worker(StrEnum):
     QUALITYLENS = 'qualitylens'
     ENGINEER = 'engineer'
     ARCHITECT = 'architect'
+    INTERN = 'intern'
     GITTY_UP = 'gitty-up'
     WINGMAN = 'wingman'
     MERGE_VADER = 'merge-vader'
@@ -65,6 +66,7 @@ FOLDERS: Mapping[Worker, Folder] = MappingProxyType(
         Worker.QUALITYLENS: Folder.REVIEW,
         Worker.ENGINEER: Folder.WORKERS,
         Worker.ARCHITECT: Folder.WORKERS,
+        Worker.INTERN: Folder.WORKERS,
         Worker.GITTY_UP: Folder.WORKERS,
         Worker.WINGMAN: Folder.TRIAGE,
         Worker.MERGE_VADER: Folder.REVIEW,
@@ -86,6 +88,7 @@ ROUTING: Mapping[Worker, ScopeRouting] = MappingProxyType(
         Worker.QUALITYLENS: at_every_scope(Model.HAIKU),
         Worker.ENGINEER: at_every_scope(Model.SONNET),
         Worker.ARCHITECT: at_every_scope(Model.OPUS),
+        Worker.INTERN: at_every_scope(Model.HAIKU),
         Worker.GITTY_UP: at_every_scope(Model.HAIKU),
         Worker.WINGMAN: at_every_scope(Model.FABLE),
         Worker.MERGE_VADER: at_every_scope(Model.OPUS),
