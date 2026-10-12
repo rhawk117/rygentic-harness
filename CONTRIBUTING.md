@@ -66,6 +66,14 @@ and CI's bootstrap syncs with `uv sync --locked`, so a stale lockfile fails CI t
 from forks skip the `labeler` job, but `workflow-narrator` still runs: it reports the result in the
 job summary instead of a PR comment, and it still fails the run when `quality` fails.
 
+`scripts/live-plugin-check.sh` is not part of the gate, and no hook runs it. It starts nested
+`claude -p` sessions that load this branch's `plugins/mightymodels` in place of the installed
+plugin, dispatches every agent type under `plugins/mightymodels/agents`, and prints one `ok` or
+`FAIL` line per check. It needs `claude` (logged in) and `jq` on your `PATH`, network access to
+`api.anthropic.com` and `mcp-proxy.anthropic.com`, and write access to `~/.claude/plugins/data`,
+where Claude Code creates the plugin's data directory before it starts the plugin's MCP server. Run
+it by hand after you change an agent, a skill or a hook.
+
 ## Python and markdown rules
 
 Skill scripts under `plugins/*/skills/**` must run on Python 3.12, so a contributor's system
