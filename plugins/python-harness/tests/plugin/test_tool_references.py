@@ -16,7 +16,8 @@ PYLENS_TOOLS = (
     'tools: Read, Grep, Glob,'
     f' {TOOL_PREFIX}collect_python_facts,'
     f' {TOOL_PREFIX}map_python_calls,'
-    f' {TOOL_PREFIX}check_citations'
+    f' {TOOL_PREFIX}check_citations,'
+    f' {TOOL_PREFIX}survey'
 )
 SKILL_TOOLS = [
     'check_citations',
@@ -62,7 +63,7 @@ class TestReferencedTools:
 
 
 class TestFrontmatter:
-    def test_pylens_has_its_read_tools_and_exactly_three_server_tools(self) -> None:
+    def test_pylens_has_its_read_tools_and_exactly_four_server_tools(self) -> None:
         tools = [line for line in frontmatter_lines(PYLENS) if line.startswith('tools:')]
 
         assert tools == [PYLENS_TOOLS]
