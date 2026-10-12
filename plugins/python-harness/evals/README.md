@@ -13,6 +13,7 @@ Run all six:
 
     claude plugin eval . --tag smoke --scaffold --no-publish --runs 1 --ablation none
 
-Every run starts a model session with your Claude login and counts against your plan usage.
+Every run starts a model session with your credentials. It counts against your plan usage, or
+against your API bill if an API key is set in your environment.
 The `fixture.sh` scripts run on your machine outside the sandbox, and only with `--scaffold`.
 Raw results go to `evals/results/`, which git ignores.
