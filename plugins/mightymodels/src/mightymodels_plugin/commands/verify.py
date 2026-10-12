@@ -2,7 +2,7 @@
 
 The command is its own edge: it opens the state as the server's lifespan does, the workspace at
 the git toplevel and the database in the plugin data directory, builds the contract service over
-the two, and disposes the engine before it returns. It loads no MCP module.
+the two, and disposes the engine before it returns.
 
 It refuses before it creates anything when the data directory, git or the work tree is missing:
 the reason goes to standard error, naming what is missing, and the exit code says refused. The

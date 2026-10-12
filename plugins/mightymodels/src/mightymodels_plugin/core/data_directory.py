@@ -8,8 +8,6 @@ reads that one. The env file is shared by every plugin, and a second plugin expo
 
 Each edge reads exactly one of the two and there is no fallback from one to the other. An unset
 or empty variable is the absence the edge refuses on, naming the variable.
-
-This module loads no database or server package: the hook command imports it.
 """
 
 import shlex

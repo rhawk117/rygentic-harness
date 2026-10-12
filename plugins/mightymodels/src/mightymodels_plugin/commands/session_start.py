@@ -4,8 +4,8 @@ A command run through the Bash tool has none of the plugin's variables, so `veri
 find the state database the server opened. The hook has the data directory and the session's env
 file, and Claude Code sets what that file exports in every later Bash command of the session, a
 subagent's included. The command appends one line there, the export of the data directory, unless
-the file already holds that line, and does nothing else: it creates no directory, prints nothing
-and loads no database or server package. A last line that has no newline is read as a whole line:
+the file already holds that line, and does nothing else: it creates no directory and prints
+nothing. A last line that has no newline is read as a whole line:
 when it is the export the file is left as it is, and when it is anything else the command ends it
 with a newline first, so the export starts a line of its own. The file is read and written with no
 newline translation and the export is looked for as the text the command writes, where a line
