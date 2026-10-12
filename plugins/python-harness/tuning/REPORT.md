@@ -1,8 +1,8 @@
 # Description tuning run
 
-This records one run of the description tuning for the eight skills in `skills/`, so a later maintainer can see what the descriptions were tested against and decide whether to trust the result or repeat it. The requests are in `trigger-set.yml` in this directory: 48 requests, five for each skill and eight that should load no skill (`skills: []`).
+This records one run of the description tuning for the eight skills in `skills/`, so a later maintainer can see what the skills' routing text was tested against and decide whether to trust the result or repeat it. The requests are in `trigger-set.yml` in this directory: 48 requests, five for each skill and eight that should load no skill (`skills: []`).
 
-The run was made on 2026-10-11 against the descriptions as they ship in 0.2.0, from a directory outside the repository.
+The run was made on 2026-10-11 against the `description` and `when_to_use` of each skill as they ship in 0.2.0, from a directory outside the repository. The judge reads the two fields joined, description first, which is how Claude Code lists a skill. Only `description` is open to rewriting; `when_to_use` is kept as it is.
 
 ## Judge and options
 
@@ -32,13 +32,19 @@ Held-out hits, correct requests out of those held out:
 | `tactical-slop-review` | 2/2 |
 | no skill | 2/2 |
 
-Training hits were 30/30.
+Training hits were 30/30: three for each skill and six for no skill.
 
 `tune lint` over the eight skills printed `[]`, and the run's report lists no remaining collisions above the threshold. It recorded no competing skills, because the subagent judge sees only the tuned skills. Skills from other installed plugins were not in the comparison.
 
+## How much the judge varies
+
+The same text was judged twice that day. The first evaluation scored 28/30 on the training requests and 18/18 on the held-out ones. One of its two misses was the `enterprise-design` request "which module should own subscription renewal logic in our Python codebase, billing or accounts". That run was stopped before any rewrite was judged, and the run recorded above started again from the baseline with four new judges.
+
+So two evaluations of identical text differed on two requests out of 30. A difference of that size between two runs is judge noise, not a change in the descriptions.
+
 ## What this shows
 
-The eight descriptions separate these 48 requests from each other for this judge.
+The eight skills' routing text separates these 48 requests from each other for this judge, within the noise described above.
 
 It does not show that Claude Code loads the right skill in a real session. The requests were written for this run, not collected from use. A perfect baseline means the run had nothing to tune, and a skill's name is part of what Claude Code routes on, so the names carry part of the routing.
 
