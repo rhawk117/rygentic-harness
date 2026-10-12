@@ -63,7 +63,7 @@ Classify the service:
 
 Pass the Requirements and Complexity gates before designing contracts.
 
-Record the accepted shared brief in the conversation with `status: ready`, then confirm the `requirements` gate. Keep it `draft` while open questions remain.
+Record the accepted shared brief in the conversation with `status: ready`, then validate the `requirements` gate. Keep it `draft` while open questions remain.
 
 ### 2. Produce contracts
 
@@ -81,7 +81,7 @@ For the primary async SQLAlchemy path, use a `SQLAlchemyAdapter` that yields an 
 
 Pass the Persistence gate before writing ORM models or migrations.
 
-Complete persistence design using the inline packet template, or mark it not applicable only when the accepted requirements contain no durable state. Confirm the Persistence gate before test design.
+Complete persistence design using the inline packet template, or mark it not applicable only when the accepted requirements contain no durable state. Validate the Persistence gate before test design.
 
 ### 4. Design scenario tests
 
@@ -97,7 +97,7 @@ Avoid brittle tests of private functions or incidental calls. Deliberately desig
 
 Pass the Testability gate before preparing the design handoff.
 
-Record the scenario-test packet with the inline template. Every contract rule identifier must be covered by at least one scenario, and scenarios must not invent rule identifiers. Confirm the Testability gate.
+Record the scenario-test packet with the inline template. Every contract rule identifier must be covered by at least one scenario, and scenarios must not invent rule identifiers. Validate the Testability gate.
 
 ### 5. Consolidate design inputs
 
@@ -105,9 +105,12 @@ Gather the accepted contract, persistence decisions, test scenarios, permitted p
 
 ### 6. Apply the FastAPI primary recipe
 
-Use `references/fastapi-pydantic-v2.md` as the primary recipe for a greenfield or compatible service: an application factory, a lifespan that owns async resources, `Annotated` dependencies, `pydantic-settings` configuration, and migrations outside application startup. Apply, from the recipe:
+Use `references/fastapi-pydantic-v2.md` for greenfield or compatible services:
 
-- the backend-only or BFF decision resolved before route and response design;
+- application factory and async lifespan;
+- capability-based routers and `Annotated` dependencies;
+- the accepted backend-only or BFF boundary and frontend delivery choice;
+- one infrastructure aggregate with healthcheck and deterministic disposal;
 - external identity-provider integration rather than a home-grown authorization server;
 - strict separation of request/response, domain, and ORM models;
 - three failure layers without using `HTTPException` for normal application behavior;
