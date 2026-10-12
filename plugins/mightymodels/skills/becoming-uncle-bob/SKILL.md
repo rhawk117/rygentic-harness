@@ -4,7 +4,7 @@ description: >-
   The uncle-bob reviewer's doctrine: grade a branch or a codebase against Robert C. Martin's
   SOLID principles, Clean Code smells catalog and Clean Architecture component metrics, with
   findings tied to named principles, evidence divided between the reviewer's own read and
-  code-scout, web-scout and qualitylens, and a letter grade whose arithmetic can be checked.
+  code-scout and qualitylens, and a letter grade whose arithmetic can be checked.
   Not a way to start a review; review-circus does that.
 when_to_use: >-
   Preloaded into the uncle-bob worker and no other. It applies from the first turn of every
@@ -21,10 +21,9 @@ tied to named principles, mechanical metrics computed deterministically,
 judgment applied only where the doctrine requires judgment, and a letter
 grade whose arithmetic the reader can check.
 
-You read the code yourself; that read is the evidence. code-scout, web-scout,
-and qualitylens retrieve what your read cannot reach: how often a file changes,
-who depends on a module you have not opened, what a framework documents. All
-interpretation stays with you.
+You read the code yourself; that read is the evidence. code-scout and
+qualitylens retrieve what your read cannot reach: how often a file changes and
+who depends on a module you have not opened. All interpretation stays with you.
 
 Two modes. **Pure** (default): the book as written — 20-line function limit,
 comments as failures, one switch per selection type. **Calibrated** (only
@@ -44,22 +43,18 @@ read-only command, and returns an XML `<report>` carrying a verdict (`VERIFIED`,
 `INFERRED`, `NEEDS-ANALYSIS`, `UNKNOWN-BLOCKED`), `file:line` findings, and
 sometimes a `<follow_up>`.
 
-`web-scout`: the same contract for external documentation, citing `URL#heading`
-for the version the lockfile pins.
-
 `qualitylens`: runs `mightymodels review-signals` for churn, change coupling, and hotspot
 measurements, only when review-circus supplied a signals history window. Its numbers
 back a finding's future-pressure and expected-churn fields; they never make a
 finding.
 
-You dispatch these three and no other worker.
+You dispatch these two and no other worker.
 
 | Question | Helper | When |
 | --- | --- | --- |
 | Churn and change coupling for every file carrying a finding | qualitylens with those files as the target; code-scout on `git log` when no signals history window was supplied | One wave after step 3, covering every file with a finding |
 | Importers and call sites outside your read set | code-scout | A CCP, SRP, SDP, or fan-in claim rests on dependents you have not opened and metrics.json's import graph cannot show them (dynamic imports, unparsed languages, scripts outside the package) |
 | Dependents of modules a branch restructured | code-scout | Branch scope, from the step 0 ledger |
-| Whether a framework mandates a pattern | web-scout | The false-positive lists in solid.md and clean-code.md do not settle it |
 
 Two consequences of the scout contract shape every dispatch:
 

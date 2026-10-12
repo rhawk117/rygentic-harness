@@ -149,7 +149,7 @@ to findings above. First step should be the grade's binding constraint.>
 
 ## Coverage and method
 
-<What was read vs sampled, what the script measured vs what was judged,
+<What was read vs sampled, what review-metrics measured vs what was judged,
 confidence caveats (JS function metrics approximate, A/D low-confidence in
 dynamic languages, etc.).>
 ```

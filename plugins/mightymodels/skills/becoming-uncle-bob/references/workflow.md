@@ -40,19 +40,19 @@ than sampling everything thinly.
 review-circus runs `mightymodels review-metrics` (py/js/ts) before
 dispatching you and passes the absolute path of its JSON output,
 `uncle-bob-metrics.json` in the review run directory. Read that file; you
-do not run the script. When the dispatch carries no metrics path, say so in
+do not run the command. When the dispatch carries no metrics path, say so in
 Coverage and method and gather the same facts by reading, marking every such
-number as estimated. The script computes the layer that must not drift
+number as estimated. The command computes the layer that must not drift
 between runs: function LOC/params/flag-args/nesting, file sizes, long lines,
 test-to-source ratio, the module import graph, dependency cycles (ADP), and
 per-package Ca/Ce/I/A/D.
 
-For languages the script doesn't parse (Go, Java, Rust, C#...), skip it and
+For languages the command doesn't parse (Go, Java, Rust, C#...), skip it and
 gather the same facts by reading — mark every such number as estimated in
 the report. JS/TS function metrics are approximate by design; the import
 graph is reliable.
 
-The script's output is a *map, not a verdict*: it tells you where to read.
+The command's output is a *map, not a verdict*: it tells you where to read.
 Never convert a metrics row straight into a finding without opening the
 file — the false-positive lists exist because mechanical matches lie.
 

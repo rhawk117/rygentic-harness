@@ -103,8 +103,8 @@ would ask, state a working assumption for each, and proceed on the assumptions l
 assumptions.
 
 **Persist before analysing.** Write the session's verdicts in one batch with
-`mcp__plugin_mightymodels_state__investigation`, action `add`, `payload` `request`
-`{"round": N}` (the next round after the ledger's latest):
+`mcp__plugin_mightymodels_state__investigation`: its `request` holds action `add`, and the
+`payload`'s own `request` is `{"round": N}` (the next round after the ledger's latest):
 
 ```json
 {"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 2},

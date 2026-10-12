@@ -10,7 +10,7 @@ Read before the scope dialog and when building a reviewer dispatch. The `review`
 | standard | each persona weighted 0.25 or more                         | `opus`                                                                                                   | Targeted code-scout waves; qualitylens for churn and coupling on the changed files.                                      |
 | deep     | both                                                       | `opus`                                                                                                   | Broad evidence waves, web-scout idiom documentation for quality findings, full report.                                   |
 
-The `override` action moves the run's heavier-weighted reviewer to `fable` once, to be dispatched with effort high; a ticket's reviewer keys change nothing. Evidence workers (code-scout, web-scout, qualitylens) always use ticket.yml's models.
+The `override` action moves the run's heavier-weighted reviewer to `fable` once, to be dispatched with effort high; a ticket's reviewer keys change nothing. Evidence workers (code-scout, web-scout, qualitylens) always run on `haiku`, their fixed model.
 
 ## Emphasis
 

@@ -56,7 +56,7 @@ Each new finding takes the next id, `F1`, `F2`, and so on. A finding whose locat
 
 ## Dispositions
 
-`dispose` takes `by` and `decisions`, a map from finding id to `decision` and `reason`. Decisions: `fix`, `defer` (ticketed for later), `accept-risk`, `dismiss`. The last two need a non-blank reason, and an unknown finding id rejects the call. A later `dispose` replaces a finding's decision, and the answer lists the findings still undecided. Only `fix` routes to remediation.
+`dispose` takes `by` and either `finding`, one finding id the tool asks the user about, or `decisions`, a map from finding id to `decision` and `reason`. Decisions: `fix`, `defer` (ticketed for later), `accept-risk`, `dismiss`. The last two need a non-blank reason, and an unknown finding id rejects the call. A later `dispose` replaces a finding's decision, and the answer lists the findings still undecided. Only `fix` routes to remediation.
 
 A decision stands for the finding as the user saw it. When a later `add` merges into a decided finding and changes it, the finding's decision and outcome rows are deleted and `add` answers that it is `back to undecided`; the gate shows it again.
 

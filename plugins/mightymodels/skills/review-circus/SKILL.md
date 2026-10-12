@@ -28,7 +28,7 @@ sets the profile, measures, dispatches, normalizes, and routes what the user cho
 It never reviews code itself and never invents a finding. An empty run means the reviewers
 have not reported, not that the primary should improvise.
 
-Run the scripts from the repository root. `${CLAUDE_SKILL_DIR}` is this skill's directory, which
+Run the commands from the repository root. `${CLAUDE_SKILL_DIR}` is this skill's directory, which
 Claude Code substitutes in this file as an absolute path. Subagents do not inherit it, so every
 path a dispatch carries is absolute.
 
@@ -110,8 +110,8 @@ the line of each and reports the ones that stand as findings of its own. A recor
 persona confirms does not reach the gate, because `add` takes findings from the persona reports
 and from nowhere else.
 
-Personas gather their own evidence through code-scout, web-scout, and qualitylens, and
-nothing else. Write each response unchanged to `RUNDIR/MERGE-VADER-REPORT.md` or
+Personas gather their own evidence through code-scout and qualitylens, merge-vader through
+web-scout too, and nothing else. Write each response unchanged to `RUNDIR/MERGE-VADER-REPORT.md` or
 `RUNDIR/UNCLE-BOB-REPORT.md`, the files `add` reads. Wait for every persona in the run.
 
 ## 4. Record the reports
@@ -136,8 +136,8 @@ the gate again and call `dispose` for them again before any remediation continue
 Always, when any finding exists. Show the user the `review` answer to action `gate`: findings
 by severity, security first, then by persona weight, with sources, location, any severity
 conflict, and the decision so far. Then take the findings one at a time, in gate order. For each
-`Fn`, call `mcp__plugin_mightymodels_state__review` with action `dispose` and `finding` and no
-`decisions`; the tool asks the user what to do with that finding and records the answer. Two of
+`Fn`, call `mcp__plugin_mightymodels_state__review` with action `dispose` and a `payload` holding
+`finding` and no `decisions`; the tool asks the user what to do with that finding and records the answer. Two of
 the choices need a reason, which the tool asks with the choice. A severity conflict is settled
 here by the decision the user makes about it:
 
@@ -147,7 +147,7 @@ here by the decision the user makes about it:
 
 The answer says which findings are still undecided. An answer starting `needs input` means no one
 could be asked through the tool: put the question it names to the user in one `AskUserQuestion`
-dialog, then call again with `decisions` for that finding (several findings may go in one call):
+dialog, then call again with `payload` `decisions` for that finding (several findings may go in one call):
 
 ```json
 {"request": {"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "decisions": {"F1": {"decision": "fix"}, "F2": {"decision": "accept-risk", "reason": "..."}}}}}
@@ -185,9 +185,9 @@ Order: Critical findings and High security findings first, then the rest in gate
 each finding `Fn` chosen for fixing:
 
 1. `task` `start` with `payload` `task_id` the next `R<n>` that `task` `show` does not list
-   and `change` `by` `engineer`, `owned` the files the Fix touches and `acceptance` the Verify
-   line (agents-assemble's call). That number is the task's own and not the finding's: a
-   sprint residual may hold `R1` already, so `F1` can be fixed under `R2`.
+   and `change` `by` `engineer`, `owned` the files the Fix touches and `acceptance` `AC-1`, the
+   id the Verify line goes under (agents-assemble's call). That number is the task's own and
+   not the finding's: a sprint residual may hold `R1` already, so `F1` can be fixed under `R2`.
 2. The finding's Verify command goes to the user as contract id `R<n>.AC-1`, under that task
    id, in one `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands`
    entry (game-plan's call).
@@ -200,15 +200,16 @@ each finding `Fn` chosen for fixing:
    with `payload` `task_id` that `R<n>` and `change` `commit`, then `review` `resolve` with
    `payload` `finding` `Fn`, `result` `fixed` and `commit` (it takes only a finding the user
    chose to fix).
-5. Failed or blocked: `task` `mark` (a task the gate blocked already is `blocked`), then
-   **architect** once, then whats-broken, as in agents-assemble. Record `resolve` with `result`
-   `failed` or `blocked` and a `reason` when a finding stops.
+5. Failed or blocked: `task` `mark` (a task the gate blocked already is `blocked`), then the
+   owner's question unless `auto-escalate` is on, `task` `start` on that `R<n>` with `by`
+   `architect`, and **architect** once, then whats-broken, as in agents-assemble. Record
+   `resolve` with `result` `failed` or `blocked` and a `reason` when a finding stops.
 
 A finding whose reviewer wrote an Architect escalation line (a design decision beyond its
 Fix) is a question for the user first. On their yes, dispatch architect in diagnose-replan
 mode; its revised plan goes back to agents-assemble as new tasks, not into this loop.
 
-Before every push: `mightymodels verify run --slug SLUG --all --phase review` and `task`
+Before every push: `mightymodels verify run --slug SLUG --all --phase landing` and `task`
 `ready`, as stick-the-landing does, then push (only the primary pushes) and dispatch gitty-up
 with the PR number to watch CI.
 
