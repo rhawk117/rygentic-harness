@@ -51,8 +51,11 @@ SKILL_BASH = [
 ]
 LAUNCHER_BASH = ('Bash(python-harness *)', 'Bash(python-harness-data *)')
 DATA_BASH = 'Bash(python-harness-data *)'
-BUNDLED_SCRIPT_BASH = 'Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/*)'
-OTHER_BASH = {'tactical-slop-review': SKILL_BASH, 'automate-task': [BUNDLED_SCRIPT_BASH]}
+BUNDLED_SCRIPT_BASH = [
+    'Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/check_script.py *)',
+    'Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/parallelism.py *)',
+]
+OTHER_BASH = {'tactical-slop-review': SKILL_BASH, 'automate-task': BUNDLED_SCRIPT_BASH}
 WRITE_TOOLS = ('Edit', 'Write', 'NotebookEdit')
 READ_ONLY_FORBIDDEN_GRANTS = ('Bash', 'Edit', 'Write', 'NotebookEdit', f'{TOOL_PREFIX}gate')
 SKILL_DISALLOWED = {
@@ -337,21 +340,19 @@ class TestSkillGrants:
     @pytest.mark.parametrize(
         ('name', 'bash', 'expected'),
         [
-            pytest.param(
-                'automate-task', [BUNDLED_SCRIPT_BASH], ([], []), id='the-bundled-scripts-rule'
-            ),
-            pytest.param('automate-task', [], ([], [BUNDLED_SCRIPT_BASH]), id='the-rule-missing'),
+            pytest.param('automate-task', BUNDLED_SCRIPT_BASH, ([], []), id='the-bundled-rules'),
+            pytest.param('automate-task', [], ([], BUNDLED_SCRIPT_BASH), id='the-rules-missing'),
             pytest.param(
                 'automate-task',
-                [BUNDLED_SCRIPT_BASH, 'Bash(uv run *)'],
+                [*BUNDLED_SCRIPT_BASH, 'Bash(uv run *)'],
                 (['Bash(uv run *)'], []),
                 id='a-rule-that-also-covers-the-generated-script',
             ),
             pytest.param(
                 'design-tests',
-                [BUNDLED_SCRIPT_BASH],
-                ([BUNDLED_SCRIPT_BASH], []),
-                id='the-rule-on-another-skill',
+                BUNDLED_SCRIPT_BASH,
+                (BUNDLED_SCRIPT_BASH, []),
+                id='the-rules-on-another-skill',
             ),
             pytest.param('data-analysis', [DATA_BASH], ([], []), id='a-launcher-alone'),
         ],
@@ -363,13 +364,13 @@ class TestSkillGrants:
 
         assert bash_mismatch(frontmatter, name) == expected
 
-    def test_automate_task_pre_approves_its_bundled_scripts_in_its_last_entry(self) -> None:
+    def test_automate_task_pre_approves_its_bundled_scripts_in_its_last_entries(self) -> None:
         frontmatter, body = document_parts(AUTOMATE_TASK)
-        prefix = BUNDLED_SCRIPT_BASH.removeprefix('Bash(').removesuffix('*)')
+        commands = [entry.removeprefix('Bash(').removesuffix('*)') for entry in BUNDLED_SCRIPT_BASH]
 
-        last = list_entries(frontmatter, 'allowed-tools')[-1]
+        last = list_entries(frontmatter, 'allowed-tools')[-len(BUNDLED_SCRIPT_BASH) :]
 
-        assert (last, prefix in body) == (BUNDLED_SCRIPT_BASH, True)
+        assert (last, all(command in body for command in commands)) == (BUNDLED_SCRIPT_BASH, True)
 
 
 class TestDataCommands:

@@ -31,7 +31,8 @@ allowed-tools:
   - mcp__plugin_python-harness_python-harness__check_citations
   - mcp__plugin_python-harness_python-harness__map_python_calls
   - mcp__plugin_python-harness_python-harness__plan_review_surface
-  - Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/*)
+  - Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/check_script.py *)
+  - Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/parallelism.py *)
 ---
 
 # Automate task
