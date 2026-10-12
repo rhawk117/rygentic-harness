@@ -20,7 +20,12 @@ class TestEscalationLadder:
         start(task_repo)
 
         outcome = task_repo.run(
-            'start', 'T1', by='architect', owned=self.EXPANDED, mode='systemic-refactor'
+            'start',
+            'T1',
+            by='architect',
+            owned=self.EXPANDED,
+            acceptance=['AC-1'],
+            mode='systemic-refactor',
         )
 
         task = task_repo.task('T1')
@@ -53,7 +58,9 @@ class TestEscalationLadder:
     ) -> None:
         start(task_repo)
 
-        outcome = task_repo.run('start', 'T1', by=worker, owned=self.EXPANDED, mode=mode)
+        outcome = task_repo.run(
+            'start', 'T1', by=worker, owned=self.EXPANDED, acceptance=['AC-1'], mode=mode
+        )
 
         assert outcome.code == REJECTED
         assert reason in outcome.err
@@ -63,11 +70,23 @@ class TestEscalationLadder:
         start(task_repo)
         task_repo.run('mark', 'T1', to='failed', reason='AC-1 still red')
         start(task_repo, 'architect')
-        task_repo.run('start', 'T1', by='architect', owned=self.EXPANDED, mode='systemic-refactor')
+        task_repo.run(
+            'start',
+            'T1',
+            by='architect',
+            owned=self.EXPANDED,
+            acceptance=['AC-1'],
+            mode='systemic-refactor',
+        )
         task_repo.run('mark', 'T1', to='blocked', reason='still red')
 
         outcome = task_repo.run(
-            'start', 'T1', by='architect', owned=self.EXPANDED, mode='systemic-refactor'
+            'start',
+            'T1',
+            by='architect',
+            owned=self.EXPANDED,
+            acceptance=['AC-1'],
+            mode='systemic-refactor',
         )
 
         assert outcome.code == REJECTED
@@ -80,7 +99,7 @@ class TestEscalationLadder:
         start(task_repo)
         task_repo.run('mark', 'T1', to='failed', reason='AC-1 cannot pass as planned')
         stuck = task_repo.run('ready')
-        task_repo.run('start', 'T2', by='engineer', owned=['src/queue.py'])
+        task_repo.run('start', 'T2', by='engineer', owned=['src/queue.py'], acceptance=['AC-1'])
         head = task_repo.commit('src/queue.py')
         task_repo.receipt('T2.AC-1', 'pass', head)
         task_repo.run('verify', 'T2', commit=head)
@@ -103,12 +122,6 @@ class TestEscalationLadder:
         assert outcome.code == REJECTED
         assert 'cannot move from superseded to in-progress' in outcome.err
 
-    def test_a_task_that_never_started_cannot_be_superseded(self, task_repo: TaskRepo) -> None:
-        outcome = task_repo.run('mark', 'T1', to='superseded', reason='replanned as T2')
-
-        assert outcome.code == REJECTED
-        assert 'cannot move from pending to superseded' in outcome.err
-
     def test_diagnose_replan_is_allowed_after_the_architects_one_implementation_attempt(
         self, task_repo: TaskRepo
     ) -> None:
@@ -119,11 +132,21 @@ class TestEscalationLadder:
         spent = start(task_repo, 'architect')
 
         first = task_repo.run(
-            'start', 'T1', by='architect', owned=['src/queue.py'], mode='diagnose-replan'
+            'start',
+            'T1',
+            by='architect',
+            owned=['src/queue.py'],
+            acceptance=['AC-1'],
+            mode='diagnose-replan',
         )
         task_repo.run('mark', 'T1', to='blocked', reason='revised contract proposed')
         second = task_repo.run(
-            'start', 'T1', by='architect', owned=['src/queue.py'], mode='diagnose-replan'
+            'start',
+            'T1',
+            by='architect',
+            owned=['src/queue.py'],
+            acceptance=['AC-1'],
+            mode='diagnose-replan',
         )
 
         assert (spent.code, first.code, second.code) == (REJECTED, ADVANCED, ADVANCED)
@@ -134,10 +157,66 @@ class TestEscalationLadder:
     ) -> None:
         start(task_repo)
         task_repo.run('mark', 'T1', to='failed', reason='AC-1 still red')
-        task_repo.run('start', 'T1', by='architect', owned=['src/queue.py'], mode='diagnose-replan')
+        task_repo.run(
+            'start',
+            'T1',
+            by='architect',
+            owned=['src/queue.py'],
+            acceptance=['AC-1'],
+            mode='diagnose-replan',
+        )
         task_repo.run('mark', 'T1', to='blocked', reason='revised contract approved')
 
         assert start(task_repo, 'architect').code == ADVANCED
+
+
+class TestATaskThatNeverStarted:
+    def test_a_task_that_never_started_can_be_superseded(self, task_repo: TaskRepo) -> None:
+        outcome = task_repo.run('mark', 'T1', to='superseded', reason='split into T2 and T3')
+
+        task = task_repo.task('T1')
+        assert outcome.code == ADVANCED
+        assert (task.status, task.reasons) == ('superseded', ('split into T2 and T3',))
+        assert task_repo.transitions() == [('pending', 'superseded')]
+
+    @pytest.mark.parametrize(
+        'status', [pytest.param('failed', id='failed'), pytest.param('blocked', id='blocked')]
+    )
+    def test_a_task_that_never_started_cannot_be_marked_anything_but_superseded(
+        self, task_repo: TaskRepo, status: str
+    ) -> None:
+        outcome = task_repo.run('mark', 'T1', to=status, reason='AC-1 cannot pass as planned')
+
+        assert outcome.code == REJECTED
+        assert f'cannot move from pending to {status}' in outcome.err
+        assert task_repo.transitions() == []
+
+    def test_a_task_superseded_before_it_started_cannot_start(self, task_repo: TaskRepo) -> None:
+        task_repo.run('mark', 'T1', to='superseded', reason='split into T2 and T3')
+
+        outcome = start(task_repo)
+
+        assert outcome.code == REJECTED
+        assert 'cannot move from superseded to in-progress' in outcome.err
+
+    def test_a_task_superseded_before_it_started_no_longer_blocks_ready(
+        self, task_repo: TaskRepo
+    ) -> None:
+        task_repo.approve('T1.AC-1', 'T2.AC-1')
+        task_repo.run('start', 'T2', by='engineer', owned=['src/queue.py'], acceptance=['AC-1'])
+        head = task_repo.commit('src/queue.py')
+        task_repo.receipt('T2.AC-1', 'pass', head)
+        task_repo.run('verify', 'T2', commit=head)
+        stuck = task_repo.run('ready')
+
+        task_repo.run('mark', 'T1', to='superseded', reason='split into T2 and T3')
+
+        never_started = 'T1 has contract commands but was never started'
+        assert (stuck.code, never_started in stuck.out) == (BLOCKED, True)
+        assert (task_repo.run('ready').code, task_repo.run('ready').out) == (
+            ADVANCED,
+            f'ready at {head[:12]}\n',
+        )
 
 
 class TestTheInternsOneAttempt:
@@ -174,7 +253,9 @@ class TestTheInternsOneAttempt:
     def test_an_intern_attempt_on_one_task_leaves_its_attempt_on_another(
         self, blocked_after_the_intern: TaskRepo
     ) -> None:
-        outcome = blocked_after_the_intern.run('start', 'T2', by='intern', owned=['src/queue.py'])
+        outcome = blocked_after_the_intern.run(
+            'start', 'T2', by='intern', owned=['src/queue.py'], acceptance=['AC-1']
+        )
 
         assert outcome.code == ADVANCED
         assert blocked_after_the_intern.task('T2').attempts == {'intern': 1}

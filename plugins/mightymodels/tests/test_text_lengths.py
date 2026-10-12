@@ -146,7 +146,11 @@ class TestATextOneCharacterTooLong:
                 'slug': SLUG,
                 'payload': {
                     'task_id': 'T1',
-                    'change': {'by': 'engineer', 'owned': [plain(PROSE_LIMIT + 1)]},
+                    'change': {
+                        'by': 'engineer',
+                        'owned': [plain(PROSE_LIMIT + 1)],
+                        'acceptance': ['AC-1'],
+                    },
                 },
             },
             PROSE_LIMIT,

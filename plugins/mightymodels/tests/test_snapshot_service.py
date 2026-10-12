@@ -374,7 +374,11 @@ class TestTasks:
     @pytest.fixture
     def repo_with_a_blocked_task_and_an_unstarted_one(self, repo: Handoff) -> Handoff:
         repo.approve({'T2.AC-1': ('make',)})
-        repo.tasks.start(TICKET, 'T1', TaskStart(by=Implementer.ENGINEER, owned=('queue.py',)))
+        repo.tasks.start(
+            TICKET,
+            'T1',
+            TaskStart(by=Implementer.ENGINEER, owned=('queue.py',), acceptance=('AC-1',)),
+        )
         repo.tasks.mark(TICKET, 'T1', TaskMark(to=Status.BLOCKED, reason='T1.AC-1 fail at HEAD'))
         return repo
 

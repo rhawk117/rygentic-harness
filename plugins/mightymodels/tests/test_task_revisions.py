@@ -85,7 +85,7 @@ def repo(
 
 
 def start(repo: Repo, worker: str = 'engineer') -> Outcome:
-    return repo.run('start', 'T1', by=worker, owned=['src/queue.py'])
+    return repo.run('start', 'T1', by=worker, owned=['src/queue.py'], acceptance=['AC-1'])
 
 
 def test_option_shaped_revisions_are_refused(repo: Repo) -> None:

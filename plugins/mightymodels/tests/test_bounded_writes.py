@@ -22,7 +22,7 @@ from mightymodels_plugin.tools.review.schema import (
 from mightymodels_plugin.tools.review.store import DecidedFinding, ResolvedFinding
 from mightymodels_plugin.tools.review.tables import ReviewDispositionRow, ReviewOutcomeRow
 from mightymodels_plugin.tools.task.repository import TASKS, task_store
-from mightymodels_plugin.tools.task.schema import Implementer, TaskStart
+from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskMark, TaskStart
 from mightymodels_plugin.tools.task.service import TaskService
 from mightymodels_plugin.tools.tests.bounded_reads import (
     LEDGER,
@@ -74,9 +74,18 @@ def start_tasks(workspace: Workspace, database: Database, numbers: range) -> Non
     service = TaskService(
         workspace=workspace, store=task_store(database), git=git_at(workspace.root)
     )
-    change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
+    change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',), acceptance=('AC-1',))
     for number in numbers:
         service.start(TICKET, f'T{number}', change)
+
+
+def supersede_unstarted_tasks(workspace: Workspace, database: Database, numbers: range) -> None:
+    service = TaskService(
+        workspace=workspace, store=task_store(database), git=git_at(workspace.root)
+    )
+    change = TaskMark(to=Status.SUPERSEDED, reason='split before it started')
+    for number in numbers:
+        service.mark(TICKET, f'T{number}', change)
 
 
 def add_findings(workspace: Workspace, database: Database, numbers: range) -> None:
@@ -204,6 +213,18 @@ class TestAWriteToACollectionReadWhole:
                 owner=OF_THE_TICKET,
             ),
             id='tasks',
+        ),
+        pytest.param(
+            CappedWrite(
+                limit=TASKS,
+                fill=tasks_of_the_ticket,
+                write=supersede_unstarted_tasks,
+                rows_written=1,
+                read=tasks,
+                told=task_listing,
+                owner=OF_THE_TICKET,
+            ),
+            id='tasks-superseded-before-starting',
         ),
         pytest.param(
             CappedWrite(

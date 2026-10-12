@@ -53,7 +53,9 @@ class TestTheStateOfATicket:
     @pytest.fixture
     def engineer_on_t1(self, on_the_branch: Slug, task_service: TaskService) -> None:
         task_service.start(
-            on_the_branch, 'T1', TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
+            on_the_branch,
+            'T1',
+            TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',), acceptance=('AC-1',)),
         )
 
     @pytest.fixture
@@ -140,7 +142,9 @@ class TestCompletionGateOnTheIntern(TestTheStateOfATicket):
     @pytest.fixture
     def intern_on_t1(self, on_the_branch: Slug, task_service: TaskService) -> Slug:
         task_service.start(
-            on_the_branch, 'T1', TaskStart(by=Implementer.INTERN, owned=('src/queue.py',))
+            on_the_branch,
+            'T1',
+            TaskStart(by=Implementer.INTERN, owned=('src/queue.py',), acceptance=('AC-1',)),
         )
         return on_the_branch
 
@@ -148,7 +152,9 @@ class TestCompletionGateOnTheIntern(TestTheStateOfATicket):
     def taken_over_by_the_engineer(self, intern_on_t1: Slug, task_service: TaskService) -> None:
         task_service.mark(intern_on_t1, 'T1', TaskMark(to=Status.BLOCKED, reason='AC-1 still red'))
         task_service.start(
-            intern_on_t1, 'T1', TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
+            intern_on_t1,
+            'T1',
+            TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',), acceptance=('AC-1',)),
         )
 
     def test_it_blocks_the_interns_stop_naming_the_task_and_the_missing_brief(
@@ -195,7 +201,9 @@ class TestDispatchOfTheIntern(TestTheStateOfATicket):
     @pytest.fixture
     def intern_on_one_file(self, on_the_branch: Slug, task_service: TaskService) -> None:
         task_service.start(
-            on_the_branch, 'T1', TaskStart(by=Implementer.INTERN, owned=('src/queue.py',))
+            on_the_branch,
+            'T1',
+            TaskStart(by=Implementer.INTERN, owned=('src/queue.py',), acceptance=('AC-1',)),
         )
 
     @pytest.fixture
@@ -203,7 +211,9 @@ class TestDispatchOfTheIntern(TestTheStateOfATicket):
         task_service.start(
             on_the_branch,
             'T1',
-            TaskStart(by=Implementer.INTERN, owned=('src/queue.py', 'src/drain.py')),
+            TaskStart(
+                by=Implementer.INTERN, owned=('src/queue.py', 'src/drain.py'), acceptance=('AC-1',)
+            ),
         )
 
     def refusal(self, hook_command: Hook) -> str:

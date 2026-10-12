@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 
-from pydantic import BaseModel, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from mightymodels_plugin.clock import now
 from mightymodels_plugin.core.errors import StateError
@@ -13,11 +13,13 @@ from mightymodels_plugin.tools.contract.schema import ContractCommand, Phase, Re
 from mightymodels_plugin.tools.contract.schema import Outcome as ReceiptOutcome
 from mightymodels_plugin.tools.contract.service import ContractService
 from mightymodels_plugin.tools.task.schema import (
+    AnyTaskStart,
     TaskMark,
     TaskRecord,
     TaskStart,
     TaskVerification,
     TaskView,
+    TooLargeTaskStart,
 )
 from mightymodels_plugin.tools.task.service import TaskService, records_of
 from mightymodels_plugin.tools.task.tests.in_memory import InMemoryTaskStore
@@ -40,12 +42,15 @@ ANSWERS = TicketAnswers.model_validate(
 LISTINGS: Mapping[str, Callable[..., TaskView]] = MappingProxyType(
     {'show': TaskService.show, 'ready': TaskService.ready}
 )
-CHANGES: Mapping[str, tuple[Callable[..., TaskView], type[BaseModel]]] = MappingProxyType(
-    {
-        'start': (TaskService.start, TaskStart),
-        'verify': (TaskService.verify, TaskVerification),
-        'mark': (TaskService.mark, TaskMark),
-    }
+EITHER_START = TypeAdapter[TaskStart | TooLargeTaskStart](AnyTaskStart)
+CHANGES: Mapping[str, tuple[Callable[..., TaskView], Callable[[object], object]]] = (
+    MappingProxyType(
+        {
+            'start': (TaskService.start, EITHER_START.validate_python),
+            'verify': (TaskService.verify, TaskVerification.model_validate),
+            'mark': (TaskService.mark, TaskMark.model_validate),
+        }
+    )
 )
 
 
@@ -61,8 +66,8 @@ def act(
 ) -> TaskView:
     if action in LISTINGS:
         return LISTINGS[action](tasks, TICKET)
-    service, model = CHANGES[action]
-    return service(tasks, TICKET, task_id, model.model_validate(change))
+    service, validated = CHANGES[action]
+    return service(tasks, TICKET, task_id, validated(change))
 
 
 def record_receipt(
@@ -144,4 +149,4 @@ class TaskRepo:
 
 
 def start(repo: TaskRepo, worker: str = 'engineer') -> TaskOutcome:
-    return repo.run('start', 'T1', by=worker, owned=['src/queue.py'])
+    return repo.run('start', 'T1', by=worker, owned=['src/queue.py'], acceptance=['AC-1'])

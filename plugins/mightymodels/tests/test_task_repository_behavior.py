@@ -73,6 +73,9 @@ FAILED = Transition(
     head=HEAD,
     at=AT,
 )
+SUPERSEDED_BEFORE_STARTING = moved(
+    'T1', Status.PENDING, Status.SUPERSEDED, 'split into T2 and T3', head=None
+)
 STARTED_WITH_NO_HEAD = moved('T1', Status.PENDING, Status.IN_PROGRESS, head=None)
 SECOND_STARTED = moved('T2', Status.PENDING, Status.IN_PROGRESS)
 BY_THE_ENGINEER = Attempt(worker=Implementer.ENGINEER, mode=None, owned=OWNED)
@@ -247,6 +250,26 @@ class TestAMovedTask:
         with blocked.transaction() as repository:
             assert repository.task(TICKET, 'T1') == task
             assert repository.latest_transitions_into(TICKET, {Status.BLOCKED}, MANY) == [BLOCKED]
+
+    @pytest.fixture
+    def superseded_before_starting(self, staged: TaskStore) -> TaskStore:
+        with staged.transaction() as repository:
+            repository.record_mark(TICKET, SUPERSEDED_BEFORE_STARTING)
+        return staged
+
+    def test_a_mark_on_a_task_that_never_started_adds_it_with_no_owned_files_and_no_base(
+        self, superseded_before_starting: TaskStore
+    ) -> None:
+        task = TaskRecord(
+            id='T1', status=Status.SUPERSEDED, reasons=tuple(SUPERSEDED_BEFORE_STARTING.reasons)
+        )
+
+        with superseded_before_starting.transaction() as repository:
+            assert repository.tasks(TICKET) == [task]
+            assert repository.tasks(OTHER) == []
+            assert repository.latest_transitions_into(TICKET, {Status.SUPERSEDED}, MANY) == [
+                SUPERSEDED_BEFORE_STARTING
+            ]
 
     def test_reasons_written_as_a_list_are_read_back_as_a_tuple(self, failed: TaskStore) -> None:
         reasons = ('AC-1 still red', 'AC-2 still red')

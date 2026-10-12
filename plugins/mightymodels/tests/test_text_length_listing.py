@@ -38,6 +38,7 @@ from mightymodels_plugin.tools.task.schema import (
     TaskMark,
     TaskStart,
     TaskVerification,
+    TooLargeTaskStart,
     VerifyTaskPayload,
 )
 from mightymodels_plugin.tools.task.tables import TaskRow
@@ -236,6 +237,23 @@ class TestEveryStringOfARequestModel:
         ),
         CallerText(
             model=TaskStart, field='owned', limit=PROSE_LIMIT, part='item', placed=in_a_list
+        ),
+        CallerText(
+            model=TaskStart, field='acceptance', limit=PROSE_LIMIT, part='item', placed=in_a_list
+        ),
+        CallerText(
+            model=TooLargeTaskStart,
+            field='owned',
+            limit=PROSE_LIMIT,
+            part='item',
+            placed=in_a_list,
+        ),
+        CallerText(
+            model=TooLargeTaskStart,
+            field='acceptance',
+            limit=PROSE_LIMIT,
+            part='item',
+            placed=in_a_list,
         ),
         CallerText(
             model=TaskVerification,

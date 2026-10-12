@@ -55,7 +55,10 @@ START_TASK: ToolCall = (
     'task',
     {
         'action': 'start',
-        'payload': {'task_id': 'T1', 'change': {'by': 'engineer', 'owned': ['src/queue.py']}},
+        'payload': {
+            'task_id': 'T1',
+            'change': {'by': 'engineer', 'owned': ['src/queue.py'], 'acceptance': ['AC-1']},
+        },
     },
 )
 VERIFY_TASK: ToolCall = (

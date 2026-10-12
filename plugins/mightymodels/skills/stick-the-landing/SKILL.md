@@ -99,7 +99,7 @@ tail alone?*
   Fix:/Verify: verbatim:
 
   ```json
-  {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"by": "engineer", "owned": ["<files the log tail names>"]}}}}
+  {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"by": "engineer", "owned": ["<files the log tail names>"], "acceptance": ["<the Verify line>"]}}}}
   ```
 
   When a local command reproduces the check, it is the Verify line and becomes contract id

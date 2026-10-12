@@ -144,7 +144,9 @@ def test_an_approved_scope_expansion_allows_one_more_architect_pass(task_repo: T
     start(task_repo, 'architect')
     task_repo.run('mark', 'T1', to='blocked', reason='scope-expansion-requested')
     expanded = ('src/queue.py', 'src/client.py')
-    outcome = task_repo.run('start', 'T1', by='architect', owned=expanded, mode='systemic-refactor')
+    outcome = task_repo.run(
+        'start', 'T1', by='architect', owned=expanded, acceptance=['AC-1'], mode='systemic-refactor'
+    )
     task = task_repo.task('T1')
     assert outcome.code == ADVANCED
     assert list(task.owned) == ['src/client.py', 'src/queue.py']
@@ -175,7 +177,7 @@ def test_a_contract_task_never_started_is_not_ready(task_repo: TaskRepo) -> None
 
 def test_a_ci_fix_makes_earlier_receipts_stale(task_repo: TaskRepo) -> None:
     verified_task(task_repo)
-    task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'])
+    task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'], acceptance=['AC-1'])
     task_repo.commit('src/lint.py')
     outcome = task_repo.run('ready')
     assert outcome.code == BLOCKED
@@ -184,7 +186,7 @@ def test_a_ci_fix_makes_earlier_receipts_stale(task_repo: TaskRepo) -> None:
 
 def test_a_ci_fix_verifies_on_the_check_it_repaired(task_repo: TaskRepo) -> None:
     verified_task(task_repo)
-    task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'])
+    task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'], acceptance=['AC-1'])
     head = task_repo.commit('src/lint.py')
     task_repo.receipt('T1.AC-1', 'pass', head)
     check = {'AC-1': 'https://github.com/o/r/actions/runs/99'}
@@ -195,7 +197,7 @@ def test_a_ci_fix_verifies_on_the_check_it_repaired(task_repo: TaskRepo) -> None
 
 def test_a_stuck_ci_fix_blocks_the_push(task_repo: TaskRepo) -> None:
     head = verified_task(task_repo)
-    task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'])
+    task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'], acceptance=['AC-1'])
     task_repo.run('mark', 'C1', to='failed', reason='lint still red')
     task_repo.receipt('T1.AC-1', 'pass', head)
     outcome = task_repo.run('ready')
@@ -210,7 +212,7 @@ def test_ready_needs_some_verified_work(task_repo: TaskRepo) -> None:
 
 def test_a_failed_review_remediation_blocks_the_push(task_repo: TaskRepo) -> None:
     head = verified_task(task_repo)
-    task_repo.run('start', 'R3', by='engineer', owned=['src/queue.py'])
+    task_repo.run('start', 'R3', by='engineer', owned=['src/queue.py'], acceptance=['AC-1'])
     task_repo.run('mark', 'R3', to='blocked', reason='needs a decision')
     task_repo.receipt('T1.AC-1', 'pass', head)
     outcome = task_repo.run('ready')
@@ -342,7 +344,12 @@ class TestAClosedTicket:
     @pytest.mark.parametrize(
         ('action', 'task_id', 'change'),
         [
-            pytest.param('start', 'T2', {'by': 'engineer', 'owned': ['src/queue.py']}, id='start'),
+            pytest.param(
+                'start',
+                'T2',
+                {'by': 'engineer', 'owned': ['src/queue.py'], 'acceptance': ['AC-1']},
+                id='start',
+            ),
             pytest.param('verify', 'T1', {'commit': 'HEAD'}, id='verify'),
             pytest.param('mark', 'T1', {'to': 'failed', 'reason': 'AC-1 still red'}, id='mark'),
         ],
@@ -378,7 +385,7 @@ class TestAClosedTicket:
 class TestShow:
     def test_lists_started_and_planned_tasks_in_plan_order(self, task_repo: TaskRepo) -> None:
         task_repo.approve('T2.AC-1', 'T10.AC-1', 'I1')
-        task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'])
+        task_repo.run('start', 'C1', by='engineer', owned=['src/lint.py'], acceptance=['AC-1'])
         start(task_repo)
 
         outcome = task_repo.run('show')
@@ -391,7 +398,7 @@ class TestShow:
         ]
 
     def test_an_owned_set_cannot_be_empty(self, task_repo: TaskRepo) -> None:
-        outcome = task_repo.run('start', 'T1', by='engineer', owned=[])
+        outcome = task_repo.run('start', 'T1', by='engineer', owned=[], acceptance=['AC-1'])
 
         assert outcome.code == REJECTED
         assert 'owned' in outcome.err

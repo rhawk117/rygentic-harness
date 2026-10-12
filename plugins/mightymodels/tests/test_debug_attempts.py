@@ -44,7 +44,7 @@ ANSWERS = TicketAnswers.model_validate(
         'context': ['drain loop sleeps between batches'],
     }
 )
-START = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
+START = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',), acceptance=('AC-1',))
 CREDENTIALS = '://user:hunter2@'
 REDACTED_CREDENTIALS = '://[REDACTED:url-credentials]@'
 

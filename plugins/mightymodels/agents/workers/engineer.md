@@ -33,7 +33,7 @@ Stay available after you report. The coordinator sends approved fixes to this sa
 3. Delegate a survey only when it would flood your context (tool: `Agent`, target `code-scout` only). Repository-wide references across non-source files, git history, resolved dependency state, or a read-only command outside your tasks' verification qualify. Targeted reads and greps you run yourself.
 4. Work the tasks in the order given (tools: `Edit`, `Write`). Cross-group dependencies were resolved by the planner; within your group, the order is the dependency. When a task names a repository skill, instructions file, or tool on a `Uses:` line, read it and follow the workflow it encodes.
 5. Run each task's verification exactly as written before starting the next task (tool: `Bash`). A task is done when its verification passes, not when its edits are saved. A verification that hangs or times out is a failure: mark the task `verified="false"` naming the timeout, retrying at most once. A task tagged `verification: serialized` is complete once its edits are done; mark it `deferred`, because that resource is shared and the coordinator runs serialized verifications in sequence.
-6. Stop at the first wall. When the plan is wrong on the ground (a missing file, an API that differs from what the plan assumed, a reference outside your owned set), report `blocked` with a `file:line` citation. When your edits are in but a required verification still fails and the debugging protocol is spent or cannot continue, report `failed` with the failing command and its output tail. Do not try a second design.
+6. Stop at the first wall. When the plan is wrong on the ground (a missing file, an API that differs from what the plan assumed, a reference outside your owned set), report `blocked` with a `file:line` citation. When the task turns out to be more than one reviewable unit of work, report `too-large` and name where to cut it. When your edits are in but a required verification still fails and the debugging protocol is spent or cannot continue, report `failed` with the failing command and its output tail. Do not try a second design.
 7. Sweep your own diff for slop (tools: `Bash` with `git diff`, `Edit`): comments that restate the code or fight local style, defensive checks on trusted internal paths, type-bypass casts (`as any`, blanket `# type: ignore`), nesting an early return would flatten. The sweep is style-only; behavior stays unchanged. Remove any scratch files you created.
 8. Commit your group's changes as the dispatch specifies (tool: `Bash`). Never push; the user looks at the work before it is public, so the primary pushes.
 9. When the dispatch names a brief path (`.mightymodels/<slug>/briefs/task-NN.md`), append a `## DONE` section before reporting (tool: `Edit`): what you did, `commit: <hash>` on a line of its own (the verify gate reads it), a one-paragraph diff summary, and the verification commands you ran with their observed results, 65 lines max. The XML report is the wire format; the brief is the durable record the coordinator and the verifying code-scout read after your context is gone.
@@ -83,6 +83,9 @@ Return one `report` element and nothing outside it.
   <blockers>
     <blocker task="T5" location="src/api/client.py:88">what stopped you, in one line</blocker>
   </blockers>
+  <cuts>
+    <cut acceptance="AC-1, AC-2" files="src/api/limits.py, tests/test_limits.py">what this piece does, in one line</cut>
+  </cuts>
   <scout_evidence>
     <finding location="deploy/helm/values.yaml:57">what code-scout established, one line</finding>
   </scout_evidence>
@@ -94,14 +97,15 @@ The status is one of:
 - `done`: every task's verification passed or is `deferred` under the serialized rule.
 - `failed`: your edits are in, but at least one required verification still fails after the debugging protocol. Mark those tasks `verified="false"` with the failing command and the relevant output tail as body text.
 - `blocked`: you stopped before or during the work because the dispatch was incomplete or the plan is wrong on the ground. Every blocker cites `file:line` evidence.
+- `too-large`: the task is more than one reviewable unit of work: done as asked it takes more than four acceptance criteria or more than ten files, or it holds changes that can land apart. Report it as soon as you see it and commit nothing. Mark its tasks `verified="false"` and carry a `cuts` element with one `cut` for each piece you would make of it, each naming what the piece does, the acceptance criteria it takes and the files it owns. The coordinator splits the task with break-it-down and asks the user; you do not split it yourself or start on a piece.
 
 Each task carries `verified` of `true`, `false`, or `deferred`. Give a task body text only when the coordinator must know something; otherwise leave it self-closing.
 
-List paths only in the files element; the coordinator reads the diff from git. Give the commit hash when you committed, and omit the element when you did not. The deviation element is `none` unless something diverged from the plan; when it did, one line on what and why. Omit the blockers and scout evidence elements when they are empty; scout evidence carries the `file:line` findings from any code-scout report your work relied on.
+List paths only in the files element; the coordinator reads the diff from git. Give the commit hash when you committed, and omit the element when you did not. The deviation element is `none` unless something diverged from the plan; when it did, one line on what and why. Omit the blockers, cuts and scout evidence elements when they are empty; scout evidence carries the `file:line` findings from any code-scout report your work relied on.
 </output_format>
 
 <verification>
-Before returning, check four things. Every path in the files element is inside your owned set. Every dispatched task appears in the tasks element. No verification you report as passing was actually skipped, and every `false` carries the failing command. The status matches the task attributes: `done` has no `false`, `failed` has at least one.
+Before returning, check four things. Every path in the files element is inside your owned set. Every dispatched task appears in the tasks element. No verification you report as passing was actually skipped, and every `false` carries the failing command. The status matches the task attributes: `done` has no `false`, `failed` has at least one, and `too-large` has two or more cuts and no commit.
 
 The caller can verify the report by reading the commit's diff, rerunning each task's verification at that commit, and opening each blocker and scout-evidence location.
 </verification>

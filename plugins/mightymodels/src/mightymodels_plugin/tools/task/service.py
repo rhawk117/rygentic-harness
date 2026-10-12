@@ -10,6 +10,13 @@ gate before any push.
 A closed ticket is final. `start`, `verify` and `mark` refuse one before they read a task, and
 `show` and `ready` still answer for it.
 
+A task over the size bound never reaches `start`. The request schema refuses it, unless the start
+is the shape that names the user's approval, and `start` takes either shape alike and writes that
+approval into the reasons of the transition.
+
+`mark` may supersede a task that never started, so a task split before any attempt closes, and
+moves a never-started task to nothing else.
+
 The ladder is the skills': at most one intern attempt, an engineer attempt, one architect
 implementation attempt, one more in systemic-refactor mode after an approved scope expansion,
 which may take over a task that is still in progress, and diagnose-replan passes that never count
@@ -43,14 +50,15 @@ from mightymodels_plugin.tools.task.gates import (
 )
 from mightymodels_plugin.tools.task.repository import FAILED_FIX_LIMIT
 from mightymodels_plugin.tools.task.schema import (
+    AnyTaskStart,
     ArchitectMode,
     Implementer,
     Status,
     TaskMark,
     TaskRecord,
-    TaskStart,
     TaskVerification,
     TaskView,
+    TooLargeTaskStart,
 )
 from mightymodels_plugin.tools.task.store import Attempt, TaskRepository, TaskStore, Transition
 
@@ -60,7 +68,7 @@ INTERN_LIMIT = 1
 TERMINAL = frozenset[Status]()
 ALLOWED: Mapping[Status, frozenset[Status]] = MappingProxyType(
     {
-        Status.PENDING: frozenset({Status.IN_PROGRESS}),
+        Status.PENDING: frozenset({Status.IN_PROGRESS, Status.SUPERSEDED}),
         Status.IN_PROGRESS: frozenset(
             {Status.VERIFIED, Status.FAILED, Status.BLOCKED, Status.SUPERSEDED}
         ),
@@ -141,13 +149,13 @@ def fix_error(
     return None
 
 
-def mode_error(change: TaskStart) -> ModeNeedsArchitectError | None:
+def mode_error(change: AnyTaskStart) -> ModeNeedsArchitectError | None:
     if change.by is Implementer.ARCHITECT or change.mode is None:
         return None
     return ModeNeedsArchitectError(change.mode)
 
 
-def architect_mode(change: TaskStart) -> ArchitectMode | None:
+def architect_mode(change: AnyTaskStart) -> ArchitectMode | None:
     if change.by is not Implementer.ARCHITECT:
         return None
     return ArchitectMode.RECOVERY_IMPLEMENTATION if change.mode is None else change.mode
@@ -175,8 +183,18 @@ def start_error(task_id: str, before: Status, mode: ArchitectMode | None) -> Tra
     return TransitionError(task_id, before, Status.IN_PROGRESS)
 
 
-def start_reasons(worker: Implementer, mode: ArchitectMode | None) -> list[str]:
-    return [f'by {worker}', *([] if mode is None else [f'in {mode} mode'])]
+def approval_reasons(change: AnyTaskStart) -> list[str]:
+    if not isinstance(change, TooLargeTaskStart):
+        return []
+    return [f'too large, approved by {change.too_large_approved_by}']
+
+
+def start_reasons(change: AnyTaskStart, mode: ArchitectMode | None) -> list[str]:
+    return [
+        f'by {change.by}',
+        *([] if mode is None else [f'in {mode} mode']),
+        *approval_reasons(change),
+    ]
 
 
 def problem_lines(problems: Sequence[str]) -> str:
@@ -211,7 +229,7 @@ class TaskService:
             receipts=repository.contracts.latest_receipts(slug),
         )
 
-    def start(self, slug: Slug, task_id: str, change: TaskStart) -> TaskView:
+    def start(self, slug: Slug, task_id: str, change: AnyTaskStart) -> TaskView:
         with self.store.transaction() as repository:
             repository.tickets.unclosed_ticket(slug)
             if (error := mode_error(change)) is not None:
@@ -231,7 +249,7 @@ class TaskService:
                 task_id=task_id,
                 before=before,
                 after=Status.IN_PROGRESS,
-                reasons=start_reasons(change.by, mode),
+                reasons=start_reasons(change, mode),
                 head=head,
                 at=now(),
             )
@@ -270,9 +288,8 @@ class TaskService:
     def mark(self, slug: Slug, task_id: str, change: TaskMark) -> TaskView:
         with self.store.transaction() as repository:
             repository.tickets.unclosed_ticket(slug)
-            task = repository.task(slug, task_id)
-            before = status_of(task)
-            if task is None or change.to not in ALLOWED[before]:
+            before = status_of(repository.task(slug, task_id))
+            if change.to not in ALLOWED[before]:
                 raise TransitionError(task_id, before, change.to)
             transition = Transition(
                 task_id=task_id,

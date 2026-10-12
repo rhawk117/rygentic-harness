@@ -39,7 +39,7 @@ ANSWERS = {
     'context': ['drain loop sleeps between batches'],
 }
 COMMAND = {'id': 'T1.AC-1', 'argv': ['true'], 'approved_by': 'user'}
-START = {'by': 'engineer', 'owned': ['src/queue.py']}
+START = {'by': 'engineer', 'owned': ['src/queue.py'], 'acceptance': ['AC-1']}
 FAILED_FIX: dict[str, object] = {
     'action': 'record',
     'slug': SLUG,

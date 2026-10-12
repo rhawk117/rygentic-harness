@@ -125,7 +125,10 @@ class InMemoryTaskRepository:
     def record_mark(self, slug: Slug, transition: Transition) -> None:
         key = (slug, transition.task_id)
         change = {'status': transition.after, 'reasons': tuple(transition.reasons)}
-        self.held[key] = self.held[key].model_copy(update=change)
+        started = self.held.get(key)
+        never_started = TaskRecord(id=transition.task_id, status=transition.before)
+        held = never_started if started is None else started
+        self.held[key] = held.model_copy(update=change)
         self.transitions.append(recorded(slug, transition))
 
 

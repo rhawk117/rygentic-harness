@@ -14,8 +14,9 @@ A method that changes a task takes the transition the change is part of and stor
 transition's row with it, so no task moves without its record.
 
 A ticket's tasks are read whole, and the read is refused once a ticket holds more than `TASKS`.
-`record_start` is the only write that adds a task, and it is refused with `WriteLimitError` when
-the ticket would hold more than `TASKS`: the task, its attempt and its transition are not stored.
+`record_start` adds a task, and so does `record_mark` when it closes one that never started. Either
+is refused with `WriteLimitError` when the ticket would hold more than `TASKS`: the task, its
+attempt and its transition are not stored.
 The attempts are counted by the database, so a read fetches one row per task and worker however
 many attempts there were, and `latest_transitions_into` fetches only the transitions it is asked
 for.
@@ -37,7 +38,7 @@ from dataclasses import dataclass
 import sqlalchemy as sql
 from sqlalchemy.orm import Session
 
-from mightymodels_plugin.core.database import Database, ReadLimit
+from mightymodels_plugin.core.database import Database, ReadLimit, WriteLimitError
 from mightymodels_plugin.core.repository_key import RepositoryKey
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.tools.contract.repository import SqliteContractRepository
@@ -202,14 +203,7 @@ class SqliteTaskRepository:
             )
         )
         self.session.add(transition_row(slug, transition, repository_key=self.repository_key))
-        self.session.flush()
-        held = (
-            sql.select(sql.func.count())
-            .select_from(TaskRow)
-            .where(TaskRow.repository_key == self.repository_key.root, TaskRow.slug == slug.root)
-        )
-        error = TASKS.write_error(self.session.scalars(held).one(), owner=f'ticket {slug}')
-        if error is not None:
+        if (error := tasks_held_error(self, slug)) is not None:
             raise error
 
     def record_failed_fix(self, slug: Slug, task_id: str, hypothesis: str, *, at: str) -> None:
@@ -234,13 +228,35 @@ class SqliteTaskRepository:
         self.session.add(transition_row(slug, transition, repository_key=self.repository_key))
 
     def record_mark(self, slug: Slug, transition: Transition) -> None:
-        row = self.session.get_one(
-            TaskRow, (self.repository_key.root, slug.root, transition.task_id)
+        started = self.task(slug, transition.task_id)
+        never_started = TaskRecord(id=transition.task_id, status=transition.before)
+        held = never_started if started is None else started
+        self.session.merge(
+            TaskRow(
+                repository_key=self.repository_key.root,
+                slug=slug.root,
+                task_id=transition.task_id,
+                status=transition.after,
+                owned=list(held.owned),
+                base=held.base,
+                commit=held.commit,
+                reasons=list(transition.reasons),
+                updated_at=transition.at,
+            )
         )
-        row.status = transition.after
-        row.reasons = list(transition.reasons)
-        row.updated_at = transition.at
         self.session.add(transition_row(slug, transition, repository_key=self.repository_key))
+        if (error := tasks_held_error(self, slug)) is not None:
+            raise error
+
+
+def tasks_held_error(repository: SqliteTaskRepository, slug: Slug) -> WriteLimitError | None:
+    repository.session.flush()
+    held = (
+        sql.select(sql.func.count())
+        .select_from(TaskRow)
+        .where(TaskRow.repository_key == repository.repository_key.root, TaskRow.slug == slug.root)
+    )
+    return TASKS.write_error(repository.session.scalars(held).one(), owner=f'ticket {slug}')
 
 
 def in_progress_started_by(

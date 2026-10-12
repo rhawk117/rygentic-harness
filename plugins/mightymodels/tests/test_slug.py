@@ -89,7 +89,10 @@ TOOL_CALLS = (
         'task',
         {
             'action': 'start',
-            'payload': {'task_id': 'T1', 'change': {'by': 'engineer', 'owned': ['a.py']}},
+            'payload': {
+                'task_id': 'T1',
+                'change': {'by': 'engineer', 'owned': ['a.py'], 'acceptance': ['AC-1']},
+            },
         },
     ),
     (

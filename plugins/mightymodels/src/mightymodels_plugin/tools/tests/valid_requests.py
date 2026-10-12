@@ -30,6 +30,7 @@ from mightymodels_plugin.tools.task.schema import (
     TaskMark,
     TaskStart,
     TaskVerification,
+    TooLargeTaskStart,
     VerifyTaskPayload,
 )
 from mightymodels_plugin.tools.ticket.schema import TicketAnswers, TicketContext, TicketInterview
@@ -75,14 +76,20 @@ VALID: Mapping[type[RequestModel], dict[str, object]] = MappingProxyType(
         DisposePayload: {'by': 'user', 'decisions': {'F1': {'decision': 'fix'}}},
         DisposeRequest: {'by': 'user', 'decisions': {'F1': {'decision': 'fix'}}},
         ResolvePayload: {'finding': 'F1', 'result': 'fixed'},
-        TaskStart: {'by': 'engineer', 'owned': ['src/queue.py']},
+        TaskStart: {'by': 'engineer', 'owned': ['src/queue.py'], 'acceptance': ['AC-1']},
+        TooLargeTaskStart: {
+            'by': 'engineer',
+            'owned': ['src/queue.py'],
+            'acceptance': ['AC-1'],
+            'too_large_approved_by': 'user',
+        },
         TaskVerification: {'commit': 'abc1234'},
         TaskMark: {'to': 'failed', 'reason': 'the drain test fails'},
         FailedFixPayload: {'task_id': 'T1', 'change': {'hypothesis': 'the drain loop sleeps'}},
         TaskFailedFix: {'hypothesis': 'the drain loop sleeps between batches'},
         StartTaskPayload: {
             'task_id': 'T1',
-            'change': {'by': 'engineer', 'owned': ['src/queue.py']},
+            'change': {'by': 'engineer', 'owned': ['src/queue.py'], 'acceptance': ['AC-1']},
         },
         VerifyTaskPayload: {'task_id': 'T1', 'change': {'commit': 'abc1234'}},
         MarkTaskPayload: {

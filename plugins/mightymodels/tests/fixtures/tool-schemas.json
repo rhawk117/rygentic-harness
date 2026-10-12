@@ -798,6 +798,23 @@
     "input_schema": {
       "type": "object",
       "$defs": {
+        "AcceptanceCriteria": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "AnyTaskStart": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TaskStart"
+            },
+            {
+              "$ref": "#/$defs/TooLargeTaskStart"
+            }
+          ]
+        },
         "ArchitectMode": {
           "enum": [
             "recovery-implementation",
@@ -815,6 +832,22 @@
             "$ref": "#/$defs/ProseText"
           },
           "type": "object"
+        },
+        "BoundedAcceptanceCriteria": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array"
+        },
+        "BoundedOwnedFiles": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array"
         },
         "Implementer": {
           "enum": [
@@ -965,7 +998,7 @@
               "$ref": "#/$defs/TaskId"
             },
             "change": {
-              "$ref": "#/$defs/TaskStart"
+              "$ref": "#/$defs/AnyTaskStart"
             }
           },
           "required": [
@@ -1032,7 +1065,10 @@
               "$ref": "#/$defs/Implementer"
             },
             "owned": {
-              "$ref": "#/$defs/OwnedFiles"
+              "$ref": "#/$defs/BoundedOwnedFiles"
+            },
+            "acceptance": {
+              "$ref": "#/$defs/BoundedAcceptanceCriteria"
             },
             "mode": {
               "anyOf": [
@@ -1048,7 +1084,8 @@
           },
           "required": [
             "by",
-            "owned"
+            "owned",
+            "acceptance"
           ],
           "title": "TaskStart",
           "type": "object"
@@ -1067,6 +1104,44 @@
             "commit"
           ],
           "title": "TaskVerification",
+          "type": "object"
+        },
+        "TooLargeTaskStart": {
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "$ref": "#/$defs/Implementer"
+            },
+            "owned": {
+              "$ref": "#/$defs/OwnedFiles"
+            },
+            "acceptance": {
+              "$ref": "#/$defs/AcceptanceCriteria"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ArchitectMode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "too_large_approved_by": {
+              "const": "user",
+              "title": "Too Large Approved By",
+              "type": "string"
+            }
+          },
+          "required": [
+            "by",
+            "owned",
+            "acceptance",
+            "too_large_approved_by"
+          ],
+          "title": "TooLargeTaskStart",
           "type": "object"
         },
         "VerifyTask": {

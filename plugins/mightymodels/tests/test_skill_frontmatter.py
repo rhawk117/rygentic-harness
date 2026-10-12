@@ -129,6 +129,7 @@ class TestKeysOfTheSkills:
             'agents-assemble': TAKING_AN_ARGUMENT,
             'ask-an-adult': PRE_APPROVING,
             'baton-pass': TAKING_AN_ARGUMENT,
+            'break-it-down': TAKING_AN_ARGUMENT,
             'becoming-merge-vader': SHARED.union({'user-invocable'}),
             'becoming-uncle-bob': SHARED.union({'user-invocable'}),
             'crashout': HUMAN_ONLY,

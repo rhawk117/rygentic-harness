@@ -177,8 +177,8 @@ rollup, and stop.
 Order: Critical findings and High security findings first, then the rest in gate order. For
 each finding `Fn` chosen for fixing:
 
-1. `task` `start` with `payload` `task_id` `Rn` and `change` `by` `engineer` and `owned` the
-   files the Fix touches (agents-assemble's call).
+1. `task` `start` with `payload` `task_id` `Rn` and `change` `by` `engineer`, `owned` the
+   files the Fix touches and `acceptance` the Verify line (agents-assemble's call).
 2. The finding's Verify command goes to the user as contract id `Rn.AC-1` in one
    `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands` entry (game-plan's call).
 3. Dispatch an **engineer**: the residual variant for a single-concern merge-vader finding

@@ -109,7 +109,7 @@ class Workspace:
         return {record.id: record.status for record in self.tasks.show(TICKET).tasks}
 
     def verify_first_task(self) -> None:
-        change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',))
+        change = TaskStart(by=Implementer.ENGINEER, owned=('src/queue.py',), acceptance=('AC-1',))
         self.tasks.start(TICKET, 'T1', change)
         with self.tasks.store.transaction() as repository:
             repository.record_verification(TICKET, FIRST_TASK_VERIFIED, 'HEAD')

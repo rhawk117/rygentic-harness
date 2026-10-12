@@ -258,7 +258,7 @@ class TestClose:
 
 
 class TestAClosedTicket:
-    CI_FIX = TaskStart(by=Implementer.ENGINEER, owned=('src/lint.py',))
+    CI_FIX = TaskStart(by=Implementer.ENGINEER, owned=('src/lint.py',), acceptance=('AC-1',))
 
     @pytest.fixture
     def closed(self, close_repo: CloseRepo) -> CloseRepo:
