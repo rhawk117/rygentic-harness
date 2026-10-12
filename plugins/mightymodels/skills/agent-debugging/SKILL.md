@@ -1,9 +1,10 @@
 ---
-name: whats-broken-solo
+name: agent-debugging
 description: Use when you are an engineer and a task's verification fails after your edit, to debug it alone, record each failed fix, and stop blocked at the third.
+user-invocable: false
 ---
 
-# whats-broken-solo
+# agent-debugging
 
 The engineer's form of whats-broken, for one worker with no one to dispatch. The rule is the same: **no fix before evidence.** The engineer does not dispatch architect, code-scout or web-scout here; it reads, runs and tests with its own tools. The task tool counts the failed fixes, so the limit holds even when the engineer would rather try one more.
 

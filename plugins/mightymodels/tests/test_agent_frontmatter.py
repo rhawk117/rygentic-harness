@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 from types import MappingProxyType
 
@@ -9,9 +10,12 @@ import pytest
 from mightymodels_plugin.core.routing import EFFORT, Worker, fixed_model
 
 AGENTS = Path(__file__).parent.parent.joinpath('agents')
+SKILLS = Path(__file__).parent.parent.joinpath('skills')
 FRONTMATTER = re.compile(r'\A---\n(?P<head>.*?)\n---\n(?P<body>.*)\Z', re.DOTALL)
 PIN = re.compile(r'^(?P<key>model|effort): (?P<value>\S+)$', re.MULTILINE)
 STATE_TOOL = re.compile(r'\bmcp__\w+')
+PRELOADED_SKILLS = re.compile(r'^skills: (?P<names>.+)$', re.MULTILINE)
+SKILL_NAME = re.compile(r'[\w-]+')
 FORBIDDEN_PHRASES = (
     re.compile(r'\b(call|use) no tools?\b', re.IGNORECASE),
     re.compile(r'\bno tools?\b(?!\))', re.IGNORECASE),
@@ -28,7 +32,13 @@ class AgentFile:
     worker: Worker
     pins: dict[str, str]
     state_tools: tuple[str, ...]
+    skills: tuple[str, ...]
     body: str
+
+
+def preloaded_skills(head: str) -> tuple[str, ...]:
+    found = PRELOADED_SKILLS.search(head)
+    return tuple(SKILL_NAME.findall(found['names'])) if found else ()
 
 
 def agent_file(path: Path) -> AgentFile:
@@ -39,6 +49,7 @@ def agent_file(path: Path) -> AgentFile:
         worker=Worker(path.stem),
         pins=pins,
         state_tools=tuple(STATE_TOOL.findall(parts['head'])),
+        skills=preloaded_skills(parts['head']),
         body=parts['body'],
     )
 
@@ -86,3 +97,17 @@ class TestStateToolsOfTheAgents:
         named = {agent.worker: agent.state_tools for agent in TestAgentFiles.AGENT_FILES}
 
         assert {worker: tools for worker, tools in named.items() if tools} == self.NAMED
+
+
+class TestSkillsOfTheAgents:
+    PRELOADED = MappingProxyType(
+        {agent.worker: agent.skills for agent in TestAgentFiles.AGENT_FILES}
+    )
+
+    def test_the_engineer_preloads_agent_debugging(self) -> None:
+        assert self.PRELOADED[Worker.ENGINEER] == ('agent-debugging',)
+
+    def test_every_preloaded_skill_is_a_skill_directory(self) -> None:
+        preloaded = chain.from_iterable(self.PRELOADED.values())
+
+        assert [name for name in preloaded if not SKILLS.joinpath(name, 'SKILL.md').is_file()] == []
