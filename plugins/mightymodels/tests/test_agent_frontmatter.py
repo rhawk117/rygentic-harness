@@ -133,6 +133,11 @@ class TestToolsOfTheAgents:
             'mcp__plugin_mightymodels_state__snapshot',
         )
 
+    def test_terry_toolchain_holds_the_tools_to_read_and_run_and_the_skill_tool_and_no_other(
+        self,
+    ) -> None:
+        assert self.HELD[Worker.TERRY_TOOLCHAIN] == ('Read', 'Grep', 'Glob', 'Bash', 'Skill')
+
 
 class TestStateToolsOfTheAgents:
     REGISTERED = frozenset(
@@ -278,6 +283,7 @@ class TestKeysOfTheAgents:
             Worker.INTERN: SHARED,
             Worker.GITTY_UP: SHARED,
             Worker.WINGMAN: SHARED,
+            Worker.TERRY_TOOLCHAIN: SHARED,
             Worker.MERGE_VADER: DISPATCHER,
             Worker.UNCLE_BOB: DISPATCHER,
         }

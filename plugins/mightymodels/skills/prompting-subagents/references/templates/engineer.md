@@ -2,7 +2,7 @@
 
 For one task dispatch inside an active mightymodels sprint. This template's first output block IS the brief's `## ASKED` half — write it once, paste it to the top of `.mightymodels/<slug>/briefs/task-NN.md`, and include it in the dispatch. The engineer's standing contract (report format, scope rules, blast-radius doctrine) lives in the engineer agent file — do not restate it.
 
-**Ten-second checklist:** every AC is checkable — a runnable command or an assertion with a location; "works correctly" is a placeholder, reject it · files-in-scope is disjoint from any other open group's set · the verification commands actually exist in this repo (check the runner config before promising them) · tier bump, if any, has its reason logged.
+**Ten-second checklist:** every AC is checkable — a runnable command or an assertion with a location; "works correctly" is a placeholder, reject it · files-in-scope is disjoint from any other open group's set · the verification commands actually exist in this repo (check the runner config before promising them) · tier bump, if any, has its reason logged · the toolchain lines are pasted from `toolchain.md` (a hook the commit runs, a lint ban, a sandbox denial, a tool the task can use), never recalled.
 
 ASKED stanza (goes in the brief AND the dispatch):
 
@@ -16,6 +16,7 @@ verification: <commands, in order>
 files-in-scope: [<paths this task owns>]
 engineer-tier: <model from ticket.yml, or bumped one tier: reason>
 uses: [<repository skills or instruction files, when the task names them>]
+toolchain: [<the TC lines of .mightymodels/<slug>/toolchain.md that bind this task, verbatim; left out on a ticket with no survey>]
 ```
 
 Dispatch wrapper around the stanza:
@@ -29,7 +30,7 @@ Dispatch wrapper around the stanza:
 </constraints>
 ```
 
-Slots: objective · ACs · verification · files-in-scope · tier(+reason) · brief path · commit message.
+Slots: objective · ACs · verification · files-in-scope · tier(+reason) · toolchain lines · brief path · commit message.
 
 ## Residual variant
 

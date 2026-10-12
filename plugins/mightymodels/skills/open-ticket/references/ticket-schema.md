@@ -24,6 +24,7 @@ subagent-models:
   intern: "haiku"
   gitty-up: "haiku"
   wingman: "fable"
+  terry-toolchain: "sonnet"
   merge-vader: "opus"            # ignored: a review run sets reviewer models
   uncle-bob: "opus"              # ignored: a review run sets reviewer models
 handoff-context:
@@ -54,7 +55,7 @@ Anchors, flow collections (`[a, b]`, `{a: b}`), single quotes, and block scalars
 
 **plan-first**: `true` when the user expects at least one compaction. `true` also means the baton-pass handoff prompt carries the switch-models reminder, and the next session's low-tier primary writes the plan before any dispatch.
 
-**Reviewers**: a review run sets its reviewers' models from its depth, `sonnet` for quick and `opus` for standard and deep, and the run's one override moves the heavier-weighted reviewer to `fable`. The two reviewer keys are written for completeness and change no review. The other workers are fixed: `validate` refuses a value that differs from `code-scout`, `web-scout`, `qualitylens`, `fact-checker`, `intern` and `gitty-up` on `haiku`, `engineer` on `sonnet`, `architect` on `opus` and `wingman` on `fable`.
+**Reviewers**: a review run sets its reviewers' models from its depth, `sonnet` for quick and `opus` for standard and deep, and the run's one override moves the heavier-weighted reviewer to `fable`. The two reviewer keys are written for completeness and change no review. The other workers are fixed: `validate` refuses a value that differs from `code-scout`, `web-scout`, `qualitylens`, `fact-checker`, `intern` and `gitty-up` on `haiku`, `engineer` and `terry-toolchain` on `sonnet`, `architect` on `opus` and `wingman` on `fable`.
 
 ## Field discipline
 

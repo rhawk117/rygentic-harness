@@ -9,6 +9,7 @@ The state itself is rows in one SQLite database, `mightymodels.db`, and that fil
 ├── <task-slug>/
 │   ├── ticket.yml                     source of truth (see ticket-schema.md)
 │   ├── plan.md                        game-plan ramp only; high-level, citation-free
+│   ├── toolchain.md                   game-plan ramp only; terry-toolchain's survey, ≤80 lines
 │   ├── issue-body.md                  when no forge issue was created, or as the local draft
 │   ├── pr-body.md                     stick-the-landing's checked PR body
 │   ├── handoffs/snapshot.{json,md}    baton-pass writes what the snapshot tool returns: objective state from the database
@@ -39,6 +40,7 @@ The database's only writers are the state server's eight tools and `mightymodels
 | `closings`                                                           | the `close` tool                                                                                    | prune-ticket, future sessions                            |
 | ticket.yml                                                           | open-ticket's `ticket` `write`, or one-shot when ramping without a ticket (then the user's hand)    | every session                                            |
 | plan.md                                                              | game-plan primary, after user approval                                                              | primary, dispatch compilation                            |
+| toolchain.md                                                         | game-plan primary, verbatim from terry-toolchain's report                                           | primary, dispatch compilation                            |
 | briefs/ ASKED half                                                   | primary at dispatch                                                                                 | engineer, verifying scout                                |
 | briefs/ DONE half                                                    | engineer                                                                                            | primary, verifying scout                                 |
 | review/<run>/ directory                                              | the `review` tool's `start` creates it; the primary writes persona reports, metrics and the rendered report | review-circus, stick-the-landing, prune-ticket, the user |

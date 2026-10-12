@@ -149,6 +149,7 @@ subagent-models:
   intern: haiku
   gitty-up: haiku
   wingman: opus
+  terry-toolchain: sonnet
   merge-vader: opus
   uncle-bob: sonnet
 handoff-context:

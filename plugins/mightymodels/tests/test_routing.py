@@ -37,6 +37,7 @@ class TestRoutingTable:
             pytest.param('uncle-bob', ('opus', 'opus', 'opus'), id='uncle-bob'),
             pytest.param('merge-vader', ('opus', 'opus', 'opus'), id='merge-vader'),
             pytest.param('wingman', ('fable', 'fable', 'fable'), id='wingman'),
+            pytest.param('terry-toolchain', ('sonnet', 'sonnet', 'sonnet'), id='terry-toolchain'),
         ],
     )
     def test_routing_table_maps_each_worker_and_scope_to_its_model_alias(
@@ -72,6 +73,7 @@ class TestFixedWorkers:
             pytest.param(Worker.INTERN, 'sonnet', id='intern'),
             pytest.param(Worker.GITTY_UP, 'fable', id='gitty-up'),
             pytest.param(Worker.WINGMAN, 'opus', id='wingman'),
+            pytest.param(Worker.TERRY_TOOLCHAIN, 'opus', id='terry-toolchain'),
         ],
     )
     def test_a_ticket_value_that_differs_from_the_fixed_model_is_refused(
@@ -95,6 +97,7 @@ class TestFixedWorkers:
             pytest.param(Worker.INTERN, 'haiku', id='intern'),
             pytest.param(Worker.GITTY_UP, 'haiku', id='gitty-up'),
             pytest.param(Worker.WINGMAN, 'fable', id='wingman'),
+            pytest.param(Worker.TERRY_TOOLCHAIN, 'sonnet', id='terry-toolchain'),
         ],
     )
     def test_a_ticket_value_equal_to_the_fixed_model_is_accepted(
@@ -104,7 +107,7 @@ class TestFixedWorkers:
 
         assert model_problems(models) == []
 
-    def test_fixes_the_nine_workers_a_ticket_cannot_move(self) -> None:
+    def test_fixes_the_ten_workers_a_ticket_cannot_move(self) -> None:
         assert {worker.value for worker in FIXED_WORKERS} == {
             'code-scout',
             'web-scout',
@@ -115,6 +118,7 @@ class TestFixedWorkers:
             'intern',
             'gitty-up',
             'wingman',
+            'terry-toolchain',
         }
 
     @pytest.mark.parametrize('worker', sorted(REVIEWER_WORKERS))

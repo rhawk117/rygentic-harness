@@ -39,6 +39,7 @@ EMPTY_ROW = (
     Worker.INTERN,
     Worker.GITTY_UP,
     Worker.WINGMAN,
+    Worker.TERRY_TOOLCHAIN,
 )
 
 

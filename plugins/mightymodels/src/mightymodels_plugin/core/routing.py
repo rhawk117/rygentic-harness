@@ -50,6 +50,7 @@ class Worker(StrEnum):
     INTERN = 'intern'
     GITTY_UP = 'gitty-up'
     WINGMAN = 'wingman'
+    TERRY_TOOLCHAIN = 'terry-toolchain'
     MERGE_VADER = 'merge-vader'
     UNCLE_BOB = 'uncle-bob'
 
@@ -71,6 +72,7 @@ FOLDERS: Mapping[Worker, Folder] = MappingProxyType(
         Worker.INTERN: Folder.WORKERS,
         Worker.GITTY_UP: Folder.WORKERS,
         Worker.WINGMAN: Folder.TRIAGE,
+        Worker.TERRY_TOOLCHAIN: Folder.TRIAGE,
         Worker.MERGE_VADER: Folder.REVIEW,
         Worker.UNCLE_BOB: Folder.REVIEW,
     }
@@ -94,6 +96,7 @@ ROUTING: Mapping[Worker, ScopeRouting] = MappingProxyType(
         Worker.INTERN: at_every_scope(Model.HAIKU),
         Worker.GITTY_UP: at_every_scope(Model.HAIKU),
         Worker.WINGMAN: at_every_scope(Model.FABLE),
+        Worker.TERRY_TOOLCHAIN: at_every_scope(Model.SONNET),
         Worker.MERGE_VADER: at_every_scope(Model.OPUS),
         Worker.UNCLE_BOB: at_every_scope(Model.OPUS),
     }

@@ -59,9 +59,17 @@ which routing fixes; `plan-first` tells you whether the reader will be a post-co
 codebase gets one code-scout confirmation at HEAD; a claim that rests on external
 documentation goes to web-scout. When the ticket links an investigation, its `lead` rows are
 where to look, not what to believe. Stale claims are a delta report to the user before you
-plan on top of them. Also ask code-scout where the repository's own test, lint, and build
-commands are declared (CI workflow, task runner, package scripts), so the commands in step 4
-are the repository's, not guesses.
+plan on top of them.
+
+**2b. Survey the toolchain.** On every run, in the same message as step 2's scouts, dispatch
+`mightymodels:triage:terry-toolchain` on `sonnet` with its `prompting-subagents` template. It
+surveys the harness's tools, the installed skills, plugins and agents, the repository's own
+toolchain (git hooks, lint and format bans, CI, and where the test, lint and build commands
+are declared) and the sandbox and permission limits. It writes no file: save its report
+verbatim as `toolchain.md` in the ticket directory, replacing an earlier run's. The commands
+in step 4 are the ones it reports, not guesses, and a hook, ban or denial a task would run
+into becomes an invariant, a criterion or a Risk in the draft, so that it does not come back
+as a `blocked` engineer. What its `Not seen` section lists is a Risk as well.
 
 **3. Cross-examine the user.** Invoke `cross-examine` with the ticket's `summary` as the
 target; the user picks the depth. `base-intent` is a plan field, written into plan.md in step
@@ -228,9 +236,10 @@ approval. Each item is a way plans have gone wrong; each is a yes/no question.
 
 ## Boundaries
 
-game-plan writes `plan.md`, only after cross-examine and the risk interview, plus the
-ticket's verification contract and its planning receipts. It dispatches scouts and runs
-only approved contract commands; no engineer, no architect, no edits to the repository. If step 2
+game-plan writes `toolchain.md` from the survey's report and `plan.md`, the plan only after
+cross-examine and the risk interview, plus the ticket's verification contract and its planning
+receipts. It dispatches scouts and terry-toolchain and runs only approved contract commands;
+no engineer, no architect, no edits to the repository. If step 2
 shows the ticket's claims are wrong enough that the approach changes, that is a report to the
 user and possibly a return to open-ticket, not a plan built on a corrected premise the
 ticket does not record.
