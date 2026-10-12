@@ -165,7 +165,7 @@ Step 9, before saying done:
 - Results are returned or published, never printed. Data is labeled synthetic, public or provided.
 - Anything approximate (quantiles, ANN search, sampling) is labeled approximate, and its error or recall was measured.
 
-Dispatch `python-harness:reviewer` on the changed paths, with the project root and Python version from `survey`. Open the cited lines before relying on its findings, and fix or report each one; it edits nothing.
+Dispatch `python-harness:reviewer` on the changed paths, with the task as agreed with the user as the contract, the checks this workflow requires before done as the acceptance criteria, the verification output so far, and the project root and Python version from `survey`. Open the cited lines before relying on its findings, and fix or report each one; it edits nothing.
 </gates>
 
 <output>

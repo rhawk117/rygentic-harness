@@ -202,8 +202,9 @@ rate limit and `Retry-After`, timeouts, memory per worker, and the file-descript
 When the user asked for tests of the script, dispatch `python-harness:test-engineer` to write
 them, briefing it with the script path, the behaviours to pin, and the project root and Python
 version from `survey`. When the script lands inside a Python project, dispatch
-`python-harness:reviewer` on the script's path before reporting, with the project root and
-Python version from `survey`; its findings go into the report.
+`python-harness:reviewer` on the script's path before reporting, with the design brief the user settled as the agreed contract,
+the behaviours the script must show as the acceptance criteria, the verification output, and the
+project root and Python version from `survey`; its findings go into the report.
 </workflow>
 
 <dispatch>

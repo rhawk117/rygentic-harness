@@ -122,7 +122,7 @@ Without an experiment or an identification strategy, the headline must not use c
 
 Keep computation separate from presentation. The script returns tables, arrays and typed results. When the results need to be reused or published as artifacts, follow the `data-engineering` skill's output contract and the results module bundled with it.
 
-Dispatch `python-harness:reviewer` on the analysis script's path, with the project root and Python version from `survey`. Treat its findings as input to the checks below; it edits nothing.
+Dispatch `python-harness:reviewer` on the analysis script's path, with the question, grain, denominator and baseline fixed above as the agreed contract, the checks below as the acceptance criteria, and the project root and Python version from `survey`. Treat its findings as input to the checks below; it edits nothing.
 </workflow>
 
 <dispatch>
