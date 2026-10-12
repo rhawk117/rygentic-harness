@@ -63,6 +63,12 @@ Never retry the call. When it has returned, write one final message that is the 
 PROMPT
 }
 
+skill_listing_prompt() {
+  cat <<PROMPT
+Call no tool. Your context holds a list of the skills available to you, each entry a name followed by a description. Write one line for every entry whose name begins with "${PLUGIN_NAME}:" and nothing else, with no code fence and no list markers. An entry's line is DESCRIBED-SKILL, a space, the name without "${PLUGIN_NAME}:", a space, then the first word of its description with no punctuation after it. For an entry that holds a name and no description, the line is UNDESCRIBED-SKILL, a space, then the name without "${PLUGIN_NAME}:".
+PROMPT
+}
+
 nested_session() {
   local session_name=$1
   local prompt=$2
@@ -138,15 +144,36 @@ check_engineer_preloaded_skills() {
     'PRELOADED-SKILL agent-debugging' engineer-preloaded-skills
 }
 
-check_uncle_bob_preloaded_doctrine() {
-  local doctrine_skill=becoming-uncle-bob
+check_reviewer_preloaded_doctrine() {
+  local reviewer=$1
+  local doctrine_skill=becoming-${reviewer}
   local doctrine_heading
 
   doctrine_heading=$(grep -m 1 '^# ' "${PLUGIN_DIRECTORY}/skills/${doctrine_skill}/SKILL.md")
-  nested_session uncle-bob-preloaded-doctrine \
-    "$(preloaded_heading_prompt "${PLUGIN_NAME}:review:uncle-bob" "${doctrine_skill}")"
-  expect_line 'uncle-bob-preloads-its-doctrine' \
-    "PRELOADED-HEADING ${doctrine_heading}" uncle-bob-preloaded-doctrine
+  nested_session "${reviewer}-preloaded-doctrine" \
+    "$(preloaded_heading_prompt "${PLUGIN_NAME}:review:${reviewer}" "${doctrine_skill}")"
+  expect_line "${reviewer}-preloads-its-doctrine" \
+    "PRELOADED-HEADING ${doctrine_heading}" "${reviewer}-preloaded-doctrine"
+}
+
+check_skill_listing_describes_every_skill() {
+  local skill_file skill description_start
+
+  nested_session skill-listing "$(skill_listing_prompt)"
+  for skill_file in "${PLUGIN_DIRECTORY}"/skills/*/SKILL.md; do
+    grep -q '^disable-model-invocation:[[:space:]]*true' "${skill_file}" && continue
+    skill=${skill_file%/*}
+    skill=${skill##*/}
+    description_start=$(awk '/^description:/ {
+      sub(/^description:[[:space:]]*(>-)?/, "")
+      if (NF == 0) getline
+      sub(/[^[:alnum:]]+$/, "", $1)
+      print $1
+      exit
+    }' "${skill_file}")
+    expect_line "listing-describes-${skill}" \
+      "DESCRIBED-SKILL ${skill} ${description_start}" skill-listing
+  done
 }
 
 mapfile -t expected_agent_types < <(agent_types_on_disk)
@@ -184,7 +211,9 @@ work_directory=$(mktemp -d "${TMPDIR:-/tmp}/live-plugin-check.XXXXXX") || exit 1
 check_dispatch "${expected_agent_types[@]}"
 check_state_server_starts
 check_engineer_preloaded_skills
-check_uncle_bob_preloaded_doctrine
+check_reviewer_preloaded_doctrine uncle-bob
+check_reviewer_preloaded_doctrine merge-vader
+check_skill_listing_describes_every_skill
 
 if ((${#FAILURES[@]} > 0)); then
   log::error "live plugin checks failed; the nested sessions' output is in ${work_directory}"
