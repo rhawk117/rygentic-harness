@@ -49,6 +49,18 @@ class TestLauncher:
         assert 'usage: mightymodels' in completed.stdout
 
 
+class TestEveryFileInBin:
+    @pytest.mark.parametrize(
+        'file',
+        [
+            pytest.param(file, id=file.name)
+            for file in sorted(PLUGIN_ROOT.joinpath('bin').iterdir())
+        ],
+    )
+    def test_is_executable(self, file: Path) -> None:
+        assert os.access(file, os.X_OK), file.name
+
+
 class TestMcpConfig:
     def test_registers_only_the_state_server_through_the_launcher(self) -> None:
         servers = json.loads(MCP_CONFIG.read_text(encoding='utf-8'))['mcpServers']
