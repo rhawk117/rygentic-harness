@@ -4,8 +4,9 @@ A Claude Code plugin for Python engineering. It ships:
 
 | Component | Path | What it does |
 | --- | --- | --- |
-| Skill `what-would-ryan-say` | `skills/what-would-ryan-say/` | `/python-harness:what-would-ryan-say pr <num\|branch> \| codebase [path]  report \| plan`: reviews Python against Ryan's guide and philosophy, writes `PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`, never edits code. Runs only when you type it. |
-| Agent `pylens` | `agents/pylens.md` | Read-only fact gatherer on Haiku, dispatched by the skill as `python-harness:pylens`. It has `Read`, `Grep`, `Glob` and three of the server's tools (`collect_python_facts`, `map_python_calls`, `check_citations`), and returns cited facts as Markdown tables. CLAUDE.md is not loaded for it. |
+| Skills | `skills/` | Eight skills: `build-web-service`, `enterprise-design`, `design-persistence`, `design-tests`, `data-engineering`, `data-analysis`, `automate-task` and `tactical-slop-review`. Claude offers each when the request matches its description, and you can run any of them as `/python-harness:<name>`. What each is for is under "The skills" below, and the order they hand work to each other is under "The skill chain". |
+| Agents | `agents/` | Four subagents, dispatched by the skills as `python-harness:<name>`: `pylens` (read-only fact gatherer), `pep-talk` (read-only standard-library documentation helper), `reviewer` (independent review of a finished slice) and `test-engineer` (writes the tests it is assigned). Each agent's model and limits are under "The agents" below. |
+| Language server | `.lsp.json` | One entry, `ty`, which gives Claude Code type diagnostics for `.py` and `.pyi` files. It is described under "The language server" below. |
 | Hooks | `hooks/hooks.json` | SessionStart: briefs the session on the project's Python toolchain. PreToolUse (Bash): adds a note when a command runs plain `python`/`python3`, suggesting `uv run python`. Never blocks. |
 | MCP server `python-harness` | `.mcp.json`, `src/python_harness/server.py` | Eight tools over stdio. `search_python_docs` and `read_python_docs` read the standard-library documentation on `docs.python.org`. `survey`, `gate`, `collect_python_facts`, `map_python_calls`, `check_citations` and `plan_review_surface` read the project Claude Code was started in and return JSON. |
 | Data commands | `bin/python-harness-data`, `src/python_harness/scripts/` | `alert-budget`, `paired-compare`, `profile-data` and `size-check`: each prints one YAML report. Run as `python-harness-data <subcommand>`. |
@@ -34,12 +35,60 @@ claude --plugin-dir plugins/python-harness
 Start Claude Code in the root of the Python project you want to work on: the server's six project tools read that directory and no other. Hooks and agents are read when a session starts, so start a new session after changing them.
 
 - Claude Code puts the plugin's `bin/` on the Bash tool's `PATH`, after your own entries, so the model can run `python-harness` as a bare command. This plugin is built and tested for Claude Code only.
-- Plugin agents cannot be hidden, so `python-harness:pylens` appears in `@` completion. Its description tells Claude not to delegate other work to it.
+- Plugin agents cannot be hidden, so all four appear in `@` completion. Each description says what the agent is for.
 - pylens runs on Haiku. If many of its citations fail `check_citations`, set `model: sonnet` in `agents/pylens.md`.
+
+## The skills
+
+Run any skill as `/python-harness:<name>`, or let Claude pick it: each skill is offered when the request matches its description, and the review skill can now be invoked by the model as well as by you. A skill's `paths` field limits when Claude offers it automatically. Six skills list `**/*.py`, `**/*.pyi` and `**/pyproject.toml`; `data-engineering` and `data-analysis` add `**/*.csv`, `**/*.parquet` and `**/*.ipynb`.
+| Skill | What it is for |
+| --- | --- |
+| `build-web-service` | Building or extending a Python HTTP service. It runs the requirements interview and produces one design handoff; FastAPI, Pydantic v2 and async SQLAlchemy are the main recipe. It writes no code and no file. |
+| `enterprise-design` | Making a feature's business rules, partial outcomes, public API and expected failures concrete before anyone implements them. It writes no code and no file. |
+| `design-persistence` | Designing durable records: access patterns, state transitions, uniqueness, transaction ownership, deletion and history rules, and a compatible migration plan. It writes no code and no file. |
+| `design-tests` | Choosing executable contract tests, challenging brittle or over-mocked ones, and writing scenario tests before the implementation exists. The `test-engineer` agent writes the files. |
+| `data-engineering` | Building, validating, testing and speeding up code that moves and reduces data: memory and speed problems, joins, large Parquet or CSV files, fixtures. It can run the data commands. |
+| `data-analysis` | Answering a question from data with the uncertainty stated: comparing two agents, models or releases, estimating a rate, explaining a change. It can run the data commands. |
+| `automate-task` | Turning a plain-language request into a runnable Python script with inline dependencies, `argparse`, logging, `--dry-run` and exit codes. It offers package and design options with a recommendation. |
+| `tactical-slop-review` | Reviewing a PR, a branch or a codebase against Ryan's guide and philosophy. It writes `PYTHON-REVIEW.md` (findings) or `REFACTOR-PLAN.md` (a refactor plan) and never edits code. |
+
+`/python-harness:tactical-slop-review pr <num|branch> | codebase [path]  report | plan` is the review command. The review checks every citation in its file with `check_citations` before it finishes.
+
+## The skill chain
+
+The skills hand work to each other in four tracks. A skill can always be run on its own, by name or when a request matches; the table says where it expects its input to come from and where it sends its output.
+
+| Skill | Track | Receives from | Hands to |
+| --- | --- | --- | --- |
+| `build-web-service` | service | none | `enterprise-design` |
+| `enterprise-design` | service | `build-web-service` | `design-persistence` |
+| `design-persistence` | service | `enterprise-design` | `design-tests` |
+| `design-tests` | service | `design-persistence` | `tactical-slop-review` |
+| `data-engineering` | data | `data-analysis` | `data-analysis`, `tactical-slop-review` |
+| `data-analysis` | data | `data-engineering` | `data-engineering`, `tactical-slop-review` |
+| `automate-task` | script | none | `tactical-slop-review` |
+| `tactical-slop-review` | review | `design-tests`, `data-engineering`, `data-analysis`, `automate-task` | none |
+
+The service track starts with `build-web-service` and runs in the order shown. The two data skills pass work back and forth: the engineering skill when the question turns into choosing a method, the analysis skill when it turns into code that must be faster, smaller or tested. Every track hands to `tactical-slop-review` once code exists. `tests/plugin/test_readme_chain.py` compares this table with the `<inputs>` and `<handoff>` sections of the eight `SKILL.md` files and fails when they differ.
+
+## The agents
+
+The skills dispatch the agents as `python-harness:<name>`. A skill dispatches only the agents listed for it below, and each skill that dispatches carries one block naming the agent with its model, effort and tools, which `tests/plugin/test_pairing.py` compares with the agent file. `enterprise-design` and `design-persistence` dispatch nothing.
+
+| Agent | Model | Driven by | Also used by | What it may not do |
+| --- | --- | --- | --- | --- |
+| `pylens` | Haiku, low effort, 15 turns | `tactical-slop-review` | none | Run `Bash`, edit, write or edit notebooks. It reads files and calls `collect_python_facts`, `map_python_calls`, `check_citations` and `survey`, and returns cited facts as Markdown tables with no judgment. CLAUDE.md is not loaded for it. |
+| `pep-talk` | Haiku, 15 turns | `automate-task` | `data-engineering`, `data-analysis`, `design-tests`, `build-web-service` | Run `Bash`, edit, write or edit notebooks, or ask the user a question. It answers one standard-library question from the documentation (`search_python_docs`, `read_python_docs`) and cites the page. CLAUDE.md is not loaded for it. |
+| `reviewer` | Sonnet, high effort, 30 turns | `build-web-service` | `data-engineering`, `data-analysis`, `automate-task` | Edit, write or edit notebooks. It has `Bash` for read-only inspection and the `gate` tool, loads the review skill, and reports evidence-backed findings without rewriting the work. It stops and says what is missing when its caller gives it no agreed contract; the four skills that dispatch it pass one. |
+| `test-engineer` | Sonnet, high effort, 40 turns | `design-tests` | `data-engineering`, `automate-task` | Nothing is disallowed in its frontmatter; it has `Bash`, `Edit` and `Write`. Its instructions limit it to the tests, scenario fixtures and scenario map it is assigned, and it ends by calling `gate` and reporting the result. It loads the `design-tests` skill. |
+
+## The language server
+
+`.lsp.json` holds one entry, `ty`, for `.py` and `.pyi` files. Claude Code starts `uv tool run ty@0.0.84 server`, so the first start downloads ty through `uv` and needs network access to a package index; later starts use `uv`'s cache. The pin matches the ty version in the repository's `uv.lock`, and `tests/plugin/test_lsp_json.py` fails when they differ.
 
 ## The MCP server
 
-`.mcp.json` declares one stdio server named `python-harness`. It has eight tools, and the skill and `pylens` call each one as `mcp__plugin_python-harness_python-harness__<tool>`.
+`.mcp.json` declares one stdio server named `python-harness`. It has eight tools, and the skills and agents call each one as `mcp__plugin_python-harness_python-harness__<tool>`.
 
 | Tool | Reads | What it returns |
 | --- | --- | --- |
@@ -52,7 +101,7 @@ Start Claude Code in the root of the Python project you want to work on: the ser
 | `check_citations` | The project | Whether each `path.py:line` citation and its backticked quote in a Markdown document matches the code. The document is a `path` or inline `text`, exactly one. |
 | `plan_review_surface` | The project | A review surface as import-graph clusters of modules, for `paths` or for the modules changed since `diff_base`. |
 
-`skills/what-would-ryan-say/references/inspect-cli.md` gives the shape of each JSON document.
+`skills/tactical-slop-review/references/inspect-cli.md` gives the shape of each JSON document.
 
 ### How it starts
 
@@ -186,7 +235,10 @@ The launcher is a Python script whose first line runs it through `uv tool run`, 
 
 ## Limitations
 
-- As of 0.1.0, the server and both hooks have not been run inside a live Claude Code session. The tests run the hook handlers and both launch commands directly and call the tools through an MCP client. Three things in particular are unconfirmed: that Claude Code expands `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` in `.mcp.json`, that it names the tools `mcp__plugin_python-harness_python-harness__<tool>`, and that `pylens` on Haiku can drive its three tools. If the name form is wrong, `pylens` starts without them.
+- As of 0.1.0, the server and both hooks have not been run inside a live Claude Code session. The tests run the hook handlers and both launch commands directly and call the tools through an MCP client. Three things in particular are unconfirmed: that Claude Code expands `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` in `.mcp.json`, that it names the tools `mcp__plugin_python-harness_python-harness__<tool>`, and that `pylens` on Haiku can drive its four tools. If the name form is wrong, the agents start without them.
+- The eight skills, the four agents and the `ty` language server have not been run inside a live Claude Code session. The test suite checks their files (frontmatter, section order, tool grants, the dispatch pairing and the chain table), and `claude plugin validate --strict` accepts them. It does not check that Claude Code offers a skill for a matching request, that `paths` limits the offer as described, that a dispatch reaches the named agent, or that the language server starts and reports diagnostics.
+- `pylens` runs on Haiku with 15 turns and answers one cluster of modules and one question set per dispatch. It returns facts and cannot judge them, it cannot run commands, and a row whose citation fails `check_citations` is dropped by the review.
+- `automate-task` grants no `Bash` pattern, so the `uv run` lines it uses to run its bundled scripts and your generated script ask for permission each time unless your own permission rules allow them.
 - The six project tools are plain synchronous functions, which `mcp` 2.3.0 (the pinned version) runs on a worker thread. In `tests/tools/test_concurrent_calls.py`, a `search_python_docs` call returned while a `collect_python_facts` call was held open inside the tool function by a `threading.Event`, so on that version a slow project call did not delay a documentation call. That test uses an in-memory client. Nothing has been observed over stdio, which is how Claude Code talks to the server.
 - The six project tools cannot be pointed at a sub-project. They read `CLAUDE_PROJECT_DIR` and take no other root, and from a parent directory they would resolve the sub-project's imports against the wrong root. To review a project nested in a larger repository, start Claude Code inside it.
 - A review's citations can be re-checked only by calling `check_citations`. No shell command does it. After editing `PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`, ask Claude Code, in a session started in the project with the plugin enabled, to call `check_citations` on the file.

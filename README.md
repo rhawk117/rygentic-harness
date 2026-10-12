@@ -24,7 +24,7 @@ discovery, and validation.
 | ------------ | --------------------------------------------------------------------------- |
 | mightymodels | Ticket-scoped agent dev loop: per-ticket state, model routing, review stack |
 | vibe-code | Skills for building, hardening and tuning Claude Code agents, skills, and loops |
-| python-harness | Python review skill, read-only fact agent, toolchain hooks, CLI, MCP server |
+| python-harness | Eight Python skills, four agents, ty language server, toolchain hooks, CLI, MCP server |
 
 ### mightymodels
 
@@ -87,12 +87,20 @@ install, the CLI, the launcher and Windows.
 
 ### python-harness
 
-A review skill, a fact-gathering agent, two hooks, a CLI and an MCP server for Python projects.
-`/python-harness:what-would-ryan-say` reviews a PR, a branch or a codebase and writes
-`PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`. It never edits code and runs only when you type it. It
-dispatches the read-only `pylens` agent, which returns cited facts. The SessionStart hook briefs
-each session on the project's Python toolchain, and the PreToolUse hook adds a note when a Bash
-command runs plain `python` instead of `uv run python`. Neither blocks a command.
+Eight skills, four agents, a language server, two hooks, a CLI and an MCP server for Python
+projects. The skills are `build-web-service`, `enterprise-design`, `design-persistence` and
+`design-tests` (a service track that hands work along in that order), `data-engineering` and
+`data-analysis` (a data track whose two skills hand work to each other), `automate-task` (a
+script track) and `tactical-slop-review`, which every track hands to once code exists. Claude
+offers a skill when the request matches its description, and you can run any of them as
+`/python-harness:<name>`. `tactical-slop-review` reviews a PR, a branch or a codebase, writes
+`PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`, and never edits code. The four agents are `pylens` and
+`pep-talk`, which are read-only and run on Haiku, `reviewer`, which cannot edit files, and
+`test-engineer`, which writes the tests it is assigned. The `ty` language server gives Claude Code
+type diagnostics for Python files and downloads ty through `uv` on its first start. The
+SessionStart hook briefs each session on the project's Python toolchain, and the PreToolUse hook
+adds a note when a Bash command runs plain `python` instead of `uv run python`. Neither blocks a
+command.
 
 The `python-harness` CLI has two commands, `inspect survey` and `inspect gate`. The MCP server,
 also named `python-harness`, has eight tools. `search_python_docs` and `read_python_docs` read
@@ -102,10 +110,11 @@ started in.
 
 The plugin needs [uv](https://docs.astral.sh/uv/) on your `PATH` and a POSIX system (Linux, macOS
 or WSL). The CLI launcher and the server both start through `uv tool run` with the dependency
-versions pinned. The pins select versions and do not verify hashes. The hooks and the server have
-not yet been run inside a live Claude Code session.
-[plugins/python-harness/README.md](plugins/python-harness/README.md) covers install, the hooks,
-the server, the launcher and the known limitations.
+versions pinned. The pins select versions and do not verify hashes. The skills, the agents, the
+language server, the hooks and the server have not yet been run inside a live Claude Code session.
+[plugins/python-harness/README.md](plugins/python-harness/README.md) covers install, the skill
+chain, the agents, the language server, the hooks, the server, the launcher and the known
+limitations.
 
 ## Layout
 
@@ -114,8 +123,8 @@ plugins/         one directory per plugin; each carries its own manifest and ski
   mightymodels/  the dev loop: twenty skills, seven worker agents
   vibe-code/     authoring skills and the `vibe-code` CLI: eleven skills, no agents,
                  with its own tests and eval cases
-  python-harness/ Python review: one skill, one agent, hooks, the `python-harness` CLI
-                 and an MCP server, with its own tests
+  python-harness/ Python engineering: eight skills, four agents, a ty language server, hooks,
+                 the `python-harness` CLI and an MCP server, with its own tests
 docs/            human documentation for the harness and the mightymodels plugin
 scripts/         the quality gate (`quality.sh`), checkout setup, and a log helper
 .claude-plugin/  the rygentic-harness marketplace manifest
@@ -139,7 +148,7 @@ frontmatter. [CONTRIBUTING.md](CONTRIBUTING.md) has the details.
 | [docs/state.md](docs/state.md) | The `.mightymodels/` directory and `ticket.yml` |
 | [docs/claude-code.md](docs/claude-code.md) | Running under Claude Code |
 | [plugins/vibe-code/README.md](plugins/vibe-code/README.md) | The vibe-code plugin: install, skills, CLI, launcher |
-| [plugins/python-harness/README.md](plugins/python-harness/README.md) | The python-harness plugin: install, hooks, server, launcher, limitations |
+| [plugins/python-harness/README.md](plugins/python-harness/README.md) | The python-harness plugin: install, skills, agents, language server, hooks, server, launcher, limitations |
 
 ## Evals
 

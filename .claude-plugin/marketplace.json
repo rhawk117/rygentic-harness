@@ -20,7 +20,7 @@
     {
       "name": "python-harness",
       "source": "./plugins/python-harness",
-      "description": "Python engineering for Claude Code: reviews and refactor plans grounded in deterministic facts and cited pylens fact-gathering, standard-library docs on demand, and hooks that brief each session on the project's Python toolchain and a note whenever a Bash command runs plain python instead of uv run python.",
+      "description": "Python engineering for Claude Code: eight skills (build-web-service, enterprise-design, design-persistence, design-tests, data-engineering, data-analysis, automate-task and tactical-slop-review), four agents (pylens, pep-talk, reviewer and test-engineer), the ty language server, standard-library docs on demand, and hooks that brief each session on the project's Python toolchain and a note whenever a Bash command runs plain python instead of uv run python.",
       "version": "0.2.0"
     }
   ]
