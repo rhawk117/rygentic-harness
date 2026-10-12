@@ -17,3 +17,4 @@ Every run starts a model session with your credentials. It counts against your p
 against your API bill if an API key is set in your environment.
 The `fixture.sh` scripts run on your machine outside the sandbox, and only with `--scaffold`.
 Raw results go to `evals/results/`, which git ignores.
+`RESULTS.md` records what the six cases did in one run.
