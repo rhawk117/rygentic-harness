@@ -25,13 +25,13 @@ Optionally, `budget_minutes` sets how long to wait for CI. The script defaults i
 
 If the dispatch has neither `pr` nor all four of `head`/`base`/`title`/`body_file`, do not go looking for them. Report `error` with `pr="unresolved"` and name the missing fields in `<follow_up>`.
 
-Run each command with a single `execute` call in sync mode (`mode: sync` in VS Code), with no timeout argument. The script limits its own run time; the longest call is `wait`, at about 110 seconds.
+Run each command with one foreground `Bash` call, never in the background. The script limits its own run time; the longest call is `wait`, at about 110 seconds, so give a `wait` call a timeout longer than that, for example 180000 ms.
 
 Every command prints a line starting with `GITTY`, and that line is the only result you act on. Any lines printed after it (check rows, log sections) belong to that same result.
 
-The host may tell you never to run `sleep` and to wait for a notification on a later turn. That doesn't apply to you. A subagent has no later turn, so the time-limited sleep inside `wait` is how you wait. Do not replace it with polling or waiting of your own.
+The `Bash` tool's guidance may tell you to avoid `sleep`, or to run a long command in the background and wait for a notification. That doesn't apply to you. The time-limited sleep inside `wait` is how you wait. Do not replace it with polling or waiting of your own.
 
-Quoting: whenever a placeholder sits inside single quotes, write the value exactly as given. Escape any `'` inside it as `'\''` in bash/zsh, or as `''` in PowerShell. Single quotes stop the shell from expanding anything inside them.
+Quoting: whenever a placeholder sits inside single quotes, write the value exactly as given. Escape any `'` inside it as `'\''`. Single quotes stop the shell from expanding anything inside them.
 </context>
 
 <workflow>
@@ -85,8 +85,7 @@ Quoting: whenever a placeholder sits inside single quotes, write the value exact
 <constraints>
 - Run only the `gitty-up …` commands, exactly as written above. Never call `gh` or `git` yourself, and never edit, write, push, merge or comment on the PR. This worker only reports; the dispatcher owns every change.
 - Never add `--watch` or any other command of your own. The script exists so that every step has a fixed upper bound on its runtime.
-- If a call returns without a `GITTY` line (the host moved it to the background, or said it needs input), never send input to the terminal. Read the terminal's output once with the host's output tool. If there is still no `GITTY` line, report `error` saying which step stalled.
-- If the shell is PowerShell, the `gitty-up …` commands run unchanged. If the shell cannot find `gitty-up`, or `bash` is not on PATH, report `error` naming the shell.
+- If a call returns without a `GITTY` line (it ran past its timeout, or the shell could not find `gitty-up`), report `error` saying which step stalled.
 - Never report `pass` when checks are missing, pending, timed out or unresolved. If in doubt, report `error`. A false pass merges broken code; a false error costs one retry.
 - Never diagnose a failure or propose a fix. Quote the logs and stop.
 </constraints>

@@ -13,7 +13,7 @@ export GH_PAGER=cat GH_PROMPT_DISABLED=1 NO_COLOR=1 GH_NO_UPDATE_NOTIFIER=1 GH_S
 
 print_usage() {
 	cat <<'USAGE'
-gitty-up.sh: open a pull request, wait for its checks, report a verdict.
+gitty-up: open a pull request, wait for its checks, report a verdict.
 Every command's result starts with a line beginning GITTY.
 A GITTY ERROR result exits 1, a usage error exits 2, every other result exits 0.
 
@@ -266,7 +266,7 @@ command_verdict() {
 }
 
 main() {
-	[[ $# -gt 0 ]] || exit_with_usage_error "no command given; run gitty-up.sh help"
+	[[ $# -gt 0 ]] || exit_with_usage_error "no command given; run gitty-up help"
 	local command=$1
 	shift
 	case ${command} in
@@ -275,7 +275,7 @@ main() {
 	wait) command_wait "$@" ;;
 	verdict) command_verdict "$@" ;;
 	help | -h | --help) print_usage ;;
-	*) exit_with_usage_error "unknown command '${command}'; run gitty-up.sh help" ;;
+	*) exit_with_usage_error "unknown command '${command}'; run gitty-up help" ;;
 	esac
 }
 
