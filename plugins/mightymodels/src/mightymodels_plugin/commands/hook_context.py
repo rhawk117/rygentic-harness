@@ -5,10 +5,11 @@ A hook command never refuses. When it cannot work it says why on standard error 
 (`rejection.skipped`), because exit code 2 keeps a subagent from stopping or a compaction from
 running. This module loads no database or server package: the command line imports it.
 `HookContext.started_by`, `HookContext.tickets_on_branch` and `HookContext.landing_on_branch` load
-them when they are called, and only the dispatch of an implementer, a main-thread edit outside the
-ticket directories and a main-thread push call them. None opens the state of a repository that has
-no ticket directory, a directory under `.mightymodels/` other than the archives, at the project
-directory or above it: such a repository has no ticket, so its answer is no task and no ticket.
+them when they are called, and only the dispatch of an implementer, a main-thread dispatch of the
+wingman, a main-thread edit outside the ticket directories and a main-thread push call them. None
+opens the state of a repository that has no ticket directory, a directory under `.mightymodels/`
+other than the archives, at the project directory or above it: such a repository has no ticket, so
+its answer is no task and no ticket.
 
 `HookContext.ticket_directory_holds` says whether a path is in a ticket directory, existing or
 not. It compares the resolved path, so a relative path counts from the working directory, and `..`

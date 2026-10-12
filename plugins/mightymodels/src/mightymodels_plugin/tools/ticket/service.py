@@ -60,7 +60,10 @@ TOP_LEVEL_KEYS = frozenset(
     }
 )
 COMPANION_KEYS = frozenset({'issue-number', 'jira-key', 'reference-urls'})
-HANDOFF_KEYS = frozenset({'scope', 'plan-first', 'branch-name', 'worktrees-okay'})
+AUTO_ESCALATE_KEY = 'auto-escalate'
+HANDOFF_KEYS = frozenset(
+    {'scope', 'plan-first', 'branch-name', 'worktrees-okay', AUTO_ESCALATE_KEY}
+)
 KNOWN_WORKERS = frozenset({PRIMARY_AGENT, *(worker.value for worker in Worker)})
 IMPLEMENTERS = frozenset({Worker.ENGINEER.value, Worker.ARCHITECT.value})
 
@@ -152,6 +155,10 @@ def handoff_problems(handoff: Tree) -> list[str]:
             (not unknown, f'handoff-context has unknown keys {unknown}'),
             (handoff.get('scope') in scopes, f'scope must be one of {scopes}'),
             (isinstance(handoff.get('plan-first'), bool), 'plan-first must be a bool'),
+            (
+                isinstance(handoff.get(AUTO_ESCALATE_KEY, False), bool),
+                f'{AUTO_ESCALATE_KEY} must be a bool',
+            ),
             (bool(handoff.get('branch-name')), 'branch-name is empty'),
         )
     )
@@ -212,6 +219,7 @@ def section_of(tree: Tree, *, ticket: str, validated_at: str) -> TicketSection:
         'branch': handoff.get('branch-name'),
         'scope': handoff.get('scope'),
         'plan_first': handoff.get('plan-first'),
+        'auto_escalate': handoff.get(AUTO_ESCALATE_KEY, False),
         'models': as_mapping(tree.get('subagent-models')),
         'tracker': {'issue': companions.get('issue-number'), 'jira': companions.get('jira-key')},
         'context': as_list(tree.get(CONTEXT_KEY)),

@@ -15,8 +15,17 @@ is not a string, a built-in subagent, another plugin's agent. Its dispatch of th
 architect is denied, with the step to take, while the one unclosed ticket on the checked-out branch
 has no task in progress, and when the tickets cannot be read. With no unclosed ticket on the branch
 it gets no decision, as if the plugin were not installed. With several it gets no decision either,
-and the user is shown one line naming them. Its dispatch of any other worker but the intern, and of
-a type that is no worker, gets no decision and reads no state.
+and the user is shown one line naming them.
+
+Its dispatch of the architect or the wingman is an escalation, and the owner hears of a block
+before one is spent on it. While the one unclosed ticket on the checked-out branch has a task a
+block stopped (`BlockedTask`) and the ticket's `auto-escalate` is off, the dispatch is answered
+`ask`, naming each such task with the reasons of its block. For the architect the denial above
+comes first. With `auto-escalate` on, with no such task, with no unclosed ticket on the branch or
+several, and when the tickets cannot be read, this rule gives no decision.
+
+Its dispatch of any other worker but the intern, and of a type that is no worker, gets no decision
+and reads no state.
 
 One rule holds whoever the caller is. The intern takes only a tiny task, so a dispatch of the
 intern that the rows let through is denied unless the intern has a task in progress on the ticket
@@ -76,6 +85,14 @@ DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
     }
 )
 STARTED_BEFORE_DISPATCH = frozenset({Worker.ENGINEER, Worker.ARCHITECT})
+ESCALATIONS = frozenset({Worker.ARCHITECT, Worker.WINGMAN})
+BLOCK_GOES_TO_THE_OWNER_FIRST = (
+    '{target} was held for the owner: ticket {slug}, whose branch is checked out, has a task a '
+    'block stopped ({blocks}), and its `auto-escalate` is off. Approve this dispatch to '
+    'escalate, or decline it and say what to do about the block. `auto-escalate: true` under '
+    '`handoff-context` in ticket.yml, validated with the `ticket` tool, lets an escalation '
+    'through without this question.'
+)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -88,9 +105,18 @@ type StartedOrUnreadable = Sequence[StartedTask] | Exception
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
+class BlockedTask:
+    id: str
+    status: str
+    reasons: tuple[str, ...]
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
 class BranchTickets:
     unclosed: tuple[str, ...] = ()
     in_progress: tuple[str, ...] = ()
+    auto_escalate: bool = False
+    blocked: tuple[BlockedTask, ...] = ()
 
 
 type BranchTicketsOrUnreadable = BranchTickets | Exception
@@ -202,12 +228,36 @@ def unstarted_ruling(target: str, tickets: BranchTicketsOrUnreadable) -> Ruling:
     return Denied(reason=NO_TASK_IN_PROGRESS.format(target=target, slug=tickets.unclosed[0]))
 
 
+def block_line(task: BlockedTask) -> str:
+    return f'{task.id} {task.status}: {"; ".join(task.reasons)}'
+
+
+def escalation_ruling(target: str, tickets: BranchTicketsOrUnreadable) -> Ruling:
+    if isinstance(tickets, Exception) or tickets.auto_escalate or not tickets.blocked:
+        return None
+    return Asked(
+        reason=BLOCK_GOES_TO_THE_OWNER_FIRST.format(
+            target=target,
+            slug=tickets.unclosed[0],
+            blocks=' | '.join(map(block_line, tickets.blocked)),
+        )
+    )
+
+
+def ticket_ruling(target: Worker, tickets: BranchTicketsOrUnreadable) -> Ruling:
+    named = agent_type(target)
+    started_first = target in STARTED_BEFORE_DISPATCH
+    if started_first and (unstarted := unstarted_ruling(named, tickets)) is not None:
+        return unstarted
+    return escalation_ruling(named, tickets) if target in ESCALATIONS else None
+
+
 def started_ruling(caller: str | None, target: Worker, started: StartedTasks) -> Ruling:
     if target is Worker.INTERN:
         refused = intern_denial(started.started_by(Worker.INTERN))
         return None if refused is None else Denied(reason=refused)
-    if caller is None and target in STARTED_BEFORE_DISPATCH:
-        return unstarted_ruling(agent_type(target), started.tickets_on_branch())
+    if caller is None and target in STARTED_BEFORE_DISPATCH | ESCALATIONS:
+        return ticket_ruling(target, started.tickets_on_branch())
     return None
 
 

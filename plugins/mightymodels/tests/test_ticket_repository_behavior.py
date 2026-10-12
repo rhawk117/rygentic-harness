@@ -43,7 +43,9 @@ SECTION = TicketSection(
     context=('drain loop sleeps between batches',),
     validated_at='2026-09-28T00:00:00+00:00',
 )
-REVISED = SECTION.model_copy(update={'summary': 'The drain loop never wakes', 'plan_first': True})
+REVISED = SECTION.model_copy(
+    update={'summary': 'The drain loop never wakes', 'plan_first': True, 'auto_escalate': True}
+)
 OTHER_SECTION = SECTION.model_copy(update={'ticket': 'Drain loop never wakes'})
 ELSEWHERE = SECTION.model_copy(update={'ticket': 'Drain loop never wakes', 'branch': 'fix/drain'})
 STAGED = WorkUnit(

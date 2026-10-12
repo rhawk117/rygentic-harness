@@ -255,6 +255,6 @@
     "type": "table",
     "name": "tickets",
     "tbl_name": "tickets",
-    "sql": "CREATE TABLE tickets (\n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\tstatus VARCHAR(32) DEFAULT 'staged' NOT NULL, \n\tticket VARCHAR(255) NOT NULL, \n\tsummary VARCHAR(4000) NOT NULL, \n\tbranch VARCHAR(255) NOT NULL, \n\tscope VARCHAR(32) NOT NULL, \n\tplan_first BOOLEAN NOT NULL, \n\tissue INTEGER, \n\tjira VARCHAR(255), \n\tmodels JSON NOT NULL, \n\tcontext JSON NOT NULL, \n\tinvestigations JSON DEFAULT '[]' NOT NULL, \n\tvalidated_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_tickets PRIMARY KEY (repository_key, slug), \n\tCONSTRAINT uq_tickets_repository_key UNIQUE (repository_key, ticket)\n)"
+    "sql": "CREATE TABLE tickets (\n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\tstatus VARCHAR(32) DEFAULT 'staged' NOT NULL, \n\tticket VARCHAR(255) NOT NULL, \n\tsummary VARCHAR(4000) NOT NULL, \n\tbranch VARCHAR(255) NOT NULL, \n\tscope VARCHAR(32) NOT NULL, \n\tplan_first BOOLEAN NOT NULL, \n\tissue INTEGER, \n\tjira VARCHAR(255), \n\tmodels JSON NOT NULL, \n\tcontext JSON NOT NULL, \n\tinvestigations JSON DEFAULT '[]' NOT NULL, \n\tvalidated_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tauto_escalate BOOLEAN DEFAULT 0 NOT NULL, \n\tCONSTRAINT pk_tickets PRIMARY KEY (repository_key, slug), \n\tCONSTRAINT uq_tickets_repository_key UNIQUE (repository_key, ticket)\n)"
   }
 ]

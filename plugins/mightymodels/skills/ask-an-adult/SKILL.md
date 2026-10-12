@@ -55,7 +55,10 @@ disagreement, so hiding your preference buys nothing and costs the advisor a use
 
 Run the template's ten-second checklist, then send the packet to `mightymodels:triage:wingman` through the `Agent` tool, its `model` the ticket's alias. Do not
 paraphrase file contents you have not read, and do not summarize scout findings into
-conclusions: pass the citations through as they came back.
+conclusions: pass the citations through as they came back. While the ticket has a task that is
+blocked or failed, or with the architect after either, and its `auto-escalate` is off, put the block
+to the user before you send the packet: the dispatch hook answers this dispatch with `ask` and the
+block's reasons.
 
 ## Act on the report
 

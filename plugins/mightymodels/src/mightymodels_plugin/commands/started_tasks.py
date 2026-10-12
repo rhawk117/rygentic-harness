@@ -6,7 +6,14 @@ latest attempt was the worker's, in task order, each with the files it owns. A b
 ticket has none. This is the one place a hook learns what a started task owns.
 
 `tickets_on_branch` answers every unclosed ticket on the checked-out branch and, when there is
-exactly one, the tasks it has in progress, whoever started them.
+exactly one, the tasks it has in progress, whoever started them, whether the ticket escalates a
+block unasked (`auto-escalate`), and the tasks a block stopped.
+
+A block stopped a task that is `blocked` or `failed`, and one that is in progress on an attempt of
+the architect's that started from `blocked` or `failed`: agents-assemble marks the task and starts
+it for the architect before it dispatches, so by then the task reads in progress. `blocked_tasks`
+answers each with the status and the reasons of its latest move into `blocked` or `failed`. A task
+the architect started from any other status has no block behind it and is not one of them.
 
 `landing_on_branch` answers the same tickets and, when there is exactly one, what keeps it from
 landing: every reason the `task` tool's `ready` action would give, read through the functions
@@ -28,6 +35,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from mightymodels_plugin.commands.branch_ticket import ticket_on_branch, unclosed_tickets_on_branch
 from mightymodels_plugin.commands.dispatch_hook import (
+    BlockedTask,
     BranchTickets,
     BranchTicketsOrUnreadable,
     StartedOrUnreadable,
@@ -38,17 +46,24 @@ from mightymodels_plugin.commands.main_thread_hook import Landing, LandingOrUnre
 from mightymodels_plugin.core.edge import OpenState, open_state
 from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import Worker
+from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.workspace import find_root
 from mightymodels_plugin.tools.contract.schema import Phase, Receipt
 from mightymodels_plugin.tools.contract.store import RecordedCommand
 from mightymodels_plugin.tools.row_types import ROW_TYPES
 from mightymodels_plugin.tools.task.gates import (
+    STUCK,
     readiness_problems,
     receipt_problem,
     receipt_problems,
 )
-from mightymodels_plugin.tools.task.repository import SqliteTaskStore, in_progress_started_by
-from mightymodels_plugin.tools.task.schema import Implementer, Status
+from mightymodels_plugin.tools.task.repository import (
+    SqliteTaskRepository,
+    SqliteTaskStore,
+    in_progress_started_by,
+    latest_transition_of_each_task_into,
+)
+from mightymodels_plugin.tools.task.schema import Implementer, Status, TaskRecord
 from mightymodels_plugin.tools.task.service import records_of
 from mightymodels_plugin.tools.ticket.repository import ticket_store
 
@@ -65,16 +80,41 @@ def started_on_branch(state: OpenState, worker: Implementer) -> list[StartedTask
     return [StartedTask(id=task_id, owned=owned[task_id]) for task_id in started]
 
 
+def blocked_tasks(
+    tasks: SqliteTaskRepository, slug: Slug, records: Sequence[TaskRecord]
+) -> tuple[BlockedTask, ...]:
+    blocks = latest_transition_of_each_task_into(tasks, slug, STUCK)
+    starts = latest_transition_of_each_task_into(tasks, slug, {Status.IN_PROGRESS})
+    escalated = {
+        task_id
+        for task_id in in_progress_started_by(tasks, slug, Implementer.ARCHITECT)
+        if starts[task_id].before in STUCK
+    }
+    return tuple(
+        BlockedTask(
+            id=record.id,
+            status=blocks[record.id].after,
+            reasons=tuple(blocks[record.id].reasons),
+        )
+        for record in records
+        if record.status in STUCK or record.id in escalated
+    )
+
+
 def tickets_on_branch(state: OpenState) -> BranchTickets:
     unclosed = unclosed_tickets_on_branch(ticket_store(state.database), state.git.current_branch())
     names = tuple(map(str, unclosed))
     if len(unclosed) != 1:
         return BranchTickets(unclosed=names)
+    slug = unclosed[0]
     with SqliteTaskStore(database=state.database).transaction() as tasks:
-        in_progress = tuple(
-            task.id for task in tasks.tasks(unclosed[0]) if task.status is Status.IN_PROGRESS
+        records = tasks.tasks(slug)
+        return BranchTickets(
+            unclosed=names,
+            in_progress=tuple(task.id for task in records if task.status is Status.IN_PROGRESS),
+            auto_escalate=tasks.tickets.staged_ticket(slug).ticket.auto_escalate,
+            blocked=blocked_tasks(tasks, slug, records),
         )
-    return BranchTickets(unclosed=names, in_progress=in_progress)
 
 
 def not_proven_in_landing(

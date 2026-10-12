@@ -257,7 +257,7 @@ class TestInternDispatch:
         pytest.param('other:engineer', id='another-plugins-agent'),
     )
     OTHER_TARGETS = (
-        *(agent_type(worker) for worker in Worker if worker not in IMPLEMENTERS),
+        *(agent_type(worker) for worker in Worker if worker not in {*IMPLEMENTERS, Worker.WINGMAN}),
         'general-purpose',
         f'{PREFIX}intern',
         f'{INTERN}:extra',

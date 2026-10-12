@@ -104,6 +104,7 @@ class TicketSection(BaseModel):
     branch: str
     scope: Scope
     plan_first: bool
+    auto_escalate: bool = False
     models: dict[str, str | None]
     tracker: Tracker
     context: tuple[str, ...]

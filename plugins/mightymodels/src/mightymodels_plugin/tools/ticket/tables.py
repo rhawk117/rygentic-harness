@@ -2,11 +2,18 @@
 
 A ticket is the row every task, closing and the rest of a ticket's work hangs from. Its ticket
 file is its own, so no two tickets of a repository name the same one.
+
+`auto_escalate` was added after files of this schema version were in use, and the version did not
+change for it: the column has a server default, so a row written without it reads as off. A file
+whose `tickets` table was made before the column gets it added, as it is declared here, after the
+`create_all` of every open, which `database.py` runs under its write lock once the schema stamp is
+accepted. A file that has the column, or no `tickets` table, is left as it is.
 """
 
 from typing import Annotated
 
 import sqlalchemy as sql
+from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -27,6 +34,7 @@ from mightymodels_plugin.tools.ticket.schema import TicketStatus
 type StagedAtFirst = Annotated[
     str, mapped_column(sql.String(WORD_LIMIT), server_default=TicketStatus.STAGED)
 ]
+type OffAtFirst = Annotated[bool, mapped_column(server_default=sql.false())]
 
 
 class TicketRow(Base):
@@ -47,3 +55,21 @@ class TicketRow(Base):
     context: Mapped[Texts]
     investigations: Mapped[TextsIfAny]
     validated_at: Mapped[Timestamp]
+    auto_escalate: Mapped[OffAtFirst]
+
+
+def add_auto_escalate_to_an_older_file(
+    _metadata: sql.MetaData, connection: sql.Connection, **_given: object
+) -> None:
+    tickets = Base.metadata.tables[TicketRow.__tablename__]
+    column = tickets.columns[TicketRow.auto_escalate.key]
+    stored = sql.inspect(connection)
+    if not stored.has_table(tickets.name):
+        return
+    if column.name in {held['name'] for held in stored.get_columns(tickets.name)}:
+        return
+    declared = sql.schema.CreateColumn(column).compile(dialect=connection.dialect)
+    connection.exec_driver_sql(f'ALTER TABLE {tickets.name} ADD COLUMN {declared}')
+
+
+event.listen(Base.metadata, 'after_create', add_auto_escalate_to_an_older_file)

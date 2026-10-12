@@ -26,6 +26,8 @@ A task's failed fixes are read whole, up to `FAILED_FIX_LIMIT`, the most the ser
 `in_progress_started_by` answers the in-progress tasks whose latest attempt was a worker's, so a
 hook that sees a worker stop can tell which tasks it left open. It is a query over the SQLite
 repository and not a method of the seam, since only that hook asks it.
+`latest_transition_of_each_task_into` is the same kind of query for the dispatch hook: each task's
+latest move into one of the statuses named, one row a task however many moves it made.
 
 A task's base is the HEAD of its first start that had one. A restart keeps it, so what the task
 changed is measured from where its first attempt began.
@@ -291,6 +293,26 @@ def in_progress_started_by(
         .limit(TASKS.fetched)
     )
     return list(repository.session.scalars(query))
+
+
+def latest_transition_of_each_task_into(
+    repository: SqliteTaskRepository, slug: Slug, statuses: Collection[Status]
+) -> dict[str, Transition]:
+    latest_of_each_task = (
+        sql.select(sql.func.max(TransitionRow.id))
+        .where(
+            TransitionRow.repository_key == repository.repository_key.root,
+            TransitionRow.slug == slug.root,
+            TransitionRow.after.in_(sorted(statuses)),
+        )
+        .group_by(TransitionRow.task_id)
+    )
+    query = (
+        sql.select(TransitionRow)
+        .where(TransitionRow.id.in_(latest_of_each_task))
+        .limit(TASKS.fetched)
+    )
+    return {row.task_id: transition_of(row) for row in repository.session.scalars(query)}
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)

@@ -115,7 +115,11 @@ SHAPES = (
         key=OF_A_TICKET,
         filtered_on=(OF_A_TICKET,),
         unique=((REPOSITORY, 'ticket'),),
-        defaults={'status': TicketStatus.STAGED, 'investigations': list(ANSWERS.investigations)},
+        defaults={
+            'status': TicketStatus.STAGED,
+            'investigations': list(ANSWERS.investigations),
+            'auto_escalate': False,
+        },
         timestamp='validated_at',
     ),
     Shape(

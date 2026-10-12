@@ -1609,6 +1609,11 @@
               "title": "Plan First",
               "type": "boolean"
             },
+            "auto_escalate": {
+              "default": false,
+              "title": "Auto Escalate",
+              "type": "boolean"
+            },
             "models": {
               "additionalProperties": {
                 "anyOf": [

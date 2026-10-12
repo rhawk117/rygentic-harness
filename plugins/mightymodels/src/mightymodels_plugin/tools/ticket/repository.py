@@ -56,6 +56,7 @@ def unit_of(row: TicketRow) -> WorkUnit:
         branch=row.branch,
         scope=Scope(row.scope),
         plan_first=row.plan_first,
+        auto_escalate=row.auto_escalate,
         models=row.models,
         tracker=Tracker(issue=row.issue, jira=row.jira),
         context=tuple(row.context),
@@ -118,6 +119,7 @@ class SqliteTicketRepository:
             context=list(section.context),
             investigations=[*previous, *added],
             validated_at=section.validated_at,
+            auto_escalate=section.auto_escalate,
         )
         return unit_of(self.session.merge(row))
 

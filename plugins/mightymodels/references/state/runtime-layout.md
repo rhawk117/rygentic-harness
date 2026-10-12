@@ -8,7 +8,7 @@ The state database is `mightymodels.db` in the plugin data directory, the direct
 
 Every session of every repository writes that one file. It is kept in SQLite's write-ahead log mode, so `mightymodels.db-wal` and `mightymodels.db-shm` sit beside it while a session has it open, and every connection has a busy timeout of 10 seconds: a write waits that long for another session's write before it is refused as locked. The mode is set only after the schema version stamp is accepted.
 
-This breaks with earlier versions, which kept the database inside the repository under `.mightymodels/`. That file is not read, imported or changed, so state recorded in it does not carry over, and it can be deleted. The new file carries a schema version stamp, and a file with another stamp is refused by name instead of read, and nothing is written to it.
+This breaks with earlier versions, which kept the database inside the repository under `.mightymodels/`. That file is not read, imported or changed, so state recorded in it does not carry over, and it can be deleted. The new file carries a schema version stamp, and a file with another stamp is refused by name instead of read, and nothing is written to it. One column was added under the same stamp, `auto_escalate` on `tickets`: it has a default of off, and a file whose `tickets` table was made before it gets the column added the next time it is opened, so its tickets keep working and read as off.
 
 ## The hooks
 
@@ -38,11 +38,15 @@ A caller whose `agent_type` begins `mightymodels:` is a plugin worker. Any other
 | main thread   | engineer or architect        | one unclosed ticket on the branch with no task in progress                                         | deny, naming the `task` tool's `start`         |
 | main thread   | engineer or architect        | several unclosed tickets on the branch                                                             | no decision, and a `systemMessage` naming them |
 | main thread   | engineer or architect        | the state cannot be read                                                                           | deny until it can                              |
+| main thread   | architect or wingman         | one unclosed ticket on the branch with a task a block stopped, and its `auto-escalate` off         | `ask`, naming each such task and its reasons   |
+| main thread   | wingman                      | anything else, the state that cannot be read included                                              | no decision                                    |
 | main thread   | any other type               | not read                                                                                           | no decision                                    |
 
 A ticket directory is a directory under `.mightymodels/` other than `archives`, at the project directory or above it. A repository without one has no ticket, so the hook opens no database there and runs no git command.
 
-The wrapper answers when its command fails, is killed or runs past 8 seconds (`MIGHTYMODELS_DISPATCH_SECONDS` sets another limit). It exits 2, which refuses the dispatch, for a plugin worker, and for any other caller whose target is the engineer, the architect or the intern when `.mightymodels` exists at the project directory (`CLAUDE_PROJECT_DIR`, or else the working directory). Every other dispatch goes ahead with one line on standard error saying it was not checked. The command's own standard error is passed through.
+The `ask` row puts a block to the user before an escalation is spent on it. A block stopped a task that is `blocked` or `failed`, and one that is in progress on an attempt of the architect's that started from `blocked` or `failed`: agents-assemble marks the task and starts it for the architect before it dispatches, so by then the task reads in progress. The reasons shown are those of the task's latest move into `blocked` or `failed`. A task the architect started from any other status, a `diagnose-replan` from review for one, has no block behind it. For the architect the rows above it are judged first, so a blocked task that was not started again is denied, not asked about. `auto-escalate` is the key under `handoff-context` in ticket.yml as `ticket` `validate` last stored it, off when the key is absent; with it on the row gives no decision.
+
+The wrapper answers when its command fails, is killed or runs past 8 seconds (`MIGHTYMODELS_DISPATCH_SECONDS` sets another limit). It exits 2, which refuses the dispatch, for a plugin worker, and for any other caller whose target is the engineer, the architect or the intern when `.mightymodels` exists at the project directory (`CLAUDE_PROJECT_DIR`, or else the working directory). Every other dispatch goes ahead with one line on standard error saying it was not checked, a dispatch of the wingman that the command would have answered `ask` among them. The command's own standard error is passed through.
 
 ### The main-thread hook
 

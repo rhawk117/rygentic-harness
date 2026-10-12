@@ -19,6 +19,7 @@ argument-hint: "[ticket-slug]"
 allowed-tools:
   - AskUserQuestion
   - mcp__plugin_mightymodels_state__contract
+  - mcp__plugin_mightymodels_state__ticket
 ---
 
 # game-plan
@@ -142,6 +143,24 @@ Record the choice in the Risks section verbatim. A risk without a user-chosen ha
 risk the post-compaction primary will handle by improvising. When no dialog is available, ask
 in chat with the four handlings spelled out, and wait.
 
+**5b. Ask who answers a block.** The ticket's `auto-escalate` decides what happens when a task
+ends `blocked` or `failed` in the sprint. One `AskUserQuestion` dialog with one question, the
+default first:
+
+- **Ask me first** (the default): `auto-escalate` stays off and nothing is written. agents-assemble
+  puts the block and its reasons to the user before the architect or the wingman is dispatched for
+  it, and the dispatch hook answers a main-thread dispatch of either with `ask`.
+- **Escalate automatically**: add the line `  auto-escalate: true` under `handoff-context` in
+  ticket.yml, then call `mcp__plugin_mightymodels_state__ticket` with action `validate`, which
+  stores it. A block then goes to the architect once with no question.
+
+```json
+{"request": {"action": "validate", "slug": "SLUG"}}
+```
+
+A ticket.yml that already has the key has its answer, so do not ask again. When no dialog is
+available, ask in chat with both answers spelled out, and wait.
+
 **6. Get approval.** Write `plan.md` with the handlings folded in, present it, and ask through
 `AskUserQuestion`: approve, revise, or abandon. This gate is the user's, and it is the last cheap
 moment to change direction. On approve, invoke agents-assemble. On revise, regenerate the whole
@@ -238,7 +257,7 @@ approval. Each item is a way plans have gone wrong; each is a yes/no question.
 
 game-plan writes `toolchain.md` from the survey's report and `plan.md`, the plan only after
 cross-examine and the risk interview, plus the ticket's verification contract and its planning
-receipts. It dispatches scouts and terry-toolchain and runs only approved contract commands;
+receipts, and the `auto-escalate` line of ticket.yml when the user chose it. It dispatches scouts and terry-toolchain and runs only approved contract commands;
 no engineer, no architect, no edits to the repository. If step 2
 shows the ticket's claims are wrong enough that the approach changes, that is a report to the
 user and possibly a return to open-ticket, not a plan built on a corrected premise the

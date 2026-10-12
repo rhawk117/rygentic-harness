@@ -43,6 +43,7 @@ ANSWERS = {
     'issue': 42,
 }
 STARTED_INVESTIGATION = '20260928-inv-a'
+LAST_HANDOFF_LINE = '  worktrees-okay: false'
 FIRST_TASK_VERIFIED = Transition(
     task_id='T1',
     before=Status.IN_PROGRESS,
@@ -270,6 +271,24 @@ class TestValidate:
             ),
             pytest.param('  plan-first: false', '  plan-first: no', 'plan-first', id='plan-first'),
             pytest.param(
+                LAST_HANDOFF_LINE,
+                f'{LAST_HANDOFF_LINE}\n  auto-escalate: yes',
+                'auto-escalate must be a bool',
+                id='auto-escalate-a-word',
+            ),
+            pytest.param(
+                LAST_HANDOFF_LINE,
+                f'{LAST_HANDOFF_LINE}\n  auto-escalate: 1',
+                'auto-escalate must be a bool',
+                id='auto-escalate-a-number',
+            ),
+            pytest.param(
+                LAST_HANDOFF_LINE,
+                f'{LAST_HANDOFF_LINE}\n  auto-escalate:',
+                'auto-escalate must be a bool',
+                id='auto-escalate-empty',
+            ),
+            pytest.param(
                 'task: "retry-queue"', 'task: "other"', "task must be 'retry-queue'", id='task'
             ),
         ],
@@ -285,6 +304,43 @@ class TestValidate:
         assert outcome.code == REJECTED
         assert problem in outcome.err
         assert workspace.run('show').code == REJECTED
+
+    def test_a_ticket_without_auto_escalate_is_valid_and_reads_as_off(
+        self, workspace: Workspace
+    ) -> None:
+        workspace.run('write', ANSWERS)
+
+        outcome = workspace.run('validate')
+
+        assert outcome.code == 0
+        assert 'auto-escalate' not in workspace.ticket.read_text(encoding='utf-8')
+        assert workspace.unit().ticket.auto_escalate is False
+
+    @pytest.mark.parametrize(
+        ('written', 'stored'),
+        [pytest.param('true', True, id='on'), pytest.param('false', False, id='off')],
+    )
+    def test_auto_escalate_under_handoff_context_is_stored_as_it_is_written(
+        self, workspace: Workspace, written: str, stored: bool
+    ) -> None:
+        workspace.run('write', ANSWERS)
+        workspace.edit(LAST_HANDOFF_LINE, f'{LAST_HANDOFF_LINE}\n  auto-escalate: {written}')
+
+        outcome = workspace.run('validate')
+
+        assert outcome.code == 0
+        assert workspace.unit().ticket.auto_escalate is stored
+
+    def test_auto_escalate_taken_out_again_reads_as_off(self, workspace: Workspace) -> None:
+        turned_on = f'{LAST_HANDOFF_LINE}\n  auto-escalate: true'
+        workspace.run('write', ANSWERS)
+        workspace.edit(LAST_HANDOFF_LINE, turned_on)
+        workspace.run('validate')
+        workspace.edit(turned_on, LAST_HANDOFF_LINE)
+
+        workspace.run('validate')
+
+        assert workspace.unit().ticket.auto_escalate is False
 
 
 class TestUpdateContext:
