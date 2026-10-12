@@ -25,12 +25,12 @@ A score of 1 on a `-loads` case means the session called the Skill tool for that
 On Haiku, no session called the Skill tool in any case, so its three `-stays-out` scores carry no
 information. In each `-loads` case Haiku started on the work itself: it read the files and then
 either answered or tried to write a file, which the cases do not allow. In a separate session with
-the same setup, asked only to name the skills it could see, Haiku listed all eight. The skills were
-visible to it and it did not load them.
+the same setup, asked to read `pyproject.toml` and name the skills it could see, Haiku listed all
+eight. The skills were visible to it and it did not load them.
 
 On Sonnet, the Skill call was the first tool call in `automate-task-loads` and
 `data-analysis-loads`. In `data-engineering-loads` Sonnet read `load.py` and the two CSV files,
-found the duplicated `account_id` in the three-line `accounts.csv`, and reported the cause without
+found the duplicated `account_id` in the four-line `accounts.csv`, and reported the cause without
 loading the skill.
 
 ## What this shows
