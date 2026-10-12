@@ -143,6 +143,7 @@ subagent-models:
   code-scout: haiku
   web-scout: haiku
   qualitylens: haiku
+  fact-checker: haiku
   engineer: sonnet # sonnet at every scope
   architect: sonnet # derived: large scope would pull opus
   intern: haiku
@@ -178,7 +179,7 @@ skill. Duplicated facts drift, and the next session reads `ticket.yml` first any
 ## Briefs
 
 `briefs/task-NN.md` holds the two-half contract for one task. The primary writes the ASKED half
-at dispatch; the engineer appends the DONE half on completion; a scout verifies one against the
+at dispatch; the engineer appends the DONE half on completion; fact-checker checks one against the
 other. The 80-line cap is load-bearing: a brief that needs more space is a task that should have
 been split. Field-level detail is in `plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
 

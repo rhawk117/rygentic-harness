@@ -35,6 +35,7 @@ EMPTY_ROW = (
     Worker.CODE_SCOUT,
     Worker.WEB_SCOUT,
     Worker.QUALITYLENS,
+    Worker.FACT_CHECKER,
     Worker.INTERN,
     Worker.GITTY_UP,
     Worker.WINGMAN,

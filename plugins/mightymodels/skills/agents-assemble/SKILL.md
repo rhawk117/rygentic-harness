@@ -51,23 +51,29 @@ A task's size in the plan picks the worker: a `tiny` task (it owns exactly one f
 mightymodels verify run --slug SLUG --phase task --id Tn.AC-1 --id Tn.AC-2
 ```
 
-Then one code-scout pass for the assertion ACs only, criterion by criterion, each coming back `VERIFIED` with a citation or not. An engineer report claiming `verified="true"` on a criterion the check contradicts gets called out by name; averaging a contradiction is how drift compounds. Then your own surface-level read of the diff; it is the second opinion now, not the only one.
+Then dispatch `mightymodels:review:fact-checker` on `haiku`, with prompting-subagents' fact-checker template: the brief path, the slug and task id, the commit, and the ids of the assertion ACs only. The contract commands stay yours; it runs none of them and not the gate. It checks the assertion ACs criterion by criterion, each coming back `VERIFIED` with a citation, `REFUTED` or `UNCHECKED`, and it reads the commit's diff for quality, rating each finding on the severity table. An implementer's report claiming `verified="true"` on a criterion the check contradicts gets called out by name; averaging a contradiction is how drift compounds. Then your own surface-level read of the diff; it is the second opinion now, not the only one.
+
+What a quality finding does to the task depends on its severity and on what it cites:
+
+- A finding blocks only when it is Critical or High and cites both a file and line and the criterion or rule it breaks. A blocking finding, like a `REFUTED` criterion, keeps the task open: skip step 5 and route it as a failed verification (step 6), with the finding's line and its criterion or rule verbatim in the next ASKED.
+- A Medium or Low finding does not hold the task. Record it in the brief under `## FINDINGS`, one line each (`FC-n | severity | file:line | criterion or rule | evidence`); review-circus picks it up from there.
+- A finding without both the file and line and the criterion or rule is advisory whatever its severity. Record it in the same place with `advisory` in front, and it holds nothing.
 
 **5. Gate the task.**
 
 Call `mcp__plugin_mightymodels_state__task` with action `verify`:
 
 ```json
-{"request": {"action": "verify", "slug": "SLUG", "payload": {"task_id": "T1", "change": {"commit": "<engineer commit>", "assertions": {"AC-2": "<file:line from code-scout>"}}}}}
+{"request": {"action": "verify", "slug": "SLUG", "payload": {"task_id": "T1", "change": {"commit": "<engineer commit>", "assertions": {"AC-2": "<file:line from fact-checker>"}}}}}
 ```
 
 It passes only when the commit is the current HEAD, every `Tn.*` contract command passed at it, the brief's DONE half names that commit on a `commit: <hash>` line of its own, every other AC in the brief carries a citation, and the commit touched nothing outside the owned set (read from git, not from the report). The tool finds the brief from the slug and the task id. It stores the outcome and its transition row in one transaction before it answers `verified`. A `blocked` result lists why and leaves the task `blocked`; treat it as a failed attempt.
 
 **6. Route what did not verify.**
 
-- Bounded, mechanical, one-concern residual (the gate's reasons name it) → **engineer**, residual variant of its template, Fix:/Verify: verbatim, after `task` `start` with `by` `engineer`, `owned` the files the Fix touches and `acceptance` the Verify line.
-- Intern returns `blocked`, or the gate blocks after its attempt → `task` `mark` with `to` `blocked` and a `reason` (a task the gate blocked already is `blocked`), then **engineer**: `task` `start` with `by` `engineer` and the same owned set and acceptance, and the engineer template with the intern's blocker in its context. The task goes to the engineer with no question to the user, and never back to the intern.
-- Engineer returns `failed` or `blocked`, or the gate blocks after its attempt (an engineer's `blocked` after three failed fixes lists the hypotheses it tried; put them in the architect's ASKED so none is tried again) → `task` `mark` with `to` `failed` or `blocked` and a `reason` (a task the gate blocked already is `blocked`), then **architect** once: `task` `start` with `by` `architect` and the same `owned` and `acceptance` (the mode defaults to `recovery-implementation`), and the architect template (trigger, ASKED, mode, brief path). Architect replaces the brief's DONE half and is gated by step 5 like the engineer.
+- Bounded, mechanical, one-concern residual (the gate's reasons or the fact-checker's blocking finding name it) → **engineer**, residual variant of its template, Fix:/Verify: verbatim, after `task` `start` with `by` `engineer`, `owned` the files the Fix touches and `acceptance` the Verify line.
+- Intern returns `blocked`, or the gate blocks or the fact-checker holds the task after its attempt → `task` `mark` with `to` `blocked` and a `reason` (a task the gate blocked already is `blocked`), then **engineer**: `task` `start` with `by` `engineer` and the same owned set and acceptance, and the engineer template with the intern's blocker in its context. The task goes to the engineer with no question to the user, and never back to the intern.
+- Engineer returns `failed` or `blocked`, or the gate blocks or the fact-checker holds the task after its attempt (an engineer's `blocked` after three failed fixes lists the hypotheses it tried; put them in the architect's ASKED so none is tried again) → `task` `mark` with `to` `failed` or `blocked` and a `reason` (a task the gate blocked already is `blocked`), then **architect** once: `task` `start` with `by` `architect` and the same `owned` and `acceptance` (the mode defaults to `recovery-implementation`), and the architect template (trigger, ASKED, mode, brief path). Architect replaces the brief's DONE half and is gated by step 5 like the engineer.
   - `scope-expansion-requested`: put the requested files to the user. On approval, hand the task, still in progress, to the architect again: `task` `start` with `by` `architect`, `mode` `systemic-refactor`, the expanded `owned` set and the same `acceptance`, and dispatch in that mode; the tool allows exactly one such extra pass.
   - `replanned`: one task with a revised ASKED. `task` `mark` with `to` `superseded` closes the old task so `ready` can pass, and the revised ASKED becomes a new task (next free `T` id) with its own contract commands, approved like any other.
 - Engineer or architect returns `too-large` (its `cuts` name where to cut), or `task` `start` refuses the task as too large → **break-it-down**, with the cuts in hand when a worker gave them. The task is not retried whole and the architect is not sent to shrink it. That skill shows the user the pieces and waits; only after the answer is the original superseded and the plan updated, and each piece then runs through this loop as a task of its own.

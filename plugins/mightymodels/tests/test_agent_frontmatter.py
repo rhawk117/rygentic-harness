@@ -122,6 +122,17 @@ class TestToolsOfTheAgents:
     def test_the_intern_holds_the_tools_to_read_edit_and_run_and_no_other(self) -> None:
         assert self.HELD[Worker.INTERN] == ('Read', 'Grep', 'Glob', 'Bash', 'Edit', 'Write')
 
+    def test_the_fact_checker_holds_the_tools_to_read_and_run_and_the_snapshot_and_no_other(
+        self,
+    ) -> None:
+        assert self.HELD[Worker.FACT_CHECKER] == (
+            'Read',
+            'Grep',
+            'Glob',
+            'Bash',
+            'mcp__plugin_mightymodels_state__snapshot',
+        )
+
 
 class TestStateToolsOfTheAgents:
     REGISTERED = frozenset(
@@ -136,6 +147,18 @@ class TestStateToolsOfTheAgents:
         self, agent: AgentFile
     ) -> None:
         assert [grant for grant in agent.state_tools if grant not in self.REGISTERED] == []
+
+    def test_only_the_engineer_and_the_fact_checker_hold_a_state_tool_one_each(self) -> None:
+        granted = {
+            agent.worker: agent.state_tools
+            for agent in TestAgentFiles.AGENT_FILES
+            if agent.state_tools
+        }
+
+        assert granted == {
+            Worker.ENGINEER: ('mcp__plugin_mightymodels_state__failed_fix',),
+            Worker.FACT_CHECKER: ('mcp__plugin_mightymodels_state__snapshot',),
+        }
 
 
 class TestSkillsOfTheAgents:
@@ -220,10 +243,17 @@ class TestDispatchTargetsOfTheAgents:
 
 class TestTurnCeilingsOfTheAgents:
     CEILINGS = MappingProxyType(
-        {Worker.CODE_SCOUT: '10', Worker.WEB_SCOUT: '10', Worker.QUALITYLENS: '10'}
+        {
+            Worker.CODE_SCOUT: '10',
+            Worker.WEB_SCOUT: '10',
+            Worker.QUALITYLENS: '10',
+            Worker.FACT_CHECKER: '20',
+        }
     )
 
-    def test_exactly_the_retrieval_workers_stop_at_ten_turns(self) -> None:
+    def test_exactly_the_retrieval_workers_stop_at_ten_turns_and_the_fact_checker_at_twenty(
+        self,
+    ) -> None:
         ceilings = {
             agent.worker: agent.pins['maxTurns']
             for agent in TestAgentFiles.AGENT_FILES
@@ -235,13 +265,14 @@ class TestTurnCeilingsOfTheAgents:
 
 class TestKeysOfTheAgents:
     SHARED = frozenset({'name', 'tools', 'model', 'effort', 'description'})
-    RETRIEVAL = SHARED.union({'maxTurns'})
+    TURN_CAPPED = SHARED.union({'maxTurns'})
     DISPATCHER = SHARED.union({'skills'})
     KEYS = MappingProxyType(
         {
-            Worker.CODE_SCOUT: RETRIEVAL,
-            Worker.WEB_SCOUT: RETRIEVAL,
-            Worker.QUALITYLENS: RETRIEVAL,
+            Worker.CODE_SCOUT: TURN_CAPPED,
+            Worker.WEB_SCOUT: TURN_CAPPED,
+            Worker.QUALITYLENS: TURN_CAPPED,
+            Worker.FACT_CHECKER: TURN_CAPPED,
             Worker.ENGINEER: DISPATCHER,
             Worker.ARCHITECT: DISPATCHER,
             Worker.INTERN: SHARED,

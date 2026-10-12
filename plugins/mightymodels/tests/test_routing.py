@@ -29,6 +29,7 @@ class TestRoutingTable:
             pytest.param('code-scout', ('haiku', 'haiku', 'haiku'), id='code-scout'),
             pytest.param('web-scout', ('haiku', 'haiku', 'haiku'), id='web-scout'),
             pytest.param('qualitylens', ('haiku', 'haiku', 'haiku'), id='qualitylens'),
+            pytest.param('fact-checker', ('haiku', 'haiku', 'haiku'), id='fact-checker'),
             pytest.param('gitty-up', ('haiku', 'haiku', 'haiku'), id='gitty-up'),
             pytest.param('engineer', ('sonnet', 'sonnet', 'sonnet'), id='engineer'),
             pytest.param('architect', ('opus', 'opus', 'opus'), id='architect'),
@@ -65,6 +66,7 @@ class TestFixedWorkers:
             pytest.param(Worker.CODE_SCOUT, 'sonnet', id='code-scout'),
             pytest.param(Worker.WEB_SCOUT, 'opus', id='web-scout'),
             pytest.param(Worker.QUALITYLENS, 'sonnet', id='qualitylens'),
+            pytest.param(Worker.FACT_CHECKER, 'sonnet', id='fact-checker'),
             pytest.param(Worker.ENGINEER, 'opus', id='engineer'),
             pytest.param(Worker.ARCHITECT, 'sonnet', id='architect'),
             pytest.param(Worker.INTERN, 'sonnet', id='intern'),
@@ -87,6 +89,7 @@ class TestFixedWorkers:
             pytest.param(Worker.CODE_SCOUT, 'haiku', id='code-scout'),
             pytest.param(Worker.WEB_SCOUT, 'haiku', id='web-scout'),
             pytest.param(Worker.QUALITYLENS, 'haiku', id='qualitylens'),
+            pytest.param(Worker.FACT_CHECKER, 'haiku', id='fact-checker'),
             pytest.param(Worker.ENGINEER, 'sonnet', id='engineer'),
             pytest.param(Worker.ARCHITECT, 'opus', id='architect'),
             pytest.param(Worker.INTERN, 'haiku', id='intern'),
@@ -101,11 +104,12 @@ class TestFixedWorkers:
 
         assert model_problems(models) == []
 
-    def test_fixes_the_eight_workers_a_ticket_cannot_move(self) -> None:
+    def test_fixes_the_nine_workers_a_ticket_cannot_move(self) -> None:
         assert {worker.value for worker in FIXED_WORKERS} == {
             'code-scout',
             'web-scout',
             'qualitylens',
+            'fact-checker',
             'engineer',
             'architect',
             'intern',

@@ -103,6 +103,13 @@ path, the signals history window (which the persona hands qualitylens), and for 
 ticket.yml, the issue, and the plan
 (merge-vader's conformance check needs them). The `${CLAUDE_SKILL_DIR}` paths are absolute once substituted.
 
+For a ticket, the packet also names every brief that holds a `## FINDINGS` section
+(`rg --no-config -l '^## FINDINGS' .mightymodels/SLUG/briefs`): the fact-checker's Medium, Low
+and advisory findings, which agents-assemble recorded when it let the task go on. A persona opens
+the line of each and reports the ones that stand as findings of its own. A recorded finding no
+persona confirms does not reach the gate, because `add` takes findings from the persona reports
+and from nowhere else.
+
 Personas gather their own evidence through code-scout, web-scout, and qualitylens, and
 nothing else. Write each response unchanged to `RUNDIR/MERGE-VADER-REPORT.md` or
 `RUNDIR/UNCLE-BOB-REPORT.md`, the files `add` reads. Wait for every persona in the run.

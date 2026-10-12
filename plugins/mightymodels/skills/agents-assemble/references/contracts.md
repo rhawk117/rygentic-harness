@@ -19,6 +19,7 @@ Cross-reviewer mapping: uncle-bob's `Blocker` maps to **High**; its High/Medium/
 | -------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | code-scout           | `VERIFIED` / `INFERRED` / `NEEDS-ANALYSIS` / `UNKNOWN-BLOCKED`                      | UNKNOWN-BLOCKED: the answer is not in what it can read, and it names where the answer lives                                                                                                                                                                               |
 | web-scout            | `VERIFIED` / `INFERRED` / `NEEDS-ANALYSIS` / `UNKNOWN-BLOCKED`                      | UNKNOWN-BLOCKED: the answer is not in what it can fetch, and it names where the answer lives                                                                                                                                                                              |
+| fact-checker         | `CLEAR` / `HOLD` / `UNKNOWN-BLOCKED`; per criterion `VERIFIED`, `REFUTED`, or `UNCHECKED` | HOLD: an assertion criterion is refuted or unchecked, or a finding is blocking, and the task stays open. A finding blocks only when it is Critical or High and cites a file and line and the criterion or rule it breaks; one without both is recorded as advisory, and a Medium or Low one is recorded in the brief for review-circus |
 | engineer             | `done` / `failed` / `blocked` / `too-large`; per task `verified` = `true`, `false`, or `deferred` | failed: edits made but a required verification still fails after its failed fixes (up to three, each recorded with the `failed_fix` tool); blocked: dispatch incomplete or plan wrong on the ground. Both route to architect. too-large: more than one reviewable unit of work; the report names where to cut, nothing is committed, and it routes to break-it-down |
 | architect            | `completed` / `replanned` / `scope-expansion-requested` / `too-large` / `blocked`   | scope-expansion-requested: the durable fix needs files outside the envelope; the coordinator or user approves before a systemic-refactor dispatch. replanned: one task with a revised ASKED. too-large: several tasks; the result names where to cut and routes to break-it-down                                |
 | task (the `task` tool) | `pending` / `in-progress` / `verified` / `failed` / `blocked` / `superseded` | verified: the commit is HEAD, every `Tn.*` (or `Cn.*`) contract command passed at it, every other AC cited, commit inside the owned set; checked by the tool, never asserted. superseded: a replanned task, closed so `ready` can pass. `Tn` are plan tasks, `Cn` CI fixes during stick-the-landing, `Rn` review-circus remediation of finding `Fn` |
@@ -27,7 +28,7 @@ Cross-reviewer mapping: uncle-bob's `Blocker` maps to **High**; its High/Medium/
 
 ## The two-half task brief
 
-`briefs/task-NN.md`, 80 lines total — roughly 15 ASKED, up to 65 DONE. The ASKED half is written by the primary at dispatch (prompting-subagents' engineer template emits it); the DONE half is appended by the engineer on completion. The scout verification step checks DONE against ASKED, criterion by criterion.
+`briefs/task-NN.md`, 80 lines total — roughly 15 ASKED, up to 65 DONE. The ASKED half is written by the primary at dispatch (prompting-subagents' engineer template emits it); the DONE half is appended by the engineer on completion. The fact-checker checks DONE against ASKED on the assertion criteria, criterion by criterion, and reads the task's commit for quality. Its findings that do not hold the task are recorded by the primary under `## FINDINGS`, after the DONE half and inside the same 80 lines, one line each: `FC-n | severity | file:line | criterion or rule | evidence`, with `advisory` in front of one that lacks the line or the criterion or rule.
 
 ```markdown
 ## ASKED
@@ -64,7 +65,7 @@ Workflow state advances only after the evidence for it is externalized; recovery
 artifacts, never conversation. The per-task order is fixed: `task` `start` records the attempt (`task_attempts`) and its owned set; the
 engineer commits, appends the DONE half (with the commit hash) to the brief, then reports; the
 contract commands run through `mightymodels verify run`, each writing a `receipts` row, and
-code-scout checks the assertion ACs; `task` `verify` records the outcome in the `tasks` and
+the fact-checker checks the assertion ACs and reads the commit's diff; `task` `verify` records the outcome in the `tasks` and
 `task_transitions` rows; only then does the loop advance. On recovery, a commit with no DONE half is an incomplete task and an unrecorded
 verification is an unverified task — worker conversational state is never authoritative.
 

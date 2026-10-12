@@ -44,6 +44,7 @@ class Worker(StrEnum):
     CODE_SCOUT = 'code-scout'
     WEB_SCOUT = 'web-scout'
     QUALITYLENS = 'qualitylens'
+    FACT_CHECKER = 'fact-checker'
     ENGINEER = 'engineer'
     ARCHITECT = 'architect'
     INTERN = 'intern'
@@ -64,6 +65,7 @@ FOLDERS: Mapping[Worker, Folder] = MappingProxyType(
         Worker.CODE_SCOUT: Folder.TRIAGE,
         Worker.WEB_SCOUT: Folder.TRIAGE,
         Worker.QUALITYLENS: Folder.REVIEW,
+        Worker.FACT_CHECKER: Folder.REVIEW,
         Worker.ENGINEER: Folder.WORKERS,
         Worker.ARCHITECT: Folder.WORKERS,
         Worker.INTERN: Folder.WORKERS,
@@ -86,6 +88,7 @@ ROUTING: Mapping[Worker, ScopeRouting] = MappingProxyType(
         Worker.CODE_SCOUT: at_every_scope(Model.HAIKU),
         Worker.WEB_SCOUT: at_every_scope(Model.HAIKU),
         Worker.QUALITYLENS: at_every_scope(Model.HAIKU),
+        Worker.FACT_CHECKER: at_every_scope(Model.HAIKU),
         Worker.ENGINEER: at_every_scope(Model.SONNET),
         Worker.ARCHITECT: at_every_scope(Model.OPUS),
         Worker.INTERN: at_every_scope(Model.HAIKU),
