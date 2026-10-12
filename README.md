@@ -32,15 +32,15 @@ A ticket-scoped development loop for coding agents. One unit of work gets one
 `.mightymodels/<slug>/` directory and one `ticket.yml` carrying its scope and model routing. The
 lifecycle ends with `/prune-ticket` compressing the whole directory into a 30-line archive. The
 unit of deletion is the unit of work, so working state never outlives the ticket that produced
-it. The skills are standard `SKILL.md` directories and the seven workers are Claude Code
+it. The skills are standard `SKILL.md` directories and the twelve workers are Claude Code
 subagent files, all under `plugins/mightymodels/`.
 
 ```mermaid
 flowchart TD
     A["lets-investigate\nchat triage with scouts"] --> B["what-we-know\ncited knowns, SWOT"]
-    B --> C["prepare-handoff\ninterview, ticket.yml, issue, branch"]
+    B --> C["open-ticket\ninterview, ticket.yml, issue, branch"]
     C --> D{scope}
-    D -->|"sm, no plan"| E["yolo"]
+    D -->|"sm, no plan"| E["one-shot"]
     D -->|"any other combination"| F["game-plan"]
     E --> G["agents-assemble\nper-task work loop"]
     F --> G
@@ -54,7 +54,7 @@ Each stage has one job, writes one artifact, and reads `ticket.yml` before doing
 Contracts shared by every stage live with the skills that own them: the severity table, verdict
 vocabularies, and the two-half brief schema are in
 `plugins/mightymodels/skills/agents-assemble/references/contracts.md`; the ticket schema and
-directory layout are in `plugins/mightymodels/skills/prepare-handoff/references/`. When a skill
+directory layout are in `plugins/mightymodels/skills/open-ticket/references/`. When a skill
 and a contract disagree, the contract wins and the skill gets fixed.
 
 ### vibe-code
@@ -109,7 +109,7 @@ the server, the launcher and the known limitations.
 
 ```text
 plugins/         one directory per plugin; each carries its own manifest and skills
-  mightymodels/  the dev loop: twenty skills, seven worker agents
+  mightymodels/  the dev loop: nineteen skills, twelve worker agents
   vibe-code/     authoring skills and the `vibe-code` CLI: ten skills, no agents,
                  with its own tests and eval cases
   python-harness/ Python review: one skill, one agent, hooks, the `python-harness` CLI
@@ -133,7 +133,7 @@ frontmatter. [CONTRIBUTING.md](CONTRIBUTING.md) has the details.
 | ------------------------------------------ | ----------------------------------------------- |
 | [docs/workflow.md](docs/workflow.md) | The full loop, stage by stage, with diagrams |
 | [docs/skills.md](docs/skills.md) | Every skill: what it does and when it fires |
-| [docs/agents.md](docs/agents.md) | The seven workers and how models get routed |
+| [docs/agents.md](docs/agents.md) | The twelve workers and how models get routed |
 | [docs/state.md](docs/state.md) | The `.mightymodels/` directory and `ticket.yml` |
 | [docs/claude-code.md](docs/claude-code.md) | Running under Claude Code |
 | [plugins/vibe-code/README.md](plugins/vibe-code/README.md) | The vibe-code plugin: install, skills, CLI, launcher |

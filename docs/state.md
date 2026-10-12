@@ -12,15 +12,17 @@ unit of work, which is what stops working state from turning into a landfill of 
 ├── <task-slug>/
 │   ├── ticket.yml                source of truth: scope, routing, companion docs
 │   ├── plan.md                   game-plan ramp only; high-level, citation-free
+│   ├── toolchain.md              game-plan ramp only; terry-toolchain's survey, at most 80 lines
 │   ├── issue-body.md             local draft, or the issue when no forge issue exists
-│   ├── handoffs/SPRINT.md        thin session bootstrap
-│   ├── handoffs/REVIEW.md        thin review-session bootstrap
+│   ├── pr-body.md                stick-the-landing's checked PR body
+│   ├── handoffs/snapshot.{json,md}  recorded state, as the snapshot tool returns it
+│   ├── handoffs/BATON.md         mid-work handoff, at most 40 lines
 │   ├── briefs/task-NN.md         two halves, at most 80 lines
-│   ├── review/MERGE-VADER-REPORT.md
-│   ├── review/UNCLE-BOB-REPORT.md
+│   ├── review/<run>/             one review-circus run: persona reports, metrics, the report
 │   ├── whats-broken.md           only while a debug is live
 │   └── REPORT.md                 sprint summary, at most 50 lines
-└── archives/<task-slug>.md       at most 30 lines, written by prune-ticket
+├── .runtime/reviews/<run>/       review runs with no ticket
+└── archives/<task-slug>.{md,json}  at most 30 lines plus a JSON record, written by prune-ticket
 ```
 
 ## The state database
@@ -52,6 +54,30 @@ This breaks with earlier versions, which kept the database inside the repository
 does not carry over: stage the ticket again. The old file can be deleted. The new file is stamped
 with a schema version, and a file with another stamp is refused by name instead of read, and
 nothing is written to it.
+
+## Tasks
+
+The `task` tool keeps one row per task, and a task's status is `pending`, `in-progress`,
+`verified`, `failed`, `blocked` or `superseded`. A plan task has a `T` id, a residual fix an `R`
+id, and a fix for a failing CI check a `C` id. `start` opens an attempt and takes who works it
+(`by`: `engineer`, `architect` or `intern`), the files the task owns (`owned`) and the ids of
+its acceptance criteria (`acceptance`). `acceptance` is required, so a task's size is always
+counted: a start with more than four criteria or more than ten owned files is refused, and the
+refusal names `break-it-down`. When the user keeps such a task whole in that skill's dialog, the
+same call with `too_large_approved_by: "user"` is accepted and the approval is recorded with
+the start.
+
+`verify` moves a task to `verified`, and `mark` moves it to `failed`, `blocked` or `superseded`.
+A task that was never started can be marked `superseded` and nothing else, which is how
+`break-it-down` closes a task it replaced with smaller ones. A residual takes the next `R<n>`
+that `show` does not list, whoever starts it, so it is not numbered after the finding it fixes.
+The intern gets one attempt at a task, and the architect one implementation pass.
+
+When an implementer stops, the completion gate, a `SubagentStop` hook, looks at the tasks it
+started that are still in progress. A plan task is held once while its brief has no DONE half
+naming a commit. A residual has no brief and is held once while it lacks a commit after its
+base, a passing receipt at HEAD for each contract command of its own, or a diff inside its owned
+files. A `C` task is not held.
 
 ## Failed fixes
 
@@ -145,51 +171,60 @@ subagent-models:
   qualitylens: haiku
   fact-checker: haiku
   engineer: sonnet # sonnet at every scope
-  architect: sonnet # derived: large scope would pull opus
+  architect: opus # opus at every scope
   intern: haiku
   gitty-up: haiku
-  wingman: opus
+  wingman: fable
   terry-toolchain: sonnet
-  merge-vader: opus
-  uncle-bob: sonnet
+  merge-vader: opus # ignored: a review run sets reviewer models
+  uncle-bob: opus # ignored: a review run sets reviewer models
 handoff-context:
   scope: sm # sm | med | large
   plan-first: false # true when a compaction is expected
   branch-name: fix/rate-limit
   worktrees-okay: false
+  auto-escalate: true # optional; off when the key is absent
 investigations:
   - rate-limit-ledger-id # lets-investigate ids this ticket came from
 ```
 
-Three derivation rules matter day to day. The engineer is `sonnet` at every scope, and the ticket
-value is the default for every task; the primary may bump one gnarly task a tier at dispatch,
-logging the reason in that task's ASKED stanza. The architect comes from the scope answer: `large`
-gives `opus`, `sm` or `med` gives `sonnet`. `plan-first: true` means the next
-session writes `plan.md` before any dispatch and the SPRINT.md handoff carries the switch-models
-reminder.
+Three rules matter day to day. Every worker but the two reviewers has one fixed model, and
+`validate` refuses a ticket whose value differs. The engineer's `sonnet` is the default for
+every task; the primary may bump one gnarly task a tier at dispatch, logging the reason in that
+task's ASKED stanza. `plan-first: true` means the next session writes `plan.md` before any
+dispatch.
 
-The schema is deliberately closed: no key enters it without a named consumer in the flow. A
-`review-weight` block existed briefly and was cut for exactly that reason.
+`auto-escalate` decides who hears of a blocked or failed task first. Absent or `false`, the task
+goes to the user before the architect or the wingman is dispatched for it: `agents-assemble`
+asks, and the dispatch hook answers a main-thread dispatch of either with `ask` and the block's
+reasons. `true` lets a block go to the architect without the question. `game-plan` asks for it
+in one dialog question and writes the line only on `true`.
+
+The schema is deliberately closed: no key enters it without a named consumer in the flow, and
+`validate` refuses an unknown key. A `review-weight` block existed briefly and was cut for
+exactly that reason.
 
 ## Handoffs stay thin
 
-`SPRINT.md` and `REVIEW.md` contain zero facts that already live in `ticket.yml` or the issue.
-They are a bootstrap pointer: read the ticket, read issue N, here is your role, invoke this
-skill. Duplicated facts drift, and the next session reads `ticket.yml` first anyway.
+`BATON.md` contains zero facts that already live in `ticket.yml`, the issue or the snapshot
+beside it. It is a bootstrap pointer: read the ticket, read issue N, here is your role, invoke
+this skill. Duplicated facts drift, and the next session reads `ticket.yml` first anyway.
 
 ## Briefs
 
 `briefs/task-NN.md` holds the two-half contract for one task. The primary writes the ASKED half
-at dispatch; the engineer appends the DONE half on completion; fact-checker checks one against the
-other. The 80-line cap is load-bearing: a brief that needs more space is a task that should have
-been split. Field-level detail is in `plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
+at dispatch; the implementer appends the DONE half on completion; fact-checker checks one
+against the other. A finding of the fact-checker that does not hold the task is recorded in the
+brief under `## FINDINGS`, where `review-circus` picks it up. The 80-line cap is load-bearing: a
+brief that needs more space is a task that should have been split. Field-level detail is in
+`plugins/mightymodels/skills/agents-assemble/references/contracts.md`.
 
 ## Reports and reviews
 
 `REPORT.md` closes a sprint in at most 50 lines: what shipped, what deviated, what remains.
-Review reports land under `review/` so they live and die with their ticket instead of littering
-the repo root; both review skills fall back to the repo root with an ignore guard when no active
-ticket exists, which keeps them usable outside mightymodels repos.
+Each review run gets a directory under `review/`, so its reports live and die with their ticket
+instead of littering the repo root; a run with no ticket writes to
+`.mightymodels/.runtime/reviews/` instead.
 
 `whats-broken.md` exists only while a debug is live. It carries the current falsifiable
 hypothesis and its test, gets regenerated per attempt, and its presence blocks `prune-ticket`.
