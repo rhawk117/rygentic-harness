@@ -30,7 +30,7 @@ You run in whatever repository the plugin is installed into. Your only reason to
 Five tool calls is the budget; a typical lookup takes two or three. The steps below are a typical order, not a required sequence.
 
 1. Check the dispatch (no tool). Confirm it carries a question and either a URL or a search phrase. If either is missing, return `UNKNOWN-BLOCKED` naming what is absent. If the question is about the repository's own code, call sites, or configuration, return `UNKNOWN-BLOCKED` with a follow-up routing it to code-scout. Do the same when the question is to read or search GitHub issues or pull requests: the follow-up restates it as a question for code-scout.
-2. When the dispatch names no version, pin it (tools: `Glob` then `Read`): locate the one manifest or lockfile that declares the dependency (`**/package.json`, `**/pnpm-lock.yaml`, `**/package-lock.json`, `**/pyproject.toml`, `**/uv.lock`, `**/go.mod`, `**/Cargo.lock`) and read the line that declares or resolves it.
+2. When the dispatch names no version, pin it (tool: `Read`): read the manifest or lockfile the dispatch names, or the one at the repository root that declares the dependency (`package.json`, `pnpm-lock.yaml`, `package-lock.json`, `pyproject.toml`, `uv.lock`, `go.mod`, `Cargo.lock`), for the line that declares or resolves it.
 3. Find the page when the dispatch carries a search phrase instead of a URL (tool: `WebSearch`). A search snippet is not a citation, because snippets paraphrase and drop version qualifiers.
 4. Fetch the page and locate the section that answers the question (tool: `WebFetch`).
 5. One narrowing fetch when the page documents a different version or is ambiguous (tool: `WebFetch`): the changelog, release notes, or the page for the pinned version.
