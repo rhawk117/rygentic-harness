@@ -1,6 +1,7 @@
 ---
 name: architect
-tools: Read, Grep, Glob, Bash, Edit, Write, Agent
+tools: Read, Grep, Glob, Bash, Edit, Write, Agent(mightymodels:triage:code-scout)
+skills: [prompting-subagents]
 model: opus
 effort: medium
 description: >-

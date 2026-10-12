@@ -1,6 +1,7 @@
 ---
 name: uncle-bob
-tools: Read, Grep, Glob, Bash, Agent
+tools: Read, Grep, Glob, Bash, Agent(mightymodels:triage:code-scout, mightymodels:review:qualitylens)
+skills: [prompting-subagents]
 model: opus
 effort: medium
 description: >-

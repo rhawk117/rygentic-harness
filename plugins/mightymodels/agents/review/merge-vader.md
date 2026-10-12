@@ -1,6 +1,7 @@
 ---
 name: merge-vader
-tools: Read, Grep, Glob, Bash, Agent
+tools: Read, Grep, Glob, Bash, Agent(mightymodels:triage:code-scout, mightymodels:triage:web-scout, mightymodels:review:qualitylens)
+skills: [prompting-subagents]
 model: opus
 effort: medium
 description: >-

@@ -3,6 +3,7 @@ name: web-scout
 tools: Read, WebFetch, WebSearch
 model: haiku
 effort: high
+maxTurns: 10
 description: >-
   Documentation retrieval worker. Use to fetch one official documentation page, changelog, or
   release note and cite the section that answers a question about documented behavior,

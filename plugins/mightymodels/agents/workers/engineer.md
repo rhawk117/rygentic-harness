@@ -1,7 +1,7 @@
 ---
 name: engineer
-tools: Read, Grep, Glob, Bash, Edit, Write, Agent, mcp__plugin_mightymodels_state__failed_fix
-skills: [agent-debugging]
+tools: Read, Grep, Glob, Bash, Edit, Write, Agent(mightymodels:triage:code-scout), mcp__plugin_mightymodels_state__failed_fix
+skills: [agent-debugging, prompting-subagents]
 model: sonnet
 effort: medium
 description: >-

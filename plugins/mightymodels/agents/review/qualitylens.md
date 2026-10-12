@@ -3,6 +3,7 @@ name: qualitylens
 tools: Read, Grep, Glob, Bash
 model: haiku
 effort: high
+maxTurns: 10
 description: >-
   Deterministic repository-risk measurement worker. Use when a reviewer needs code churn,
   change coupling, or hotspot signals for a bounded target, and the
