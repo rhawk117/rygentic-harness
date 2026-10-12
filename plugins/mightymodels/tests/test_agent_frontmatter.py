@@ -1,4 +1,4 @@
-"""The agent files pin the model and effort the routing table fixes for them."""
+"""The agent files pin the routing table's model and effort, and grant only tools that exist."""
 
 import re
 from dataclasses import dataclass
@@ -8,11 +8,14 @@ from types import MappingProxyType
 
 import pytest
 from mightymodels_plugin.core.routing import EFFORT, Worker, fixed_model
+from mightymodels_plugin.server import SERVER_NAME, TOOLS
 
 AGENTS = Path(__file__).parent.parent.joinpath('agents')
 SKILLS = Path(__file__).parent.parent.joinpath('skills')
 FRONTMATTER = re.compile(r'\A---\n(?P<head>.*?)\n---\n(?P<body>.*)\Z', re.DOTALL)
 PIN = re.compile(r'^(?P<key>model|effort): (?P<value>\S+)$', re.MULTILINE)
+TOOLS_LINE = re.compile(r'^tools: (?P<names>\[\]|\w+(?:, \w+)*)$', re.MULTILINE)
+TOOL_NAME = re.compile(r'\w+')
 STATE_TOOL = re.compile(r'\bmcp__\w+')
 PRELOADED_SKILLS = re.compile(r'^skills: (?P<names>.+)$', re.MULTILINE)
 SKILL_NAME = re.compile(r'[\w-]+')
@@ -31,6 +34,7 @@ FORBIDDEN_PHRASES = (
 class AgentFile:
     worker: Worker
     pins: dict[str, str]
+    tools: tuple[str, ...]
     state_tools: tuple[str, ...]
     skills: tuple[str, ...]
     body: str
@@ -45,9 +49,12 @@ def agent_file(path: Path) -> AgentFile:
     parts = FRONTMATTER.match(path.read_text(encoding='utf-8'))
     assert parts is not None, path.name
     pins = {found['key']: found['value'] for found in PIN.finditer(parts['head'])}
+    tools = TOOLS_LINE.search(parts['head'])
+    assert tools is not None, path.name
     return AgentFile(
         worker=Worker(path.stem),
         pins=pins,
+        tools=tuple(TOOL_NAME.findall(tools['names'])),
         state_tools=tuple(STATE_TOOL.findall(parts['head'])),
         skills=preloaded_skills(parts['head']),
         body=parts['body'],
@@ -83,20 +90,29 @@ class TestAgentFiles:
         assert found == []
 
 
+class TestToolsOfTheAgents:
+    HELD = MappingProxyType({agent.worker: agent.tools for agent in TestAgentFiles.AGENT_FILES})
+
+    def test_wingman_holds_an_empty_tools_list(self) -> None:
+        assert self.HELD[Worker.WINGMAN] == ()
+
+    def test_web_scout_holds_no_shell(self) -> None:
+        assert 'Bash' not in self.HELD[Worker.WEB_SCOUT]
+
+
 class TestStateToolsOfTheAgents:
-    NAMED = MappingProxyType(
-        {
-            Worker.ENGINEER: ('mcp__plugin_mightymodels_state__failed_fix',),
-            Worker.WINGMAN: ('mcp__plugin_mightymodels_state__ticket',),
-        }
+    REGISTERED = frozenset(
+        f'mcp__plugin_mightymodels_{SERVER_NAME}__{tool.__name__}' for tool in TOOLS
     )
 
-    def test_the_engineer_names_the_failed_fix_tool_and_no_other_agent_names_the_task_tool(
-        self,
+    @pytest.mark.parametrize(
+        'agent',
+        [pytest.param(agent, id=agent.worker.value) for agent in TestAgentFiles.AGENT_FILES],
+    )
+    def test_every_state_tool_grant_names_a_tool_the_server_registers(
+        self, agent: AgentFile
     ) -> None:
-        named = {agent.worker: agent.state_tools for agent in TestAgentFiles.AGENT_FILES}
-
-        assert {worker: tools for worker, tools in named.items() if tools} == self.NAMED
+        assert [grant for grant in agent.state_tools if grant not in self.REGISTERED] == []
 
 
 class TestSkillsOfTheAgents:

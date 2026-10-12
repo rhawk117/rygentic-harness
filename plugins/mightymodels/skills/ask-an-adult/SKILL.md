@@ -14,9 +14,9 @@ description: >-
 
 # ask-an-adult
 
-`wingman` is a one-shot advisor on the ticket's alias (`fable`). Its one tool is `ticket` with
-action `show`, so it can read the active ticket and nothing else; the packet you send
-remains its evidence. The quality of its answer is capped
+`wingman` is a one-shot advisor on the ticket's alias (`fable`). It holds no tool, so it cannot
+read the ticket, a file or anything else: the packet you send is its only evidence, and the
+ticket's text travels in it. The quality of its answer is capped
 by the quality of the packet you send it, and a thin packet wastes a frontier
 turn.
 
@@ -37,9 +37,14 @@ re-open a decision the user already made, or a second time on the same packet.
 ## Build the packet
 
 Fill prompting-subagents' wingman template:
-the decision in one sentence, each option with its cost, every fact with its citation and every
-assumption marked as one, constraints, what was tried, and your lean. Missing sections are the
-usual reason wingman comes back at low confidence.
+the decision in one sentence, each option with its cost, the ticket's text, every fact with its
+citation and every assumption marked as one, constraints, what was tried, and your lean. Missing
+sections are the usual reason wingman comes back at low confidence.
+
+When a ticket is active, the `<ticket>` section carries these fields of `ticket.yml`, verbatim:
+`task`, `summary`, every `context` line, `companion-docs` and `handoff-context`. Leave
+`subagent-models`, `triaged-at` and `investigations` out, because no decision turns on them. With
+no active ticket, write `none`.
 
 State your lean honestly. wingman is instructed to form its own view first and to lead with
 disagreement, so hiding your preference buys nothing and costs the advisor a useful signal.
