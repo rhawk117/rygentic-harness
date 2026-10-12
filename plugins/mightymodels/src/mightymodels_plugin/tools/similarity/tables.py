@@ -20,7 +20,7 @@ repository, so every read of it joins `similarity` and filters on the repository
 from typing import Annotated
 
 import sqlalchemy as sql
-from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
+from sqlalchemy.event import listen
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -78,4 +78,4 @@ class ScoutReportRow(Base):
 
 
 for statement in INDEX_STATEMENTS:
-    event.listen(Base.metadata, 'after_create', sql.DDL(statement))
+    listen(Base.metadata, 'after_create', sql.DDL(statement))

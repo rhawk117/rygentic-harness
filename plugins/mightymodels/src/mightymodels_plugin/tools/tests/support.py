@@ -11,7 +11,7 @@ import pytest
 import sqlalchemy as sql
 from mcp import Client
 from mcp.types import CallToolResult, TextContent, Tool
-from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
+from sqlalchemy.event import listen, remove
 from sqlalchemy.orm import Session, SessionTransaction
 
 from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE, DataDirectory
@@ -106,11 +106,11 @@ class SelectsSent:
 @contextmanager
 def selects_sent_to(database: Database) -> Generator[SelectsSent]:
     selects = SelectsSent(database_file=Path(str(database.engine.url.database)))
-    event.listen(database.engine, 'before_cursor_execute', selects.record, named=True)
+    listen(database.engine, 'before_cursor_execute', selects.record, named=True)
     try:
         yield selects
     finally:
-        event.remove(database.engine, 'before_cursor_execute', selects.record)
+        remove(database.engine, 'before_cursor_execute', selects.record)
 
 
 def table_of(row_type: type[Base]) -> sql.Table:
@@ -245,8 +245,8 @@ def tree_after_the_connect(connected_server: StateServer) -> dict[str, bytes]:
 @pytest.fixture
 def database_activity() -> Generator[DatabaseActivity]:
     activity = DatabaseActivity()
-    event.listen(Session, 'after_transaction_create', activity.record_transaction)
-    event.listen(sql.Engine, 'engine_disposed', activity.record_disposal)
+    listen(Session, 'after_transaction_create', activity.record_transaction)
+    listen(sql.Engine, 'engine_disposed', activity.record_disposal)
     yield activity
-    event.remove(Session, 'after_transaction_create', activity.record_transaction)
-    event.remove(sql.Engine, 'engine_disposed', activity.record_disposal)
+    remove(Session, 'after_transaction_create', activity.record_transaction)
+    remove(sql.Engine, 'engine_disposed', activity.record_disposal)

@@ -1,44 +1,8 @@
-import os
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 from mightymodels_plugin.cli import build_parser, main
-from mightymodels_plugin.core.data_directory import SESSION_DATA_VARIABLE
-from mightymodels_plugin.core.slug import Slug
-from mightymodels_plugin.core.workspace import PROJECT_DIR_VARIABLE
-from mightymodels_plugin.tools.contract.schema import ContractCommand
-from mightymodels_plugin.tools.contract.service import ContractService
 from pytest_mock import MockerFixture
 
 SLUG = 'retry-queue'
-LOADED_PACKAGES = (
-    'import sys\n'
-    'from mightymodels_plugin.cli import main\n'
-    'try:\n'
-    '    code = main(sys.argv[1:])\n'
-    'except SystemExit as stop:\n'
-    '    code = stop.code\n'
-    "heavy = {'mcp', 'sqlalchemy', 'pydantic'}\n"
-    'print(code, sorted(heavy.intersection(sys.modules)))\n'
-)
-
-
-def loaded_packages(root: Path, data_directory: Path, *arguments: str) -> str:
-    completed = subprocess.run(  # noqa: S603 - this interpreter runs the package's own entry point with fixed arguments
-        [sys.executable, '-c', LOADED_PACKAGES, *arguments],
-        check=False,
-        capture_output=True,
-        text=True,
-        cwd=root,
-        env={
-            **os.environ,
-            PROJECT_DIR_VARIABLE: str(root),
-            SESSION_DATA_VARIABLE: str(data_directory),
-        },
-    )
-    return completed.stdout.splitlines()[-1]
 
 
 class TestCli:
@@ -64,11 +28,6 @@ class TestCli:
 
 
 class TestVerifyRun:
-    @pytest.fixture
-    def approved_command(self, contract_service: ContractService) -> None:
-        command = ContractCommand(id='I1', argv=('git', '--version'), approved_by='user')
-        contract_service.approve(Slug(SLUG), [command])
-
     def test_help_shows_its_options(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exit_info:
             main(['verify', 'run', '--help'])
@@ -94,18 +53,6 @@ class TestVerifyRun:
 
         assert exit_info.value.code == 2
         assert 'usage: mightymodels verify run' in capsys.readouterr().err
-
-    def test_help_loads_no_database_or_server_package(
-        self, repository: Path, data_directory: Path
-    ) -> None:
-        assert loaded_packages(repository, data_directory, 'verify', 'run', '--help') == '0 []'
-
-    @pytest.mark.usefixtures('approved_command')
-    def test_verify_run_does_not_import_mcp(self, repository: Path, data_directory: Path) -> None:
-        arguments = ('verify', 'run', '--slug', SLUG, '--id', 'I1')
-        loaded = loaded_packages(repository, data_directory, *arguments)
-
-        assert loaded == "0 ['pydantic', 'sqlalchemy']"
 
 
 class TestReviewSignals:

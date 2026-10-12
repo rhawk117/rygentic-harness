@@ -20,16 +20,20 @@ landing: every reason the `task` tool's `ready` action would give, read through 
 `ready` reads them through, and every live contract command whose passing receipt at HEAD was not
 taken in the landing phase. It writes nothing.
 
-`started_for_hook`, `tickets_for_hook` and `landing_for_hook` are for a hook that holds no state.
-Each opens the state the completion gate opens, from the project directory and the plugin data
-directory Claude Code gives a hook, and answers the failure in place of the read when there is no
+`HookState` is what a hook that holds no state reads through, and it is the `StartedTasks` and the
+`TicketOnBranch` the hook rules take. Its `started_by`, `tickets_on_branch` and `landing_on_branch`
+each open the state the completion gate opens, from the project directory and the plugin data
+directory Claude Code gives a hook, and answer the failure in place of the read when there is no
 data directory, no git work tree, the database refuses, or the operating system refuses the data
 directory, the database file or git's exclude file, so the hook decides what an unreadable state
-means.
+means. None opens the state of a repository that has no ticket directory
+(`HookContext.has_ticket_directory`): such a repository has no ticket, so its answer is no task and
+no ticket. `ticket_directory_holds` is the answer of the `HookContext` it was given.
 """
 
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -164,25 +168,36 @@ def state_for_hook(context: HookContext) -> Generator[OpenState]:
         yield state
 
 
-def started_for_hook(context: HookContext, worker: Worker) -> StartedOrUnreadable:
-    try:
-        with state_for_hook(context) as state:
-            return started_on_branch(state, Implementer(worker))
-    except STATE_UNREADABLE as error:
-        return error
+@dataclass(slots=True, kw_only=True, frozen=True)
+class HookState:
+    context: HookContext
 
+    def ticket_directory_holds(self, file_path: str) -> bool:
+        return self.context.ticket_directory_holds(file_path)
 
-def tickets_for_hook(context: HookContext) -> BranchTicketsOrUnreadable:
-    try:
-        with state_for_hook(context) as state:
-            return tickets_on_branch(state)
-    except STATE_UNREADABLE as error:
-        return error
+    def started_by(self, worker: Worker) -> StartedOrUnreadable:
+        if not self.context.has_ticket_directory():
+            return ()
+        try:
+            with state_for_hook(self.context) as state:
+                return started_on_branch(state, Implementer(worker))
+        except STATE_UNREADABLE as error:
+            return error
 
+    def tickets_on_branch(self) -> BranchTicketsOrUnreadable:
+        if not self.context.has_ticket_directory():
+            return BranchTickets()
+        try:
+            with state_for_hook(self.context) as state:
+                return tickets_on_branch(state)
+        except STATE_UNREADABLE as error:
+            return error
 
-def landing_for_hook(context: HookContext) -> LandingOrUnreadable:
-    try:
-        with state_for_hook(context) as state:
-            return landing_on_branch(state)
-    except STATE_UNREADABLE as error:
-        return error
+    def landing_on_branch(self) -> LandingOrUnreadable:
+        if not self.context.has_ticket_directory():
+            return Landing()
+        try:
+            with state_for_hook(self.context) as state:
+                return landing_on_branch(state)
+        except STATE_UNREADABLE as error:
+            return error

@@ -6,14 +6,24 @@ import argparse
 import os
 import sys
 from collections.abc import Sequence
-from importlib import import_module
 from pathlib import Path
 from types import MappingProxyType
 
+from mightymodels_plugin import server
+from mightymodels_plugin.commands import (
+    completion_gate,
+    pre_compact,
+    subagent_handback,
+    subagent_record,
+)
 from mightymodels_plugin.commands.dispatch_hook import check_dispatch
 from mightymodels_plugin.commands.hook_context import HookContext
 from mightymodels_plugin.commands.main_thread_hook import check_main_thread
+from mightymodels_plugin.commands.review_metrics import review_metrics
+from mightymodels_plugin.commands.review_signals import review_signals
 from mightymodels_plugin.commands.session_start import export_data_directory
+from mightymodels_plugin.commands.started_tasks import HookState
+from mightymodels_plugin.commands.verify import verify_run
 
 SERVE_COMMAND = 'serve'
 SESSION_START_COMMAND = 'session-start'
@@ -41,12 +51,12 @@ DEFAULT_PHASE = 'task'
 TOOL_CHECKS = MappingProxyType(
     {DISPATCH_HOOK_COMMAND: check_dispatch, MAIN_THREAD_HOOK_COMMAND: check_main_thread}
 )
-HOOK_MODULES = MappingProxyType(
+HOOKS = MappingProxyType(
     {
-        SUBAGENT_RECORD_COMMAND: 'mightymodels_plugin.commands.subagent_record',
-        SUBAGENT_HANDBACK_COMMAND: 'mightymodels_plugin.commands.subagent_handback',
-        COMPLETION_GATE_COMMAND: 'mightymodels_plugin.commands.completion_gate',
-        PRE_COMPACT_COMMAND: 'mightymodels_plugin.commands.pre_compact',
+        SUBAGENT_RECORD_COMMAND: subagent_record.run_hook,
+        SUBAGENT_HANDBACK_COMMAND: subagent_handback.run_hook,
+        COMPLETION_GATE_COMMAND: completion_gate.run_hook,
+        PRE_COMPACT_COMMAND: pre_compact.run_hook,
     }
 )
 
@@ -166,21 +176,16 @@ def run_hook_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == SESSION_START_COMMAND:
         return export_data_directory(os.environ)
     if (check := TOOL_CHECKS.get(arguments.command)) is not None:
-        return check(sys.stdin, sys.stdout.buffer, session_hook_context())
-    if arguments.command not in HOOK_MODULES:
+        return check(sys.stdin, sys.stdout.buffer, HookState(context=session_hook_context()))
+    if (run_hook := HOOKS.get(arguments.command)) is None:
         return None
-    hook = import_module(HOOK_MODULES[arguments.command])
-    return int(hook.run_hook(session_hook_context()))
+    return run_hook(session_hook_context())
 
 
 def run_review_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == REVIEW_SIGNALS_COMMAND:
-        from mightymodels_plugin.commands.review_signals import review_signals  # noqa: PLC0415 - importing commands.review_signals (core.workspace and Pydantic) took 0.13 s measured with -X importtime and every hook and `--help` must not pay it
-
         return review_signals(arguments)
     if arguments.command == REVIEW_METRICS_COMMAND:
-        from mightymodels_plugin.commands.review_metrics import review_metrics  # noqa: PLC0415 - importing commands.review_metrics (the four review_metrics modules and logging) took 0.024 s on top of cli, the lowest of 15 runs measured with -X importtime, and every hook and `--help` must not pay it
-
         return review_metrics(arguments)
     return None
 
@@ -192,10 +197,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     if (code := run_review_command(arguments)) is not None:
         return code
     if arguments.command == VERIFY_COMMAND:
-        from mightymodels_plugin.commands.verify import verify_run  # noqa: PLC0415 - importing commands.verify (SQLAlchemy and Pydantic) took 0.37 s measured with -X importtime and `--help` must not pay it
-
         return verify_run(arguments)
-    from mightymodels_plugin.server import serve  # noqa: PLC0415 - importing server (mcp) took 1.5 s measured with -X importtime and every hook and --help run would pay it
-
-    serve()
+    server.serve()
     return 0

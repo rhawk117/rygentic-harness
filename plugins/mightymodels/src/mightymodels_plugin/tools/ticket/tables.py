@@ -13,7 +13,7 @@ accepted. A file that has the column, or no `tickets` table, is left as it is.
 from typing import Annotated
 
 import sqlalchemy as sql
-from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
+from sqlalchemy.event import listen
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mightymodels_plugin.core.declarative import (
@@ -72,4 +72,4 @@ def add_auto_escalate_to_an_older_file(
     connection.exec_driver_sql(f'ALTER TABLE {tickets.name} ADD COLUMN {declared}')
 
 
-event.listen(Base.metadata, 'after_create', add_auto_escalate_to_an_older_file)
+listen(Base.metadata, 'after_create', add_auto_escalate_to_an_older_file)

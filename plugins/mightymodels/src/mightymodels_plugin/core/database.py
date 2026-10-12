@@ -73,8 +73,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import sqlalchemy as sql
-from sqlalchemy import event  # noqa: ICN003 - event is a submodule that sqlalchemy's top level does not export, so ty refuses it through the alias
 from sqlalchemy.engine.interfaces import DBAPIConnection
+from sqlalchemy.event import listen
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
@@ -233,7 +233,7 @@ def open_database(
         sql.URL.create('sqlite', database=str(database_file)),
         connect_args={'timeout': BUSY_TIMEOUT.total_seconds()},
     )
-    event.listen(engine, 'connect', enforce_foreign_keys)
+    listen(engine, 'connect', enforce_foreign_keys)
     tables = [Base.metadata.tables[row_type.__tablename__] for row_type in row_types]
     try:
         with database_errors_refused(database_file), write_lock_held(engine) as connection:
