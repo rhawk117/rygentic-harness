@@ -14,6 +14,11 @@ allowed-tools:
   - Agent
   - mcp__plugin_python-harness_python-harness__survey
   - mcp__plugin_python-harness_python-harness__gate
+  - mcp__plugin_python-harness_python-harness__collect_python_facts
+  - mcp__plugin_python-harness_python-harness__map_python_calls
+  - mcp__plugin_python-harness_python-harness__search_python_docs
+  - mcp__plugin_python-harness_python-harness__read_python_docs
+  - mcp__plugin_python-harness_python-harness__check_citations
 disallowed-tools:
   - Edit
   - Write
