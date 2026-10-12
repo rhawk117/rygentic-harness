@@ -1,0 +1,15 @@
+{
+  "ty": {
+    "command": "uv",
+    "args": [
+      "tool",
+      "run",
+      "ty@0.0.84",
+      "server"
+    ],
+    "extensionToLanguage": {
+      ".py": "python",
+      ".pyi": "python"
+    }
+  }
+}
