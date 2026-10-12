@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types import CallToolResult
 from mightymodels_plugin.core.declarative import PROSE_LIMIT
 from mightymodels_plugin.core.edge import exclude_state_from_git
 from mightymodels_plugin.core.slug import Slug
@@ -129,6 +130,47 @@ class TestAFailedFix:
             Status.PENDING,
         )
         assert tried(started, TICKET, 'T9') == []
+
+
+class TestAFailedFixOfAResidual:
+    FINDING_IDS = (
+        pytest.param('MV-3', id='merge-vader-finding'),
+        pytest.param('FC-2', id='fact-checker-finding'),
+    )
+
+    @pytest.fixture
+    def residual_started(
+        self, ticket_service: TicketService, task_service: TaskService
+    ) -> TaskService:
+        stage_and_start(ticket_service, task_service, TICKET, 'R1')
+        return task_service
+
+    def call(self, server: StateServer, task_id: str) -> CallToolResult:
+        arguments: dict[str, object] = {
+            'action': 'record',
+            'slug': TICKET.root,
+            'payload': {'task_id': task_id, 'change': {'hypothesis': HYPOTHESES[0]}},
+        }
+        (result,) = server.call(('failed_fix', {'request': arguments}))
+        return result
+
+    def test_is_accepted_under_the_slug_and_the_r_id_its_dispatch_supplies(
+        self, residual_started: TaskService, connected_server: StateServer
+    ) -> None:
+        result = self.call(connected_server, 'R1')
+
+        assert not result.is_error
+        assert 'R1 failed fix 1 recorded' in text_of(result)
+        assert tried(residual_started, TICKET, 'R1') == [HYPOTHESES[0]]
+
+    @pytest.mark.parametrize('finding_id', FINDING_IDS)
+    def test_is_refused_under_a_finding_id_and_stores_nothing(
+        self, finding_id: str, residual_started: TaskService, connected_server: StateServer
+    ) -> None:
+        result = self.call(connected_server, finding_id)
+
+        assert result.is_error
+        assert tried(residual_started, TICKET, finding_id) == []
 
 
 class TestThreeFailedFixesOfOneTask:

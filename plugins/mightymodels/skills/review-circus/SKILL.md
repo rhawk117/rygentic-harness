@@ -190,7 +190,9 @@ each finding `Fn` chosen for fixing:
    `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands` entry (game-plan's call).
 3. Dispatch an **engineer**: the residual variant for a single-concern merge-vader finding
    with usable Fix and Verify lines; the full template for uncle-bob findings, findings both
-   personas raised, and anything Critical or High security.
+   personas raised, and anything Critical or High security. Either way the dispatch carries
+   SLUG, `Rn` as the task id and `Rn.AC-1` as the contract id, and the persona's own id
+   (`MV-n`, `UB-n`) in a slot of its own as the finding: a finding id is never the task id.
 4. `mightymodels verify run --slug SLUG --phase review --id Rn.AC-1`, then `task` `verify` with
    `payload` `task_id` `Rn` and `change` `commit`, then `review` `resolve` with `payload`
    `finding` `Fn`, `result` `fixed` and `commit` (it takes only a finding the user chose to fix).

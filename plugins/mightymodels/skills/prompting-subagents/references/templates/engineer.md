@@ -34,17 +34,21 @@ Slots: objective · ACs · verification · files-in-scope · tier(+reason) · to
 
 ## Residual variant
 
-For one named residual with a bounded fix: a verification leftover, a mechanical CI failure, or a review finding carrying Fix: and Verify: lines. The finding's own lines are the payload; paste them verbatim, never paraphrase, because paraphrase is where scope creep starts. No brief is written for a residual.
+For one named residual with a bounded fix: a verification leftover, a mechanical CI failure, or a review finding carrying Fix: and Verify: lines. The finding's own lines are the payload; paste them verbatim, never paraphrase, because paraphrase is where scope creep starts. No brief is written for a residual, so the dispatch itself carries the ticket slug and the task id the brief path would have given. The task id is the one `task` `start` just took: `R<n>` for a verification leftover or a review finding, `C<n>` for a CI failure. The finding's own id (`MV-3`, `UB-2`, `FC-1`) goes in its own slot and is never the task id, because the state tools refuse it.
 
-**Ten-second checklist:** exactly one issue named · Fix: is a bounded action, not a goal · Verify: is a command or grep the engineer can run · files-in-scope names every file the Fix touches · commit/push instructions explicit.
+**Ten-second checklist:** exactly one issue named · the task id is started and is not the finding id · Fix: is a bounded action, not a goal · Verify: is a command or grep the engineer can run · files-in-scope names every file the Fix touches · commit/push instructions explicit.
 
 ```text
-<objective>Close one residual: <issue id and one-line name>. Treat it as a group of one task with the id <issue id>.</objective>
+<objective>Close one residual: <finding id and one-line name>. Treat it as a group of one task with the id <task id>.</objective>
 <context><where it came from: which task's verification, which CI check, or which review finding, one line></context>
+slug: <ticket slug>
+task-id: <the started R<n> or C<n>>
+finding: <the finding's own id, or the CI check's name>
 files-in-scope: [<every file the Fix touches>]
 Fix: <verbatim from the finding or verification failure>
 Verify: <verbatim check>
+contract-id: <the id the Verify line was approved under, such as R<n>.AC-1; left out when it was not approved as a contract command>
 <constraints>Commit as "<message>" and never push. One attempt: if Verify still fails, report failed with the output tail; if the Fix needs a file outside files-in-scope, report blocked.</constraints>
 ```
 
-Slots: issue id · source line · files-in-scope · Fix · Verify · commit message.
+Slots: finding id · source line · slug · task id · files-in-scope · Fix · Verify · contract id · commit message.
