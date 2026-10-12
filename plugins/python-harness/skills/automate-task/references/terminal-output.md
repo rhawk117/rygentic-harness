@@ -1,4 +1,4 @@
-<!-- Reference: colorized terminal output, progress bars, tables, and pretty logging with rich. Read when the user opts into pretty output during design. Researched 2026-10-06. -->
+<!-- Reference: colorized terminal output, progress bars, tables, and pretty logging with rich. Read when the user opts into pretty output during design. -->
 
 # Terminal output with rich
 

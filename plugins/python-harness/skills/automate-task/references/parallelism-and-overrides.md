@@ -1,4 +1,4 @@
-<!-- Reference: parallelism levels, hard caps, and how explicit user choices override the analysis. Read when: the request mentions speed, parallelism, workers, threads, processes, asyncio, or a level such as "a lot" or "toaster", or the workload is not trivially sequential. Approved by the user 2026-10-06. -->
+<!-- Reference: parallelism levels, hard caps, and how explicit user choices override the analysis. Read when: the request mentions speed, parallelism, workers, threads, processes, asyncio, or a level such as "a lot" or "toaster", or the workload is not trivially sequential. -->
 
 # Parallelism levels and overrides
 

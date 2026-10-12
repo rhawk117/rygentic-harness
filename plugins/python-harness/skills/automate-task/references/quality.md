@@ -1,4 +1,4 @@
-<!-- Reference: Python code-quality automation with subprocess-based tool execution, structured aggregation, reporting, and trend storage. Read when the request runs quality tools across one or more Python repositories. Researched 2026-10-06. -->
+<!-- Reference: Python code-quality automation with subprocess-based tool execution, structured aggregation, reporting, and trend storage. Read when the request runs quality tools across one or more Python repositories. -->
 
 # Code quality automation
 

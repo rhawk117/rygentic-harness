@@ -145,6 +145,10 @@ Pick tests by the regression they would catch:
 Use hand-computed oracles, never the implementation's own formula. Use metamorphic and property tests for invariants. Keep simulation checks of statistical methods separate from deterministic unit tests. Read `references/testing.md`, and follow the project's own pytest conventions where they exist.
 
 When the project has a test suite to extend, dispatch `python-harness:test-engineer` to write the chosen tests, briefing it with the regressions above, the hand-computed oracles, the permitted test and fixture paths, and the project root and Python version from `survey`.
+
+### 9. Review before done
+
+Before saying done, meet every item in the gates below, including the review of the changed paths.
 </workflow>
 
 <dispatch>

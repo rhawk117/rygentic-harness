@@ -1,4 +1,4 @@
-<!-- Reference: Python test-run orchestration with pytest, reporting, retries, matrices, coverage, property and load checks. Read when the request automates test execution or summarizes test results. Researched 2026-10-06. -->
+<!-- Reference: Python test-run orchestration with pytest, reporting, retries, matrices, coverage, property and load checks. Read when the request automates test execution or summarizes test results. -->
 
 # Testing automation
 

@@ -1,4 +1,4 @@
-<!-- Reference: rendering Markdown, HTML, or text reports with Jinja2 templates. Read when the automation's output is a report and the user chose templates over f-strings. Researched 2026-10-06. -->
+<!-- Reference: rendering Markdown, HTML, or text reports with Jinja2 templates. Read when the automation's output is a report and the user chose templates over f-strings. -->
 
 # Reports with Jinja2
 

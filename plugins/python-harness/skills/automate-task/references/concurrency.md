@@ -1,4 +1,4 @@
-<!-- Reference: Python concurrency mechanisms and their verified defaults. Read when: choosing or justifying a concurrency mechanism, or translating a parallelism level into numbers. Researched 2026-10-06. -->
+<!-- Reference: Python concurrency mechanisms and their verified defaults. Read when: choosing or justifying a concurrency mechanism, or translating a parallelism level into numbers. -->
 
 # Concurrency in automation scripts
 

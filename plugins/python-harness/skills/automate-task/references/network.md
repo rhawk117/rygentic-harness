@@ -1,4 +1,4 @@
-<!-- Reference: HTTP APIs, scraping, downloads, retries, and bounded concurrency. Read when the automation performs network I/O or web scraping. Researched 2026-10-06. -->
+<!-- Reference: HTTP APIs, scraping, downloads, retries, and bounded concurrency. Read when the automation performs network I/O or web scraping. -->
 
 # Network / HTTP APIs / scraping
 

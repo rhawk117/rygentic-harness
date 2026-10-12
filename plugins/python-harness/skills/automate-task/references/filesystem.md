@@ -1,4 +1,4 @@
-<!-- Reference: filesystem and file-processing automations with Python. Read when the request walks, copies, archives, watches, hashes, rotates, deletes, or batch-processes files. Researched 2026-10-06. -->
+<!-- Reference: filesystem and file-processing automations with Python. Read when the request walks, copies, archives, watches, hashes, rotates, deletes, or batch-processes files. -->
 
 # Filesystem / File Processing
 

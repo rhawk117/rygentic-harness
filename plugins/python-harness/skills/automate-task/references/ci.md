@@ -1,4 +1,4 @@
-<!-- Reference: CI and release automation scripts for GitHub Actions. Read when the request runs in GitHub Actions or another CI system, checks versions/changelogs, or publishes release metadata. Researched 2026-10-06. -->
+<!-- Reference: CI and release automation scripts for GitHub Actions. Read when the request runs in GitHub Actions or another CI system, checks versions/changelogs, or publishes release metadata. -->
 
 # CI / release automation
 

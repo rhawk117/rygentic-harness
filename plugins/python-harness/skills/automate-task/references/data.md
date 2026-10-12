@@ -1,4 +1,4 @@
-<!-- Reference: dirty-data ingestion, validation, transformation, and export. Read when the automation request processes CSV, Excel, JSON, or tabular data. Researched 2026-10-06. -->
+<!-- Reference: dirty-data ingestion, validation, transformation, and export. Read when the automation request processes CSV, Excel, JSON, or tabular data. -->
 
 # Data processing and data science
 

@@ -139,7 +139,7 @@ Pass Gate 6 only when the examples can express every required outcome without hi
 
 ### 7. Delegate executable expectations
 
-Invoke `design-tests` in contributor mode with the contract packet and shared brief. The Test Engineer owns scenario tests. Contract tests that precede implementation use:
+Invoke `design-tests` in contributor mode with the contract packet and shared brief once the persistence decision exists or the brief records that there is no durable state. The Test Engineer owns scenario tests. Contract tests that precede implementation use:
 
 ```python
 @pytest.mark.xfail(
@@ -212,5 +212,5 @@ The completed contract packet and implementation handoff in the conversation, pl
 </output>
 
 <handoff>
-The next stage of the service track is design-persistence. Pass it the accepted contract packet and the implementation handoff, and say which gates passed, which are open, and that no code or file was changed.
+The next stage of the service track is design-persistence. Pass it the accepted contract packet and the implementation handoff, and say which gates passed, which are open, and that no code or file was changed. A stage this workflow already ran in contributor mode with an accepted packet is complete, so hand to the first stage that has not run.
 </handoff>

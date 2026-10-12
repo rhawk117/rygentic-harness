@@ -2,7 +2,7 @@
 
 **Request:** {ONE_LINE_RESTATEMENT}
 **Domain:** {DOMAIN} (suggested from: {SIGNALS}; the user confirmed or changed it)
-**Script:** `scripts/{SCRIPT_NAME}.py`, run with `uv run scripts/{SCRIPT_NAME}.py --help`
+**Script:** `./scripts/{SCRIPT_NAME}.py`, run with `uv run ./scripts/{SCRIPT_NAME}.py --help`
 **Python:** `requires-python = ">={PYTHON}"` ({WHY_THIS_VERSION})
 
 ## Packages
@@ -27,7 +27,7 @@
 
 - **Workload kind:** {cpu | subprocess | io | library} because {EVIDENCE_FROM_REQUEST}
 - **Mechanism:** {MECHANISM} ({WHY})
-- **Level:** {sequential | moderate | a lot | toaster}, mapped by `scripts/parallelism.py` to {NUMBERS}
+- **Level:** {sequential | moderate | a lot | toaster}, mapped by the skill's bundled parallelism script, `parallelism.py`, to {NUMBERS}
 - **Hard caps kept at every level:** {PER_HOST_LIMIT, RATE_LIMIT, TIMEOUTS, MEMORY, FILE_DESCRIPTORS}
 
 ## User overrides
@@ -43,4 +43,4 @@
 
 ## Verification after writing
 
-`uv run scripts/check_script.py scripts/{SCRIPT_NAME}.py`, then `uv run scripts/{SCRIPT_NAME}.py --help`, then `--dry-run` {WHEN_SAFE | skipped because REASON}.
+The skill's bundled checker, `check_script.py`, on `./scripts/{SCRIPT_NAME}.py`, then `uv run ./scripts/{SCRIPT_NAME}.py --help`, then `--dry-run` {WHEN_SAFE | skipped because REASON}.

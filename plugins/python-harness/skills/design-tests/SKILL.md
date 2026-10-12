@@ -127,7 +127,7 @@ Inspect the target project's dependency manifest and lock before using optional 
 - **pytest-mock:** use when call interaction is itself contractual or its cleanup improves on manual patching. If absent, prefer `unittest.mock`, `monkeypatch`, or a fake unless the user approves a project-local dependency.
 - **Hypothesis:** use when invariants over a broad input space are more useful than enumerated examples. If absent, provide the exact project-local dependency change as guidance; do not edit dependency files without approval.
 
-There is no universal installation assumption. The current repository happens to declare pytest-mock in its test group and does not declare Hypothesis; each target project still requires inspection.
+There is no universal installation assumption. Each target project requires inspection.
 
 When a substitute or an assertion rests on standard-library behavior for the project's Python version (`unittest.mock` semantics, `asyncio` cancellation, `contextvars`, `datetime` or `time` handling), dispatch `python-harness:pep-talk` with the question and the Python version from `survey`. Treat its return as cited facts: open the cited lines before relying on them.
 

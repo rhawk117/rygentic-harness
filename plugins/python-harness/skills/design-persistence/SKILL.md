@@ -200,5 +200,5 @@ The completed persistence packet in the conversation, plus a chat summary:
 </output>
 
 <handoff>
-The next stage of the service track is design-tests. Pass it the accepted persistence packet and the contract packet, and say which gates passed, which are open, and that no code or file was changed.
+The next stage of the service track is design-tests. Pass it the accepted persistence packet and the contract packet, and say which gates passed, which are open, and that no code or file was changed. A stage this workflow already ran in contributor mode with an accepted packet is complete, so hand to the first stage that has not run.
 </handoff>

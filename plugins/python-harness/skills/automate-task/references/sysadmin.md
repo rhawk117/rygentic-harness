@@ -1,4 +1,4 @@
-<!-- Reference: local and fleet system-administration automations. Read when the routed request manages processes, services, hosts, disks, certificates, schedules, or notifications. Researched 2026-10-06. -->
+<!-- Reference: local and fleet system-administration automations. Read when the routed request manages processes, services, hosts, disks, certificates, schedules, or notifications. -->
 
 # System administration
 

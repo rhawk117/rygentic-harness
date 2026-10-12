@@ -224,5 +224,5 @@ The completed vertical-slice packet in the conversation, built from the accepted
 </output>
 
 <handoff>
-The next stage of the service track is `enterprise-design`. Pass it the accepted shared brief and the vertical-slice packet, and say which gates passed, which are open, and that no code or file was changed.
+The next stage of the service track is `enterprise-design`. Pass it the accepted shared brief and the vertical-slice packet, and say which gates passed, which are open, and that no code or file was changed. A stage this workflow already ran in contributor mode with an accepted packet is complete, so hand to the first stage that has not run.
 </handoff>

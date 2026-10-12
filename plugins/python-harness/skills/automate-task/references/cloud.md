@@ -1,4 +1,4 @@
-<!-- Reference: Cloud and infrastructure automation with Python SDKs. Read when the user's request targets AWS, Google Cloud, or Azure automation. Researched 2026-10-06. -->
+<!-- Reference: Cloud and infrastructure automation with Python SDKs. Read when the user's request targets AWS, Google Cloud, or Azure automation. -->
 
 # Cloud / Infrastructure Automation
 
