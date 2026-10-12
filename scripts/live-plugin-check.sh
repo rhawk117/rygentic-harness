@@ -11,9 +11,11 @@ cd "${repository_root}" || exit 1
 # shellcheck source=scripts/log.sh
 source scripts/log.sh
 
-# An agent type listed here is expected to be REFUSED instead of ANSWERED. The dispatch hook
-# refuses the intern unless a task owning exactly one file is started for it, and a nested
-# session starts none.
+# An agent type listed here has its dispatch decided by a plugin hook, and its entry is the
+# outcome expected instead of ANSWERED. In a session where Claude Code cannot create the plugin's
+# data directory no plugin hook runs, so such a dispatch is checked only when the state server
+# started, as requires_state tells. The dispatch hook refuses the intern unless a task owning
+# exactly one file is started for it, and a nested session starts none.
 declare -A DISPATCH_OUTCOME=(["${PLUGIN_NAME}:workers:intern"]=REFUSED)
 
 REQUIRE_STATE=false
@@ -125,12 +127,16 @@ expect_line() {
 }
 
 check_dispatch() {
-  local agent_type
+  local agent_type hook_decided_outcome
 
   nested_session dispatch "$(dispatch_prompt "$@")"
   for agent_type in "$@"; do
+    hook_decided_outcome=${DISPATCH_OUTCOME[${agent_type}]:-}
+    if [[ -n ${hook_decided_outcome} ]]; then
+      requires_state "dispatch-${agent_type}" dispatch || continue
+    fi
     expect_line "dispatch-${agent_type}" \
-      "${DISPATCH_OUTCOME[${agent_type}]:-ANSWERED} ${agent_type}" dispatch
+      "${hook_decided_outcome:-ANSWERED} ${agent_type}" dispatch
   done
 }
 
