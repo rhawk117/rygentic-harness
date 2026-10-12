@@ -68,11 +68,13 @@ job summary instead of a PR comment, and it still fails the run when `quality` f
 
 `scripts/live-plugin-check.sh` is not part of the gate, and no hook runs it. It starts nested
 `claude -p` sessions that load this branch's `plugins/mightymodels` in place of the installed
-plugin, dispatches every agent type under `plugins/mightymodels/agents`, and prints one `ok` or
-`FAIL` line per check. It needs `claude` (logged in) and `jq` on your `PATH`, network access to
-`api.anthropic.com` and `mcp-proxy.anthropic.com`, and write access to `~/.claude/plugins/data`,
-where Claude Code creates the plugin's data directory before it starts the plugin's MCP server. Run
-it by hand after you change an agent, a skill or a hook.
+plugin, dispatches every agent type under `plugins/mightymodels/agents`, and prints one `ok`,
+`skip` or `FAIL` line per check. It needs `claude` (logged in) and `jq` on your `PATH`, and network
+access to `api.anthropic.com` and `mcp-proxy.anthropic.com`. Run it by hand after you change an
+agent, a skill or a hook. The plugin's state server starts only where Claude Code can write to
+`~/.claude/plugins/data`, so a sandboxed run skips the checks that need state and still exits 0.
+Run `scripts/live-plugin-check.sh --require-state` once outside the sandbox before a landing: with
+that flag a check that would be skipped fails.
 
 ## Python and markdown rules
 

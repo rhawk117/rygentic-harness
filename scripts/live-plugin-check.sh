@@ -4,6 +4,7 @@ set -uo pipefail
 
 readonly PLUGIN_NAME=mightymodels
 readonly PLUGIN_DIRECTORY=plugins/${PLUGIN_NAME}
+readonly STATE_TOOL_PREFIX=mcp__plugin_${PLUGIN_NAME}_state__
 
 repository_root=$(git rev-parse --show-toplevel) || exit 1
 cd "${repository_root}" || exit 1
@@ -13,10 +14,11 @@ source scripts/log.sh
 # An agent type listed here is expected to be REFUSED instead of ANSWERED.
 declare -A DISPATCH_OUTCOME=()
 
+REQUIRE_STATE=false
 FAILURES=()
 
 usage() {
-  printf 'usage: %s [--expect-type AGENT_TYPE]\n' "${0##*/}" >&2
+  printf 'usage: %s [--require-state] [--expect-type AGENT_TYPE]\n' "${0##*/}" >&2
 }
 
 agent_types_on_disk() {
@@ -54,21 +56,49 @@ PROMPT
 nested_session() {
   local session_name=$1
   local prompt=$2
-  local session_output=${work_directory}/${session_name}.json
 
-  log::info "nested session: ${session_name}" >&2
+  log::info "nested session: ${session_name}"
   claude -p --plugin-dir "${PLUGIN_DIRECTORY}" --setting-sources project,local \
-    --model haiku --output-format json --allowedTools 'Agent' \
-    -- "${prompt}" </dev/null >"${session_output}" || return 1
-  jq -r .result "${session_output}"
+    --model haiku --output-format stream-json --verbose --allowedTools 'Agent' \
+    -- "${prompt}" </dev/null >"${work_directory}/${session_name}.jsonl"
+}
+
+last_message() {
+  local session_name=$1
+
+  jq -r 'select(.type == "result") | .result' "${work_directory}/${session_name}.jsonl"
+}
+
+state_server_started() {
+  local session_name=$1
+
+  jq -e --arg prefix "${STATE_TOOL_PREFIX}" \
+    'select(.type == "system" and .subtype == "init") | any(.tools[]; startswith($prefix))' \
+    "${work_directory}/${session_name}.jsonl" >/dev/null
+}
+
+# A check that needs the plugin's state server starts with:
+#   requires_state <check> <session> || return 0
+requires_state() {
+  local check=$1
+  local session_name=$2
+
+  state_server_started "${session_name}" && return 0
+  if [[ ${REQUIRE_STATE} == false ]]; then
+    printf 'skip %s (state server did not start)\n' "${check}"
+    return 1
+  fi
+  printf 'FAIL %s (state server did not start)\n' "${check}"
+  FAILURES+=("${check}")
+  return 1
 }
 
 expect_line() {
   local check=$1
   local expected_line=$2
-  local last_message=$3
+  local session_name=$3
 
-  if grep -Fxq -- "${expected_line}" <<<"${last_message}"; then
+  if grep -Fxq -- "${expected_line}" <(last_message "${session_name}"); then
     printf 'ok %s\n' "${check}"
     return
   fi
@@ -77,40 +107,49 @@ expect_line() {
 }
 
 check_dispatch() {
-  local agent_type last_message
+  local agent_type
 
-  last_message=$(nested_session dispatch "$(dispatch_prompt "$@")")
+  nested_session dispatch "$(dispatch_prompt "$@")"
   for agent_type in "$@"; do
     expect_line "dispatch-${agent_type}" \
-      "${DISPATCH_OUTCOME[${agent_type}]:-ANSWERED} ${agent_type}" "${last_message}"
+      "${DISPATCH_OUTCOME[${agent_type}]:-ANSWERED} ${agent_type}" dispatch
   done
 }
 
-check_engineer_preloaded_skills() {
-  local last_message
+check_state_server_starts() {
+  requires_state state-server-starts dispatch || return 0
+  printf 'ok %s\n' state-server-starts
+}
 
-  last_message=$(nested_session engineer-preloaded-skills \
-    "$(preloaded_skills_prompt "${PLUGIN_NAME}:workers:engineer")")
+check_engineer_preloaded_skills() {
+  nested_session engineer-preloaded-skills \
+    "$(preloaded_skills_prompt "${PLUGIN_NAME}:workers:engineer")"
   expect_line 'engineer-preloads-agent-debugging' \
-    'PRELOADED-SKILL agent-debugging' "${last_message}"
+    'PRELOADED-SKILL agent-debugging' engineer-preloaded-skills
 }
 
 mapfile -t expected_agent_types < <(agent_types_on_disk)
 
-case "${1:-}" in
-  '') ;;
-  --expect-type)
-    if [[ -z ${2:-} ]]; then
+while (($# > 0)); do
+  case "$1" in
+    --require-state)
+      REQUIRE_STATE=true
+      shift
+      ;;
+    --expect-type)
+      if [[ -z ${2:-} ]]; then
+        usage
+        exit 2
+      fi
+      expected_agent_types+=("$2")
+      shift 2
+      ;;
+    *)
       usage
       exit 2
-    fi
-    expected_agent_types+=("$2")
-    ;;
-  *)
-    usage
-    exit 2
-    ;;
-esac
+      ;;
+  esac
+done
 
 for required_command in claude jq; do
   if ! command -v "${required_command}" >/dev/null; then
@@ -122,6 +161,7 @@ done
 work_directory=$(mktemp -d "${TMPDIR:-/tmp}/live-plugin-check.XXXXXX") || exit 1
 
 check_dispatch "${expected_agent_types[@]}"
+check_state_server_starts
 check_engineer_preloaded_skills
 
 if ((${#FAILURES[@]} > 0)); then
