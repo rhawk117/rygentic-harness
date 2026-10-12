@@ -92,8 +92,8 @@ When the user is resuming an earlier investigation, action `list` shows the ids 
 **1. Choose two or three questions the ledger cannot answer.** Take them from the ledger's
 Next section (round one takes them from the framing). Route each by where the answer lives:
 
-- Repository facts (definitions, call sites, config values, versions, one command's output) go
-  to code-scout with exact paths, symbols, and search terms.
+- Repository facts (definitions, call sites, config values, versions, one command's output, a
+  GitHub issue or pull request read) go to code-scout with exact paths, symbols, and search terms.
 - External facts (documented behavior, changelog entries, defaults, deprecations) go to a
   web-scout with the URL or the search phrase, the version pinned in the lockfile, and the
   specific question. web-scout fetches and cites the page; it does not summarize a library.

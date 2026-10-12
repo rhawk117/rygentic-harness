@@ -22,11 +22,11 @@ The state itself is rows in one SQLite database, `mightymodels.db`, and that fil
 └── archives/<task-slug>.{md,json}     ≤30-line archive plus bounded JSON record, written by prune-ticket from the close tool's text
 ```
 
-The decision and subagent recorder hooks record rows in the database; they arrive with the hooks (surface.md "Hooks").
+The subagent recorder hooks write no row: they spool each scout's report as a file in the plugin data directory, and the state server stores it as a `scout_reports` row when a tool is next called.
 
 ## Writer/reader matrix: one writer per file class
 
-The database's only writers are the state server's eight tools and `mightymodels verify run`. Each group of tables has one.
+The database's only writers are the state server's ten tools and `mightymodels verify run`. Each group of tables has one.
 
 | Path or tables                                                       | Writer                                                                                              | Readers                                                  |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
@@ -41,8 +41,8 @@ The database's only writers are the state server's eight tools and `mightymodels
 | ticket.yml                                                           | open-ticket's `ticket` `write`, or one-shot when ramping without a ticket (then the user's hand)    | every session                                            |
 | plan.md                                                              | game-plan primary, after user approval                                                              | primary, dispatch compilation                            |
 | toolchain.md                                                         | game-plan primary, verbatim from terry-toolchain's report                                           | primary, dispatch compilation                            |
-| briefs/ ASKED half                                                   | primary at dispatch                                                                                 | engineer, verifying scout                                |
-| briefs/ DONE half                                                    | engineer                                                                                            | primary, verifying scout                                 |
+| briefs/ ASKED half                                                   | primary at dispatch                                                                                 | implementer, fact-checker                                |
+| briefs/ DONE half                                                    | implementer                                                                                         | primary, fact-checker                                    |
 | review/<run>/ directory                                              | the `review` tool's `start` creates it; the primary writes persona reports, metrics and the rendered report | review-circus, stick-the-landing, prune-ticket, the user |
 | issue-body.md, pr-body.md                                            | open-ticket or one-shot (issue-body.md), stick-the-landing (pr-body.md)                             | `gh issue create`, `gh pr create`                        |
 | handoffs/                                                            | baton-pass, from the `snapshot` tool's text; BATON.md is the primary's own                          | the next session's primary                               |

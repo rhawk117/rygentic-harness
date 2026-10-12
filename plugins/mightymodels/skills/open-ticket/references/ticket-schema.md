@@ -1,6 +1,6 @@
 # ticket.yml schema
 
-The per-ticket source of truth, written once by open-ticket (the `ticket` tool's `write`) from the interview answers, then hand-tweaked by the user and checked by the `ticket` tool's `validate`, which stages the ticket as a row in the state database. Every later session reads it before doing anything else; agent-file model pins are only the fallback for headless runs where nobody answered.
+The per-ticket source of truth, written once by open-ticket (the `ticket` tool's `write`) from the interview answers, then hand-tweaked by the user and checked by the `ticket` tool's `validate`, which stages the ticket as a row in the state database. Every later session reads it before doing anything else.
 
 ```yaml
 task: "<slug>"                   # directory name under .mightymodels/
@@ -20,7 +20,7 @@ subagent-models:
   qualitylens: "haiku"
   fact-checker: "haiku"
   engineer: "sonnet"             # sonnet at every scope
-  architect: "<derived>"         # see derivation rules
+  architect: "opus"              # opus at every scope
   intern: "haiku"
   gitty-up: "haiku"
   wingman: "fable"
@@ -54,7 +54,7 @@ Anchors, flow collections (`[a, b]`, `{a: b}`), single quotes, and block scalars
 
 **architect**: `opus` at every scope. Architect recovers a failed engineer task, one tier above the engineer.
 
-**plan-first**: `true` when the user expects at least one compaction. `true` also means the baton-pass handoff prompt carries the switch-models reminder, and the next session's low-tier primary writes the plan before any dispatch.
+**plan-first**: `true` when the user expects at least one compaction. `true` also means the next session's low-tier primary writes the plan before any dispatch.
 
 **auto-escalate**: not derived, and not written by `write`. A ticket without the key is valid and reads as `false`. game-plan asks the user for it in one dialog question; on `true` it adds the line under `handoff-context` and runs `validate`, which stores the value with the ticket's row. While it is `false`, a blocked or failed task goes to the user before the architect or the wingman is dispatched for it: agents-assemble asks first, and the dispatch hook answers a main-thread dispatch of either with `ask`, carrying the block's reasons. `true` lets agents-assemble route a block to the architect without asking, and the hook gives no decision.
 

@@ -40,4 +40,4 @@ One `receipts` row per run, appended: `id` (a serial number), `slug`, `command_i
 
 ## Status
 
-`contract` `status` reports the HEAD, then each approved command with its latest receipt: `pass` or `fail` and its phase and `expect=N` when the receipt is at the current HEAD, `stale (outcome at SHA)` when it ran at another HEAD, `never-run` otherwise. It takes no prefix and lists every command of the ticket. `passing` is true only when every listed command passed at the current HEAD, which is the check the loop relies on; with no approved commands it reports `no matching commands`.
+`contract` `status` reports the HEAD, then each approved command with its latest receipt: `pass` or `fail` and its phase and `expect=N` when the receipt is at the current HEAD, `stale (outcome at SHA)` when it ran at another HEAD, `never-run` otherwise. It takes no prefix and lists every command of the ticket. `passing` is true only when every listed command passed at the current HEAD, which is the check the loop relies on; with no approved commands it reports `no matching commands` and `passing` is true, since nothing listed failed.

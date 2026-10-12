@@ -218,7 +218,8 @@ What each section is for, since the reader will not have this file:
   now: every criterion is a command someone runs or an assertion someone checks at a named
   location. "Works correctly", "handles errors appropriately", and "is consistent with the
   rest of the code" are refused at write time. Two to four criteria per task; a task needing
-  more is two tasks.
+  more is two tasks, and `task` `start` refuses one with more than four criteria or more than
+  ten owned files, naming break-it-down.
 - **verify** is the sequence of contract ids the engineer runs before appending DONE and the
   loop re-runs with `mightymodels verify run` afterwards. It is the same sequence in both places,
   which is what makes verification comparable across tasks.

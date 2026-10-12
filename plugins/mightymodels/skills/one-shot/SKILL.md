@@ -24,8 +24,8 @@ allowed-tools:
 # one-shot
 
 The loop's value is the scout-and-engineer discipline: claims confirmed at HEAD, an ASKED
-stanza written before the engineer starts, verification by a scout that did not write the
-code. The plan exists for a different reason: surviving a compaction. When the user does not
+stanza written before the engineer starts, verification by a fact-checker that did not write
+the code. The plan exists for a different reason: surviving a compaction. When the user does not
 expect one, the plan is ceremony, and this ramp skips it. The ticket directory holds the
 briefs; the state database holds the ticket, the verification contract and the task rows, and
 the `task` tool's rows are the progress view.
