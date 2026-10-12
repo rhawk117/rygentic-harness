@@ -238,16 +238,15 @@ claims the change invalidated, for the user's approval, then deletes the ticket 
 
 ## Git hygiene
 
-Ticket creation runs an idempotent ignore ritual:
-
-```bash
-git check-ignore -q .mightymodels 2>/dev/null || echo '.mightymodels/' >> .git/info/exclude
-```
+Nobody runs an ignore step by hand. Whenever the plugin opens the state database (the state
+server at its start, `mightymodels verify run`, and the hooks that read state), it adds the line
+`.mightymodels/` to `info/exclude` in git's common directory, unless the line is already there.
+It does so after the database is open and before anything is written under the directory.
 
 `info/exclude` is local and needs no commit, and it is the safer default: `briefs/` and
 `review/` carry raw command output that can hold secrets, so local-only exclusion means a
-careless `git add -A` cannot ship them. A team adopting mightymodels can promote the entry to a
-committed `.gitignore`; when tracking is wanted, track `archives/` and `*/ticket.yml` only.
+careless `git add -A` cannot ship them. The line covers the whole directory, `archives/` and
+every `ticket.yml` included.
 
 ## The canonical definitions
 

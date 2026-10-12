@@ -32,9 +32,15 @@ way to catch a typo before a session ever loads the file.
 
 Updates flow through the marketplace: refresh the marketplace and reinstall the plugin, and the
 new skill and agent versions replace the old ones in your next session. Uninstalling the plugin
-removes everything it installed. Nothing in this repo writes outside its own tree, so there is
-no per-machine state to clean up beyond the plugin itself; ticket state lives in each target
-repository's `.mightymodels/` directory and belongs to that repository, not to the plugin.
+removes everything it installed.
+
+The plugin's state lives in two places. A ticket's files (`ticket.yml`, the plan, briefs,
+snapshots, review runs and archives) are in the target repository's `.mightymodels/` directory,
+at the git toplevel. The rows (tickets, tasks, the verification contract and its receipts,
+review runs, ledgers, crashouts and closings) are in `mightymodels.db` in the plugin data
+directory, the one Claude Code names in `CLAUDE_PLUGIN_DATA`. That file is outside every repository and serves all
+of them, and the `scout-spool` directory beside it holds scout reports waiting to be stored.
+[docs/state.md](state.md) has the detail.
 
 ## How skills fire
 

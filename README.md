@@ -150,9 +150,13 @@ a change has to pass: `make check`, which syncs the locked environment, runs pre
 ## Status
 
 vibe-code is at 0.3.0. python-harness is at 0.1.0. mightymodels is at 0.8.0 and is the
-marketplace's first plugin. Its hook layer (session covenant injection, verification gates at
-Stop, PreCompact ticket snapshots) and the team/personal overlay split are designed but not yet
-shipped. CHANGELOG.md has the full trail.
+marketplace's first plugin. Its hooks ship with it. `plugins/mightymodels/hooks/hooks.json`
+registers seven: one on `SessionStart`, two on `PreToolUse` for dispatches and for the main
+thread's edits and pushes, one each on `SubagentStop` and `PostToolUse` for scout reports, one on
+`SubagentStop` for the implementers' completion gate, and one on `PreCompact` for the ticket
+snapshot. Its state is rows in one SQLite database in the plugin data directory, outside every
+repository, and the per-ticket files are in the repository's `.mightymodels/` directory.
+CHANGELOG.md has the full trail.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR, and
 [SECURITY.md](SECURITY.md) for reporting anything sensitive.
