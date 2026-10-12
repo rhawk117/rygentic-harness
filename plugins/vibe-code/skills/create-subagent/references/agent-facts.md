@@ -1,6 +1,6 @@
 # Claude Code subagents: facts
 
-Checked on 2026-10-03 against https://code.claude.com/docs/en/sub-agents and https://code.claude.com/docs/en/plugins/components. These values have moved before; if the date is more than a quarter old, re-check those pages before relying on the caps and version gates. A claim in this skill that this file does not carry is unverified.
+Checked on 2026-10-03 against https://code.claude.com/docs/en/sub-agents and https://code.claude.com/docs/en/plugins/components. These values have moved before; if the date is more than a quarter old, re-check those pages before relying on the caps and version gates. A claim in this skill that this file does not carry is unverified. A statement marked as observed comes from a live test on the Claude Code version it names, not from those pages.
 
 ## Contents
 
@@ -35,7 +35,7 @@ Only `name` and `description` are required. Field names are camelCase and must m
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`            | Unique identifier; the filename need not match. No `:` and no leading `-`. Hooks see it as `agent_type`.                                                    |
 | `description`     | When Claude should delegate to this agent.                                                                                                                  |
-| `tools`           | Comma-separated string or YAML list. Inherits every tool available to subagents if omitted. Accepts `mcp__SERVER`, `mcp__SERVER__*` and `Agent(a, b)`.       |
+| `tools`           | Comma-separated string or YAML list. Inherits every tool available to subagents if omitted, MCP tools included. Accepts `mcp__SERVER`, `mcp__SERVER__*` and `Agent(a, b)`; a subagent ignores the type list. See Tools a subagent keeps. |
 | `disallowedTools` | Denylist, applied before `tools`. A specifier such as `Bash(git push *)` still removes the whole tool.                                                      |
 | `model`           | `sonnet`, `opus`, `haiku`, `fable`, a full model ID such as `claude-opus-5-5`, or `inherit`. When omitted, resolved as under Model resolution.            |
 | `permissionMode`  | `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`, or `manual` (alias for `default`, v2.1.200 or later). Ignored in plugin agents.   |
@@ -98,3 +98,21 @@ A subagent cannot ask the user questions (`AskUserQuestion` is removed from ever
 A subagent inherits the built-in tools and MCP tools available in the main conversation, narrowed by two filters; a fork skips both and receives the main conversation's exact tool pool. The first filter removes these tools from every subagent, even when listed in the `tools` field: `Agent`, when the subagent is at the depth limit; `AskUserQuestion`; `EndConversation`; `EnterPlanMode`; `ExitPlanMode`, unless the subagent's `permissionMode` is `plan`; `ScheduleWakeup`; `WaitForMcpServers`; and `Workflow`.
 
 The second filter applies to subagents running in the background, which is the default. Apart from `Agent` and `ExitPlanMode`, which follow the first filter's conditions wherever the subagent runs, a background subagent keeps every MCP tool but only these built-in tools: `Read`, `Grep`, `Glob`, `LSP`, `Bash`, `PowerShell`, `Edit`, `Write`, `NotebookEdit`, `WebFetch`, `WebSearch`, `TodoWrite`, `Skill`, `ToolSearch`, `EnterWorktree`, `ExitWorktree`, `Monitor`, `TaskStop`, `SendMessage` and `Artifact`, plus `SubagentHandback` for a subagent that reports through it. Claude Code removes every other built-in tool from a background subagent, whether inherited or listed in the `tools` field, and reports no error unless that leaves the `tools` list resolving to nothing.
+
+Observed, not documented: the table records live tests on Claude Code 2.1.296 on 2026-10-11, in which subagents of a scratch plugin were dispatched from a nested `claude -p` session and asked to list their tools. A version change can undo any row.
+
+| Frontmatter                                               | Observed on Claude Code 2.1.296, 2026-10-11                                                                                            |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `tools: Read, Agent(a)`                                   | Holds `Read`, `Agent` and `SubagentHandback`; its dispatch of a type other than `a` was accepted.                                      |
+| `tools: ToolSearch, Skill, Read`                          | Launches with `Skill`, `Read` and `SubagentHandback`; `ToolSearch` is dropped and no error is reported.                                |
+| `tools: ToolSearch`                                       | Launches with `SubagentHandback` only; not refused.                                                                                    |
+| `tools: []`, or `tools:` with no value                    | Launches with `SubagentHandback` only.                                                                                                 |
+| `tools: mcp__nope__nothing`                               | Refused: "would be spawned with zero tools" and "Its tools list resolved to nothing: unrecognized [mcp__nope__nothing]".               |
+| no `tools`, and `disallowedTools` naming twelve built-ins | Launches with every other tool of the session, including the user's Gmail, Calendar, Drive and Docs connectors and other plugins' MCP tools. |
+
+What the rows mean for a definition:
+
+- `Agent(a, b)`: the sub-agents page says the type list applies only to an agent running as the main thread with `claude --agent`, and that in a subagent definition it is ignored. The first row agrees: in a subagent the list grants `Agent` and restricts nothing. To limit the types a subagent may spawn, enforce the list in a `PreToolUse` hook on `Agent`, which receives the caller's `agent_type`; for a plugin agent that hook goes in the plugin's `hooks/hooks.json`, because the `hooks` key is ignored there. Leaving `Agent` out of `tools` stops spawning altogether.
+- `ToolSearch`: the documented list above includes it, but in both tests a `ToolSearch` listed in `tools` was dropped without an error, so do not write an agent that depends on holding it.
+- An empty `tools` launches an agent that holds no tool but its hand-back, `SubagentHandback`. A lone entry that Claude Code does not recognise is different: the agent is refused and cannot be dispatched.
+- An agent with no `tools` line receives every MCP tool of the session, the user's connectors included, and a `disallowedTools` list naming built-ins does not change that. Write a `tools` line for any agent that should not hold them.
