@@ -8,10 +8,17 @@ description: >-
   list is written with a checkable acceptance criterion per task, its commands are
   approved into the verification contract, and agents-assemble takes over. Stages the ticket
   through the ticket tool when none exists. Assumes no compaction, so there is no
-  plan.md. Auto-invoke at session start when the active ticket says scope sm and plan-first
+  plan.md. Not the ramp for work expected to survive a compaction (game-plan).
+when_to_use: >-
+  Auto-invoke at session start when the active ticket says scope sm and plan-first
   false; use explicitly on any scope for "/one-shot", "one-shot this", "yolo this", "just
   send it", "skip the plan and run the loop", "start on this without a ticket", with an
-  AskUserQuestion confirmation on med or large scope. Not the ramp for work expected to survive a compaction (game-plan).
+  AskUserQuestion confirmation on med or large scope.
+argument-hint: "[ticket-slug, issue or task]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__contract
+  - mcp__plugin_mightymodels_state__ticket
 ---
 
 # one-shot
@@ -28,6 +35,9 @@ expected; if one happens, stop and re-ramp through game-plan, because the task l
 will not carry the intent.* Said once, then the work starts.
 
 ## Sequence
+
+**Argument:** a ticket slug, an issue or the task in words, given when the skill was started:
+"$ARGUMENTS". Empty quotes mean nothing was given, and step 1 takes the target from the session.
 
 **0.** Invoke `prompting-subagents`.
 

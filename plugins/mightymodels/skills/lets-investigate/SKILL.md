@@ -4,14 +4,20 @@ description: >-
   Run a chat-first investigation as a gated loop: frame one target, dispatch scouts for
   repository facts and documentation facts, fold every report into a restated in-chat ledger
   (knowns, open questions, decisions, resources), then stop at an AskUserQuestion gate where the user
-  chooses to dig further, redirect, or consolidate. Use at the START of work, before any ticket
-  exists, whenever the user wants to understand something before acting: "let's investigate X",
-  "look into this claim", "triage this bug report", "why would Y be happening", "dig into this
-  error", "how does library Z actually handle this, check the docs and our usage". Also for
-  research questions about a dependency, API, protocol, or tool the repository relies on. Persists its ledger as rows
+  chooses to dig further, redirect, or consolidate. Persists its ledger as rows
   in the state database and changes nothing else. Not for reviewing a branch or grading a codebase (review-circus), debugging
   with a known reproduction (whats-broken), or non-engineering research such as market or
   vendor comparisons.
+when_to_use: >-
+  Use at the START of work, before any ticket
+  exists, whenever the user wants to understand something before acting: "let's investigate X",
+  "look into this claim", "triage this bug report", "why would Y be happening", "dig into this
+  error", "how does library Z actually handle this, check the docs and our usage". Also for
+  research questions about a dependency, API, protocol, or tool the repository relies on.
+argument-hint: "[question, claim or error]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__investigation
 ---
 
 # lets-investigate
@@ -34,6 +40,9 @@ every round and asks the user whether the picture is sufficient ends up where th
 it, and the user hears about a dead end after one round instead of five.
 
 ## Round zero: frame the target
+
+**Argument:** what to investigate, given when the skill was started: "$ARGUMENTS". Empty quotes
+mean nothing was given, and the target comes from the conversation.
 
 Write the target as one line the user can disagree with, then work out which of these it is (the
 user confirms the classification when the ledger opens):

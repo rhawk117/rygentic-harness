@@ -8,10 +8,18 @@ description: >-
   lets-investigate ledger, treats entries from an older HEAD as leads to re-verify, and writes
   current verdicts back; assembles from cited facts or one scout wave otherwise. Interactive mode resolves
   uncertainties via AskUserQuestion; sprint mode (inside agents-assemble) compiles per-task
-  citations and files-in-scope and never asks. Use for "what do we know", "summarize what
+  citations and files-in-scope and never asks.
+  Not for summarizing a repository, writing docs, or general knowledge questions.
+when_to_use: >-
+  Use for "what do we know", "summarize what
   we've learned", "where are the unknowns", "consolidate the findings", "before we ticket
   / plan / decide, what is verified", "do the swot pass", and as the facts packet before
-  ask-an-adult. Not for summarizing a repository, writing docs, or general knowledge questions.
+  ask-an-adult.
+argument-hint: "[question or claim]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__investigation
+  - mcp__plugin_mightymodels_state__similarity
 ---
 
 # what-we-know
@@ -28,6 +36,10 @@ right; the same pause inside a running sprint stalls the loop on questions nobod
 
 **Mode detection:** sprint mode when invoked from agents-assemble, when a `briefs/` directory
 exists in the active ticket, or when the dispatch says so. Interactive otherwise.
+
+**Argument:** the question or claim to consolidate, given when the skill was started:
+"$ARGUMENTS". Empty quotes mean nothing was given, and the target comes from the conversation or
+from the skill that called this one.
 
 The ledger belongs to lets-investigate, and this skill reads and writes it only through the
 `investigation` tool, so the rows have one writer: call

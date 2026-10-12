@@ -9,10 +9,16 @@ description: >-
   and the commands that verify them, non-goals, and risks with the user's chosen handling. No
   file:line citations. Records every verification command in a user-approved contract and
   runs it at HEAD through a no-shell runner before approval, then invokes agents-assemble.
+  Not for small tickets (one-shot), not a design
+  document or ADR (the plan sequences work on a settled design).
+when_to_use: >-
   Auto-invoke at session start for any scope/plan-first combination other than scope sm with
   plan-first false; use for "plan this ticket", "run the game plan", "write the plan for
-  issue #N", "ramp the big one". Not for small tickets (one-shot), not a design
-  document or ADR (the plan sequences work on a settled design).
+  issue #N", "ramp the big one".
+argument-hint: "[ticket-slug]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__contract
 ---
 
 # game-plan
@@ -37,6 +43,9 @@ Altitude is not vagueness. A task says what and where, never how; it also says e
 proves it done.
 
 ## Sequence
+
+**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
+none was given, and the ticket is the session's active one.
 
 **0.** Invoke `prompting-subagents`.
 

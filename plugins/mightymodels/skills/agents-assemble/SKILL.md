@@ -5,6 +5,15 @@ description: >-
   ticket (after game-plan or one-shot): engineer dispatch per task, contract commands run
   before judgment checks, the `task` tool gating each task on receipts, citations and
   ownership, architect once on failure, whats-broken after that.
+when_to_use: >-
+  Use for "run the loop", "start the sprint", "do the next task", "pick the sprint back up", and
+  when game-plan or one-shot hands over a staged ticket.
+argument-hint: "[ticket-slug]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__contract
+  - mcp__plugin_mightymodels_state__task
+  - mcp__plugin_mightymodels_state__ticket
 ---
 
 # agents-assemble
@@ -12,6 +21,8 @@ description: >-
 The per-task loop. Its whole design bet is that verification has a persisted target: the ASKED half of each brief is written *before* the engineer starts, so "done" is checkable against what was asked rather than against what got built. Read `references/contracts.md` once per session — it carries the severity table, verdict vocabularies, the two-half brief schema, and the caps this file assumes.
 
 **Preconditions:** a staged ticket (`mcp__plugin_mightymodels_state__ticket` with action `show` answers; open-ticket's `validate` staged it) and an enumerable task list: the issue's task list (one-shot) or `plan.md` tasks (game-plan). Missing either → stop and name it; the ramps exist to produce them.
+
+**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean none was given, and the ticket is the session's active one.
 
 Progress lives in the `task` tool and the `contract` tool; the one command run through Bash is
 `mightymodels verify run`, from the repository root.

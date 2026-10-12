@@ -5,10 +5,19 @@ description: >-
   with a checked body, have gitty-up watch CI, and route each failing check as a recorded C task
   (mechanical fixes to an engineer residual, then architect once; non-obvious causes to
   whats-broken), re-proving the whole verification contract at every new HEAD before re-pushing.
-  On green, ask through AskUserQuestion whether to review now (review-circus) or hand off (baton-pass). Use when the
-  sprint's tasks are done: "finish the sprint", "wrap up the ticket", "push and open the PR",
-  "get the PR open", "ship it up". Not for Jira sprint operations, not the review itself
+  On green, ask through AskUserQuestion whether to review now (review-circus) or hand off (baton-pass).
+  Not for Jira sprint operations, not the review itself
   (review-circus), and not for mid-sprint work (agents-assemble owns the loop).
+when_to_use: >-
+  Only the user starts it, when the
+  sprint's tasks are done: "finish the sprint", "wrap up the ticket", "push and open the PR",
+  "get the PR open", "ship it up".
+argument-hint: "[ticket-slug]"
+disable-model-invocation: true
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__contract
+  - mcp__plugin_mightymodels_state__task
 ---
 
 # stick-the-landing
@@ -27,6 +36,9 @@ an absolute path:
 
 Dispatch workers through prompting-subagents. Models are the fixed aliases `subagent-models`
 lists, never memory.
+
+**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
+none was given, and the ticket is the session's active one.
 
 ## 1. Gate
 

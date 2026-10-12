@@ -9,9 +9,17 @@ description: >-
   AskUserQuestion call what the next session should focus on and what to do with uncommitted
   work, records new user decisions in the ledger, then writes handoffs/BATON.md with only what no
   file holds. With no ticket it runs open-ticket first. Ends by printing the next session's
-  opening prompt in chat. Use for "pass the baton", "hand this off to a fresh session", "I'm
-  about to compact", "carry this over", "hand off to review". Not a ticket for work not yet
+  opening prompt in chat. Not a ticket for work not yet
   started from a clean triage (open-ticket directly).
+when_to_use: >-
+  Use for "pass the baton", "hand this off to a fresh session", "I'm
+  about to compact", "carry this over", "hand off to review".
+argument-hint: "[ticket-slug]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__investigation
+  - mcp__plugin_mightymodels_state__snapshot
+  - mcp__plugin_mightymodels_state__ticket
 ---
 
 # baton-pass
@@ -41,6 +49,9 @@ Read `references/snapshot-schema.md` before the first run in a session.
 
 Two entry states, decided by whether `.mightymodels/<slug>/ticket.yml` exists for the work in
 progress.
+
+**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
+none was given, and the work in progress decides which ticket, if any.
 
 - **Active ticket.** Take the snapshot, write both files and read `snapshot.md`: tasks and
   their attempts, checks at HEAD, decisions and open questions from the ledger, failed
@@ -142,8 +153,10 @@ Build the next session's opening prompt from prompting-subagents' next-session t
 in chat inside a fenced block. It is a pointer prompt: read ticket.yml, read the issue's task
 list or the plan, read `handoffs/snapshot.md`, read `handoffs/BATON.md`, invoke `prompting-subagents`,
 then the one skill to invoke for the focus (agents-assemble to continue or start a task;
-game-plan to re-plan; stick-the-landing to land; review-circus to review; the ramp per the
-routing table for a freshly prepared ticket). The snapshot is a picture of the moment it was
+game-plan to re-plan; review-circus to review; the ramp per the
+routing table for a freshly prepared ticket). To land, the prompt names no skill to invoke: only
+the user can start stick-the-landing, so the prompt tells the next session to hand the user
+`/mightymodels:stick-the-landing <slug>`. The snapshot is a picture of the moment it was
 written; the next session calls the `task` tool's `show` and the `contract` tool's `status` before
 acting on it. It carries the focus line verbatim and
 nothing else that lives in a file, so it cannot drift from them.

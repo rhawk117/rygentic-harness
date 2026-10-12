@@ -5,11 +5,14 @@ description: >-
   worker (code-scout, web-scout, qualitylens, engineer, architect, merge-vader,
   uncle-bob, gitty-up, wingman), fill its role template, resolve its model from
   ticket.yml, and read the report it returns; also the opening prompt for the next mightymodels
-  session. Use whenever you are about to dispatch, re-dispatch, or escalate to a mightymodels
+  session. Not for writing a prompt a human will paste into
+  Claude Code or Copilot; that is ai-engineer's promptlint.
+when_to_use: >-
+  Use whenever you are about to dispatch, re-dispatch, or escalate to a mightymodels
   worker ("dispatch the engineer for task 3", "have a scout find every caller of X", "escalate
   T5 to architect"), when asked which worker should handle something, or when a drafted
-  dispatch needs checking before it goes out. Not for writing a prompt a human will paste into
-  Claude Code or Copilot; that is ai-engineer's promptlint.
+  dispatch needs checking before it goes out.
+user-invocable: false
 ---
 
 # prompting-subagents

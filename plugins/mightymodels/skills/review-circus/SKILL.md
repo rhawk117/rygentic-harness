@@ -7,11 +7,18 @@ description: >-
   measure, merge-vader and uncle-bob report, and the tool reads their reports
   and merges overlapping findings, presented by id through AskUserQuestion. Only the findings
   the user picks go to remediation, risk first, through the `task` tool; an abridged PR comment
-  is always posted. Use for
+  is always posted. Not for fixing CI (stick-the-landing) or mid-sprint work
+  (agents-assemble).
+when_to_use: >-
+  Use for
   "run the review circus", "review the sprint", "full review pass", "both reviewers on this", and
   for a quick single-persona pass: "quick merge-vader on this branch", "uncle-bob this module",
-  "is this safe to merge". Not for fixing CI (stick-the-landing) or mid-sprint work
-  (agents-assemble).
+  "is this safe to merge".
+argument-hint: "[diff | branch | ticket <slug> | codebase]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__review
+  - mcp__plugin_mightymodels_state__task
 ---
 
 # review-circus
@@ -34,6 +41,10 @@ session, and `agents-assemble/references/contracts.md` for the severity table. D
 worker through prompting-subagents.
 
 ## 1. Profile
+
+**Argument:** the scope to review (diff, branch, ticket with its slug, or codebase), given when the
+skill was started: "$ARGUMENTS". Empty quotes mean none was given, and the scope is settled as
+below.
 
 The profile is the scope, the depth and the emphasis of the review. Say what each depth costs
 (profiles.md): quick is one persona on sonnet, standard and deep run their reviewers on opus.

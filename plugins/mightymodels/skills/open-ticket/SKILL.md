@@ -7,10 +7,17 @@ description: >-
   GitHub issue and/or Jira ticket (a draft file when the CLI is absent) with a checked tracker
   body, the branch, ticket.yml with derived model routing, and a validated ticket row in the
   state database. Ends by asking whether to plan now (game-plan), go straight to one-shot, or
-  hand off (baton-pass). Use when triage is done: "cut a ticket for this", "open a ticket",
-  "make a jira ticket under this epic", "turn this investigation into a ticket", "stage this
-  for the next session", "get this ready to implement". Not for starting the implementation
+  hand off (baton-pass). Not for starting the implementation
   itself (game-plan or one-shot), and not for handing off an existing ticket (baton-pass).
+when_to_use: >-
+  Use when triage is done: "cut a ticket for this", "open a ticket",
+  "make a jira ticket under this epic", "turn this investigation into a ticket", "stage this
+  for the next session", "get this ready to implement".
+argument-hint: "[slug]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__investigation
+  - mcp__plugin_mightymodels_state__ticket
 ---
 
 # open-ticket
@@ -33,6 +40,9 @@ One `AskUserQuestion` dialog containing only the questions the conversation has 
 answered. Each
 question carries two to four options, and the user can always type an answer of their own.
 Answers already given are confirmed in the summary, not re-asked.
+
+**Argument:** a slug for the new ticket, given when the skill was started: "$ARGUMENTS". Empty
+quotes mean none was given. A slug given here is an answer already given to question 1.
 
 1. **Name** this unit of work; options: a slug proposed from the triage target, a shorter one.
 2. **Tracker**: GitHub issue, Jira ticket, both, or none.

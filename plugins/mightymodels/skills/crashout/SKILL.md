@@ -1,7 +1,13 @@
 ---
 name: crashout
 description: Use when the user explicitly invokes crashout to record dissatisfaction, diagnose the failure, and await approval before resuming work.
+when_to_use: >-
+  The user types /crashout with a rant about what the session got wrong, or /crashout journal to
+  read back what earlier rants recorded.
+argument-hint: "[rant | journal]"
 disable-model-invocation: true
+allowed-tools:
+  - mcp__plugin_mightymodels_state__crashout
 ---
 
 # crashout
@@ -19,6 +25,9 @@ Two modes:
 
 Invoked bare, with no rant and no journal keyword: the floor is theirs. Reply
 with one short line inviting the rant and nothing else.
+
+**Argument:** what followed `/crashout` this time: "$ARGUMENTS". Empty quotes are the bare
+invocation above.
 
 ## Intake protocol
 

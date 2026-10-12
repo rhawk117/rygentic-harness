@@ -7,11 +7,16 @@ description: >-
   only, two to four concrete options each, one recommended, pitched at a senior
   engineer with no rationale for asking. Facts go to scouts, decisions to the user, nothing
   assumed silently. Restates a decisions record after every round that game-plan lifts into
-  approach, invariants, non-goals, acceptance, and risks. Runs inside game-plan between claim
+  approach, invariants, non-goals, acceptance, and risks. Writes no files. Not for retrieving
+  facts (scouts), or for a stuck judgment
+  call or tie (ask-an-adult, then the user).
+when_to_use: >-
+  Runs inside game-plan between claim
   verification and drafting; also use standalone for "grill me", "cross-examine this plan",
   "stress-test my design", "interview me about the approach", "poke holes in this before I
-  build it". Writes no files. Not for retrieving facts (scouts), or for a stuck judgment
-  call or tie (ask-an-adult, then the user).
+  build it".
+allowed-tools:
+  - AskUserQuestion
 ---
 
 # cross-examine

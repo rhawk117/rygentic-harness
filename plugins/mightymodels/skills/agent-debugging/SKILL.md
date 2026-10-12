@@ -1,7 +1,12 @@
 ---
 name: agent-debugging
 description: Use when you are an engineer and a task's verification fails after your edit, to debug it alone, record each failed fix, and stop blocked at the third.
+when_to_use: >-
+  Preloaded into the engineer. It applies the moment a test, lint or type check the task names
+  fails on your change, or a fix you tried did not make it pass.
 user-invocable: false
+allowed-tools:
+  - mcp__plugin_mightymodels_state__failed_fix
 ---
 
 # agent-debugging

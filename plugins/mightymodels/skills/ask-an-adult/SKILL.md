@@ -1,15 +1,19 @@
 ---
 name: ask-an-adult
 description: >-
-  Escalate a stuck decision to the wingman advisor and act on what comes back.
-  Use when the user says they want a second opinion, when they invoke
-  /ask-an-adult, or when the session has stalled on a judgment call - two
-  defensible options, a hard-to-reverse choice, conflicting scout reports, a
-  failure that survived two attempts, or a guess about user intent. Builds the
+  Escalate a stuck decision to the wingman advisor and act on what comes back. Builds the
   escalation packet, dispatches wingman, then puts wingman's questions to the
   user through `AskUserQuestion` before any work resumes. Not for retrieving facts (send a
   scout), not for work you can simply do, and not for confirming a plan you have
   already committed to.
+when_to_use: >-
+  Use when the user says they want a second opinion, when they invoke
+  /ask-an-adult, or when the session has stalled on a judgment call - two
+  defensible options, a hard-to-reverse choice, conflicting scout reports, a
+  failure that survived two attempts, or a guess about user intent.
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__investigation
 ---
 
 # ask-an-adult

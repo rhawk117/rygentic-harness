@@ -1,6 +1,13 @@
 ---
 name: whats-broken
 description: Use when CI has a non-obvious failure, a test resists repair, or behavior contradicts expectations after repeated verification.
+when_to_use: >-
+  Use for "CI is red", "this won't stop failing", "why does this test keep failing", and when
+  stick-the-landing or agents-assemble routes a failure here.
+argument-hint: "[failing check, test or symptom]"
+allowed-tools:
+  - mcp__plugin_mightymodels_state__contract
+  - mcp__plugin_mightymodels_state__task
 ---
 
 # whats-broken
@@ -8,6 +15,8 @@ description: Use when CI has a non-obvious failure, a test resists repair, or be
 The protocol exists because of one failure mode: a plausible quick fix that skips evidence. It looks efficient, it usually patches the symptom, and each round of it pollutes the diff your reviewers later have to litigate. So the phases gate each other, and the one rule with no exceptions is that **no fix is proposed before the evidence phase completes.**
 
 **Entry paths:** stick-the-landing routes a CI failure here when the fix isn't obvious from the log tail; agents-assemble routes a task here after both its engineer attempt and its architect recovery failed; and bare invocation ("CI is red", "this won't stop failing") works with or without an active ticket. With no ticket the hypothesis log lives at `.mightymodels/whats-broken.md`; first make sure `.mightymodels/` is excluded, since nothing under it is ever tracked: `git check-ignore -q .mightymodels || echo '.mightymodels/' >> "$(git rev-parse --git-common-dir)/info/exclude"`.
+
+**Argument:** the failure to diagnose, given when the skill was started: "$ARGUMENTS". Empty quotes mean nothing was given, and the failure is the one the session or the routing skill named.
 
 ## Phases
 
