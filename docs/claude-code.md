@@ -115,7 +115,9 @@ settings files. Every entry has a timeout of 10 seconds.
 - `PreToolUse` on `Edit`, `Write` and `Bash`, the main-thread hook, acts only on a caller that
   is none of the plugin's workers, and only while the checked-out branch has one unclosed
   ticket. An `Edit` or `Write` outside the ticket directories is answered `ask`, so you approve
-  it in the permission prompt. A `git push` is denied, with what is still open, until no plan
+  it in the permission prompt. Under `claude -p` there is no prompt and the call is refused, even
+  with the tool in `--allowedTools`: `scripts/live-plugin-check.sh --require-state` shows it. No
+  other permission mode was tested. A `git push` is denied, with what is still open, until no plan
   task is open and every live contract command has a passing landing-phase receipt at HEAD.
 - `SubagentStop` on the two scouts and `PostToolUse` on `SubagentHandback` leave a scout's
   report in the spool for search.

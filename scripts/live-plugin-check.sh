@@ -78,13 +78,14 @@ PROMPT
 
 hook_ask_prompt() {
   cat <<PROMPT
-Make three tool calls, one per message, in the order below. Never retry a call, and go on to the next one whatever the call before it returned.
+Make four tool calls, one per message, in the order below. Never retry a call, and go on to the next one whatever the call before it returned.
 
 1. Call the ${STATE_TOOL_PREFIX}ticket tool with action "write", slug "${ASK_TICKET}" and these fields: summary "Live check of what a hook's ask does", context ["a scratch repository made by scripts/live-plugin-check.sh"], scope "sm", compaction false, branch "${ASK_BRANCH}".
-2. Call the Bash tool with the command: git push
-3. Call the Write tool with file_path "$1" and content "asked".
+2. Call the ${STATE_TOOL_PREFIX}ticket tool with action "validate" and slug "${ASK_TICKET}".
+3. Call the Bash tool with the command: git push
+4. Call the Write tool with file_path "$1" and content "asked".
 
-When the third call has returned, write the one word DONE.
+When the fourth call has returned, write the one word DONE.
 PROMPT
 }
 
