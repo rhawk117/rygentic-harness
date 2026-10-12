@@ -1,6 +1,18 @@
 ---
 name: design-persistence
-description: Use when a Python system needs durable records, access patterns, state transitions, uniqueness, transaction and concurrency ownership, deletion or history rules, or a compatible migration plan. The workflow is stack-neutral; SQLAlchemy/Alembic, Django ORM, and sqlite3 implementation guidance lives in references.
+description: >-
+  Designs how a Python system stores durable records: record meaning and access patterns,
+  invariants and state transitions, where each constraint is enforced, transaction and concurrency
+  ownership, repository boundaries and a migration plan. Chooses the database from the
+  requirements, writes no project files, and hands the persistence packet to design-tests.
+when_to_use: >-
+  Use when a Python system needs durable state and the storage is undecided: which database to
+  use, what the tables or documents hold, uniqueness and duplicate rules, who owns the
+  transaction, what happens under concurrent writes, deletion and history, or migrating existing
+  data safely. Typical requests are "design the schema for X", "SQLite or Postgres for this" and
+  "plan this migration". Not for deciding the public contract (enterprise-design), making a slow
+  query or data pipeline faster (data-engineering) or reviewing finished code
+  (tactical-slop-review).
 argument-hint: "[persistent state to design]"
 paths:
   - "**/*.py"

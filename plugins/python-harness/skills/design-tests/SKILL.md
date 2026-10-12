@@ -1,6 +1,18 @@
 ---
 name: design-tests
-description: Use when Python behavior needs executable contract evidence, when tests are brittle or over-mocked, when an interface-first workflow needs scenario tests before implementation, or when a plausible broken implementation might still pass the current suite.
+description: >-
+  Designs the tests that give evidence for a Python contract: scenarios chosen by ranked risk,
+  each aimed at public behavior and able to fail for a plausible broken implementation. Writes no
+  files: it briefs the test-engineer agent to write and run the tests, strict XFAIL where the
+  implementation is missing, and hands the scenario-test packet and test files to
+  tactical-slop-review.
+when_to_use: >-
+  Use when tests are brittle, over-mocked or would still pass against a broken implementation,
+  when behavior needs tests before it is implemented, or when the user wants to know which tests
+  are worth writing. Typical requests are "what tests would prove this", "write scenario tests for
+  X" and "these tests break on every refactor". Not for deciding the contract (enterprise-design),
+  tests for data pipelines or analytical code (data-engineering) or reviewing finished code
+  (tactical-slop-review).
 argument-hint: "[behavior to test]"
 paths:
   - "**/*.py"

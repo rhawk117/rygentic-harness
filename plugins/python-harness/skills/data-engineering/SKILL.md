@@ -1,7 +1,19 @@
 ---
 name: data-engineering
 description: >-
-  Build, validate, test and speed up the code that moves and reduces data. Use when data code is slow, runs out of memory, or is about to: pandas, Polars or DuckDB over large Parquet or CSV, joins that multiply rows or lose matches, group-by or quantile blow-ups, all-pairs similarity, slow bootstraps or cross-validation fit counts, Spark or Dask jobs stuck on skew or shuffles, choosing pandas vs Polars vs DuckDB, Parquet layout and partitioning, schema and key contracts, publishing results as artifacts instead of prints, generating fake or synthetic data and fixtures, or writing tests for analytical code. Estimates sizes before running and reads query plans before tuning. Not for choosing a statistical method or deciding what results mean: use data-analysis.
+  Makes data code correct first and cheap second: pins down the output, estimates sizes before
+  running, checks schema and join contracts, chooses the engine, reads the query plan before
+  tuning, and has results returned or published as artifacts instead of printed. Covers synthetic
+  data and tests for data code. Hands back the changed code with the measurement behind every
+  speed or memory claim.
+when_to_use: >-
+  Use when data code is slow, runs out of memory or is about to: pandas, Polars or DuckDB over
+  large Parquet or CSV files, joins that multiply rows or lose matches, all-pairs similarity, slow
+  bootstraps or cross-validation, Spark or Dask jobs stuck on skew or shuffles. Also use for
+  choosing between pandas, Polars and DuckDB, schema and key contracts, synthetic data and
+  fixtures, and tests for analytical code. Typical requests are "this job runs out of memory",
+  "why did the join double my rows" and "generate fake data for this pipeline". Not for choosing a
+  statistical method or deciding what results mean (data-analysis).
 argument-hint: "[what data engineering task to perform]"
 paths:
   - "**/*.py"

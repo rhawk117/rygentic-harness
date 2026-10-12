@@ -1,6 +1,17 @@
 ---
 name: build-web-service
-description: Use when building or extending a Python HTTP service with consequential contracts, identity and authorization, persistence, deferred work, lifecycle resources, traffic constraints, or deployment behavior. It leads requirements discovery and one complete design handoff; FastAPI, Pydantic v2, and async SQLAlchemy are the primary recipe.
+description: >-
+  Leads the design of a Python HTTP service from a requirements interview to one vertical-slice
+  handoff packet: classifies the service, brings in the contract, persistence and test design
+  skills, and settles identity, deferred work, rate limits, caching and deployment lifecycle. The
+  primary recipe is FastAPI, Pydantic v2 and async SQLAlchemy. Writes no project files.
+when_to_use: >-
+  Use when the user wants to build or extend a Python web service or API and the design is still
+  open: endpoints, authentication and authorization, a database behind it, background jobs, rate
+  limits, caching or deployment. Typical requests are "build an API for X", "add an endpoint that
+  does Y" and "set up a FastAPI service". Not for deciding one contract (enterprise-design),
+  designing storage alone (design-persistence), a standalone script (automate-task) or reviewing
+  finished code (tactical-slop-review).
 argument-hint: "[what to build or extend]"
 paths:
   - "**/*.py"

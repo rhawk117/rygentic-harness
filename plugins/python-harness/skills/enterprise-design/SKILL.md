@@ -1,6 +1,18 @@
 ---
 name: enterprise-design
-description: Use when a Python feature has consequential business rules, partial outcomes, public API choices, ownership boundaries, or expected failures that must be made concrete before implementation, including when another python-harness skill needs a contract-design phase.
+description: >-
+  Turns business intent into a caller-facing Python contract before implementation: outcomes, a
+  rule table, the architecture boundary, and the exact public types, signatures and error classes,
+  shown to the user as declarations. Keeps partial success, duplicates, expected rejection and
+  dependency failure distinct. Writes no project files and hands the contract packet to
+  design-persistence.
+when_to_use: >-
+  Use when a Python feature has business rules, partial outcomes, ownership boundaries or expected
+  failures that must be made concrete as types, signatures and errors before anyone implements
+  it. Typical requests are "design the interface for X", "what should this return when some items
+  fail" and "pin down the rules before we code it". Not for designing storage
+  (design-persistence), designing the tests (design-tests) or a whole HTTP service
+  (build-web-service).
 argument-hint: "[what to design]"
 paths:
   - "**/*.py"

@@ -1,6 +1,17 @@
 ---
 name: tactical-slop-review
-description: Review a Python PR, branch or codebase against an expert's engineering guide and write PYTHON-REVIEW.md (findings) or REFACTOR-PLAN.md (a refactor plan). Use when asked to review Python code, find slop, check a PR before merge, or plan a cleanup once code exists. Facts come from the python-harness MCP tools and cited pylens subagents; the review never edits code.
+description: >-
+  Reviews a Python pull request, branch or codebase against the expert's engineering guide and
+  writes one file: PYTHON-REVIEW.md with findings or REFACTOR-PLAN.md with an ordered refactor
+  plan. Facts come from the plugin's MCP tools and pylens subagents, every citation is checked by
+  a tool before it supports a finding, and the review never edits code.
+when_to_use: >-
+  Use when Python code already exists and the user wants it judged: reviewing a pull request or a
+  branch before merge, auditing a codebase or a path for slop and maintenance cost, or planning a
+  cleanup or refactor. Typical requests are "review this PR", "find the slop in this module" and
+  "plan the refactor for this package". Not for designing a contract before code exists
+  (enterprise-design), designing the tests (design-tests) or making data code faster
+  (data-engineering).
 argument-hint: "[pr <num|branch> | codebase [path]] [report|plan]"
 paths:
   - "**/*.py"

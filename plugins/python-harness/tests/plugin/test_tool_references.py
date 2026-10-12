@@ -32,6 +32,7 @@ SKILL_FILES = sorted(PLUGIN_ROOT.glob('skills/*/SKILL.md'))
 AGENT_FILES = sorted(PLUGIN_ROOT.glob('agents/*.md'))
 SKILL_MARKDOWN = sorted(PLUGIN_ROOT.joinpath('skills').rglob('*.md'))
 SKILL = PLUGIN_ROOT.joinpath('skills', 'tactical-slop-review', 'SKILL.md')
+AUTOMATE_TASK = PLUGIN_ROOT.joinpath('skills', 'automate-task', 'SKILL.md')
 SKILL_TOOLS = [
     'check_citations',
     'collect_python_facts',
@@ -50,6 +51,8 @@ SKILL_BASH = [
 ]
 LAUNCHER_BASH = ('Bash(python-harness *)', 'Bash(python-harness-data *)')
 DATA_BASH = 'Bash(python-harness-data *)'
+BUNDLED_SCRIPT_BASH = 'Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/*)'
+OTHER_BASH = {'tactical-slop-review': SKILL_BASH, 'automate-task': [BUNDLED_SCRIPT_BASH]}
 WRITE_TOOLS = ('Edit', 'Write', 'NotebookEdit')
 READ_ONLY_FORBIDDEN_GRANTS = ('Bash', 'Edit', 'Write', 'NotebookEdit', f'{TOOL_PREFIX}gate')
 SKILL_DISALLOWED = {
@@ -175,6 +178,16 @@ def tool_mismatch(frontmatter: str, body: str) -> tuple[set[str], set[str]]:
     named = {found['tool'] for found in TOOL_REFERENCE.finditer(body)}
     named |= set(SHORT_TOOL.findall(body))
     return granted - named, named - granted
+
+
+def bash_mismatch(frontmatter: str, name: str) -> tuple[list[str], list[str]]:
+    bash = [e for e in list_entries(frontmatter, 'allowed-tools') if e.startswith('Bash(')]
+    carried = [entry for entry in bash if entry not in LAUNCHER_BASH]
+    listed = OTHER_BASH.get(name, [])
+    return (
+        [entry for entry in carried if entry not in listed],
+        [entry for entry in listed if entry not in carried],
+    )
 
 
 def launcher_subcommands() -> set[str]:
@@ -315,15 +328,48 @@ class TestSkillGrants:
         self, document: Path
     ) -> None:
         frontmatter, body = document_parts(document)
-        bash = [e for e in list_entries(frontmatter, 'allowed-tools') if e.startswith('Bash(')]
+        entries = list_entries(frontmatter, 'allowed-tools')
 
-        carried = [entry for entry in bash if entry in LAUNCHER_BASH]
-        other = [entry for entry in bash if entry not in LAUNCHER_BASH]
+        mismatch = bash_mismatch(frontmatter, skill_name(document))
 
-        assert (DATA_BASH in carried, other) == (
-            bool(DATA_COMMAND.search(body)),
-            SKILL_BASH if document == SKILL else [],
-        )
+        assert (DATA_BASH in entries, mismatch) == (bool(DATA_COMMAND.search(body)), ([], []))
+
+    @pytest.mark.parametrize(
+        ('name', 'bash', 'expected'),
+        [
+            pytest.param(
+                'automate-task', [BUNDLED_SCRIPT_BASH], ([], []), id='the-bundled-scripts-rule'
+            ),
+            pytest.param('automate-task', [], ([], [BUNDLED_SCRIPT_BASH]), id='the-rule-missing'),
+            pytest.param(
+                'automate-task',
+                [BUNDLED_SCRIPT_BASH, 'Bash(uv run *)'],
+                (['Bash(uv run *)'], []),
+                id='a-rule-that-also-covers-the-generated-script',
+            ),
+            pytest.param(
+                'design-tests',
+                [BUNDLED_SCRIPT_BASH],
+                ([BUNDLED_SCRIPT_BASH], []),
+                id='the-rule-on-another-skill',
+            ),
+            pytest.param('data-analysis', [DATA_BASH], ([], []), id='a-launcher-alone'),
+        ],
+    )
+    def test_a_bash_pattern_a_skill_is_not_listed_for_is_reported(
+        self, name: str, bash: list[str], expected: tuple[list[str], list[str]]
+    ) -> None:
+        frontmatter = ''.join(['allowed-tools:\n  - Read\n', *(f'  - {e}\n' for e in bash)])
+
+        assert bash_mismatch(frontmatter, name) == expected
+
+    def test_automate_task_pre_approves_its_bundled_scripts_in_its_last_entry(self) -> None:
+        frontmatter, body = document_parts(AUTOMATE_TASK)
+        prefix = BUNDLED_SCRIPT_BASH.removeprefix('Bash(').removesuffix('*)')
+
+        last = list_entries(frontmatter, 'allowed-tools')[-1]
+
+        assert (last, prefix in body) == (BUNDLED_SCRIPT_BASH, True)
 
 
 class TestDataCommands:

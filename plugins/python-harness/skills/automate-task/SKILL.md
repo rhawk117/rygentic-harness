@@ -1,17 +1,17 @@
 ---
 name: automate-task
 description: >-
-  Turns a plain-language automation request into a complete, runnable Python script (PEP 723
-  inline dependencies, uv run, argparse, logging, --dry-run, exit codes). The user picks the
-  domain (dirty-data cleaning and transformation, data analysis, system administration, CI and
-  release, test orchestration, code quality, filesystem, network and HTTP APIs, cloud). The
-  skill presents package and design options with a recommendation and why. It translates a
-  parallelism level (sequential, moderate, a lot, turn my computer into a toaster) into concrete
-  worker counts and keeps any concurrency mechanism the user names explicitly. Use when the user
-  says "automate this", "write a script that...", "automate checking / cleaning / running /
-  downloading...", or "make this a nightly job or cron script", or wants a manual task turned
-  into a repeatable script. Not for HTTP services or endpoints (build-web-service), writing
-  unit tests (design-tests), or database schema design (design-persistence).
+  Turns one automation request into one runnable Python script with inline dependencies, a command
+  line, logging, a dry run and exit codes. Confirms the domain with the user, presents package and
+  design options with a recommendation, maps a parallelism level to worker counts, keeps every
+  technical choice the user stated, and checks the script before handing it to tactical-slop-review.
+when_to_use: >-
+  Use when the user wants a manual or repeated task turned into a script that runs unattended:
+  cleaning or converting files, checking hosts or services, calling an API or downloading in bulk,
+  release and CI chores, or a job for cron or a nightly schedule. Typical requests are "automate
+  this", "write a script that does X" and "make this a cron job". Not for HTTP services or
+  endpoints (build-web-service), writing unit tests (design-tests) or database schema design
+  (design-persistence).
 argument-hint: "[what to automate]"
 paths:
   - "**/*.py"
@@ -31,6 +31,7 @@ allowed-tools:
   - mcp__plugin_python-harness_python-harness__check_citations
   - mcp__plugin_python-harness_python-harness__map_python_calls
   - mcp__plugin_python-harness_python-harness__plan_review_surface
+  - Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/*)
 ---
 
 # Automate task

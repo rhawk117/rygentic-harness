@@ -1,6 +1,19 @@
 ---
 name: data-analysis
-description: 'Answer a question from data with a defensible, uncertainty-aware result. Use when the user asks what the data says or wants a decision backed by numbers: compare two agents, models, configs or releases (A/B, paired runs, "is B significantly better"), estimate a rate or difference with an interval, explain an error or latency change after a deploy, build or evaluate a classifier or anomaly detector, forecast a series, measure time to resolve with open cases, rank similar records, find blast radius or reachability in a dependency graph, measure spatial distance, or write up an analysis report. Fixes the question, observation grain, denominator and baseline before choosing a method, keeps validation leakage-safe, reports effect size with uncertainty, and says what the evidence does not prove. Not for making data code faster or fit in memory, pipeline plumbing, schema contracts, fixtures or tests for data code: use data-engineering.'
+description: >-
+  Answers a question from data with a result that can be defended: fixes the question, the
+  observation grain, the denominator and the baseline before choosing a method, validates along
+  the deployment boundary without leakage, and reports effect size with uncertainty and what the
+  evidence does not show. Hands back a rerunnable analysis script and a filled report.
+when_to_use: >-
+  Use when the user asks what the data says or wants a decision backed by numbers: comparing two
+  models, configs or releases on the same tasks, estimating a rate or a difference with an
+  interval, explaining an error or latency change after a deploy, evaluating a classifier or an
+  anomaly detector, forecasting a series, measuring time to resolve with open cases, ranking
+  similar records or tracing reach in a dependency graph. Typical requests are "is B significantly
+  better than A", "what changed after the deploy" and "write up this analysis". Not for making
+  data code faster or fit in memory, pipeline plumbing, schema contracts, fixtures or tests for
+  data code (data-engineering).
 argument-hint: "[question to answer from data]"
 paths:
   - "**/*.py"
