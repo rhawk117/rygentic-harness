@@ -184,18 +184,22 @@ rollup, and stop.
 Order: Critical findings and High security findings first, then the rest in gate order. For
 each finding `Fn` chosen for fixing:
 
-1. `task` `start` with `payload` `task_id` `Rn` and `change` `by` `engineer`, `owned` the
-   files the Fix touches and `acceptance` the Verify line (agents-assemble's call).
-2. The finding's Verify command goes to the user as contract id `Rn.AC-1` in one
-   `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands` entry (game-plan's call).
+1. `task` `start` with `payload` `task_id` the next `R<n>` that `task` `show` does not list
+   and `change` `by` `engineer`, `owned` the files the Fix touches and `acceptance` the Verify
+   line (agents-assemble's call). That number is the task's own and not the finding's: a
+   sprint residual may hold `R1` already, so `F1` can be fixed under `R2`.
+2. The finding's Verify command goes to the user as contract id `R<n>.AC-1`, under that task
+   id, in one `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands`
+   entry (game-plan's call).
 3. Dispatch an **engineer**: the residual variant for a single-concern merge-vader finding
    with usable Fix and Verify lines; the full template for uncle-bob findings, findings both
    personas raised, and anything Critical or High security. Either way the dispatch carries
-   SLUG, `Rn` as the task id and `Rn.AC-1` as the contract id, and the persona's own id
-   (`MV-n`, `UB-n`) in a slot of its own as the finding: a finding id is never the task id.
-4. `mightymodels verify run --slug SLUG --phase review --id Rn.AC-1`, then `task` `verify` with
-   `payload` `task_id` `Rn` and `change` `commit`, then `review` `resolve` with `payload`
-   `finding` `Fn`, `result` `fixed` and `commit` (it takes only a finding the user chose to fix).
+   SLUG, that `R<n>` as the task id and `R<n>.AC-1` as the contract id, and the persona's own
+   id (`MV-n`, `UB-n`) in a slot of its own as the finding: a finding id is never the task id.
+4. `mightymodels verify run --slug SLUG --phase review --id R<n>.AC-1`, then `task` `verify`
+   with `payload` `task_id` that `R<n>` and `change` `commit`, then `review` `resolve` with
+   `payload` `finding` `Fn`, `result` `fixed` and `commit` (it takes only a finding the user
+   chose to fix).
 5. Failed or blocked: `task` `mark` (a task the gate blocked already is `blocked`), then
    **architect** once, then whats-broken, as in agents-assemble. Record `resolve` with `result`
    `failed` or `blocked` and a `reason` when a finding stops.

@@ -147,14 +147,14 @@ Task-group dispatch: group schema-migrate, T7 add the index migration, verificat
 </report>
 ```
 
-Residual dispatch: slug open-redirect, task id R3, finding MV-3, Fix: validate the redirect target against the allow-list; Verify: `pytest tests/test_redirects.py -q`.
+Residual dispatch: slug open-redirect, task id R1, finding MV-3, Fix: validate the redirect target against the allow-list; Verify: `pytest tests/test_redirects.py -q`.
 
 ```xml
 <report>
   <status>failed</status>
-  <group>R3</group>
+  <group>R1</group>
   <tasks>
-    <task id="R3" verified="false">pytest tests/test_redirects.py -q: 1 failed, test_relative_redirect expects relative paths to pass, the allow-list rejects them</task>
+    <task id="R1" verified="false">pytest tests/test_redirects.py -q: 1 failed, test_relative_redirect expects relative paths to pass, the allow-list rejects them</task>
   </tasks>
   <files_changed>
     <file>src/web/redirects.py</file>
