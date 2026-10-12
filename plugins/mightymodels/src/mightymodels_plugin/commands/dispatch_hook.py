@@ -5,9 +5,11 @@ definition, so the plugin enforces the "delegate only to" lines of its agent fil
 input is JSON on standard input; a call made inside a subagent carries `agent_type`, and the main
 conversation's does not. The hook polices only this plugin's workers, whose `agent_type` begins
 `mightymodels:`: a worker's dispatch outside its row is denied, a name under that prefix that is
-no worker has no row, and unreadable input that names such an `agent_type` is denied. Every other
-caller (a built-in subagent, another plugin's agent, a main thread started with `--agent`) and
-input without `agent_type` get no decision, as if the plugin were not installed.
+no worker has no row, and unreadable input that names such an `agent_type` is denied. A worker's
+type is `mightymodels:<folder>:<name>`, the folder being the one its agent file is in, so a type
+without the folder or with another folder is no worker. Every other caller (a built-in subagent,
+another plugin's agent, a main thread started with `--agent`) and input without `agent_type` get no
+decision, as if the plugin were not installed.
 """
 
 import re
@@ -16,7 +18,7 @@ from types import MappingProxyType
 from typing import BinaryIO, TextIO
 
 from mightymodels_plugin.core.codec import UnreadableJsonError, decode_text, encode_compact
-from mightymodels_plugin.core.routing import Worker
+from mightymodels_plugin.core.routing import FOLDERS, Worker
 
 PLUGIN_PREFIX = 'mightymodels:'
 AGENT_TYPE_KEY = 'agent_type'
@@ -41,8 +43,12 @@ DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
 )
 
 
+def agent_type(worker: Worker) -> str:
+    return f'{PLUGIN_PREFIX}{FOLDERS[worker]}:{worker}'
+
+
 def worker_named(name: str) -> Worker | None:
-    return next((worker for worker in Worker if worker == name.removeprefix(PLUGIN_PREFIX)), None)
+    return next((worker for worker in Worker if name in {worker, agent_type(worker)}), None)
 
 
 def decoded_object(text: str) -> dict[str, object] | None:

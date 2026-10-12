@@ -102,7 +102,9 @@ class TestCompletionGate(TestTheStateOfATicket):
         assert hook_command.run('completion-gate', implementer_stop()) == (0, '', '')
 
     def test_a_worker_that_started_nothing_is_let_through(self, hook_command: Hook) -> None:
-        assert hook_command.run('completion-gate', implementer_stop('mightymodels:architect')) == (
+        assert hook_command.run(
+            'completion-gate', implementer_stop('mightymodels:workers:architect')
+        ) == (
             0,
             '',
             '',

@@ -54,8 +54,8 @@ SEARCH: ToolCall = (
     'similarity',
     {'request': {'action': 'search', 'query': 'the drain loop sleeps'}},
 )
-SCOUTS = ('mightymodels:code-scout', 'mightymodels:web-scout')
-IMPLEMENTERS = ('mightymodels:engineer', 'mightymodels:architect')
+SCOUTS = ('mightymodels:triage:code-scout', 'mightymodels:triage:web-scout')
+IMPLEMENTERS = ('mightymodels:workers:engineer', 'mightymodels:workers:architect')
 
 
 @pytest.fixture
@@ -105,8 +105,8 @@ class TestHooksJson:
         }
 
         assert matchers == {
-            'subagent-record': '^mightymodels:(code-scout|web-scout)$',
-            'completion-gate': '^mightymodels:(engineer|architect)$',
+            'subagent-record': '^mightymodels:triage:(code-scout|web-scout)$',
+            'completion-gate': '^mightymodels:workers:(engineer|architect)$',
         }
 
 
@@ -241,7 +241,7 @@ class TestSubagentRecorder:
         assert not spool.exists()
 
 
-def scout_handback(agent_type: str = 'mightymodels:code-scout', **given: object) -> str:
+def scout_handback(agent_type: str = 'mightymodels:triage:code-scout', **given: object) -> str:
     handback = {
         'agent_id': 'a1b2',
         'tool_name': 'SubagentHandback',
@@ -273,7 +273,10 @@ class TestSubagentHandback:
 
         assert (code, out, err) == (0, '', '')
         assert file.suffix == '.json'
-        assert (content['report'], content['target']) == (REPORT, f'{scout.split(":")[1]} a1b2')
+        assert (content['report'], content['target']) == (
+            REPORT,
+            f'{scout.rpartition(":")[2]} a1b2',
+        )
 
     @pytest.mark.usefixtures('hook_repository')
     def test_the_server_stores_the_handed_back_report_and_not_the_closing_text(

@@ -1,13 +1,14 @@
 """The `mightymodels subagent-record` command, which the SubagentStop hook on the scouts runs.
 
-When `mightymodels:code-scout` or `mightymodels:web-scout` stops, its final message is its report,
-unless it handed the report back with the SubagentHandback tool (`subagent_handback.py`), in which
-case the final message is closing text that the server drops. The command leaves it in the
-scout-report spool for the state server to take in on its next tool call: one file named
-`spool_file_prefix(key)`, `CLOSING_PART`, a unique part and `.json`, written under the suffix
-`.part` and renamed, so the server never reads half a report. The key is the repository the session
-started in, and the target is the scout and its `agent_id`, since the hook input carries no
-dispatch. The command needs the data directory and a git work tree but not the database.
+When `mightymodels:triage:code-scout` or `mightymodels:triage:web-scout` stops, its final message
+is its report, unless it handed the report back with the SubagentHandback tool
+(`subagent_handback.py`), in which case the final message is closing text that the server drops.
+The command leaves it in the scout-report spool for the state server to take in on its next tool
+call: one file named `spool_file_prefix(key)`, `CLOSING_PART`, a unique part and `.json`, written
+under the suffix `.part` and renamed, so the server never reads half a report. The key is the
+repository the session started in, and the target is the scout and its `agent_id`, since the hook
+input carries no dispatch. The command needs the data directory and a git work tree but not the
+database.
 
 Any other agent type leaves the spool as it is, and so does a stop with no final message. A report
 whose file would pass `SPOOL_FILE_BYTES` is not written, because the server could not take it in.

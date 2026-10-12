@@ -10,20 +10,23 @@ import pytest
 
 WRAPPER = Path(__file__).parent.parent.joinpath('bin', 'mightymodels-dispatch-hook')
 LAUNCHER_VARIABLE = 'MIGHTYMODELS_DISPATCH_LAUNCHER'
-WORKER_INPUT = '{"agent_type": "mightymodels:engineer", "tool_input": {"subagent_type": "x"}}'
+WORKER_INPUT = (
+    '{"agent_type": "mightymodels:workers:engineer", "tool_input": {"subagent_type": "x"}}'
+)
 MAIN_INPUT = '{"tool_name": "Agent", "tool_input": {"subagent_type": "x"}}'
-COMPACT_WORKER_INPUT = '{"agent_type":"mightymodels:engineer","tool_input":{}}'
-UNREADABLE_WORKER_INPUT = '{"agent_type": "mightymodels:engineer"'
-UNREADABLE_COMPACT_WORKER_INPUT = '{"agent_type":"mightymodels:engineer"'
+COMPACT_WORKER_INPUT = '{"agent_type":"mightymodels:workers:engineer","tool_input":{}}'
+UNREADABLE_WORKER_INPUT = '{"agent_type": "mightymodels:workers:engineer"'
+UNREADABLE_COMPACT_WORKER_INPUT = '{"agent_type":"mightymodels:workers:engineer"'
 UNREADABLE_MAIN_INPUT = '{"tool_name": "Agent"'
 OTHER_PLUGIN_INPUT = '{"agent_type": "other:engineer", "tool_input": {"subagent_type": "x"}}'
 BARE_CALLER_INPUT = '{"agent_type": "engineer", "tool_input": {"subagent_type": "x"}}'
 UNREADABLE_BARE_CALLER_INPUT = '{"agent_type": "engineer"'
 PREFIX_IN_TARGET_INPUT = (
-    '{"agent_type": "other:engineer", "tool_input": {"subagent_type": "mightymodels:engineer"}}'
+    '{"agent_type": "other:engineer", '
+    '"tool_input": {"subagent_type": "mightymodels:workers:engineer"}}'
 )
 PREFIX_IN_PROMPT_INPUT = (
-    '{"tool_input": {"subagent_type": "x", "prompt": "ask mightymodels:engineer"}}'
+    '{"tool_input": {"subagent_type": "x", "prompt": "ask mightymodels:workers:engineer"}}'
 )
 DENIED_ON_FAILURE = 2
 FAILURES = {

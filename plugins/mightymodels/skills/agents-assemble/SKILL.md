@@ -30,7 +30,7 @@ Call `mcp__plugin_mightymodels_state__task` with action `start` (`T1` stands for
 {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "T1", "change": {"by": "engineer", "owned": ["<files-in-scope>"]}}}}
 ```
 
-The owned set recorded here is what step 5 checks the commit against, so it is the stanza's `files-in-scope`, not a guess. Then dispatch `mightymodels:engineer` through the `Agent` tool, its `model` the engineer's fixed alias, `sonnet`, which `subagent-models` repeats. The dispatch names the brief path; the engineer appends `## DONE` before reporting and commits, and never pushes: only the primary pushes.
+The owned set recorded here is what step 5 checks the commit against, so it is the stanza's `files-in-scope`, not a guess. Then dispatch `mightymodels:workers:engineer` through the `Agent` tool, its `model` the engineer's fixed alias, `sonnet`, which `subagent-models` repeats. The dispatch names the brief path; the engineer appends `## DONE` before reporting and commits, and never pushes: only the primary pushes.
 
 **4. Mechanical checks before judgment.** On `done`, run the task's contract commands at the new HEAD:
 

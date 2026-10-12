@@ -1,5 +1,5 @@
 {
-  "description": "mightymodels: export the plugin data directory to the session's commands, so `mightymodels verify run` opens the database the state server keeps; deny a dispatch by one of this plugin's workers (agent_type mightymodels:<worker>) outside the workers its agent file allows, and leave every other caller alone; keep a scout's report for search, from its hand-back or else its closing text; hold an implementer's stop once while its task has no DONE brief; and write the snapshot of the ticket on the checked-out branch before a compaction.",
+  "description": "mightymodels: export the plugin data directory to the session's commands, so `mightymodels verify run` opens the database the state server keeps; deny a dispatch by one of this plugin's workers (agent_type mightymodels:<folder>:<worker>) outside the workers its agent file allows, and leave every other caller alone; keep a scout's report for search, from its hand-back or else its closing text; hold an implementer's stop once while its task has no DONE brief; and write the snapshot of the ticket on the checked-out branch before a compaction.",
   "hooks": {
     "SessionStart": [
       {
@@ -24,7 +24,7 @@
     ],
     "SubagentStop": [
       {
-        "matcher": "^mightymodels:(code-scout|web-scout)$",
+        "matcher": "^mightymodels:triage:(code-scout|web-scout)$",
         "hooks": [
           {
             "type": "command",
@@ -33,7 +33,7 @@
         ]
       },
       {
-        "matcher": "^mightymodels:(engineer|architect)$",
+        "matcher": "^mightymodels:workers:(engineer|architect)$",
         "hooks": [
           {
             "type": "command",

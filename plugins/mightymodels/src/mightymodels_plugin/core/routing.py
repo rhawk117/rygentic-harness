@@ -3,6 +3,9 @@
 Every worker but the two reviewers is fixed: it runs on the same model at every scope and a ticket
 cannot change it. A reviewer's model comes from the review's depth, and `OVERRIDE_MODEL` is the one
 model a single review run may move its heavier-weighted reviewer to.
+
+`FOLDERS` names the folder of `agents/` each worker's file is in. Claude Code makes the folder part
+of the worker's agent type, `mightymodels:<folder>:<name>`.
 """
 
 from collections.abc import Mapping
@@ -48,6 +51,26 @@ class Worker(StrEnum):
     MERGE_VADER = 'merge-vader'
     UNCLE_BOB = 'uncle-bob'
 
+
+class Folder(StrEnum):
+    REVIEW = auto()
+    WORKERS = auto()
+    TRIAGE = auto()
+
+
+FOLDERS: Mapping[Worker, Folder] = MappingProxyType(
+    {
+        Worker.CODE_SCOUT: Folder.TRIAGE,
+        Worker.WEB_SCOUT: Folder.TRIAGE,
+        Worker.QUALITYLENS: Folder.REVIEW,
+        Worker.ENGINEER: Folder.WORKERS,
+        Worker.ARCHITECT: Folder.WORKERS,
+        Worker.GITTY_UP: Folder.WORKERS,
+        Worker.WINGMAN: Folder.TRIAGE,
+        Worker.MERGE_VADER: Folder.REVIEW,
+        Worker.UNCLE_BOB: Folder.REVIEW,
+    }
+)
 
 type ScopeRouting = Mapping[Scope, Model]
 

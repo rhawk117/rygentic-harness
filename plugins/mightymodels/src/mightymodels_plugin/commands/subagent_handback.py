@@ -3,11 +3,11 @@
 On Claude Code 2.1.271 or later a subagent in auto mode delivers its report through the
 SubagentHandback tool, and the `last_assistant_message` of its SubagentStop is closing text. The
 hook input is the PostToolUse input of that call inside the subagent: `agent_type` and `agent_id`
-say who handed back and `tool_input.message` is the report. For `mightymodels:code-scout` and
-`mightymodels:web-scout` the command leaves the message in the scout-report spool exactly as
-`subagent_record.py` does, under `HANDBACK_PART`, so the server stores it and drops the closing text
-the same agent stops with. Any other agent type, and a message that is missing, blank or not text,
-leaves the spool as it is.
+say who handed back and `tool_input.message` is the report. For `mightymodels:triage:code-scout`
+and `mightymodels:triage:web-scout` the command leaves the message in the scout-report spool
+exactly as `subagent_record.py` does, under `HANDBACK_PART`, so the server stores it and drops the
+closing text the same agent stops with. Any other agent type, and a message that is missing, blank
+or not text, leaves the spool as it is.
 
 The command never blocks and never changes a hand-back: it exits 0 with nothing on standard output,
 and says on standard error why it did nothing.

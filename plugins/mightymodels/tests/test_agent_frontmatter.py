@@ -44,7 +44,7 @@ def agent_file(path: Path) -> AgentFile:
 
 
 class TestAgentFiles:
-    AGENT_FILES = tuple(map(agent_file, sorted(AGENTS.glob('*.md'))))
+    AGENT_FILES = tuple(map(agent_file, sorted(AGENTS.glob('*/*.md'))))
 
     def test_every_worker_has_one_agent_file(self) -> None:
         assert {agent.worker for agent in self.AGENT_FILES} == set(Worker)

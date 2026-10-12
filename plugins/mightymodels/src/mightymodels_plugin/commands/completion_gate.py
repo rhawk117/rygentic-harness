@@ -1,11 +1,11 @@
 """The `mightymodels completion-gate` command, which the SubagentStop hook on the implementers runs.
 
-When `mightymodels:engineer` or `mightymodels:architect` stops while a task it started is still
-in progress on the ticket whose branch is checked out, and the task's brief has no DONE half that
-names a commit (a `commit: <hash>` line under `## DONE`), the stop is blocked once: the command
-prints `{"decision": "block", "reason": ...}` and the subagent is sent back to finish. The reason
-names each task and what its brief lacks. A fix, a recovery or a review task (`C` and `R` ids) has
-no brief and is not held.
+When `mightymodels:workers:engineer` or `mightymodels:workers:architect` stops while a task it
+started is still in progress on the ticket whose branch is checked out, and the task's brief has no
+DONE half that names a commit (a `commit: <hash>` line under `## DONE`), the stop is blocked once:
+the command prints `{"decision": "block", "reason": ...}` and the subagent is sent back to finish.
+The reason names each task and what its brief lacks. A fix, a recovery or a review task (`C` and
+`R` ids) has no brief and is not held.
 
 The gate keeps no marker of its own. Claude Code sets `stop_hook_active` on the stop that follows a
 block, and the gate lets that one through, so a subagent that cannot finish is never trapped.

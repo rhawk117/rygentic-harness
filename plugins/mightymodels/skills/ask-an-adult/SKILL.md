@@ -44,7 +44,7 @@ usual reason wingman comes back at low confidence.
 State your lean honestly. wingman is instructed to form its own view first and to lead with
 disagreement, so hiding your preference buys nothing and costs the advisor a useful signal.
 
-Run the template's ten-second checklist, then send the packet to `mightymodels:wingman` through the `Agent` tool, its `model` the ticket's alias. Do not
+Run the template's ten-second checklist, then send the packet to `mightymodels:triage:wingman` through the `Agent` tool, its `model` the ticket's alias. Do not
 paraphrase file contents you have not read, and do not summarize scout findings into
 conclusions: pass the citations through as they came back.
 
