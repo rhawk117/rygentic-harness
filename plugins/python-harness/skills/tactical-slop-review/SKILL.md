@@ -18,6 +18,8 @@ allowed-tools:
   - mcp__plugin_python-harness_python-harness__collect_python_facts
   - mcp__plugin_python-harness_python-harness__map_python_calls
   - mcp__plugin_python-harness_python-harness__check_citations
+  - mcp__plugin_python-harness_python-harness__search_python_docs
+  - mcp__plugin_python-harness_python-harness__read_python_docs
   - Bash(git rev-parse HEAD)
   - Bash(git symbolic-ref --short refs/remotes/origin/HEAD)
   - Bash(git fetch origin *)
