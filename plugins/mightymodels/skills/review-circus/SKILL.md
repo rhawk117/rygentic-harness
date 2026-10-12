@@ -95,8 +95,9 @@ names a specific gap.
 ## 3. Dispatch the personas
 
 Dispatch each persona in the run, in parallel, with prompting-subagents' reviewer template
-and the model the run recorded. The packet carries the doctrine
-(`${CLAUDE_SKILL_DIR}/references/personas/merge-vader.md` or `uncle-bob.md`),
+and the model the run recorded. The packet carries merge-vader's doctrine
+(`${CLAUDE_SKILL_DIR}/references/personas/merge-vader.md`; uncle-bob preloads its own as the
+`becoming-uncle-bob` skill and is passed no doctrine path),
 `${CLAUDE_SKILL_DIR}/references/profiles.md`, `${CLAUDE_SKILL_DIR}/references/idiom-evidence.md`,
 the run directory, the depth and the persona's role (the heavier weight leads), the metrics
 path, the signals history window (which the persona hands qualitylens), and for a ticket,

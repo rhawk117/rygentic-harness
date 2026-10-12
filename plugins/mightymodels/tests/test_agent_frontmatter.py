@@ -150,6 +150,13 @@ class TestSkillsOfTheAgents:
 
         assert preloading == DISPATCHERS
 
+    def test_exactly_uncle_bob_preloads_becoming_uncle_bob(self) -> None:
+        preloading = {
+            worker for worker, skills in self.PRELOADED.items() if 'becoming-uncle-bob' in skills
+        }
+
+        assert preloading == {Worker.UNCLE_BOB}
+
     def test_every_preloaded_skill_is_a_skill_directory(self) -> None:
         preloaded = chain.from_iterable(self.PRELOADED.values())
 

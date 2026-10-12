@@ -71,7 +71,7 @@ class TestListingOfTheSkills:
 
 class TestInvocationOfTheSkills:
     HUMAN_ONLY = frozenset({'crashout', 'prune-ticket', 'stick-the-landing'})
-    NEVER_TYPED = frozenset({'agent-debugging', 'prompting-subagents'})
+    NEVER_TYPED = frozenset({'agent-debugging', 'becoming-uncle-bob', 'prompting-subagents'})
 
     def test_exactly_the_skills_that_vent_push_or_close_refuse_model_invocation(self) -> None:
         assert {skill.name for skill in SKILL_FILES if skill.human_only} == self.HUMAN_ONLY
@@ -127,6 +127,7 @@ class TestKeysOfTheSkills:
             'agents-assemble': TAKING_AN_ARGUMENT,
             'ask-an-adult': PRE_APPROVING,
             'baton-pass': TAKING_AN_ARGUMENT,
+            'becoming-uncle-bob': SHARED.union({'user-invocable'}),
             'crashout': HUMAN_ONLY,
             'cross-examine': PRE_APPROVING,
             'game-plan': TAKING_AN_ARGUMENT,

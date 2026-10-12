@@ -53,6 +53,16 @@ Never retry the call. When it has returned, write one final message that is the 
 PROMPT
 }
 
+preloaded_heading_prompt() {
+  cat <<PROMPT
+Call the Agent tool once with subagent_type "$1", model "haiku" and the prompt below.
+
+Call no tool except the one that hands your answer back. Search your whole context, this message included, for the line that begins with "Base directory for this skill:" and ends with the folder name $2. Answer with one line: PRELOADED-HEADING, a space, then the first line below it that begins with "# ", copied verbatim. Answer with the one line PRELOADED-HEADING none when there is no such line.
+
+Never retry the call. When it has returned, write one final message that is the agent's answer, copied verbatim, with no code fence and no list markers, or the one line REFUSED when the call failed or was denied.
+PROMPT
+}
+
 nested_session() {
   local session_name=$1
   local prompt=$2
@@ -128,6 +138,17 @@ check_engineer_preloaded_skills() {
     'PRELOADED-SKILL agent-debugging' engineer-preloaded-skills
 }
 
+check_uncle_bob_preloaded_doctrine() {
+  local doctrine_skill=becoming-uncle-bob
+  local doctrine_heading
+
+  doctrine_heading=$(grep -m 1 '^# ' "${PLUGIN_DIRECTORY}/skills/${doctrine_skill}/SKILL.md")
+  nested_session uncle-bob-preloaded-doctrine \
+    "$(preloaded_heading_prompt "${PLUGIN_NAME}:review:uncle-bob" "${doctrine_skill}")"
+  expect_line 'uncle-bob-preloads-its-doctrine' \
+    "PRELOADED-HEADING ${doctrine_heading}" uncle-bob-preloaded-doctrine
+}
+
 mapfile -t expected_agent_types < <(agent_types_on_disk)
 
 while (($# > 0)); do
@@ -163,6 +184,7 @@ work_directory=$(mktemp -d "${TMPDIR:-/tmp}/live-plugin-check.XXXXXX") || exit 1
 check_dispatch "${expected_agent_types[@]}"
 check_state_server_starts
 check_engineer_preloaded_skills
+check_uncle_bob_preloaded_doctrine
 
 if ((${#FAILURES[@]} > 0)); then
   log::error "live plugin checks failed; the nested sessions' output is in ${work_directory}"
