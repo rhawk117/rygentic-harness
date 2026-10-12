@@ -12,6 +12,7 @@ from test_tool_references import (
     document_parts,
     line_entries,
     list_entries,
+    skill_name,
 )
 
 AGENT_PREFIX = 'python-harness:'
@@ -86,10 +87,6 @@ def named_agents(body: str) -> set[str]:
     return {found['name'] for found in AGENT_REFERENCE.finditer(body)}
 
 
-def skill_id(document: Path) -> str:
-    return document.parent.name
-
-
 def dispatched_by(skill: str) -> set[str]:
     return {agent for agent, skills in DISPATCHERS.items() if skill in skills}
 
@@ -97,14 +94,14 @@ def dispatched_by(skill: str) -> set[str]:
 class TestPairing:
     def test_the_skills_that_dispatch_nothing_are_the_ones_outside_every_pairing(self) -> None:
         paired = set().union(*DISPATCHERS.values())
-        every = {skill_id(document) for document in SKILL_FILES}
+        every = {skill_name(document) for document in SKILL_FILES}
 
         assert every - paired == set(NO_DISPATCH)
 
     @pytest.mark.parametrize('agent', sorted(PAIRING))
     def test_the_skills_naming_an_agent_are_its_driver_and_its_extras(self, agent: str) -> None:
         naming = {
-            skill_id(document)
+            skill_name(document)
             for document in SKILL_FILES
             if agent in named_agents(document_parts(document)[1])
         }
@@ -118,31 +115,33 @@ class TestPairing:
 
         assert (named, {path.stem for path in AGENT_FILES}) == (set(PAIRING), set(PAIRING))
 
-    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_id)
+    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_name)
     def test_a_skill_carries_the_agent_tool_exactly_when_it_dispatches(
         self, document: Path
     ) -> None:
         frontmatter, body = document_parts(document)
         allowed = list_entries(frontmatter, 'allowed-tools')
-        expected = dispatched_by(skill_id(document))
+        expected = dispatched_by(skill_name(document))
 
         assert (AGENT_TOOL in allowed, named_agents(body)) == (bool(expected), expected)
 
 
 class TestDispatchBlocks:
-    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_id)
+    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_name)
     def test_each_dispatch_block_repeats_the_agent_it_names(self, document: Path) -> None:
         blocks = dispatch_blocks(document_parts(document)[1])
 
         assert blocks == [agent_block(block.agent) for block in blocks]
 
-    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_id)
+    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_name)
     def test_a_skill_holds_one_dispatch_block_for_each_agent_it_dispatches(
         self, document: Path
     ) -> None:
         blocks = dispatch_blocks(document_parts(document)[1])
 
-        assert sorted(block.agent for block in blocks) == sorted(dispatched_by(skill_id(document)))
+        assert sorted(block.agent for block in blocks) == sorted(
+            dispatched_by(skill_name(document))
+        )
 
 
 class TestDispatchParser:
