@@ -10,7 +10,7 @@ For the prompt that opens the next primary session, which baton-pass prints in c
 Read, in order: .mightymodels/<slug>/ticket.yml; <the issue or plan>; <.mightymodels/<slug>/handoffs/snapshot.md and handoffs/BATON.md when baton-pass wrote them>.
 Invoke prompting-subagents before the first dispatch.
 </discovery>
-<constraints>Invoke <the one skill: agents-assemble | game-plan | one-shot | stick-the-landing | review-circus> and follow it. Treat the files above as the only source of state.</constraints>
+<constraints>Invoke <the one skill: agents-assemble | game-plan | one-shot | review-circus> and follow it. <To land, in place of that sentence: Hand the user `/mightymodels:stick-the-landing <slug>`; only the user can start that skill.> Treat the files above as the only source of state.</constraints>
 ```
 
 Slots: slug · focus or purpose · issue or plan · snapshot and baton paths when present · next skill.

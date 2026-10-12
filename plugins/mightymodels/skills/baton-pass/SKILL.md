@@ -170,8 +170,8 @@ prevents.
 Writes `handoffs/snapshot.json`, `snapshot.md`, `BATON.md`, user decisions into the linked
 ledger, the `context:` lines of ticket.yml, and whatever the user chose for uncommitted work;
 through open-ticket, the ticket directory when none existed. Refresh ticket.yml `context` with
-`mcp__plugin_mightymodels_state__ticket`: action `update-context`, `slug`, and `fields` holding
-`context`, the whole list of lines. It replaces them and restages the ticket, so the edit stays
+`mcp__plugin_mightymodels_state__ticket`: its `request` holds action `update-context`, `slug`, and
+`fields` holding `context`, the whole list of lines. It replaces them and restages the ticket, so the edit stays
 inside the schema's subset. Never marks a task verified, appends a DONE half, or writes
 REPORT.md; those belong to the loop and the engineer, and a baton that closes a task the loop
 did not verify is a lie the next session inherits.

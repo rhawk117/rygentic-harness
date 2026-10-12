@@ -16,14 +16,14 @@ The tool writes no file. Its answer holds `record` (the JSON below), `markdown`,
 | `decisions`, `open_questions` | `ledger_entries` of the linked investigations             | live `decision` and `open` entries, superseded ones dropped, each with its investigation and entry under `from` |
 | `do_not_retry`                | `task_transitions` rows                                   | transitions into `failed` or `blocked`, with the reason and HEAD                                              |
 | `review`                      | the latest `review_runs` row and its findings            | run, depth, finding count, undecided ids, remediation still open, non-fix decisions with reasons              |
-| `answers`, `subagents`        | none yet                                                  | present and empty until the recorder hooks record rows                                                        |
+| `answers`, `subagents`        | none yet                                                  | present and empty: the snapshot reads no table for them yet                                                  |
 | `warnings`                    | the reader                                                | git not consulted (no git binary, or not a repository), linked investigations with no ledger                  |
 
 A section with nothing to show reads as one line in the Markdown saying so. With no git, `repository` is empty and a warning says why.
 
 ## Hook receipts
 
-The `answers` and `subagents` sections stay in the record and read empty. The database holds no row for a user's answer or a worker's stop yet; the recorder hooks will write them, and the sections fill from those rows when they do. The snapshot does not infer them.
+The `answers` and `subagents` sections stay in the record and read empty. The database holds no row for a user's answer, and the scout reports the recorder hooks spool are stored in `scout_reports`, which the snapshot does not read. The snapshot does not infer them.
 
 ## Writers of what it reads
 

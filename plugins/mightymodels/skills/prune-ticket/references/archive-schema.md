@@ -31,8 +31,8 @@ REPORT.md open threads and the issue's open items are in no row the tool reads; 
 | `verification`                         | every contract command with argv, `expect_exit`, and its latest outcome, HEAD, and digest                |
 | `decisions`                            | the last 4 live `decision` entries of the linked ledgers, each with its investigation and entry (`from`) |
 | `review`                               | the latest run: id, depth, finding count, ids grouped by outcome or decision, the recorded reasons       |
-| `agents`                               | `runs` 0, `by_status` empty and `recent` empty until the hooks record worker rows                        |
-| `answers`                              | `recorded` 0 and `recent` empty until the hooks record answer rows                                       |
+| `agents`                               | `runs` 0, `by_status` empty and `recent` empty: the close tool reads no worker rows yet                     |
+| `answers`                              | `recorded` 0 and `recent` empty: the database holds no answer rows yet                                    |
 
 A call with more than 3 gotchas, or with no `shipped`, is refused and stores nothing.
 

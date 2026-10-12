@@ -13,8 +13,8 @@ For one `tiny` task inside an active mightymodels sprint, given to the intern fo
 </constraints>
 ```
 
-Slots: objective · ACs · verification · files-in-scope · brief path · commit message.
+Slots: objective · ACs · verification · files-in-scope · toolchain lines · brief path · commit message.
 
 ## When it comes back blocked
 
-The intern does not debug and is not dispatched again on the same task; `task` `start` refuses a second attempt by it. Mark the task `blocked` with the intern's blocker as the reason, start it with `by` `engineer` and the same owned set, and dispatch the engineer with the same ASKED stanza and the intern's blocker in `<context>`. No question goes to the user for this handover.
+The intern does not debug and is not dispatched again on the same task; `task` `start` refuses a second attempt by it. Mark the task `blocked` with the intern's blocker as the reason, start it with `by` `engineer` and the same owned set and acceptance, and dispatch the engineer with the same ASKED stanza and the intern's blocker in `<context>`. No question goes to the user for this handover.

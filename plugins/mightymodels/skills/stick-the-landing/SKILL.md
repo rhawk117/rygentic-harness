@@ -96,10 +96,10 @@ tail alone?*
 - **Yes, mechanical** (lint rule, formatter drift, missing import, a trivially wrong
   assertion). Record the attempt with `mcp__plugin_mightymodels_state__task` and action
   `start`, then dispatch an **engineer** with the residual variant of its template,
-  Fix:/Verify: verbatim:
+  Fix:/Verify: verbatim, with SLUG, `C1` as the task id and the check's name as the finding:
 
   ```json
-  {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"by": "engineer", "owned": ["<files the log tail names>"], "acceptance": ["<the Verify line>"]}}}}
+  {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"by": "engineer", "owned": ["<files the log tail names>"], "acceptance": ["AC-1"]}}}}
   ```
 
   When a local command reproduces the check, it is the Verify line and becomes contract id
@@ -141,7 +141,8 @@ Push, then gitty-up re-watches.
 
 - **The check still fails**, or the engineer returns `failed` or `blocked`.
   `task` `mark` with `to` `failed` or `blocked` and a `reason` (a task the gate blocked already
-  is `blocked`), then **architect** once (`task` `start` with `by` `architect`, the architect
+  is `blocked`), then the owner's question unless `auto-escalate` is on, as agents-assemble step 6
+  has it, and **architect** once (`task` `start` with `by` `architect`, the architect
   template with the trigger and the failing tail). The architect also failing goes to
   **whats-broken**; the `task` tool refuses a second architect implementation pass on its own. whats-broken's own stop rules end at the user,
   with every attempt's evidence.
