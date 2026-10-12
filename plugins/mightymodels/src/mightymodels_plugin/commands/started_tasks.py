@@ -6,8 +6,9 @@ none. This is the one place a hook learns what a started task owns.
 
 `started_for_hook` is for a hook that holds no state. It opens the state the completion gate
 opens, from the project directory and the plugin data directory Claude Code gives a hook, and
-answers the failure in place of the tasks when there is no data directory, no git work tree or the
-database refuses, so the hook decides what an unreadable state means.
+answers the failure in place of the tasks when there is no data directory, no git work tree, the
+database refuses, or the operating system refuses the data directory, the database file or git's
+exclude file, so the hook decides what an unreadable state means.
 """
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -41,5 +42,5 @@ def started_for_hook(context: HookContext, worker: Worker) -> StartedOrUnreadabl
             find_root(context.environ, context.cwd), context.data_directory(), ROW_TYPES
         ) as state:
             return started_on_branch(state, Implementer(worker))
-    except (StateError, SQLAlchemyError) as error:
+    except (StateError, SQLAlchemyError, OSError) as error:
         return error

@@ -250,6 +250,20 @@ class TestDispatchOfTheIntern(TestTheStateOfATicket):
 
         assert f'the started task could not be read ({PLUGIN_DATA_VARIABLE} is not set' in reason
 
+    @pytest.mark.usefixtures('intern_on_one_file')
+    def test_when_the_data_directory_cannot_be_created_it_is_refused_saying_so(
+        self, hook_command: Hook, tmp_path: Path
+    ) -> None:
+        regular_file = tmp_path.joinpath('a-regular-file')
+        regular_file.write_text('', encoding='utf-8')
+        under_a_file = regular_file.joinpath('plugin-data')
+        hook_command.monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(under_a_file))
+
+        reason = self.refusal(hook_command)
+
+        assert 'the started task could not be read (' in reason
+        assert str(under_a_file) in reason
+
     @pytest.mark.parametrize('started', WHATEVER_IS_STARTED)
     def test_an_engineer_dispatch_is_allowed_whatever_is_started(
         self, started: str, request: pytest.FixtureRequest, hook_command: Hook
