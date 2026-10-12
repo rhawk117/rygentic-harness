@@ -91,6 +91,15 @@ def dispatched_by(skill: str) -> set[str]:
     return {agent for agent, skills in DISPATCHERS.items() if skill in skills}
 
 
+def reviewer_dispatch_sentences(body: str) -> list[str]:
+    prose = ' '.join(DISPATCH_SECTION.sub('', body).split())
+    return [
+        sentence
+        for sentence in re.split(r'(?<=\.) ', prose)
+        if f'{AGENT_PREFIX}reviewer' in sentence
+    ]
+
+
 class TestPairing:
     def test_the_skills_that_dispatch_nothing_are_the_ones_outside_every_pairing(self) -> None:
         paired = set().union(*DISPATCHERS.values())
@@ -124,6 +133,18 @@ class TestPairing:
         expected = dispatched_by(skill_name(document))
 
         assert (AGENT_TOOL in allowed, named_agents(body)) == (bool(expected), expected)
+
+
+class TestReviewerDispatch:
+    @pytest.mark.parametrize('skill', sorted(DISPATCHERS['reviewer']))
+    def test_the_sentence_dispatching_the_reviewer_names_a_contract_and_acceptance_criteria(
+        self, skill: str
+    ) -> None:
+        document = PLUGIN_ROOT.joinpath('skills', skill, 'SKILL.md')
+
+        sentences = reviewer_dispatch_sentences(document_parts(document)[1])
+
+        assert [('contract' in s, 'acceptance criteria' in s) for s in sentences] == [(True, True)]
 
 
 class TestDispatchBlocks:

@@ -18,7 +18,9 @@ evidence. Own only assigned tests, scenario fixtures, and the scenario map.
 
 <context>
 Do not infer business rules from implementation details or create tests for a contract
-the caller has not supplied.
+the caller has not supplied. The loaded `design-tests` text supplies the scenario rules
+and the packet; you do not dispatch, you write the assigned test files yourself, and the
+skill's denial of Edit and Write does not describe you.
 </context>
 
 <inputs>
