@@ -122,7 +122,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands.add_parser(
         DISPATCH_HOOK_COMMAND,
-        help="deny a worker's dispatch outside its allowed targets; the PreToolUse hook on Agent",
+        help="deny a worker's dispatch outside its allowed targets, and an intern's unless its "
+        'task owns one file; the PreToolUse hook on Agent',
     )
     commands.add_parser(
         SUBAGENT_RECORD_COMMAND,
@@ -146,15 +147,19 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def session_hook_context() -> HookContext:
+    return HookContext(stdin=sys.stdin, environ=os.environ, cwd=Path.cwd())
+
+
 def run_hook_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == SESSION_START_COMMAND:
         return export_data_directory(os.environ)
     if arguments.command == DISPATCH_HOOK_COMMAND:
-        return check_dispatch(sys.stdin, sys.stdout.buffer)
+        return check_dispatch(sys.stdin, sys.stdout.buffer, session_hook_context())
     if arguments.command not in HOOK_MODULES:
         return None
     hook = import_module(HOOK_MODULES[arguments.command])
-    return int(hook.run_hook(HookContext(stdin=sys.stdin, environ=os.environ, cwd=Path.cwd())))
+    return int(hook.run_hook(session_hook_context()))
 
 
 def run_review_command(arguments: argparse.Namespace) -> int | None:

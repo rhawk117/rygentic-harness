@@ -1,18 +1,23 @@
-"""The PreToolUse hook on Agent denies a worker's dispatch outside the row its agent file states."""
+"""The PreToolUse hook on Agent denies a worker's dispatch outside the row its agent file states,
+and a dispatch of the intern unless every task started for it owns exactly one file."""
 
 import io
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
 from mightymodels_plugin.cli import main
 from mightymodels_plugin.commands.dispatch_hook import (
     DISPATCH_RULES,
+    StartedOrUnreadable,
+    StartedTask,
+    StartedTasks,
     agent_type,
     check_dispatch,
 )
+from mightymodels_plugin.core.errors import StateError
 from mightymodels_plugin.core.routing import ROUTING, Worker
 
 AGENTS = Path(__file__).parent.parent.joinpath('agents')
@@ -21,6 +26,7 @@ BACKTICKED = re.compile(r'`([\w-]+)`')
 PREFIX = 'mightymodels:'
 ENGINEER = 'mightymodels:workers:engineer'
 ARCHITECT = 'mightymodels:workers:architect'
+INTERN = 'mightymodels:workers:intern'
 MERGE_VADER = 'mightymodels:review:merge-vader'
 UNCLE_BOB = 'mightymodels:review:uncle-bob'
 CODE_SCOUT = 'mightymodels:triage:code-scout'
@@ -48,9 +54,20 @@ def hook_input(caller: str | None, target: str | None) -> str:
     return json.dumps(fields)
 
 
-def run_hook(text: str) -> Verdict:
+@dataclass(slots=True, kw_only=True, frozen=True)
+class FakeStartedTasks:
+    answer: StartedOrUnreadable = ()
+    asked: list[Worker] = field(default_factory=list)
+
+    def started_by(self, worker: Worker) -> StartedOrUnreadable:
+        self.asked.append(worker)
+        return self.answer
+
+
+def run_hook(text: str, started: StartedTasks | None = None) -> Verdict:
     stdout = io.BytesIO()
-    assert check_dispatch(io.StringIO(text), stdout) == 0
+    started = FakeStartedTasks() if started is None else started
+    assert check_dispatch(io.StringIO(text), stdout, started) == 0
     printed = stdout.getvalue()
     if not printed:
         return Verdict(decision=None, reason='')
@@ -196,6 +213,113 @@ class TestMainConversation:
         assert run_hook(hook_input(None, target)) == Verdict(decision=None, reason='')
 
 
+class TestInternDispatch:
+    ONE_FILE = StartedTask(id='T1', owned=('src/queue.py',))
+    TWO_FILES = StartedTask(id='T2', owned=('src/queue.py', 'src/drain.py'))
+    NO_FILE = StartedTask(id='T3', owned=())
+    ANOTHER_ONE_FILE = StartedTask(id='T4', owned=('src/drain.py',))
+    NO_DATA_DIRECTORY = StateError('CLAUDE_PLUGIN_DATA is not set')
+    NOT_TINY = (
+        pytest.param(
+            (),
+            'no task is started for the intern on the ticket whose branch is checked out',
+            id='no-task-started',
+        ),
+        pytest.param((TWO_FILES,), 'T2 owns 2 files', id='two-files'),
+        pytest.param((NO_FILE,), 'T3 owns 0 files', id='no-file'),
+        pytest.param((ONE_FILE, TWO_FILES), 'T2 owns 2 files', id='one-task-of-two-not-tiny'),
+        pytest.param(
+            (TWO_FILES, NO_FILE), 'T2 owns 2 files; T3 owns 0 files', id='two-tasks-not-tiny'
+        ),
+        pytest.param(
+            NO_DATA_DIRECTORY,
+            'the started task could not be read (CLAUDE_PLUGIN_DATA is not set)',
+            id='state-unreadable',
+        ),
+    )
+    TINY = (
+        pytest.param((ONE_FILE,), id='one-file'),
+        pytest.param((ONE_FILE, ANOTHER_ONE_FILE), id='two-tasks-of-one-file'),
+    )
+    OUTSIDE_CALLERS = (
+        pytest.param(None, id='main-conversation'),
+        pytest.param('general-purpose', id='built-in'),
+        pytest.param('other:engineer', id='another-plugins-agent'),
+    )
+    OTHER_TARGETS = (
+        *(agent_type(worker) for worker in Worker if worker is not Worker.INTERN),
+        'general-purpose',
+        'intern',
+        f'{PREFIX}intern',
+        f'{INTERN}:extra',
+    )
+
+    @pytest.mark.parametrize(('started', 'why'), NOT_TINY)
+    @pytest.mark.parametrize('caller', OUTSIDE_CALLERS)
+    def test_it_is_refused_saying_why_and_naming_the_engineer(
+        self, caller: str | None, started: StartedOrUnreadable, why: str
+    ) -> None:
+        verdict = run_hook(hook_input(caller, INTERN), FakeStartedTasks(answer=started))
+
+        assert verdict == Verdict(
+            decision='deny',
+            reason=(
+                f'{INTERN} was refused: {why}. The intern takes only a tiny task, one that '
+                f'owns exactly one file; dispatch {ENGINEER} instead.'
+            ),
+        )
+
+    @pytest.mark.parametrize('started', TINY)
+    @pytest.mark.parametrize('caller', OUTSIDE_CALLERS)
+    def test_it_is_allowed_when_every_started_task_owns_exactly_one_file(
+        self, caller: str | None, started: StartedOrUnreadable
+    ) -> None:
+        verdict = run_hook(hook_input(caller, INTERN), FakeStartedTasks(answer=started))
+
+        assert verdict == Verdict(decision=None, reason='')
+
+    def test_the_started_tasks_it_asks_for_are_the_interns(self) -> None:
+        started = FakeStartedTasks(answer=(self.ONE_FILE,))
+
+        run_hook(hook_input(None, INTERN), started)
+
+        assert started.asked == [Worker.INTERN]
+
+    @pytest.mark.parametrize(
+        'started', [*TINY, *(pytest.param(*case.values[:1], id=case.id) for case in NOT_TINY)]
+    )
+    def test_an_engineer_dispatch_is_allowed_whatever_is_started_and_reads_no_state(
+        self, started: StartedOrUnreadable
+    ) -> None:
+        tasks = FakeStartedTasks(answer=started)
+
+        assert run_hook(hook_input(None, ENGINEER), tasks) == Verdict(decision=None, reason='')
+        assert tasks.asked == []
+
+    @pytest.mark.parametrize('target', OTHER_TARGETS)
+    @pytest.mark.parametrize('caller', [*OUTSIDE_CALLERS, pytest.param(ENGINEER, id='worker')])
+    def test_a_dispatch_of_any_other_type_reads_no_state(
+        self, caller: str | None, target: str
+    ) -> None:
+        started = FakeStartedTasks()
+
+        run_hook(hook_input(caller, target), started)
+
+        assert started.asked == []
+
+    @pytest.mark.parametrize('caller', [ENGINEER, MERGE_VADER, INTERN])
+    def test_a_workers_dispatch_of_it_is_denied_by_the_row_and_reads_no_state(
+        self, caller: str
+    ) -> None:
+        started = FakeStartedTasks(answer=(self.ONE_FILE,))
+
+        verdict = run_hook(hook_input(caller, INTERN), started)
+
+        assert verdict.decision == 'deny'
+        assert verdict.reason.startswith(f'{caller} may not dispatch {INTERN}; it may dispatch: ')
+        assert started.asked == []
+
+
 class TestUnexpectedInput:
     @pytest.mark.parametrize(
         'text',
@@ -293,7 +417,7 @@ class TestWrittenBytes:
     @pytest.fixture
     def written(self) -> bytes:
         output = io.BytesIO()
-        check_dispatch(io.StringIO(hook_input(ENGINEER, self.TARGET)), output)
+        check_dispatch(io.StringIO(hook_input(ENGINEER, self.TARGET)), output, FakeStartedTasks())
         return output.getvalue()
 
     def test_a_denial_is_one_compact_line_with_a_character_outside_ascii_as_utf8(

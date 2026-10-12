@@ -7,9 +7,11 @@ from mightymodels_plugin.commands.tests.hook_inputs import (
     SKIPPED,
     UNREADABLE_INPUTS,
     Hook,
+    dispatch,
     hook_input,
     implementer_stop,
 )
+from mightymodels_plugin.core.data_directory import PLUGIN_DATA_VARIABLE
 from mightymodels_plugin.core.slug import Slug
 from mightymodels_plugin.core.tests.support import GitRunner
 from mightymodels_plugin.core.workspace import Workspace
@@ -180,6 +182,81 @@ class TestCompletionGateOnTheIntern(TestTheStateOfATicket):
 
         assert json.loads(held)['decision'] == 'block'
         assert hook_command.run('completion-gate', implementer_stop(self.INTERN)) == (0, '', '')
+
+
+@pytest.mark.usefixtures('on_the_branch')
+class TestDispatchOfTheIntern(TestTheStateOfATicket):
+    INTERN = 'mightymodels:workers:intern'
+    ENGINEER = 'mightymodels:workers:engineer'
+    NO_TASK_STARTED = 'no task is started for the intern on the ticket whose branch is checked out'
+    NOTHING_FOR_THE_INTERN = ('on_the_branch', 'engineer_on_t1')
+    WHATEVER_IS_STARTED = (*NOTHING_FOR_THE_INTERN, 'intern_on_one_file', 'intern_on_two_files')
+
+    @pytest.fixture
+    def intern_on_one_file(self, on_the_branch: Slug, task_service: TaskService) -> None:
+        task_service.start(
+            on_the_branch, 'T1', TaskStart(by=Implementer.INTERN, owned=('src/queue.py',))
+        )
+
+    @pytest.fixture
+    def intern_on_two_files(self, on_the_branch: Slug, task_service: TaskService) -> None:
+        task_service.start(
+            on_the_branch,
+            'T1',
+            TaskStart(by=Implementer.INTERN, owned=('src/queue.py', 'src/drain.py')),
+        )
+
+    def refusal(self, hook_command: Hook) -> str:
+        code, out, err = hook_command.run('dispatch-hook', dispatch(self.INTERN))
+        decision = json.loads(out)['hookSpecificOutput']
+
+        assert (code, err) == (0, '')
+        assert decision['permissionDecision'] == 'deny'
+        assert decision['permissionDecisionReason'].startswith(f'{self.INTERN} was refused: ')
+        assert decision['permissionDecisionReason'].endswith(f'dispatch {self.ENGINEER} instead.')
+        return decision['permissionDecisionReason']
+
+    @pytest.mark.parametrize('started', NOTHING_FOR_THE_INTERN)
+    def test_with_no_task_started_for_it_it_is_refused(
+        self, started: str, request: pytest.FixtureRequest, hook_command: Hook
+    ) -> None:
+        request.getfixturevalue(started)
+
+        assert self.NO_TASK_STARTED in self.refusal(hook_command)
+
+    @pytest.mark.usefixtures('intern_on_one_file')
+    def test_off_the_ticket_branch_it_is_refused(self, hook_command: Hook, git: GitRunner) -> None:
+        git(hook_command.repository, 'symbolic-ref', 'HEAD', 'refs/heads/elsewhere')
+
+        assert self.NO_TASK_STARTED in self.refusal(hook_command)
+
+    @pytest.mark.usefixtures('intern_on_two_files')
+    def test_on_a_task_owning_two_files_it_is_refused_naming_the_task(
+        self, hook_command: Hook
+    ) -> None:
+        assert 'T1 owns 2 files' in self.refusal(hook_command)
+
+    @pytest.mark.usefixtures('intern_on_one_file')
+    def test_on_a_task_owning_exactly_one_file_it_is_allowed(self, hook_command: Hook) -> None:
+        assert hook_command.run('dispatch-hook', dispatch(self.INTERN)) == (0, '', '')
+
+    @pytest.mark.usefixtures('intern_on_one_file')
+    def test_when_the_state_cannot_be_read_it_is_refused_saying_so(
+        self, hook_command: Hook
+    ) -> None:
+        hook_command.monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
+
+        reason = self.refusal(hook_command)
+
+        assert f'the started task could not be read ({PLUGIN_DATA_VARIABLE} is not set' in reason
+
+    @pytest.mark.parametrize('started', WHATEVER_IS_STARTED)
+    def test_an_engineer_dispatch_is_allowed_whatever_is_started(
+        self, started: str, request: pytest.FixtureRequest, hook_command: Hook
+    ) -> None:
+        request.getfixturevalue(started)
+
+        assert hook_command.run('dispatch-hook', dispatch(self.ENGINEER)) == (0, '', '')
 
 
 def snapshot_files(repository: Path) -> list[str]:

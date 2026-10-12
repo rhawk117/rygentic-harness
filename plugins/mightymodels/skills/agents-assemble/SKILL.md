@@ -43,7 +43,7 @@ Call `mcp__plugin_mightymodels_state__task` with action `start` (`T1` stands for
 
 The owned set recorded here is what step 5 checks the commit against, so it is the stanza's `files-in-scope`, not a guess. Then dispatch `mightymodels:workers:engineer` through the `Agent` tool, its `model` the engineer's fixed alias, `sonnet`, which `subagent-models` repeats. The dispatch names the brief path; the engineer appends `## DONE` before reporting and commits, and never pushes: only the primary pushes.
 
-A task given to the intern is opened the same way with `by` `intern` and dispatched as `mightymodels:workers:intern` on `haiku`, with prompting-subagents' intern template. The intern gets one attempt at a task: `task` `start` refuses a second one by it.
+A task's size in the plan picks the worker: a `tiny` task (it owns exactly one file and every acceptance criterion is a command with an expected result) goes to the intern, and every other size to the engineer, which may also take a tiny one. A task given to the intern is opened the same way with `by` `intern` and its one owned file, and dispatched as `mightymodels:workers:intern` on `haiku`, with prompting-subagents' intern template. The dispatch hook refuses that dispatch unless the intern has a started task and every task started for it owns exactly one file; its refusal names the engineer. The intern gets one attempt at a task: `task` `start` refuses a second one by it.
 
 **4. Mechanical checks before judgment.** On `done`, run the task's contract commands at the new HEAD:
 

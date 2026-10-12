@@ -9,13 +9,21 @@ no worker has no row, and unreadable input that names such an `agent_type` is de
 type is `mightymodels:<folder>:<name>`, the folder being the one its agent file is in, so a type
 without the folder or with another folder is no worker. Every other caller (a built-in subagent,
 another plugin's agent, a main thread started with `--agent`) and input without `agent_type` get no
-decision, as if the plugin were not installed.
+decision from the rows, as if the plugin were not installed.
+
+One rule holds whoever the caller is, the main conversation included. The intern takes only a tiny
+task, so a dispatch of `mightymodels:workers:intern` that the rows let through is denied unless the
+intern has a task in progress on the ticket whose branch is checked out and every such task owns
+exactly one file. The denial says why and names the engineer, which takes a task of any size. When
+the started tasks cannot be read the dispatch is denied with the reason they could not. No other
+dispatch asks for the started tasks, so no other dispatch opens the state.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from types import MappingProxyType
-from typing import BinaryIO, TextIO
+from typing import BinaryIO, Protocol, TextIO, runtime_checkable
 
 from mightymodels_plugin.core.codec import UnreadableJsonError, decode_text, encode_compact
 from mightymodels_plugin.core.routing import FOLDERS, Worker
@@ -27,6 +35,9 @@ UNREADABLE = 'a dispatch was refused: the hook input is not the expected JSON'
 HOOK_EVENT = 'PreToolUse'
 DENY = 'deny'
 NO_TARGETS = frozenset[Worker]()
+TINY_OWNED_FILES = 1
+NO_STARTED_TASK = 'no task is started for the intern on the ticket whose branch is checked out'
+STARTED_UNREADABLE = 'the started task could not be read ({error})'
 
 DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
     {
@@ -42,6 +53,20 @@ DISPATCH_RULES: Mapping[Worker, frozenset[Worker]] = MappingProxyType(
         Worker.UNCLE_BOB: frozenset({Worker.CODE_SCOUT, Worker.QUALITYLENS}),
     }
 )
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class StartedTask:
+    id: str
+    owned: tuple[str, ...]
+
+
+type StartedOrUnreadable = Sequence[StartedTask] | Exception
+
+
+@runtime_checkable
+class StartedTasks(Protocol):
+    def started_by(self, worker: Worker) -> StartedOrUnreadable: ...
 
 
 def agent_type(worker: Worker) -> str:
@@ -86,18 +111,45 @@ def denial_for_worker(caller: str, target: object) -> str | None:
     return f'{caller} may not dispatch {target}; it may dispatch: {allowed_names(allowed)}'
 
 
-def dispatch_denial(text: str) -> str | None:
-    fields = decoded_object(text)
-    if fields is None:
-        return UNREADABLE if PLUGIN_CALLER.search(text) else None
+def row_denial(fields: Mapping[str, object]) -> str | None:
     caller = fields.get(AGENT_TYPE_KEY)
     if not isinstance(caller, str) or not caller.startswith(PLUGIN_PREFIX):
         return None
     return denial_for_worker(caller, target_of(fields))
 
 
-def check_dispatch(stdin: TextIO, output: BinaryIO) -> int:
-    reason = dispatch_denial(stdin.read())
+def intern_refusal(why: str) -> str:
+    return (
+        f'{agent_type(Worker.INTERN)} was refused: {why}. The intern takes only a tiny task, '
+        f'one that owns exactly one file; dispatch {agent_type(Worker.ENGINEER)} instead.'
+    )
+
+
+def intern_denial(started: StartedOrUnreadable) -> str | None:
+    if isinstance(started, Exception):
+        return intern_refusal(STARTED_UNREADABLE.format(error=started))
+    if len(started) == 0:
+        return intern_refusal(NO_STARTED_TASK)
+    not_tiny = [
+        f'{task.id} owns {len(task.owned)} files'
+        for task in started
+        if len(task.owned) != TINY_OWNED_FILES
+    ]
+    return intern_refusal('; '.join(not_tiny)) if not_tiny else None
+
+
+def dispatch_denial(text: str, started: StartedTasks) -> str | None:
+    fields = decoded_object(text)
+    if fields is None:
+        return UNREADABLE if PLUGIN_CALLER.search(text) else None
+    denial = row_denial(fields)
+    if denial is not None or target_of(fields) != agent_type(Worker.INTERN):
+        return denial
+    return intern_denial(started.started_by(Worker.INTERN))
+
+
+def check_dispatch(stdin: TextIO, output: BinaryIO, started: StartedTasks) -> int:
+    reason = dispatch_denial(stdin.read(), started)
     if reason is None:
         return 0
     decision = {

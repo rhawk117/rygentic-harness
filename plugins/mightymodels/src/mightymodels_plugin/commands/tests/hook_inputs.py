@@ -52,6 +52,12 @@ def implementer_stop(agent_type: str = 'mightymodels:workers:engineer', **given:
     return hook_input('SubagentStop', agent_type, **(stop | given))
 
 
+def dispatch(target: str, agent_type: str | None = None) -> str:
+    return hook_input(
+        'PreToolUse', agent_type, tool_name='Agent', tool_input={'subagent_type': target}
+    )
+
+
 @dataclass(slots=True, kw_only=True, frozen=True)
 class Hook:
     repository: Path

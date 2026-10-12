@@ -4,6 +4,7 @@ directory the session started in.
 A hook command never refuses. When it cannot work it says why on standard error and exits 0
 (`rejection.skipped`), because exit code 2 keeps a subagent from stopping or a compaction from
 running. This module loads no database or server package: the command line imports it.
+`HookContext.started_by` loads them when it is called, and only the dispatch of an intern calls it.
 """
 
 from collections.abc import Mapping
@@ -11,7 +12,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 
-from mightymodels_plugin.commands.dispatch_hook import PLUGIN_PREFIX, decoded_object, worker_named
+from mightymodels_plugin.commands.dispatch_hook import (
+    PLUGIN_PREFIX,
+    StartedOrUnreadable,
+    decoded_object,
+    worker_named,
+)
 from mightymodels_plugin.core.data_directory import (
     PLUGIN_DATA_VARIABLE,
     DataDirectory,
@@ -44,6 +50,11 @@ class HookContext:
 
     def data_directory(self) -> DataDirectory:
         return data_directory_from(self.environ, PLUGIN_DATA_VARIABLE)
+
+    def started_by(self, worker: Worker) -> StartedOrUnreadable:
+        from mightymodels_plugin.commands.started_tasks import started_for_hook  # noqa: PLC0415 - importing commands.started_tasks (SQLAlchemy and Pydantic) took 0.47 s on top of cli, the lowest of 3 runs measured with -X importtime, and every dispatch of another type must not pay it
+
+        return started_for_hook(self, worker)
 
 
 def plugin_worker(fields: Mapping[str, object]) -> Worker | None:

@@ -11,8 +11,10 @@ cd "${repository_root}" || exit 1
 # shellcheck source=scripts/log.sh
 source scripts/log.sh
 
-# An agent type listed here is expected to be REFUSED instead of ANSWERED.
-declare -A DISPATCH_OUTCOME=()
+# An agent type listed here is expected to be REFUSED instead of ANSWERED. The dispatch hook
+# refuses the intern unless a task owning exactly one file is started for it, and a nested
+# session starts none.
+declare -A DISPATCH_OUTCOME=(["${PLUGIN_NAME}:workers:intern"]=REFUSED)
 
 REQUIRE_STATE=false
 FAILURES=()

@@ -51,8 +51,9 @@ none was given, and the ticket is the session's active one.
 
 **1. Read ticket.yml and the issue.** These are the only things you read without a scout. The
 plan implements the ticket; a plan written from conversation memory instead of the ticket is
-the drift this system exists to kill. `scope` sets the engineer tier; `plan-first` tells you
-whether the reader will be a post-compaction primary (assume yes either way).
+the drift this system exists to kill. `scope` sizes the ticket and sets no worker's model,
+which routing fixes; `plan-first` tells you whether the reader will be a post-compaction primary
+(assume yes either way).
 
 **2. Verify the claims.** Models from ticket.yml. Each major claim the issue makes about the
 codebase gets one code-scout confirmation at HEAD; a claim that rests on external
@@ -152,7 +153,7 @@ approach: <the strategy, and why it beats the alternative considered>
 - I1: <what must stay true across every task> | proves: <contract id I1: the command, and its outcome at HEAD>
 
 ## Tasks
-### T1 (<sm|med|large>): <one-line intent: what and where, no how>
+### T1 (<tiny|sm|med|large>): <one-line intent: what and where, no how>
 depends-on: []
 acceptance:
 - AC-1: <contract id T1.AC-1 with its command and planning outcome, or an assertion naming a file or behavior>
@@ -180,7 +181,12 @@ What each section is for, since the reader will not have this file:
   post-compaction primary reads them before every dispatch. Three to five is typical. An
   invariant without a proving command is a wish.
 - **Tasks** are in dependency order, and `depends-on` makes the order checkable rather than
-  implied. Sizes drive engineer-tier bumps later; a ticket has one scope, its tasks do not.
+  implied. A task's size picks its worker: `tiny` goes to the intern and every other size to
+  the engineer, which may also take a tiny task. `tiny` is a bound that can be checked, not a
+  feeling: the task owns exactly one file and every acceptance criterion is a command with an
+  expected result. A task that misses either half is `sm` or larger, and the dispatch hook
+  refuses the intern on a started task that owns any other number of files. A ticket has one
+  scope, its tasks do not.
 - **acceptance** is lifted into the task's ASKED stanza at dispatch, so the same rule applies
   now: every criterion is a command someone runs or an assertion someone checks at a named
   location. "Works correctly", "handles errors appropriately", and "is consistent with the
