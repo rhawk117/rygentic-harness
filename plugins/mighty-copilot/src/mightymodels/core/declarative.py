@@ -1,0 +1,107 @@
+"""What every table of the state database is declared from.
+
+A domain declares its rows in its own `tables.py` from this base and these column types, and
+`tools/row_types.py` names every row type `database.py` creates a table for.
+
+Every row type has a `repository_key` column, because one database holds the rows of every
+repository. It leads the primary key of a table keyed by names, so the same slug, task id, run id
+or investigation id is a different row in another repository. A table keyed by a serial number
+carries it as a plain column that leads an index, and the number orders the rows of one
+repository.
+
+A column is declared by its type alone: an alias below, or one a domain's `tables.py` adds for a
+column only it has. A `KeyPart` is a column of its table's primary key.
+
+Every string column is declared from such a type, and each type has a length. SQLite does not hold
+a value to its declared length, so a length is true only where the value's own type is: a
+repository key, a slug, a task id and a run id are refused over theirs before they reach a row, a
+`Word` is a member of an enum, a `Sha` is a git object name or a SHA-256 digest, and a `Timestamp`
+is written by the clock. A `Name`, a `Prose` and a `ReportProse` hold text a caller wrote, and
+the request model that takes the text refuses it over the column's length before a row is
+written: `tools/request.py` has the types. One text reaches such a column another way and is
+not held to it: a ticket's lines, which `validate` reads from a `ticket.yml` the user may have
+edited by hand. Text that redaction has lengthened past its column is refused, since the marker that
+replaces a secret can be longer than the secret.
+
+`ReportProse` is the column of a scout report and of a similarity row's text, with a limit of
+its own, `REPORT_LIMIT`, which the spool's file cap (`SPOOL_FILE_BYTES` in
+`tools/similarity/spool.py`) is sized from, so that a long report is stored whole.
+
+A column the plugin has a default for carries it as a server default, so a row written without the
+column reads as one the plugin wrote. A `Timestamp` left out is the time of the write, in the
+clock's own form, and a `TextsIfAny` left out is an empty list.
+
+`child_of` is the foreign key of a row that cannot exist without another: it names the parent by
+the parent's whole primary key, under the same column names. It is checked when the transaction
+commits, so a parent and its child are written in one transaction in either order.
+
+Every key and index is stored under a name, which `NAMING_CONVENTION` gives it: a primary key is
+named from its table, a unique constraint and an index from the table and the first column, a
+foreign key from the table, the first column and the parent's table, and a check from the table
+and the name it was declared with. An index a `tables.py` declares over several columns keeps the
+name written there.
+"""
+
+from types import MappingProxyType
+from typing import Annotated
+
+import sqlalchemy as sql
+from sqlalchemy.orm import DeclarativeBase, mapped_column
+
+from mightymodels.core.repository_key import REPOSITORY_KEY_LIMIT
+from mightymodels.core.slug import SLUG_LIMIT
+
+TASK_ID_LIMIT = 7
+WORD_LIMIT = 32
+TIMESTAMP_LIMIT = 25
+SHA_LIMIT = 64
+NAME_LIMIT = 255
+PROSE_LIMIT = 4000
+REPORT_LIMIT = 60_000
+TIME_OF_THE_WRITE = sql.text("(strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'))")
+EMPTY_LIST = '[]'
+NAMING_CONVENTION = MappingProxyType(
+    {
+        'ix': 'ix_%(column_0_label)s',
+        'uq': 'uq_%(table_name)s_%(column_0_name)s',
+        'ck': 'ck_%(table_name)s_%(constraint_name)s',
+        'fk': 'fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s',
+        'pk': 'pk_%(table_name)s',
+    }
+)
+
+type Models = dict[str, str | None]
+type Weights = dict[str, float]
+type Texts = list[str]
+type TextsIfAny = Annotated[list[str], mapped_column(sql.JSON, server_default=EMPTY_LIST)]
+type Serial = Annotated[int, mapped_column(primary_key=True)]
+type RepositoryKeyPart = Annotated[
+    str, mapped_column(sql.String(REPOSITORY_KEY_LIMIT), primary_key=True)
+]
+type RepositoryName = Annotated[str, mapped_column(sql.String(REPOSITORY_KEY_LIMIT))]
+type SlugKeyPart = Annotated[str, mapped_column(sql.String(SLUG_LIMIT), primary_key=True)]
+type SlugName = Annotated[str, mapped_column(sql.String(SLUG_LIMIT))]
+type TaskName = Annotated[str, mapped_column(sql.String(TASK_ID_LIMIT))]
+type Word = Annotated[str, mapped_column(sql.String(WORD_LIMIT))]
+type Sha = Annotated[str, mapped_column(sql.String(SHA_LIMIT))]
+type Name = Annotated[str, mapped_column(sql.String(NAME_LIMIT))]
+type Prose = Annotated[str, mapped_column(sql.String(PROSE_LIMIT))]
+type ReportProse = Annotated[str, mapped_column(sql.String(REPORT_LIMIT))]
+type Timestamp = Annotated[
+    str, mapped_column(sql.String(TIMESTAMP_LIMIT), server_default=TIME_OF_THE_WRITE)
+]
+
+
+class Base(DeclarativeBase):
+    metadata = sql.MetaData(naming_convention=NAMING_CONVENTION)
+    type_annotation_map = MappingProxyType({Models: sql.JSON, Texts: sql.JSON, Weights: sql.JSON})
+
+
+def child_of(parent: type[Base]) -> sql.ForeignKeyConstraint:
+    parent_key = list(parent.__table__.primary_key)
+    return sql.ForeignKeyConstraint(
+        [column.name for column in parent_key],
+        parent_key,
+        deferrable=True,
+        initially='DEFERRED',
+    )

@@ -126,7 +126,7 @@ parametrize-values-row-type = "tuple"
 
 [lint.flake8-type-checking]
 strict = true
-runtime-evaluated-base-classes = ["mightymodels_plugin.tools.request.RequestModel"]
+runtime-evaluated-base-classes = ["mightymodels_plugin.tools.request.RequestModel", "mightymodels.tools.request.RequestModel"]
 
 [lint.flake8-unused-arguments]
 ignore-variadic-names = false
