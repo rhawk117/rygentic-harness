@@ -2,6 +2,7 @@
 
 import ast
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -11,9 +12,12 @@ from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from python_harness.gate.domain import DEFAULT_RUFF_VERSION
 
-SCRIPT = Path(__file__).resolve().parents[2] / 'skills' / 'automate-task' / 'scripts'
+PLUGIN = Path(__file__).resolve().parents[2]
+SCRIPT = PLUGIN / 'skills' / 'automate-task' / 'scripts'
 TEMPLATE = SCRIPT.parent / 'assets' / 'script.template.py'
+LSP_CONFIG = PLUGIN / '.lsp.json'
 
 
 def load_script(path: Path, name: str) -> ModuleType:
@@ -52,6 +56,8 @@ ASYNC_MAIN = (
     '    raise SystemExit(main())\n'
 )
 STATUS = check_script.Status
+RUFF_VERSION = check_script.PINNED_TOOL_VERSIONS['ruff']
+TY_VERSION = check_script.PINNED_TOOL_VERSIONS['ty']
 
 
 def make_source(text: str) -> Any:
@@ -68,7 +74,7 @@ class TestStructuralChecks:
 
         statuses = {check(source).status for check in check_script.STRUCTURAL_CHECKS}
 
-        assert statuses == {STATUS.OK, STATUS.SKIP}
+        assert statuses == {STATUS.PASS, STATUS.SKIP}
 
     @pytest.mark.parametrize(
         ('check', 'text'),
@@ -112,7 +118,7 @@ class TestStructuralChecks:
     def test_each_check_passes_a_conforming_fragment(self, check: str, text: str) -> None:
         finding = getattr(check_script, check)(make_source(text))
 
-        assert finding.status is STATUS.OK
+        assert finding.status is STATUS.PASS
 
     def test_a_sequential_script_skips_the_workers_check(self) -> None:
         finding = check_script.check_workers_flag(make_source('import os\n'))
@@ -124,7 +130,7 @@ class TestStructuralChecks:
 
         statuses = {check(source).status for check in check_script.STRUCTURAL_CHECKS}
 
-        assert statuses <= {STATUS.OK, STATUS.SKIP}
+        assert statuses <= {STATUS.PASS, STATUS.SKIP}
 
     def test_violation_details_name_the_offending_lines(self) -> None:
         text = 'import subprocess\nsubprocess.run(["x"], shell=True)\n'
@@ -161,7 +167,7 @@ class TestImportResolution:
     def test_an_aliased_subprocess_call_with_a_timeout_passes(self) -> None:
         text = 'from subprocess import run\nrun(["x"], timeout=3)\n'
 
-        assert check_script.check_subprocess_timeouts(make_source(text)).status is STATUS.OK
+        assert check_script.check_subprocess_timeouts(make_source(text)).status is STATUS.PASS
 
     @pytest.mark.parametrize(
         'text',
@@ -171,7 +177,7 @@ class TestImportResolution:
         ],
     )
     def test_an_aliased_get_logger_satisfies_the_logging_check(self, text: str) -> None:
-        assert check_script.check_logging(make_source(text)).status is STATUS.OK
+        assert check_script.check_logging(make_source(text)).status is STATUS.PASS
 
     @pytest.mark.parametrize(
         'text',
@@ -189,12 +195,24 @@ class TestResolveTool:
 
         assert check_script.resolve_tool('ruff') == ['ruff']
 
-    def test_uvx_is_the_fallback(self, mocker: MockerFixture) -> None:
+    @pytest.mark.parametrize(('tool', 'version'), [('ruff', RUFF_VERSION), ('ty', TY_VERSION)])
+    def test_uvx_is_the_fallback_at_the_pinned_version(
+        self, mocker: MockerFixture, tool: str, version: str
+    ) -> None:
         mocker.patch.object(
             check_script.shutil, 'which', side_effect=lambda name: name if name == 'uvx' else None
         )
 
-        assert check_script.resolve_tool('ruff') == ['uvx', 'ruff']
+        assert check_script.resolve_tool(tool) == ['uvx', f'{tool}@{version}']
+
+    def test_the_ty_pin_is_the_version_the_language_server_runs(self) -> None:
+        servers = json.loads(LSP_CONFIG.read_text(encoding='utf-8'))
+        (pinned,) = [arg for arg in servers['ty']['args'] if arg.startswith('ty@')]
+
+        assert check_script.PINNED_TOOL_VERSIONS['ty'] == pinned.removeprefix('ty@')
+
+    def test_the_ruff_pin_is_the_gate_default_version(self) -> None:
+        assert check_script.PINNED_TOOL_VERSIONS['ruff'] == DEFAULT_RUFF_VERSION.text
 
     def test_neither_available_gives_none(self, mocker: MockerFixture) -> None:
         mocker.patch.object(check_script.shutil, 'which', return_value=None)
@@ -225,7 +243,7 @@ class TestRunTool:
 
         finding = check_script.run_tool('ruff', ['check', 'a.py'], check_script.CheckOptions())
 
-        assert (finding.status, finding.detail) == (STATUS.OK, 'clean')
+        assert (finding.status, finding.detail) == (STATUS.PASS, 'clean')
 
     def test_the_command_and_timeout_come_from_the_arguments(self, runner: MagicMock) -> None:
         runner.run.return_value = completed(0)
@@ -261,6 +279,13 @@ class TestRunTool:
 
         assert (finding.status, finding.detail) == (STATUS.SKIP, 'file excluded by project config')
 
+    def test_the_output_of_a_run_is_summarised_on_its_own(self) -> None:
+        finding = check_script.summarize_tool_run('ruff', completed(1, stdout='bad\n'))
+
+        assert (finding.check, finding.status, finding.detail) == ('ruff', STATUS.FAIL, 'bad')
+
+
+class TestToolCannotRun:
     def test_a_timeout_is_a_finding_that_names_the_seconds(self, mocker: MockerFixture) -> None:
         mocker.patch.object(check_script, 'resolve_tool', return_value=['ruff'])
         mocker.patch.object(
@@ -270,9 +295,11 @@ class TestRunTool:
 
         finding = check_script.run_tool('ruff', ['check'], options)
 
-        assert (finding.status, finding.detail) == (STATUS.FAIL, 'timed out after 7.5s')
+        assert (finding.status, finding.detail) == (STATUS.ERROR, 'timed out after 7.5s')
 
-    def test_a_type_checker_timeout_is_only_a_warning(self, mocker: MockerFixture) -> None:
+    def test_a_type_checker_timeout_is_a_tool_error_not_an_advisory(
+        self, mocker: MockerFixture
+    ) -> None:
         mocker.patch.object(check_script, 'resolve_tool', return_value=['ty'])
         mocker.patch.object(
             check_script.subprocess, 'run', side_effect=subprocess.TimeoutExpired('ty', 120.0)
@@ -280,13 +307,45 @@ class TestRunTool:
 
         finding = check_script.run_type_check(Path('a.py'), check_script.CheckOptions())
 
-        assert finding.status is STATUS.WARN
-        assert finding.detail.endswith('timed out after 120s')
+        assert (finding.status, finding.detail) == (STATUS.ERROR, 'timed out after 120s')
 
-    def test_the_output_of_a_run_is_summarised_on_its_own(self) -> None:
-        finding = check_script.summarize_tool_run('ruff', completed(1, stdout='bad\n'))
+    @pytest.mark.parametrize('tool', ['ruff', 'ty'])
+    def test_a_tool_uvx_cannot_fetch_is_a_tool_error_and_never_runs(
+        self, mocker: MockerFixture, tool: str
+    ) -> None:
+        mocker.patch.object(check_script, 'resolve_tool', return_value=['uvx', f'{tool}@9.9.9'])
+        runner = mocker.patch.object(check_script, 'subprocess')
+        runner.run.return_value = completed(1, stderr='No solution found when resolving')
 
-        assert (finding.check, finding.status, finding.detail) == ('ruff', STATUS.FAIL, 'bad')
+        finding = check_script.run_tool(tool, ['check'], check_script.CheckOptions())
+
+        assert finding.status is STATUS.ERROR
+        assert finding.detail == (
+            f'uvx could not fetch {tool}@9.9.9: No solution found when resolving'
+        )
+        runner.run.assert_called_once()
+        assert runner.run.call_args.args == (['uvx', f'{tool}@9.9.9', '--version'],)
+
+    def test_a_fetched_tool_through_uvx_runs_after_the_probe(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(check_script, 'resolve_tool', return_value=['uvx', 'ruff@1.0.0'])
+        runner = mocker.patch.object(check_script, 'subprocess')
+        runner.run.side_effect = [completed(0, stdout='ruff 1.0.0'), completed(1, stdout='bad')]
+
+        finding = check_script.run_tool('ruff', ['check', 'a.py'], check_script.CheckOptions())
+
+        assert (finding.status, finding.detail) == (STATUS.FAIL, 'bad')
+        assert runner.run.call_args.args == (['uvx', 'ruff@1.0.0', 'check', 'a.py'],)
+
+    def test_a_timeout_while_fetching_is_a_tool_error(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(check_script, 'resolve_tool', return_value=['uvx', 'ty@1.0.0'])
+        mocker.patch.object(
+            check_script.subprocess, 'run', side_effect=subprocess.TimeoutExpired('uvx', 5.0)
+        )
+        options = check_script.CheckOptions(tool_timeout_seconds=5.0)
+
+        finding = check_script.run_tool('ty', ['check'], options)
+
+        assert (finding.status, finding.detail) == (STATUS.ERROR, 'timed out after 5s')
 
 
 class TestToolFindings:
@@ -299,7 +358,7 @@ class TestToolFindings:
         assert finding.status is STATUS.WARN
         assert finding.detail.endswith(': bad')
 
-    @pytest.mark.parametrize('status', [STATUS.OK, STATUS.SKIP])
+    @pytest.mark.parametrize('status', [STATUS.PASS, STATUS.SKIP])
     def test_other_type_check_results_pass_through(
         self, mocker: MockerFixture, status: object
     ) -> None:
@@ -312,7 +371,7 @@ class TestToolFindings:
         runner = mocker.patch.object(
             check_script,
             'run_tool',
-            return_value=check_script.Finding(check='ty', status=STATUS.OK, detail='clean'),
+            return_value=check_script.Finding(check='ty', status=STATUS.PASS, detail='clean'),
         )
 
         check_script.run_type_check(Path('a.py'), check_script.CheckOptions())
@@ -326,7 +385,7 @@ class TestToolFindings:
         runner = mocker.patch.object(
             check_script,
             'run_tool',
-            return_value=check_script.Finding(check='ruff', status=STATUS.OK, detail='clean'),
+            return_value=check_script.Finding(check='ruff', status=STATUS.PASS, detail='clean'),
         )
 
         list(check_script.iter_tool_findings(Path('a.py'), check_script.CheckOptions()))
@@ -338,7 +397,7 @@ class TestToolFindings:
             check_script,
             'run_tool',
             side_effect=lambda name, *_: check_script.Finding(
-                check=name, status=STATUS.OK, detail='clean'
+                check=name, status=STATUS.PASS, detail='clean'
             ),
         )
 
@@ -438,11 +497,34 @@ class TestMain:
         code = check_script.main([str(path)])
 
         output = capsys.readouterr().out.splitlines()
-        assert code == check_script.ExitCode.FAILED
+        assert code == check_script.ExitCode.TOOL_ERROR == 3
         assert 'PASS pep723: inline metadata with requires-python' in output
-        assert 'FAIL ruff: timed out after 120s' in output
-        assert output[-2].startswith('WARN ty: ')
-        assert output[-1] == 'FAILED: ruff'
+        assert output[-3:] == [
+            'ERROR ruff: timed out after 120s',
+            'ERROR ty: timed out after 120s',
+            'TOOL ERROR: ruff, ty',
+        ]
+
+    def test_a_failed_check_outranks_a_tool_error(
+        self, tmp_path: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        path = tmp_path / 'bad.py'
+        path.write_text('print(1)\n', encoding='utf-8')
+        mocker.patch.object(
+            check_script,
+            'iter_tool_findings',
+            return_value=iter(
+                [check_script.Finding(check='ruff', status=STATUS.ERROR, detail='x')]
+            ),
+        )
+
+        code = check_script.main([str(path)])
+
+        assert code == check_script.ExitCode.FAILED
+        assert (
+            capsys.readouterr().out.splitlines()[-1]
+            == 'FAILED: pep723, cli, dry-run, logging, main'
+        )
 
     def test_tool_findings_are_reported_and_a_tool_failure_fails_the_run(
         self, tmp_path: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]

@@ -190,7 +190,12 @@ rate limit and `Retry-After`, timeouts, memory per worker, and the file-descript
    - `--workers` when the script is concurrent
    - no `shell=True`, and a timeout on every subprocess call
 
-   It then runs ruff, and ty as advisory. Exit code `0` means every required check passed.
+   It then runs ruff, and ty as advisory, from the installed tool or else through `uvx` at pinned
+   versions. Exit code `0` means every required check passed. Exit code `1` means a check failed:
+   fix the script and re-run. Exit code `3` means ruff or ty could not run (`ERROR` line: `uvx` could
+   not fetch it, or it timed out); that says nothing about the script, so re-run once, and if it
+   repeats, report the `ERROR` line to the user and do not call the script verified. Exit code
+   `2` means the script could not be read.
 2. Run `uv run ./scripts/<script_name>.py --help`.
 3. Run with `--dry-run` only when that touches nothing but local files or the fixtures in the
    working directory. Skip it when even a dry run would reach remote hosts, APIs, or cloud

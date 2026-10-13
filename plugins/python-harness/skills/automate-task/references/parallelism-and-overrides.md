@@ -52,4 +52,4 @@ Never nest two parallel layers (outer workers × xdist workers, or a process poo
 3. Vague wishes ("make it fast", "parallel please") are not overrides. The analysis picks the mechanism and the level comes from the form.
 4. If X cannot work at all (`InterpreterPoolExecutor` below 3.14, a client that is not thread-safe shared across threads, a lambda that must be pickled), ask with concrete options through `AskUserQuestion` rather than substituting.
 5. An explicit count above a hard cap is kept. Pass it as `--requested-workers` to `scripts/parallelism.py`, which keeps it and prints the warning, and repeat the warning in the brief.
-6. Every concurrent script exposes `--workers`, defaulting to the mapped value, plus `--mechanism` when more than one mechanism is viable, so the user can retune without regenerating.
+6. Every concurrent script exposes `--workers`, defaulting to the mapped value, so the user can retune without regenerating.

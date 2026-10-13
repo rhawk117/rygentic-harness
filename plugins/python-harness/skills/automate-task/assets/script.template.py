@@ -29,7 +29,6 @@ class Options:
     target: Path
     dry_run: bool = False
     workers: int = 1
-    verbose: bool = False
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -64,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
         '--dry-run', action='store_true', help='report actions without changing anything'
     )
     parser.add_argument(
-        '--workers', type=parse_positive_int, default=1, help='concurrency (default: mapped level)'
+        '--workers', type=parse_positive_int, default=1, help='concurrency (default: 1)'
     )
     parser.add_argument('-v', '--verbose', action='store_true')
     return parser
@@ -81,7 +80,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         target=arguments.target,
         dry_run=arguments.dry_run,
         workers=arguments.workers,
-        verbose=arguments.verbose,
     )
     outcome = run_automation(options)
     logger.info('done: %d succeeded, %d failed', outcome.succeeded, outcome.failed)

@@ -17,7 +17,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-from enum import IntEnum, StrEnum
+from enum import IntEnum, StrEnum, auto
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -32,19 +32,22 @@ SUBPROCESS_CALLS = frozenset(
     {'subprocess.run', 'subprocess.check_output', 'subprocess.check_call', 'subprocess.call'}
 )
 LOAD_ERRORS = (OSError, SyntaxError, UnicodeDecodeError)
+PINNED_TOOL_VERSIONS = {'ruff': '0.16.9', 'ty': '0.0.84'}
 
 
 class ExitCode(IntEnum):
     OK = 0
     FAILED = 1
     UNREADABLE = 2
+    TOOL_ERROR = 3
 
 
 class Status(StrEnum):
-    OK = 'PASS'
-    FAIL = 'FAIL'
-    WARN = 'WARN'
-    SKIP = 'SKIP'
+    PASS = auto()
+    FAIL = auto()
+    ERROR = auto()
+    WARN = auto()
+    SKIP = auto()
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -55,7 +58,7 @@ class Finding:
 
     @property
     def line(self) -> str:
-        return f'{self.status} {self.check}: {self.detail}'
+        return f'{self.status.upper()} {self.check}: {self.detail}'
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -152,7 +155,7 @@ def iter_resolved_calls(source: ScriptSource) -> Iterator[tuple[ast.Call, str]]:
 def judge(check: str, *, ok: bool, ok_detail: str, fail_detail: str) -> Finding:
     return Finding(
         check=check,
-        status=Status.OK if ok else Status.FAIL,
+        status=Status.PASS if ok else Status.FAIL,
         detail=ok_detail if ok else fail_detail,
     )
 
@@ -274,32 +277,52 @@ def resolve_tool(tool: str) -> list[str] | None:
     if shutil.which(tool):
         return [tool]
     if shutil.which('uvx'):
-        return ['uvx', tool]
+        return ['uvx', f'{tool}@{PINNED_TOOL_VERSIONS[tool]}']
     return None
 
 
-def summarize_tool_run(name: str, completed: subprocess.CompletedProcess[str]) -> Finding:
+def output_tail(completed: subprocess.CompletedProcess[str]) -> str:
     output = (completed.stdout + completed.stderr).strip().splitlines()
-    tail = ' | '.join(output[-5:]) or 'clean'
+    return ' | '.join(output[-5:]) or 'clean'
+
+
+def summarize_tool_run(name: str, completed: subprocess.CompletedProcess[str]) -> Finding:
+    tail = output_tail(completed)
     if 'No Python files found' in tail:
         return Finding(check=name, status=Status.SKIP, detail='file excluded by project config')
     return judge(name, ok=completed.returncode == 0, ok_detail=tail, fail_detail=tail)
+
+
+def run_process(command: Sequence[str], options: CheckOptions) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(  # noqa: S603  tool and flags fixed, path resolved, no shell
+        command,
+        capture_output=True,
+        text=True,
+        timeout=options.tool_timeout_seconds,
+        check=False,
+    )
+
+
+def fetch_failure(name: str, launcher: Sequence[str], options: CheckOptions) -> Finding | None:
+    if launcher[0] != 'uvx':
+        return None
+    probe = run_process([*launcher, '--version'], options)
+    if probe.returncode == 0:
+        return None
+    detail = f'uvx could not fetch {launcher[1]}: {output_tail(probe)}'
+    return Finding(check=name, status=Status.ERROR, detail=detail)
 
 
 def run_tool(name: str, arguments: Sequence[str], options: CheckOptions) -> Finding:
     if (launcher := resolve_tool(name)) is None:
         return Finding(check=name, status=Status.SKIP, detail=f'{name} and uvx not installed')
     try:
-        completed = subprocess.run(  # noqa: S603  tool and flags fixed, path resolved, no shell
-            [*launcher, *arguments],
-            capture_output=True,
-            text=True,
-            timeout=options.tool_timeout_seconds,
-            check=False,
-        )
+        if (unfetched := fetch_failure(name, launcher, options)) is not None:
+            return unfetched
+        completed = run_process([*launcher, *arguments], options)
     except subprocess.TimeoutExpired:
         detail = f'timed out after {options.tool_timeout_seconds:g}s'
-        return Finding(check=name, status=Status.FAIL, detail=detail)
+        return Finding(check=name, status=Status.ERROR, detail=detail)
     return summarize_tool_run(name, completed)
 
 
@@ -347,6 +370,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def judge_run(findings: Sequence[Finding]) -> tuple[str, ExitCode]:
+    failed = [finding.check for finding in findings if finding.status is Status.FAIL]
+    if failed:
+        return f'FAILED: {", ".join(failed)}', ExitCode.FAILED
+    errored = [finding.check for finding in findings if finding.status is Status.ERROR]
+    if errored:
+        return f'TOOL ERROR: {", ".join(errored)}', ExitCode.TOOL_ERROR
+    return 'ALL REQUIRED CHECKS PASSED', ExitCode.OK
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
@@ -359,12 +392,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     write_findings(structural)
     tools = list(iter_tool_findings(source.path, options))
     write_findings(tools)
-    findings = [*structural, *tools]
-    failed = [finding.check for finding in findings if finding.status is Status.FAIL]
-    sys.stdout.write(
-        f'{"FAILED: " + ", ".join(failed) if failed else "ALL REQUIRED CHECKS PASSED"}\n'
-    )
-    return ExitCode.FAILED if failed else ExitCode.OK
+    verdict, exit_code = judge_run([*structural, *tools])
+    sys.stdout.write(f'{verdict}\n')
+    return exit_code
 
 
 if __name__ == '__main__':
