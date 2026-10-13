@@ -18,9 +18,9 @@ class TestTopLevelParser:
 
 
 class TestCommandGroups:
-    GROUPS = ('skill', 'hook', 'subagent', 'instruction', 'mcp', 'plugin')
+    GROUPS = ('skill', 'hook', 'subagent', 'instruction', 'mcp', 'plugin', 'tune')
 
-    def test_help_lists_the_six_groups(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_help_lists_the_seven_groups(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit):
             build_parser().parse_args(['--help'])
 
@@ -28,7 +28,7 @@ class TestCommandGroups:
         for group in self.GROUPS:
             assert group in output
 
-    def test_parser_accepts_exactly_the_six_groups(self) -> None:
+    def test_parser_accepts_exactly_the_seven_groups(self) -> None:
         assert set(CommandGroups().dispatchers) == set(self.GROUPS)
 
     @pytest.mark.parametrize(

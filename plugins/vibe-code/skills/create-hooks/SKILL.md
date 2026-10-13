@@ -1,7 +1,9 @@
 ---
 name: create-hooks
-description: Interactive builder for Claude Code hooks. Use it to create, add or set up a hook, or to ask what hooks would suit a repository. It asks how the hook ships (project, project-local, personal, plugin), when it runs and what it is for (failure mode, context injection, tracking), takes one or several plain descriptions or infers candidates from the repository's CI, formatter and runner, routes to permissions, a skill, a subagent, instructions or a git hook when that mechanism fits better and says why, then writes one Python script per hook that fails gracefully, the hooks entry for settings or a plugin, and proves both with vibe-code hook validate and hook test.
-when_to_use: Use when the user says "block X before it runs", "run the formatter after every edit", "tell Claude how to fix Y when it fails", "log every command", "give Claude the git state at session start", describes a failure mode that repeats, asks what hooks would help here, or asks how PreToolUse, Stop, hooks.json or hook events work, even without the word "hook".
+description: >-
+  Interactive builder for Claude Code hooks. Use it to create, add or set up a hook, or to ask what hooks would suit a repository. It asks how the hook ships (project, project-local, personal, plugin), when it runs and what it is for (failure mode, context injection, tracking), takes one or several plain descriptions or infers candidates from the repository's CI, formatter and runner, routes to permissions, a skill, a subagent, instructions or a git hook when that mechanism fits better and says why, then writes one Python script per hook that fails gracefully, the hooks entry for settings or a plugin, and proves both with vibe-code hook validate and hook test.
+when_to_use: >-
+  Use when the user says "block X before it runs", "run the formatter after every edit", "tell Claude how to fix Y when it fails", "log every command", "give Claude the git state at session start", describes a failure mode that repeats, asks what hooks would help here, or asks how PreToolUse, Stop, hooks.json or hook events work, even without the word "hook".
 ---
 
 # Create a Claude Code hook

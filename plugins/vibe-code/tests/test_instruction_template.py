@@ -11,11 +11,15 @@ type TemplateFill = Callable[[str, Mapping[str, str], re.Pattern[str]], str]
 
 class TestCreateInstructionsTemplate:
     TEMPLATE = (
-        Path(__file__).resolve().parents[1]
-        / 'skills'
-        / 'create-instructions'
-        / 'assets'
-        / 'instructions.template.md'
+        Path(__file__)
+        .resolve()
+        .parents[1]
+        .joinpath(
+            'skills',
+            'create-rules',
+            'assets',
+            'instructions.template.md',
+        )
     )
     PLACEHOLDER = re.compile(r'\b[A-Z][A-Z0-9_]{2,}\b')
     FILLS = MappingProxyType(

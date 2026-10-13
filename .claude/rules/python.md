@@ -33,7 +33,7 @@ Apply the reason behind each rule, not its surface shape.
 
 - Three kinds of class:
   - Data: `@dataclass(slots=True, kw_only=True, frozen=True)` or `class Name(msgspec.Struct, frozen=True, kw_only=True)` public fields, a few properties.
-  - Policy: constants plus methods enforcing one invariant. A check returns the violation (an error or `None`); the call site raises.
+  - Policy: constants plus methods enforcing one invariant. A check returns the violation (an error or `None`); the call site raises. Policies are classes which accept the inputs they are testing.
   - Orchestration: a frozen dataclass holding injected dependencies (use cases, services, unit of work).
 - A method belongs on a class only if it reads that instance's fields; otherwise it is a module-level function. No `@staticmethod`. Prefer a module-level factory function over `@classmethod`.
 - No hand-written `__init__` except for exception classes (see Errors) and genuinely abstract concepts; for abstract concepts always use `__slots__` to have a fixed set of members.

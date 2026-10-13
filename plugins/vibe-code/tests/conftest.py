@@ -12,7 +12,7 @@ type FindingAssertion = Callable[[Sequence[Finding], str], None]
 type SectionWriter = Callable[[Sequence[str]], str]
 type TemplateFill = Callable[[str, Mapping[str, str], re.Pattern[str]], str]
 
-CONCEPTS = ('skill', 'hook', 'subagent', 'instruction', 'mcp', 'plugin')
+CONCEPTS = ('skill', 'hook', 'subagent', 'instruction', 'mcp', 'plugin', 'tune')
 
 
 def pytest_configure(config: pytest.Config) -> None:

@@ -31,6 +31,7 @@ def validate_command(arguments: argparse.Namespace, services: Services) -> int:
     if not skill_dir.is_dir():
         print(f'error: {skill_dir} is not a directory', file=sys.stderr)
         return 2
+
     try:
         builtin_findings = run_skill_builtin(skill_dir, services.run_builtin)
         builtin_errored = any(finding.level == 'error' for finding in builtin_findings)
@@ -38,18 +39,25 @@ def validate_command(arguments: argparse.Namespace, services: Services) -> int:
     except CannotCheckError as problem:
         print(f'error: {problem}', file=sys.stderr)
         return 2
+
     findings = [*builtin_findings, *own_findings]
-    return report(directory_name_of(skill_dir), findings, strict=arguments.strict)
+    return report(
+        directory_name_of(skill_dir),
+        findings,
+        strict=arguments.strict,
+    )
 
 
 def run_skill_builtin(skill_dir: Path, runner: BuiltinRunner) -> list[Finding]:
     with tempfile.TemporaryDirectory() as staging:
-        skills = Path(staging) / 'skills'
+        skills = Path(staging).joinpath('skills')
         try:
-            shutil.copytree(skill_dir, skills / directory_name_of(skill_dir), symlinks=True)
+            dest_tree = skills.joinpath(directory_name_of(skill_dir))
+            shutil.copytree(skill_dir, dest_tree, symlinks=True)
         except (shutil.Error, OSError) as problem:
             message = f'could not read {skill_dir} to hand it to claude: {problem}'
             raise CannotCheckError(message) from problem
+
         return runner(skills)
 
 
@@ -57,12 +65,14 @@ def check_skill(skill_dir: Path, *, builtin_errored: bool = False) -> list[Findi
     skill_md = skill_dir / 'SKILL.md'
     if not skill_md.is_file():
         return [error(f'{skill_md} not found')]
+
     try:
         text = skill_md.read_text(encoding='utf-8')
     except OSError:
         return []
     except UnicodeError:
         return [error(f'{skill_md} is not valid UTF-8')]
+
     skill = parse_skill_text(text)
     if skill.yaml_problem is not None and not builtin_errored:
         message = (
@@ -70,12 +80,17 @@ def check_skill(skill_dir: Path, *, builtin_errored: bool = False) -> list[Findi
             'the field checks could not run'
         )
         raise CannotCheckError(message)
+
     findings: list[Finding] = [error(skill.key_problem)] if skill.key_problem else []
+
     if skill.fields is not None:
         findings.extend(
             check_fields(
-                skill.fields, directory_name_of(skill_dir), builtin_errored=builtin_errored
+                skill.fields,
+                directory_name_of(skill_dir),
+                builtin_errored=builtin_errored,
             )
         )
+
     findings.extend(check_body(skill_dir, text, skill.body))
     return findings

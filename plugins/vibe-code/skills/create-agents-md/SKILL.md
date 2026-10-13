@@ -1,9 +1,9 @@
 ---
 name: create-agents-md
-license: Apache-2.0
+when_to_use: >-
+  Use when the user says "set up agent instructions", "write an AGENTS.md", "make a CLAUDE.md", "init this repo for Claude", or asks why Claude ignores their AGENTS.md, even if they name only one file.
 description: >-
   Generate an evidence-based AGENTS.md for the current repository by dispatching two explorer subagents (toolchain and verification, conventions and structure), and optionally a CLAUDE.md that imports it with @AGENTS.md. Use it to create, regenerate, audit or merge repository instruction files: AGENTS.md, CLAUDE.md, CLAUDE.local.md and cursor, windsurf or cline rules.
-when_to_use: Use when the user says "set up agent instructions", "write an AGENTS.md", "make a CLAUDE.md", "init this repo for Claude", or asks why Claude ignores their AGENTS.md, even if they name only one file.
 ---
 
 # Create an AGENTS.md

@@ -51,7 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     if not root.is_dir():
         logging.getLogger('__NAME__').error('root %s is not a directory', root)
         return 2
-    missing = [binary for binary in REQUIRED_BINARIES if not WorkspaceTool(binary=binary).available()]
+    missing = [
+        binary for binary in REQUIRED_BINARIES if not WorkspaceTool(binary=binary).available()
+    ]
     if missing:
         logging.getLogger('__NAME__').warning(
             'binaries not on PATH: %s; tools that need them will report failure', ', '.join(missing)

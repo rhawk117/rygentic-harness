@@ -1,8 +1,10 @@
 ---
 name: create-mcp
-description: Interview-driven builder for MCP servers in Python (uv project, official `mcp` SDK, src layout with one package per tool). Use it to create, scaffold, design or add an MCP server for Claude Code. It asks where the server is installed (plugin, project, local or user scope), whether it is local only or a network service, what it does and what problem it solves, then one round per tool (inputs, outputs, side effects, whether it pauses to ask the person), infers resources and prompts, records the interview as a spec, generates the project from the bundled template, runs ruff, ty and the in-process tests, implements each use case with the user, writes the Claude Code config for the chosen scope and proves the entrypoint starts.
-when_to_use: Use when the user says "expose X as tools", "let Claude call our API", "wrap this CLI or service for the agent", "add an MCP server to my plugin", or asks about MCP tools, resources, prompts, elicitation, stdio versus HTTP, or how to configure a server in Claude Code, even without the letters MCP.
 argument-hint: "[what the server should let the agent do]"
+when_to_use: >-
+  Use when the user says "expose X as tools", "let Claude call our API", "wrap this CLI or service for the agent", "add an MCP server to my plugin", or asks about MCP tools, resources, prompts, elicitation, stdio versus HTTP, or how to configure a server in Claude Code, even without the letters MCP.
+description: >-
+  Interview-driven builder for MCP servers in Python (uv project, official `mcp` SDK, src layout with one package per tool). Use it to create, scaffold, design or add an MCP server for Claude Code. It asks where the server is installed (plugin, project, local or user scope), whether it is local only or a network service, what it does and what problem it solves, then one round per tool (inputs, outputs, side effects, whether it pauses to ask the person), infers resources and prompts, records the interview as a spec, generates the project from the bundled template, runs ruff, ty and the in-process tests, implements each use case with the user, writes the Claude Code config for the chosen scope and proves the entrypoint starts.
 ---
 
 # Create an MCP server

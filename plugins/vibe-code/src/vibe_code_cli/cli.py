@@ -12,6 +12,7 @@ from vibe_code_cli.mcp import command as mcp_command
 from vibe_code_cli.plugin import command as plugin_command
 from vibe_code_cli.skill import command as skill_command
 from vibe_code_cli.subagent import command as subagent_command
+from vibe_code_cli.tune import command as tune_command
 
 
 @runtime_checkable
@@ -28,6 +29,7 @@ class GroupName(StrEnum):
     INSTRUCTION = auto()
     MCP = auto()
     PLUGIN = auto()
+    TUNE = auto()
 
 
 def default_dispatchers() -> dict[GroupName, CommandGroupDispatcher]:
@@ -38,6 +40,7 @@ def default_dispatchers() -> dict[GroupName, CommandGroupDispatcher]:
         GroupName.INSTRUCTION: instruction_command,
         GroupName.MCP: mcp_command,
         GroupName.PLUGIN: plugin_command,
+        GroupName.TUNE: tune_command,
     }
 
 

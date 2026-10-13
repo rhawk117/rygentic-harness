@@ -1,20 +1,23 @@
 ---
-name: create-instructions
-description: Interactive builder for Claude Code rule files (Markdown files under .claude/rules/ with optional paths frontmatter and an XML-sectioned body). Use it to create, add, write or scaffold a rule, a set of coding conventions or a style guide for Claude, or to ask how paths scoping works, even when the user only describes the behavior ("make Claude always do X in these files"). It asks where the rule lives (project or personal), which files it governs, takes the conventions from chat or a file, routes each one away from the file when a linter, hook, skill or CLAUDE.md would do the job better, shows a steering preview and iterates until accepted, then writes a file validated with vibe-code instruction validate and proves Claude Code loads it.
-when_to_use: Use when the user says "add a rule for ...", "write conventions for these files", "make Claude stop doing X in src/", "split my CLAUDE.md", "why does Claude ignore my rule", or asks how .claude/rules, paths globs, CLAUDE.md or AGENTS.md loading work, even without the word "instructions".
+name: create-rules
+argument-hint: '[rule to enforce]'
+description: >-
+  Interactive builder for Claude Code rule files (Markdown files under .claude/rules/ with optional paths frontmatter and an XML-sectioned body). Use it to create, add, write or scaffold a rule, a set of coding conventions or a style guide for Claude, or to ask how paths scoping works, even when the user only describes the behavior ("make Claude always do X in these files"). It asks where the rule lives (project or personal), which files it governs, takes the conventions from chat or a file, routes each one away from the file when a linter, hook, skill or CLAUDE.md would do the job better, shows a steering preview and iterates until accepted, then writes a file validated with vibe-code instruction validate and proves Claude Code loads it.
+when_to_use: >-
+  Use when the user says "add a rule for ...", "write conventions for these files", "make Claude stop doing X in src/", "split my CLAUDE.md", "why does Claude ignore my rule", or asks how .claude/rules, paths globs, CLAUDE.md or AGENTS.md loading work, even without the word "instructions".
 ---
 
 # Create a Claude Code rule file
 
 The file you produce is loaded into context every time its paths match, for as long as it exists. That makes it cheap to write and expensive to get wrong: a rule a linter already enforces wastes attention on every turn, a rule the user never saw applied steers Claude in ways they did not intend, and a file that quotes today's line numbers is wrong by next week. Claude treats these files as context, not enforced configuration, so the work is mostly deciding which conventions belong in a file at all. The skill walks five phases and writes the file in the last one. Ask every question with the `AskUserQuestion` tool: single select, multi select, or free text through its other option. Anything the user has not said is a question, not an assumption; when they answered upfront, use the answer and say which default you took for anything they did not cover.
 
-| phase         | what happens                                                                          | how the user is involved                                                           |
-| ------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| A. Establish  | scope, target files                                                                   | two questions                                                                      |
-| B. Understand | scan what already loads and what tooling enforces; collect the conventions            | confirm one numbered list                                                          |
-| C. Route      | send each convention to the right home; discourage the file when it is the wrong tool | one table, one decision                                                            |
-| D. Steer      | quick per-convention checks, then a code preview, then a review loop                  | questions for everything that needs no code; a Markdown preview only for the code  |
-| E. Produce    | compose from the accepted conventions, confirm, write, validate, prove it loads       | one confirmation, then results                                                     |
+| phase         | what happens                                                                          | how the user is involved                                                          |
+| ------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| A. Establish  | scope, target files                                                                   | two questions                                                                     |
+| B. Understand | scan what already loads and what tooling enforces; collect the conventions            | confirm one numbered list                                                         |
+| C. Route      | send each convention to the right home; discourage the file when it is the wrong tool | one table, one decision                                                           |
+| D. Steer      | quick per-convention checks, then a code preview, then a review loop                  | questions for everything that needs no code; a Markdown preview only for the code |
+| E. Produce    | compose from the accepted conventions, confirm, write, validate, prove it loads       | one confirmation, then results                                                    |
 
 Read `references/instruction-facts.md` once at the start: file locations, load order, `paths` semantics, glob budgets, size limits, imports, `AGENTS.md` loading and the verification commands are there, and a claim outside it is unverified. Read `references/smell-catalog.md` in phase C and whenever a candidate rule feels borderline. Write nothing to the target tree before phase E.
 

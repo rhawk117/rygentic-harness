@@ -22,7 +22,11 @@ def parse_agent_text(text: str) -> AgentText:
     raw, body = split_frontmatter(text)
     if raw is None:
         return AgentText(
-            has_block=False, fields=None, yaml_problem=None, key_problem=None, body=text
+            has_block=False,
+            fields=None,
+            yaml_problem=None,
+            key_problem=None,
+            body=text,
         )
     skill = parse_skill_text(text)
     unquoted = UNQUOTED_DESCRIPTION.search(raw)
@@ -34,6 +38,7 @@ def parse_agent_text(text: str) -> AgentText:
             key_problem=skill.key_problem,
             body=body,
         )
+
     if skill.yaml_problem is not None and ':' in unquoted['value']:
         skill = parse_skill_text(f'---\n{quote_description(raw, unquoted)}---\n{body}')
         return AgentText(

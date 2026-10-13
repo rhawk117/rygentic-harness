@@ -1,6 +1,6 @@
 # vibe-code
 
-Ten skills for authoring Claude Code skills, subagents, hooks, rule files, MCP servers, loops and plugins, plus a small CLI that checks what they write. The name promises vibes; the CLI exists so that the output gets validated instead.
+Eleven skills for authoring Claude Code skills, subagents, hooks, rule files, MCP servers, loops and plugins, and for tuning skill descriptions, plus a small CLI that checks what they write. The name promises vibes; the CLI exists so that the output gets validated instead.
 
 ## Requirements
 
@@ -33,6 +33,7 @@ While the plugin is enabled, Claude Code puts its `bin/` directory on the `PATH`
 | `humanizer` | Prose reads like AI-generated text and needs editing |
 | `plan-plugin` | You want to plan a plugin; it ends in a phased plan and an empty plugin shell, never a build |
 | `promptlint` | You are writing or reviewing a prompt for a coding agent |
+| `tune-skill-descriptions` | Skills misfire or steal each other's requests; it tunes their descriptions against real Claude Code routing on a trigger set |
 
 ## CLI
 
@@ -50,10 +51,15 @@ While the plugin is enabled, Claude Code puts its `bin/` directory on the `PATH`
 | `plugin validate [--strict] PLAN` | Checks a plugin plan record |
 | `plugin render [--force] PLAN TARGET` | Writes a plugin shell from a plan record |
 | `plugin inventory [--out OUT] PLUGIN_DIR` | Records an existing plugin as a plan of built components |
+| `tune [--state FILE] lint --skills PATH...` | Lists pairs of skill descriptions that share their distinctive vocabulary |
+| `tune [--state FILE] init --skills PATH... --triggers FILE [--judge {claude-code,subagent}]` | Starts a description-tuning run from skills and a labeled trigger set |
+| `tune [--state FILE] next`, `submit --packet ID --answer FILE`, `status` | Hands out the next work, takes an answer back, prints the stage and scores |
+| `tune [--state FILE] route [--claude PATH]` | Judges the pending requests with one headless `claude -p` session each |
+| `tune [--state FILE] report`, `apply [--dry-run]` | Prints the Markdown report; writes the tuned descriptions into the SKILL.md files |
 
-Exit codes: the validators return 0 for a pass and 1 when a finding is an error, or a warning under `--strict`. They return 2 when they could not check: a file that cannot be read, `claude` missing from `PATH`, or a `claude plugin validate` that printed no JSON report. `hook test` returns 0 for a pass, 1 for a contract failure and 2 when the hook could not be run. `mcp scaffold` returns 0 once the project is written and 2 for a spec, template or target it rejects. `plugin render` returns 1 for a record or target it refuses and 2 when the record is unreadable or a write fails. `plugin inventory` returns 0 or 2. Running `vibe-code` with no command prints the help and returns 2.
+Exit codes: the validators return 0 for a pass and 1 when a finding is an error, or a warning under `--strict`. They return 2 when they could not check: a file that cannot be read, `claude` missing from `PATH`, or a `claude plugin validate` that printed no JSON report. `hook test` returns 0 for a pass, 1 for a contract failure and 2 when the hook could not be run. `mcp scaffold` returns 0 once the project is written and 2 for a spec, template or target it rejects. `plugin render` returns 1 for a record or target it refuses and 2 when the record is unreadable or a write fails. `plugin inventory` returns 0 or 2. The `tune` commands return 0 on success, 1 when the tuner refuses an input or a step (the reason is on stderr) and 2 when a file cannot be read or written. Running `vibe-code` with no command prints the help and returns 2.
 
-Four commands call `claude plugin validate --json` and fail with exit 2 on a Claude Code that lacks the flag: `skill validate`, `hook validate`, `subagent validate` and `mcp validate`. The other six do not call it.
+Four commands call `claude plugin validate --json` and fail with exit 2 on a Claude Code that lacks the flag: `skill validate`, `hook validate`, `subagent validate` and `mcp validate`. The other commands do not call it.
 
 ## Launcher
 
@@ -79,11 +85,13 @@ The pins live in two places, line 1 of `bin/vibe-code` and `bin/vibe-code.cmd`, 
 
 ## What the CLI runs and overwrites
 
-Most commands read files and print findings. Four do more:
+Most commands read files and print findings. Six do more:
 
 - `hook test` runs the hook script you name, with the payload on stdin.
 - `mcp validate --check-command` runs the configured command of each stdio server with `--help`, without a shell, to prove it resolves.
 - `mcp scaffold --force` writes into a non-empty `TARGET` and removes `TARGET/src` before writing.
+- `tune route` starts one headless `claude -p` session per trigger request, on your account and billed like any Claude Code use, in a temporary directory that holds stub skills (name and routing frontmatter only). The sessions load project settings only, have the `Skill` tool and nothing else, stop after one turn and keep no history.
+- `tune apply` replaces the `description` value in the frontmatter of each changed SKILL.md, keeps everything else and the line endings, and refuses a file whose description changed since `tune init`. `tune init`, `next`, `submit` and `route` write the run state under `.skill-tuning/` in the working directory.
 - `plugin render --force` rewrites the plan files of an existing plugin: `.claude-plugin/plugin.json` (keys the plan record does not model are kept), `README.md`, `PLAN.md` and `plugin-plan.json`. It deletes nothing.
 
 Without `--force`, `mcp scaffold` refuses a non-empty `TARGET` and `plugin render` refuses a plugin that already has a manifest.
@@ -110,7 +118,7 @@ From the repository root, `make check` is the gate: it syncs the locked environm
 .claude-plugin/plugin.json  the plugin manifest
 bin/vibe-code               the launcher
 bin/vibe-code.cmd           the launcher for cmd.exe
-skills/                     the ten skills
+skills/                     the eleven skills
 src/vibe_code_cli/          the CLI: one package per group, plus shared modules
 tests/                      the CLI, launcher and eval-case tests
 evals/                      six claude plugin eval cases
