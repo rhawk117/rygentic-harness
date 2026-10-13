@@ -26,7 +26,7 @@ While the plugin is enabled, Claude Code puts its `bin/` directory on the `PATH`
 | `build-a-loop` | You want an agent to keep working until a measurable condition holds; it writes a `LOOP.md` contract |
 | `create-agents-md` | A repository needs an `AGENTS.md`, with an optional `CLAUDE.md` that imports it |
 | `create-hooks` | You want a Claude Code hook built and tested, as a Python script |
-| `create-instructions` | You want a rule file under `.claude/rules/`, or want to know why Claude ignores one |
+| `create-rules` | You want a rule file under `.claude/rules/`, or want to know why Claude ignores one |
 | `create-mcp` | You want an MCP server in Python; it interviews you, then scaffolds the project and its `.mcp.json` |
 | `create-skill` | You want a skill written from scenarios, with eval cases recorded before the skill |
 | `create-subagent` | You want a subagent file built and validated |
