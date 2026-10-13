@@ -4,6 +4,17 @@ A ticket-scoped development loop for Claude Code. One unit of work gets one `.mi
 
 The plugin ships nineteen skills, twelve worker agents, seven hooks and one MCP server that holds the state.
 
+## Why I built it
+
+mightymodels is built from the failures of spec-driven development. It is oriented around human-in-the-loop decision making, and it is the plugin I cannot live without. It has cut my token consumption, the model gets more of the work right, and it has changed the way I work with AI.
+
+Four parts of the design do most of that:
+
+- The decisions stay with you. `lets-investigate` stops every round at a gate, `cross-examine` sends facts to scouts and decisions to you, `game-plan` gets your approval before the sprint starts, and only you can start `stick-the-landing` and `prune-ticket`.
+- The plan is a ledger. `plan.md` holds invariants with proving commands, tasks with acceptance criteria and verify commands, non-goals, and risks with the handling you chose. It is free of code-level citations and written to survive a compaction.
+- Each worker refuses the work of the tier above it, which is what keeps the fleet cheap. The intern takes the tasks a plan sizes `tiny`, the engineer is the default implementer, and the higher-cost architect takes only what the engineer failed or a reviewer rejected.
+- A task is done when commands say so. It closes after its contract commands pass at the new HEAD and the fact-checker has checked what was done against what was asked. A `git push` is denied until every live contract command has a passing receipt.
+
 ## Requirements
 
 - Claude Code.

@@ -8,8 +8,28 @@
     {
       "name": "mightymodels",
       "source": "./plugins/mightymodels",
-      "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
-      "version": "1.0.0"
+      "description": "Ticket-scoped development loop built from the failures of spec-driven development: human-in-the-loop decisions, per-ticket state and model routing, and evidence-first verification",
+      "version": "1.0.0",
+      "author": {
+        "name": "rhawk117"
+      },
+      "homepage": "https://github.com/rhawk117/rygentic-harness/tree/main/plugins/mightymodels",
+      "repository": "https://github.com/rhawk117/rygentic-harness",
+      "category": "development",
+      "keywords": [
+        "workflow",
+        "human-in-the-loop",
+        "agents",
+        "subagents",
+        "model-routing",
+        "tickets",
+        "planning",
+        "sprint-loop",
+        "verification",
+        "code-review",
+        "hooks",
+        "mcp"
+      ]
     },
     {
       "name": "vibe-code",

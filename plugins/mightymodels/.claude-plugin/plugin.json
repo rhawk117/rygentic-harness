@@ -3,16 +3,24 @@
   "name": "mightymodels",
   "displayName": "mightymodels",
   "version": "1.0.0",
-  "description": "Ticket-scoped agent development loop: investigate, consolidate, hand off, sprint, finish, review circus, prune. Per-ticket .mightymodels/ state, model routing via ticket.yml, two-half task briefs, evidence-first verification.",
+  "description": "Ticket-scoped development loop for Claude Code, built from the failures of spec-driven development. You make the decisions at ask-user gates, each worker runs on the model its job needs, and a task closes only when its verification commands pass. Nineteen skills, twelve worker agents, seven hooks and a state server.",
   "author": {
     "name": "rhawk117"
   },
   "keywords": [
     "workflow",
+    "human-in-the-loop",
     "agents",
-    "code-review",
+    "subagents",
+    "model-routing",
+    "tickets",
+    "planning",
     "sprint-loop",
     "verification",
-    "tickets"
-  ]
+    "code-review",
+    "hooks",
+    "mcp"
+  ],
+  "homepage": "https://github.com/rhawk117/rygentic-harness/tree/main/plugins/mightymodels",
+  "repository": "https://github.com/rhawk117/rygentic-harness"
 }

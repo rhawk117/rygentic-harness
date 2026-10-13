@@ -64,7 +64,12 @@ model ids, agent discovery and validation.
 
 ### mightymodels
 
-The biggest of the three, and the marketplace's first plugin. One unit of work gets one
+This is the plugin I cannot live without. It is built from the failures of spec-driven
+development, and it is oriented around human-in-the-loop decision making: scouts fetch the facts,
+the decisions come to me, and a task closes only when a command proves it. It has cut my token
+consumption, the model gets more of the work right, and it has changed the way I work with AI.
+
+It is also the biggest of the three and the marketplace's first plugin. One unit of work gets one
 `.mightymodels/<slug>/` directory and one `ticket.yml` carrying its scope and model routing. The
 work then moves through fixed stages: investigate, write down what is known, open a ticket, plan,
 sprint, land the PR, review. Each stage has one job, writes one artifact, and reads `ticket.yml`
