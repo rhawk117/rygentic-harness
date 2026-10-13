@@ -505,6 +505,30 @@ class TestMain:
             'TOOL ERROR: ruff, ty',
         ]
 
+    def test_a_tool_uvx_cannot_fetch_exits_with_the_tool_error_code(
+        self, tmp_path: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        path = tmp_path / 'good.py'
+        path.write_text(GOOD_SCRIPT, encoding='utf-8')
+        mocker.patch.object(
+            check_script, 'resolve_tool', side_effect=lambda tool: ['uvx', f'{tool}@9.9.9']
+        )
+        mocker.patch.object(
+            check_script.subprocess,
+            'run',
+            return_value=completed(1, stderr='No solution found when resolving'),
+        )
+
+        code = check_script.main([str(path)])
+
+        output = capsys.readouterr().out.splitlines()
+        assert code == check_script.ExitCode.TOOL_ERROR
+        assert (
+            'ERROR ruff: uvx could not fetch ruff@9.9.9: No solution found when resolving' in output
+        )
+        assert 'ERROR ty: uvx could not fetch ty@9.9.9: No solution found when resolving' in output
+        assert output[-1] == 'TOOL ERROR: ruff, ty'
+
     def test_a_failed_check_outranks_a_tool_error(
         self, tmp_path: Path, mocker: MockerFixture, capsys: pytest.CaptureFixture[str]
     ) -> None:
