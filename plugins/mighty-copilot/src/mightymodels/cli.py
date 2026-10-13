@@ -169,14 +169,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def session_hook_context() -> HookContext:
-    return HookContext(stdin=sys.stdin, environ=os.environ, cwd=Path.cwd())
+    return HookContext.from_stdin(sys.stdin, os.environ, Path.cwd())
 
 
 def run_hook_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == SESSION_START_COMMAND:
         return export_data_directory(os.environ)
     if (check := TOOL_CHECKS.get(arguments.command)) is not None:
-        return check(sys.stdin, sys.stdout.buffer, HookState(context=session_hook_context()))
+        context = session_hook_context()
+        return check(context.stdin, sys.stdout.buffer, HookState(context=context))
     if (run_hook := HOOKS.get(arguments.command)) is None:
         return None
     return run_hook(session_hook_context())

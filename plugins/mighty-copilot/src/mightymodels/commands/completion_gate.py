@@ -37,7 +37,7 @@ from mightymodels.core.errors import StateError
 from mightymodels.core.routing import Worker
 from mightymodels.core.slug import Slug
 from mightymodels.core.task_id import is_plan_task, task_number
-from mightymodels.core.workspace import GitQueries, Workspace, find_root
+from mightymodels.core.workspace import GitQueries, Workspace
 from mightymodels.tools.contract.schema import Receipt
 from mightymodels.tools.contract.store import RecordedCommand
 from mightymodels.tools.row_types import ROW_TYPES
@@ -161,9 +161,7 @@ def run_hook(context: HookContext) -> int:
     if worker not in IMPLEMENTERS or fields.get(STOP_HOOK_ACTIVE_KEY) is True:
         return 0
     try:
-        with open_state(
-            find_root(context.environ, context.cwd), context.data_directory(), ROW_TYPES
-        ) as state:
+        with open_state(context.cwd, context.data_directory(), ROW_TYPES) as state:
             reason = unfinished_reason(state, Implementer(worker))
     except (StateError, SQLAlchemyError) as error:
         return skipped(error)

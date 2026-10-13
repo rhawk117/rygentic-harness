@@ -17,7 +17,6 @@ from mightymodels.commands.hook_context import HookContext
 from mightymodels.commands.rejection import skipped
 from mightymodels.core.edge import OpenState, open_state
 from mightymodels.core.errors import StateError
-from mightymodels.core.workspace import find_root
 from mightymodels.tools.row_types import ROW_TYPES
 from mightymodels.tools.snapshot.repository import snapshot_store
 from mightymodels.tools.snapshot.schema import DEFAULT_LIMIT
@@ -41,9 +40,7 @@ def write_snapshot(state: OpenState) -> None:
 
 def run_hook(context: HookContext) -> int:
     try:
-        with open_state(
-            find_root(context.environ, context.cwd), context.data_directory(), ROW_TYPES
-        ) as state:
+        with open_state(context.cwd, context.data_directory(), ROW_TYPES) as state:
             write_snapshot(state)
     except (StateError, SQLAlchemyError, OSError) as error:
         return skipped(error)

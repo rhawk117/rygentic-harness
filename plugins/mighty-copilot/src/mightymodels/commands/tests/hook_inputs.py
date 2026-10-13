@@ -49,7 +49,7 @@ UNREADABLE_INPUTS = (
 
 
 def hook_input(event: str, agent_type: str | None = None, **given: object) -> str:
-    fields = {'hook_event_name': event, 'session_id': 's1', 'cwd': '/ignored'}
+    fields = {'hook_event_name': event, 'session_id': 's1'}
     return json.dumps(fields | ({} if agent_type is None else {'agent_type': agent_type}) | given)
 
 

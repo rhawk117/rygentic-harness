@@ -14,7 +14,7 @@ from mightymodels.commands.tests.hook_inputs import (
 from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE
 from mightymodels.core.slug import Slug
 from mightymodels.core.tests.support import GitRunner
-from mightymodels.core.workspace import PROJECT_DIR_VARIABLE, Workspace
+from mightymodels.core.workspace import Workspace
 from mightymodels.tools.task.schema import Implementer, Status, TaskMark, TaskStart
 from mightymodels.tools.task.service import TaskService
 from mightymodels.tools.ticket.schema import TicketAnswers
@@ -97,6 +97,21 @@ class TestCompletionGate(TestTheStateOfATicket):
 
         assert json.loads(first[1])['decision'] == 'block'
         assert second == (0, '', '')
+
+    def test_it_finds_the_ticket_under_the_payload_cwd_not_the_process_directory(
+        self, hook_command: Hook, tmp_path: Path
+    ) -> None:
+        elsewhere = tmp_path.joinpath('elsewhere')
+        elsewhere.mkdir()
+        hook_command.monkeypatch.chdir(elsewhere)
+
+        under_the_process_directory = hook_command.run('completion-gate', implementer_stop())
+        under_the_payload_cwd = hook_command.run(
+            'completion-gate', implementer_stop(cwd=str(hook_command.repository))
+        )
+
+        assert under_the_process_directory[0:2] == (0, '')
+        assert json.loads(under_the_payload_cwd[1])['decision'] == 'block'
 
     def test_with_a_done_half_naming_a_commit_it_lets_the_stop_through(
         self, hook_command: Hook, brief: Path
@@ -372,7 +387,7 @@ class TestDispatchFromTheMainThread(TestTheStateOfATicket):
     ) -> None:
         below = hook_command.repository.joinpath('src', 'queue')
         below.mkdir(parents=True)
-        hook_command.monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(below))
+        hook_command.monkeypatch.chdir(below)
         hook_command.monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
 
         assert 'could not be read' in self.refusal(hook_command, self.STARTED_FIRST[0])

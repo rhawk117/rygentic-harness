@@ -14,7 +14,6 @@ from mightymodels.commands.tests.hook_inputs import (
 )
 from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE
 from mightymodels.core.database import DATABASE_NAME
-from mightymodels.core.workspace import PROJECT_DIR_VARIABLE
 from mightymodels.tools.similarity.spool import SPOOL_DIRECTORY
 
 
@@ -48,7 +47,7 @@ class TestWhenAHookCannotWork:
     def outside_a_repository(self, hook_repository: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         outside = hook_repository.parent.joinpath('outside')
         outside.mkdir()
-        monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(outside))
+        monkeypatch.chdir(outside)
         return outside
 
     @pytest.fixture

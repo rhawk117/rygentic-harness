@@ -1,23 +1,24 @@
-"""What a hook command is given: Claude Code's JSON on standard input, the environment and the
-directory the session started in.
+"""What a hook command is given: the JSON on standard input, the environment and the project
+root, which is the payload's `cwd`, else the process directory.
 
 A hook command never refuses. When it cannot work it says why on standard error and exits 0
 (`rejection.skipped`), because exit code 2 keeps a subagent from stopping or a compaction from
 running.
 
 `HookContext.has_ticket_directory` says whether the repository has a ticket directory: a directory
-under `.mightymodels/` other than the archives, at the project directory or above it. A repository
+under `.mightymodels/` other than the archives, at the project root or above it. A repository
 without one has no ticket.
 
 `HookContext.ticket_directory_holds` says whether a path is in a ticket directory, existing or
-not. It compares the resolved path, so a relative path counts from the working directory, and `..`
+not. It compares the resolved path, so a relative path counts from the project root, and `..`
 or a symbolic link that leads out of the directory leads out of the answer too.
 """
 
+import io
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO
+from typing import Self, TextIO
 
 from mightymodels.commands.dispatch_hook import PLUGIN_PREFIX, decoded_object, worker_named
 from mightymodels.core.data_directory import (
@@ -28,9 +29,10 @@ from mightymodels.core.data_directory import (
 from mightymodels.core.errors import StateError
 from mightymodels.core.routing import Worker
 from mightymodels.core.slug import ARCHIVES_DIRECTORY
-from mightymodels.core.workspace import STATE_DIRECTORY, find_root
+from mightymodels.core.workspace import STATE_DIRECTORY
 
 AGENT_TYPE_KEY = 'agent_type'
+CWD_KEY = 'cwd'
 NUL = '\0'
 
 
@@ -45,6 +47,18 @@ class HookContext:
     environ: Mapping[str, str]
     cwd: Path
 
+    @classmethod
+    def from_stdin(cls, stdin: TextIO, environ: Mapping[str, str], process_cwd: Path) -> Self:
+        """Read the payload once and root the context at its `cwd`, else at `process_cwd`."""
+        try:
+            text = stdin.read()
+        except (OSError, UnicodeDecodeError):
+            text = ''
+        decoded = decoded_object(text)
+        payload_cwd = None if decoded is None else decoded.get(CWD_KEY)
+        root = Path(payload_cwd) if isinstance(payload_cwd, str) and payload_cwd else process_cwd
+        return cls(stdin=io.StringIO(text), environ=environ, cwd=root)
+
     def fields(self) -> dict[str, object] | UnreadableHookInputError:
         try:
             text = self.stdin.read()
@@ -57,8 +71,7 @@ class HookContext:
         return data_directory_from(self.environ, PLUGIN_DATA_VARIABLE)
 
     def state_directories(self) -> list[Path]:
-        start = find_root(self.environ, self.cwd)
-        return [directory.joinpath(STATE_DIRECTORY) for directory in (start, *start.parents)]
+        return [directory.joinpath(STATE_DIRECTORY) for directory in (self.cwd, *self.cwd.parents)]
 
     def has_ticket_directory(self) -> bool:
         return any(

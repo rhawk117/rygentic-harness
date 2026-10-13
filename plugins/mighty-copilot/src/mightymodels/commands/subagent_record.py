@@ -27,7 +27,7 @@ from mightymodels.core.declarative import NAME_LIMIT
 from mightymodels.core.errors import StateError
 from mightymodels.core.repository_key import RepositoryKey, spool_file_prefix
 from mightymodels.core.routing import Worker
-from mightymodels.core.workspace import Checkout, find_root, git_at
+from mightymodels.core.workspace import Checkout, git_at
 from mightymodels.tools.similarity.schema import Scout
 from mightymodels.tools.similarity.spool import (
     CLOSING_PART,
@@ -105,7 +105,7 @@ def spool_report(stop: ScoutStop, context: HookContext, part: str) -> StateError
     data_directory = context.data_directory()
     if isinstance(data_directory, DataDirectoryMissingError):
         return data_directory
-    checkout = git_at(find_root(context.environ, context.cwd)).checkout()
+    checkout = git_at(context.cwd).checkout()
     if not isinstance(checkout, Checkout):
         return checkout
     key = checkout.repository_key()

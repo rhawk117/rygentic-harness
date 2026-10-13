@@ -51,7 +51,6 @@ from mightymodels.core.edge import OpenState, open_state
 from mightymodels.core.errors import StateError
 from mightymodels.core.routing import Worker
 from mightymodels.core.slug import Slug
-from mightymodels.core.workspace import find_root
 from mightymodels.tools.contract.schema import Phase, Receipt
 from mightymodels.tools.contract.store import RecordedCommand
 from mightymodels.tools.row_types import ROW_TYPES
@@ -162,9 +161,7 @@ def landing_on_branch(state: OpenState) -> Landing:
 
 @contextmanager
 def state_for_hook(context: HookContext) -> Generator[OpenState]:
-    with open_state(
-        find_root(context.environ, context.cwd), context.data_directory(), ROW_TYPES
-    ) as state:
+    with open_state(context.cwd, context.data_directory(), ROW_TYPES) as state:
         yield state
 
 

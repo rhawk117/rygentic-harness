@@ -7,7 +7,6 @@ from mightymodels.commands.tests.ticket_checkout import BRANCH, TICKET, TicketCh
 from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE
 from mightymodels.core.database import Database
 from mightymodels.core.tests.support import GitRunner
-from mightymodels.core.workspace import PROJECT_DIR_VARIABLE
 from mightymodels.tools.contract.service import ContractService
 from mightymodels.tools.ticket.service import TicketService
 
@@ -24,7 +23,7 @@ def hook_repository(
     repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Path:
     monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))
-    monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(repository))
+    monkeypatch.chdir(repository)
     return repository
 
 
