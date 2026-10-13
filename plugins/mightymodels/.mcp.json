@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "state": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/mightymodels",
+      "args": ["serve"]
+    }
+  }
+}

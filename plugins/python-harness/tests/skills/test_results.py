@@ -26,17 +26,17 @@ class FakeFigure:
         fname.write_text('<svg/>', encoding='utf-8')
 
 
-def make_metric(**overrides: Any) -> Any:
+def make_metric(**overrides: object) -> results.Metric:
     fields = {'name': 'mean', 'value': 1.5, 'unit': 'ms', 'n': 10, **overrides}
     return results.Metric(**fields)
 
 
-def make_interval(**overrides: Any) -> Any:
+def make_interval(**overrides: object) -> results.Interval:
     fields = {'lower': 1.0, 'upper': 2.0, 'level': 0.95, 'method': 'bootstrap', **overrides}
     return results.Interval(**fields)
 
 
-def make_report(**overrides: Any) -> Any:
+def make_report(**overrides: object) -> results.AnalysisReport:
     fields = {
         'run_id': 'run-1',
         'created_at': CREATED_AT,
@@ -50,7 +50,7 @@ def make_report(**overrides: Any) -> Any:
     return results.AnalysisReport(**fields)
 
 
-def make_bundle(**overrides: Any) -> Any:
+def make_bundle(**overrides: object) -> results.Bundle:
     fields = {
         'report': make_report(),
         'table': pa.table({'value': [1, 2, 3]}),
@@ -73,7 +73,7 @@ class TestFindMetricViolation:
             make_metric(interval=make_interval(upper=math.nan)),
         ],
     )
-    def test_nonfinite_values_and_bounds_are_reported(self, metric: Any) -> None:
+    def test_nonfinite_values_and_bounds_are_reported(self, metric: results.Metric) -> None:
         violation = results.find_metric_violation(metric)
 
         assert isinstance(violation, results.NonFiniteMetricError)
@@ -83,7 +83,7 @@ class TestFindMetricViolation:
         'metric',
         [make_metric(name=''), make_metric(unit=''), make_metric(n=-1)],
     )
-    def test_incomplete_metrics_are_reported(self, metric: Any) -> None:
+    def test_incomplete_metrics_are_reported(self, metric: results.Metric) -> None:
         assert isinstance(results.find_metric_violation(metric), results.IncompleteMetricError)
 
     def test_a_missing_count_is_allowed(self) -> None:
@@ -97,7 +97,7 @@ class TestFindMetricViolation:
             make_interval(level=1.0),
         ],
     )
-    def test_invalid_intervals_are_reported(self, interval: Any) -> None:
+    def test_invalid_intervals_are_reported(self, interval: results.Interval) -> None:
         violation = results.find_metric_violation(make_metric(interval=interval))
 
         assert isinstance(violation, results.InvalidIntervalError)
@@ -279,7 +279,9 @@ class TestPublishOrderAndFailures:
         seen: list[tuple[str, ...]] = []
         original = results.write_manifest
 
-        def spy(target: Path, manifest: Any, options: Any) -> Path:
+        def spy(
+            target: Path, manifest: results.Manifest, options: results.PublicationOptions
+        ) -> Path:
             seen.append(tuple(sorted(path.name for path in target.iterdir())))
             return original(target, manifest, options)
 

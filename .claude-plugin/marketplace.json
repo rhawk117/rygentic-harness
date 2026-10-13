@@ -3,13 +3,33 @@
   "owner": {
     "name": "rhawk117"
   },
-  "description": "rygentic-harness: a marketplace of Claude Code plugins. mightymodels is the ticket-scoped agent dev loop and its review stack; more plugins land alongside it.",
+  "description": "rygentic-harness: all of the agentic tooling I use with Claude Code every day. Three plugins: mightymodels, vibe-code and python-harness.",
   "plugins": [
     {
       "name": "mightymodels",
       "source": "./plugins/mightymodels",
-      "description": "Ticket-scoped agent development loop with per-ticket state, model routing, and evidence-first verification",
-      "version": "0.8.0"
+      "description": "Takes work from the first question to a merged PR: cheap workers do the reading, you make the decisions, and a task closes only when its commands pass. Built from the failures of spec-driven development.",
+      "version": "1.0.0",
+      "author": {
+        "name": "rhawk117"
+      },
+      "homepage": "https://github.com/rhawk117/rygentic-harness/tree/main/plugins/mightymodels",
+      "repository": "https://github.com/rhawk117/rygentic-harness",
+      "category": "development",
+      "keywords": [
+        "workflow",
+        "human-in-the-loop",
+        "agents",
+        "subagents",
+        "model-routing",
+        "tickets",
+        "planning",
+        "sprint-loop",
+        "verification",
+        "code-review",
+        "hooks",
+        "mcp"
+      ]
     },
     {
       "name": "vibe-code",

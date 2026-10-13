@@ -1,0 +1,17 @@
+{
+  "skill_name": "prompting-subagents",
+  "rigor": 1,
+  "eval_model": "haiku",
+  "max_runs_per_iteration": 8,
+  "repeats": 1,
+  "permissions": [],
+  "evals": [
+    {"id": 0, "name": "engineer-task-dispatch", "prompt": "Dispatch the engineer for task 3 of the auth-refresh ticket.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 1, "name": "code-scout-callers", "prompt": "Have a scout find every caller of parse_config before we rename it.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 2, "name": "web-scout-pinned-docs", "prompt": "Check what httpx 0.27 documents for default timeouts, we pin it in uv.lock.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 3, "name": "architect-escalation", "prompt": "The engineer came back failed on T5, escalate it.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 4, "name": "worker-selection-judgment", "prompt": "Which worker should check whether our retry loop is safe under concurrency?", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 5, "name": "repair-drafted-dispatch", "prompt": "/prompting-subagents fix this engineer dispatch I drafted: implement the retry thing in the client, make tests pass.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 6, "name": "does-not-trigger-on-generic-prompt-writing", "prompt": "Write me a prompt for Claude Code to refactor our payments module.", "fixtures": null, "expect_skill_loaded": false, "criteria": []}
+  ]
+}

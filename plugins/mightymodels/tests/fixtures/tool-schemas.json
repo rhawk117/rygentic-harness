@@ -1,0 +1,3889 @@
+{
+  "contract": {
+    "description": "Approve verification commands, or report the latest result per command.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "ApproveContract": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "approve",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "commands": {
+              "items": {
+                "$ref": "#/$defs/ContractCommand"
+              },
+              "title": "Commands",
+              "type": "array"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "commands"
+          ],
+          "title": "ApproveContract",
+          "type": "object"
+        },
+        "Argv": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "type": "array"
+        },
+        "CommandId": {
+          "maxLength": 255,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "type": "string"
+        },
+        "ContractCommand": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/CommandId"
+            },
+            "argv": {
+              "$ref": "#/$defs/Argv"
+            },
+            "expect_exit": {
+              "default": 0,
+              "title": "Expect Exit",
+              "type": "integer"
+            },
+            "timeout": {
+              "$ref": "#/$defs/Timeout",
+              "default": 300
+            },
+            "approved_by": {
+              "$ref": "#/$defs/NameText",
+              "default": ""
+            }
+          },
+          "required": [
+            "id",
+            "argv"
+          ],
+          "title": "ContractCommand",
+          "type": "object"
+        },
+        "ContractRequest": {
+          "discriminator": {
+            "mapping": {
+              "approve": "#/$defs/ApproveContract",
+              "status": "#/$defs/StatusContract"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ApproveContract"
+            },
+            {
+              "$ref": "#/$defs/StatusContract"
+            }
+          ]
+        },
+        "NameText": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "StatusContract": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "status",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "StatusContract",
+          "type": "object"
+        },
+        "Timeout": {
+          "maximum": 3600,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ContractRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "contractArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "CommandState": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "argv": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Argv",
+              "type": "array"
+            },
+            "state": {
+              "title": "State",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "argv",
+            "state"
+          ],
+          "title": "CommandState",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "passing": {
+          "title": "Passing",
+          "type": "boolean"
+        },
+        "commands": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CommandState"
+          },
+          "title": "Commands",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "passing"
+      ],
+      "title": "ContractView",
+      "type": "object"
+    }
+  },
+  "review": {
+    "description": "Record a review run, findings, dispositions and resolutions; render the report text.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "AddPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "persona": {
+              "$ref": "#/$defs/Persona"
+            }
+          },
+          "required": [
+            "persona"
+          ],
+          "title": "AddPayload",
+          "type": "object"
+        },
+        "AddReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "add",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "$ref": "#/$defs/AddPayload"
+            }
+          },
+          "required": [
+            "action",
+            "run_id",
+            "payload"
+          ],
+          "title": "AddReview",
+          "type": "object"
+        },
+        "Approver": {
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string"
+        },
+        "Decision": {
+          "enum": [
+            "fix",
+            "defer",
+            "accept-risk",
+            "dismiss"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "Depth": {
+          "enum": [
+            "quick",
+            "standard",
+            "deep"
+          ],
+          "title": "Depth",
+          "type": "string"
+        },
+        "DisposeRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "$ref": "#/$defs/Approver"
+            },
+            "decisions": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "$ref": "#/$defs/Disposition"
+                  },
+                  "propertyNames": {
+                    "$ref": "#/$defs/FindingId"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Decisions"
+            },
+            "finding": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FindingId"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "by"
+          ],
+          "title": "DisposeRequest",
+          "type": "object"
+        },
+        "DisposeReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "dispose",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "$ref": "#/$defs/DisposeRequest"
+            }
+          },
+          "required": [
+            "action",
+            "run_id",
+            "payload"
+          ],
+          "title": "DisposeReview",
+          "type": "object"
+        },
+        "Disposition": {
+          "additionalProperties": false,
+          "properties": {
+            "decision": {
+              "$ref": "#/$defs/Decision"
+            },
+            "reason": {
+              "$ref": "#/$defs/ProseText",
+              "default": ""
+            }
+          },
+          "required": [
+            "decision"
+          ],
+          "title": "Disposition",
+          "type": "object"
+        },
+        "Emphasis": {
+          "enum": [
+            "release-readiness",
+            "maintainability",
+            "balanced",
+            "custom"
+          ],
+          "title": "Emphasis",
+          "type": "string"
+        },
+        "FindingId": {
+          "maxLength": 20,
+          "pattern": "^F[0-9]+$",
+          "type": "string"
+        },
+        "GateReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "gate",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            }
+          },
+          "required": [
+            "action",
+            "run_id"
+          ],
+          "title": "GateReview",
+          "type": "object"
+        },
+        "ListReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "list",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "ListReview",
+          "type": "object"
+        },
+        "NameText": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "OverrideReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "override",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            }
+          },
+          "required": [
+            "action",
+            "run_id"
+          ],
+          "title": "OverrideReview",
+          "type": "object"
+        },
+        "Persona": {
+          "enum": [
+            "merge-vader",
+            "uncle-bob"
+          ],
+          "title": "Persona",
+          "type": "string"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "ReportPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "shape": {
+              "$ref": "#/$defs/Shape",
+              "default": "full"
+            }
+          },
+          "title": "ReportPayload",
+          "type": "object"
+        },
+        "ReportReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "report",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ReportPayload"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action",
+            "run_id"
+          ],
+          "title": "ReportReview",
+          "type": "object"
+        },
+        "ResolvePayload": {
+          "additionalProperties": false,
+          "properties": {
+            "finding": {
+              "$ref": "#/$defs/FindingId"
+            },
+            "result": {
+              "$ref": "#/$defs/Result"
+            },
+            "commit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NameText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ProseText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "finding",
+            "result"
+          ],
+          "title": "ResolvePayload",
+          "type": "object"
+        },
+        "ResolveReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "resolve",
+              "title": "Action",
+              "type": "string"
+            },
+            "run_id": {
+              "$ref": "#/$defs/RunId"
+            },
+            "payload": {
+              "$ref": "#/$defs/ResolvePayload"
+            }
+          },
+          "required": [
+            "action",
+            "run_id",
+            "payload"
+          ],
+          "title": "ResolveReview",
+          "type": "object"
+        },
+        "Result": {
+          "enum": [
+            "fixed",
+            "failed",
+            "blocked"
+          ],
+          "title": "Result",
+          "type": "string"
+        },
+        "ReviewRequest": {
+          "discriminator": {
+            "mapping": {
+              "add": "#/$defs/AddReview",
+              "dispose": "#/$defs/DisposeReview",
+              "gate": "#/$defs/GateReview",
+              "list": "#/$defs/ListReview",
+              "override": "#/$defs/OverrideReview",
+              "report": "#/$defs/ReportReview",
+              "resolve": "#/$defs/ResolveReview",
+              "start": "#/$defs/StartReview"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StartReview"
+            },
+            {
+              "$ref": "#/$defs/OverrideReview"
+            },
+            {
+              "$ref": "#/$defs/AddReview"
+            },
+            {
+              "$ref": "#/$defs/GateReview"
+            },
+            {
+              "$ref": "#/$defs/DisposeReview"
+            },
+            {
+              "$ref": "#/$defs/ResolveReview"
+            },
+            {
+              "$ref": "#/$defs/ReportReview"
+            },
+            {
+              "$ref": "#/$defs/ListReview"
+            }
+          ]
+        },
+        "ReviewScope": {
+          "enum": [
+            "diff",
+            "branch",
+            "ticket",
+            "codebase"
+          ],
+          "title": "ReviewScope",
+          "type": "string"
+        },
+        "RunId": {
+          "$ref": "#/$defs/RunIdText",
+          "title": "RunId"
+        },
+        "RunIdText": {
+          "pattern": "^[0-9]{8}-[0-9]{6}$",
+          "type": "string"
+        },
+        "Shape": {
+          "enum": [
+            "full",
+            "comment"
+          ],
+          "title": "Shape",
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "StartRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ReviewScope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "depth": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Depth"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "emphasis": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Emphasis"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "slug": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Slug"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "base": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NameText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "weights": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "propertyNames": {
+                    "$ref": "#/$defs/Persona"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights"
+            },
+            "persona": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Persona"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "title": "StartRequest",
+          "type": "object"
+        },
+        "StartReview": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "start",
+              "title": "Action",
+              "type": "string"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/StartRequest"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "StartReview",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/ReviewRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "reviewArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "Verdict": {
+          "enum": [
+            "BLOCK",
+            "MERGE WITH CONDITIONS",
+            "CLEAR"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Id"
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Verdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ReviewView",
+      "type": "object"
+    }
+  },
+  "task": {
+    "description": "Start, mark, verify or list tasks, and gate the ticket on readiness.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "AcceptanceCriteria": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "AnyTaskStart": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TaskStart"
+            },
+            {
+              "$ref": "#/$defs/TooLargeTaskStart"
+            }
+          ]
+        },
+        "ArchitectMode": {
+          "enum": [
+            "recovery-implementation",
+            "systemic-refactor",
+            "diagnose-replan"
+          ],
+          "title": "ArchitectMode",
+          "type": "string"
+        },
+        "Assertions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "type": "object"
+        },
+        "BoundedAcceptanceCriteria": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array"
+        },
+        "BoundedOwnedFiles": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array"
+        },
+        "Implementer": {
+          "enum": [
+            "engineer",
+            "architect",
+            "intern"
+          ],
+          "title": "Implementer",
+          "type": "string"
+        },
+        "MarkTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "mark",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/MarkTaskPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "MarkTask",
+          "type": "object"
+        },
+        "MarkTaskPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/TaskMark"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "MarkTaskPayload",
+          "type": "object"
+        },
+        "Markable": {
+          "enum": [
+            "failed",
+            "blocked",
+            "superseded"
+          ],
+          "type": "string"
+        },
+        "NameText": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "OwnedFiles": {
+          "items": {
+            "$ref": "#/$defs/ProseText"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "ReadyTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "ready",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ReadyTask",
+          "type": "object"
+        },
+        "ShowTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "show",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ShowTask",
+          "type": "object"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "StartTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "start",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/StartTaskPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "StartTask",
+          "type": "object"
+        },
+        "StartTaskPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/AnyTaskStart"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "StartTaskPayload",
+          "type": "object"
+        },
+        "TaskId": {
+          "pattern": "^[TCR][0-9]{1,6}$",
+          "type": "string"
+        },
+        "TaskMark": {
+          "additionalProperties": false,
+          "properties": {
+            "to": {
+              "$ref": "#/$defs/Markable"
+            },
+            "reason": {
+              "$ref": "#/$defs/ProseText"
+            }
+          },
+          "required": [
+            "to",
+            "reason"
+          ],
+          "title": "TaskMark",
+          "type": "object"
+        },
+        "TaskRequest": {
+          "discriminator": {
+            "mapping": {
+              "mark": "#/$defs/MarkTask",
+              "ready": "#/$defs/ReadyTask",
+              "show": "#/$defs/ShowTask",
+              "start": "#/$defs/StartTask",
+              "verify": "#/$defs/VerifyTask"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StartTask"
+            },
+            {
+              "$ref": "#/$defs/VerifyTask"
+            },
+            {
+              "$ref": "#/$defs/MarkTask"
+            },
+            {
+              "$ref": "#/$defs/ShowTask"
+            },
+            {
+              "$ref": "#/$defs/ReadyTask"
+            }
+          ]
+        },
+        "TaskStart": {
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "$ref": "#/$defs/Implementer"
+            },
+            "owned": {
+              "$ref": "#/$defs/BoundedOwnedFiles"
+            },
+            "acceptance": {
+              "$ref": "#/$defs/BoundedAcceptanceCriteria"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ArchitectMode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "by",
+            "owned",
+            "acceptance"
+          ],
+          "title": "TaskStart",
+          "type": "object"
+        },
+        "TaskVerification": {
+          "additionalProperties": false,
+          "properties": {
+            "commit": {
+              "$ref": "#/$defs/NameText"
+            },
+            "assertions": {
+              "$ref": "#/$defs/Assertions"
+            }
+          },
+          "required": [
+            "commit"
+          ],
+          "title": "TaskVerification",
+          "type": "object"
+        },
+        "TooLargeTaskStart": {
+          "additionalProperties": false,
+          "properties": {
+            "by": {
+              "$ref": "#/$defs/Implementer"
+            },
+            "owned": {
+              "$ref": "#/$defs/OwnedFiles"
+            },
+            "acceptance": {
+              "$ref": "#/$defs/AcceptanceCriteria"
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ArchitectMode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "too_large_approved_by": {
+              "const": "user",
+              "title": "Too Large Approved By",
+              "type": "string"
+            }
+          },
+          "required": [
+            "by",
+            "owned",
+            "acceptance",
+            "too_large_approved_by"
+          ],
+          "title": "TooLargeTaskStart",
+          "type": "object"
+        },
+        "VerifyTask": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "verify",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/VerifyTaskPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "VerifyTask",
+          "type": "object"
+        },
+        "VerifyTaskPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/TaskVerification"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "VerifyTaskPayload",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/TaskRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "taskArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "Status": {
+          "enum": [
+            "pending",
+            "in-progress",
+            "verified",
+            "failed",
+            "blocked",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "TaskRecord": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/Status"
+            },
+            "owned": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Owned",
+              "type": "array"
+            },
+            "base": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Base"
+            },
+            "commit": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Commit"
+            },
+            "attempts": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "title": "Attempts",
+              "type": "object"
+            },
+            "reasons": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Reasons",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "status"
+          ],
+          "title": "TaskRecord",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "advanced": {
+          "title": "Advanced",
+          "type": "boolean"
+        },
+        "tasks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TaskRecord"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "advanced"
+      ],
+      "title": "TaskView",
+      "type": "object"
+    }
+  },
+  "ticket": {
+    "description": "Create, validate, read or update a ticket's context lines; writes the fixed models.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "LinkedInvestigation": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "NameText": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "Scope": {
+          "enum": [
+            "sm",
+            "med",
+            "large"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "ShowTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "show",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ShowTicket",
+          "type": "object"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "TicketContext": {
+          "additionalProperties": false,
+          "properties": {
+            "context": {
+              "items": {
+                "$ref": "#/$defs/ProseText"
+              },
+              "title": "Context",
+              "type": "array"
+            }
+          },
+          "required": [
+            "context"
+          ],
+          "title": "TicketContext",
+          "type": "object"
+        },
+        "TicketInterview": {
+          "additionalProperties": false,
+          "properties": {
+            "summary": {
+              "$ref": "#/$defs/ProseText"
+            },
+            "context": {
+              "items": {
+                "$ref": "#/$defs/ProseText"
+              },
+              "title": "Context",
+              "type": "array"
+            },
+            "scope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Scope"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "compaction": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Compaction"
+            },
+            "branch": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NameText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "issue": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Issue"
+            },
+            "jira": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NameText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "reference_urls": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ProseText"
+              },
+              "title": "Reference Urls",
+              "type": "array"
+            },
+            "investigations": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/LinkedInvestigation"
+              },
+              "title": "Investigations",
+              "type": "array"
+            }
+          },
+          "required": [
+            "summary",
+            "context"
+          ],
+          "title": "TicketInterview",
+          "type": "object"
+        },
+        "TicketRequest": {
+          "discriminator": {
+            "mapping": {
+              "show": "#/$defs/ShowTicket",
+              "update-context": "#/$defs/UpdateContextTicket",
+              "validate": "#/$defs/ValidateTicket",
+              "write": "#/$defs/WriteTicket"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/WriteTicket"
+            },
+            {
+              "$ref": "#/$defs/ValidateTicket"
+            },
+            {
+              "$ref": "#/$defs/ShowTicket"
+            },
+            {
+              "$ref": "#/$defs/UpdateContextTicket"
+            }
+          ]
+        },
+        "UpdateContextTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "update-context",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "fields": {
+              "$ref": "#/$defs/TicketContext"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "fields"
+          ],
+          "title": "UpdateContextTicket",
+          "type": "object"
+        },
+        "ValidateTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "validate",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "ValidateTicket",
+          "type": "object"
+        },
+        "WriteTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "write",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "fields": {
+              "$ref": "#/$defs/TicketInterview"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "fields"
+          ],
+          "title": "WriteTicket",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/TicketRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "ticketArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "Scope": {
+          "enum": [
+            "sm",
+            "med",
+            "large"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "TicketSection": {
+          "properties": {
+            "ticket": {
+              "title": "Ticket",
+              "type": "string"
+            },
+            "summary": {
+              "title": "Summary",
+              "type": "string"
+            },
+            "branch": {
+              "title": "Branch",
+              "type": "string"
+            },
+            "scope": {
+              "$ref": "#/$defs/Scope"
+            },
+            "plan_first": {
+              "title": "Plan First",
+              "type": "boolean"
+            },
+            "auto_escalate": {
+              "default": false,
+              "title": "Auto Escalate",
+              "type": "boolean"
+            },
+            "models": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": "Models",
+              "type": "object"
+            },
+            "tracker": {
+              "$ref": "#/$defs/Tracker"
+            },
+            "context": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Context",
+              "type": "array"
+            },
+            "validated_at": {
+              "title": "Validated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "ticket",
+            "summary",
+            "branch",
+            "scope",
+            "plan_first",
+            "models",
+            "tracker",
+            "context",
+            "validated_at"
+          ],
+          "title": "TicketSection",
+          "type": "object"
+        },
+        "TicketStatus": {
+          "enum": [
+            "staged",
+            "in-progress",
+            "closed"
+          ],
+          "title": "TicketStatus",
+          "type": "string"
+        },
+        "Tracker": {
+          "properties": {
+            "issue": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            },
+            "jira": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jira"
+            }
+          },
+          "required": [
+            "issue",
+            "jira"
+          ],
+          "title": "Tracker",
+          "type": "object"
+        },
+        "WorkUnit": {
+          "properties": {
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "status": {
+              "$ref": "#/$defs/TicketStatus"
+            },
+            "ticket": {
+              "$ref": "#/$defs/TicketSection"
+            },
+            "investigations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Investigations",
+              "type": "array"
+            }
+          },
+          "required": [
+            "slug",
+            "status",
+            "ticket",
+            "investigations"
+          ],
+          "title": "WorkUnit",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkUnit"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "TicketView",
+      "type": "object"
+    }
+  },
+  "snapshot": {
+    "description": "Return the ticket's objective state as JSON and Markdown text for baton-pass to write.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "Limit": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "SnapshotRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "limit": {
+              "$ref": "#/$defs/Limit",
+              "default": 20
+            }
+          },
+          "required": [
+            "slug"
+          ],
+          "title": "SnapshotRequest",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/SnapshotRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "snapshotArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "CheckState": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "state": {
+              "title": "State",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "state"
+          ],
+          "title": "CheckState",
+          "type": "object"
+        },
+        "Decision": {
+          "enum": [
+            "fix",
+            "defer",
+            "accept-risk",
+            "dismiss"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "Depth": {
+          "enum": [
+            "quick",
+            "standard",
+            "deep"
+          ],
+          "title": "Depth",
+          "type": "string"
+        },
+        "EntryKind": {
+          "enum": [
+            "target",
+            "known",
+            "open",
+            "decision",
+            "resource",
+            "next"
+          ],
+          "title": "EntryKind",
+          "type": "string"
+        },
+        "FailedAttempt": {
+          "properties": {
+            "task": {
+              "title": "Task",
+              "type": "string"
+            },
+            "to": {
+              "title": "To",
+              "type": "string"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            },
+            "head": {
+              "title": "Head",
+              "type": "string"
+            },
+            "at": {
+              "title": "At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "to",
+            "reason",
+            "head",
+            "at"
+          ],
+          "title": "FailedAttempt",
+          "type": "object"
+        },
+        "LedgerLine": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/EntryKind"
+            },
+            "text": {
+              "title": "Text",
+              "type": "string"
+            },
+            "cite": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cite"
+            },
+            "from": {
+              "title": "From",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text",
+            "cite",
+            "from"
+          ],
+          "title": "LedgerLine",
+          "type": "object"
+        },
+        "NotYetRecorded": {
+          "maxItems": 0,
+          "minItems": 0,
+          "type": "array"
+        },
+        "PassingCommand": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "argv": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Argv",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "argv"
+          ],
+          "title": "PassingCommand",
+          "type": "object"
+        },
+        "RepositoryState": {
+          "properties": {
+            "branch": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch"
+            },
+            "head": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head"
+            },
+            "dirty_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dirty Count"
+            },
+            "dirty": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Dirty",
+              "type": "array"
+            }
+          },
+          "required": [
+            "branch",
+            "head",
+            "dirty_count",
+            "dirty"
+          ],
+          "title": "RepositoryState",
+          "type": "object"
+        },
+        "ReviewDecision": {
+          "properties": {
+            "finding": {
+              "title": "Finding",
+              "type": "string"
+            },
+            "decision": {
+              "$ref": "#/$defs/Decision"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "finding",
+            "decision",
+            "reason"
+          ],
+          "title": "ReviewDecision",
+          "type": "object"
+        },
+        "ReviewState": {
+          "properties": {
+            "run": {
+              "title": "Run",
+              "type": "string"
+            },
+            "depth": {
+              "$ref": "#/$defs/Depth"
+            },
+            "head": {
+              "title": "Head",
+              "type": "string"
+            },
+            "findings": {
+              "title": "Findings",
+              "type": "integer"
+            },
+            "undecided": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Undecided",
+              "type": "array"
+            },
+            "remediation_open": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Remediation Open",
+              "type": "array"
+            },
+            "decisions": {
+              "items": {
+                "$ref": "#/$defs/ReviewDecision"
+              },
+              "title": "Decisions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "run",
+            "depth",
+            "head",
+            "findings",
+            "undecided",
+            "remediation_open",
+            "decisions"
+          ],
+          "title": "ReviewState",
+          "type": "object"
+        },
+        "Scope": {
+          "enum": [
+            "sm",
+            "med",
+            "large"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "SnapshotRecord": {
+          "properties": {
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "generated_at": {
+              "title": "Generated At",
+              "type": "string"
+            },
+            "ticket": {
+              "$ref": "#/$defs/TicketSummary"
+            },
+            "repository": {
+              "$ref": "#/$defs/RepositoryState"
+            },
+            "tasks": {
+              "items": {
+                "$ref": "#/$defs/TaskState"
+              },
+              "title": "Tasks",
+              "type": "array"
+            },
+            "checks": {
+              "items": {
+                "$ref": "#/$defs/CheckState"
+              },
+              "title": "Checks",
+              "type": "array"
+            },
+            "works": {
+              "items": {
+                "$ref": "#/$defs/PassingCommand"
+              },
+              "title": "Works",
+              "type": "array"
+            },
+            "decisions": {
+              "items": {
+                "$ref": "#/$defs/LedgerLine"
+              },
+              "title": "Decisions",
+              "type": "array"
+            },
+            "open_questions": {
+              "items": {
+                "$ref": "#/$defs/LedgerLine"
+              },
+              "title": "Open Questions",
+              "type": "array"
+            },
+            "do_not_retry": {
+              "items": {
+                "$ref": "#/$defs/FailedAttempt"
+              },
+              "title": "Do Not Retry",
+              "type": "array"
+            },
+            "review": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ReviewState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "answers": {
+              "$ref": "#/$defs/NotYetRecorded",
+              "default": []
+            },
+            "subagents": {
+              "$ref": "#/$defs/NotYetRecorded",
+              "default": []
+            },
+            "warnings": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Warnings",
+              "type": "array"
+            }
+          },
+          "required": [
+            "slug",
+            "generated_at",
+            "ticket",
+            "repository",
+            "tasks",
+            "checks",
+            "works",
+            "decisions",
+            "open_questions",
+            "do_not_retry",
+            "review",
+            "warnings"
+          ],
+          "title": "SnapshotRecord",
+          "type": "object"
+        },
+        "TaskState": {
+          "properties": {
+            "task": {
+              "title": "Task",
+              "type": "string"
+            },
+            "status": {
+              "title": "Status",
+              "type": "string"
+            },
+            "attempts": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "title": "Attempts",
+              "type": "object"
+            },
+            "reasons": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Reasons",
+              "type": "array"
+            }
+          },
+          "required": [
+            "task",
+            "status",
+            "attempts",
+            "reasons"
+          ],
+          "title": "TaskState",
+          "type": "object"
+        },
+        "TicketStatus": {
+          "enum": [
+            "staged",
+            "in-progress",
+            "closed"
+          ],
+          "title": "TicketStatus",
+          "type": "string"
+        },
+        "TicketSummary": {
+          "properties": {
+            "summary": {
+              "title": "Summary",
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/TicketStatus"
+            },
+            "scope": {
+              "$ref": "#/$defs/Scope"
+            },
+            "tracker": {
+              "$ref": "#/$defs/Tracker"
+            }
+          },
+          "required": [
+            "summary",
+            "status",
+            "scope",
+            "tracker"
+          ],
+          "title": "TicketSummary",
+          "type": "object"
+        },
+        "Tracker": {
+          "properties": {
+            "issue": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            },
+            "jira": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jira"
+            }
+          },
+          "required": [
+            "issue",
+            "jira"
+          ],
+          "title": "Tracker",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "markdown": {
+          "title": "Markdown",
+          "type": "string"
+        },
+        "record": {
+          "$ref": "#/$defs/SnapshotRecord"
+        },
+        "markdown_path": {
+          "title": "Markdown Path",
+          "type": "string"
+        },
+        "record_path": {
+          "title": "Record Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "markdown",
+        "record",
+        "markdown_path",
+        "record_path"
+      ],
+      "title": "SnapshotView",
+      "type": "object"
+    }
+  },
+  "close": {
+    "description": "List live work that blocks closing, or close the ticket and return the archive text.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "CheckClose": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "check",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "slug"
+          ],
+          "title": "CheckClose",
+          "type": "object"
+        },
+        "CloseClose": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "close",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "closing": {
+              "$ref": "#/$defs/Closing"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "closing"
+          ],
+          "title": "CloseClose",
+          "type": "object"
+        },
+        "CloseRequest": {
+          "discriminator": {
+            "mapping": {
+              "check": "#/$defs/CheckClose",
+              "close": "#/$defs/CloseClose"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CheckClose"
+            },
+            {
+              "$ref": "#/$defs/CloseClose"
+            }
+          ]
+        },
+        "Closing": {
+          "additionalProperties": false,
+          "properties": {
+            "shipped": {
+              "$ref": "#/$defs/ProseText",
+              "default": ""
+            },
+            "pr": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ProseText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gotchas": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ProseText"
+              },
+              "title": "Gotchas",
+              "type": "array"
+            }
+          },
+          "title": "Closing",
+          "type": "object"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/CloseRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "closeArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "ArchiveRecord": {
+          "properties": {
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "closed_at": {
+              "title": "Closed At",
+              "type": "string"
+            },
+            "head": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head"
+            },
+            "shipped": {
+              "title": "Shipped",
+              "type": "string"
+            },
+            "pr": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pr"
+            },
+            "tracker": {
+              "$ref": "#/$defs/Tracker"
+            },
+            "summary": {
+              "title": "Summary",
+              "type": "string"
+            },
+            "investigations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Investigations",
+              "type": "array"
+            },
+            "tasks": {
+              "additionalProperties": {
+                "$ref": "#/$defs/ArchivedTask"
+              },
+              "title": "Tasks",
+              "type": "object"
+            },
+            "verification": {
+              "items": {
+                "$ref": "#/$defs/ArchivedCommand"
+              },
+              "title": "Verification",
+              "type": "array"
+            },
+            "decisions": {
+              "items": {
+                "$ref": "#/$defs/ArchivedDecision"
+              },
+              "title": "Decisions",
+              "type": "array"
+            },
+            "review": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ArchivedReview"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "agents": {
+              "$ref": "#/$defs/WorkerRuns",
+              "default": {
+                "runs": 0,
+                "by_status": {},
+                "recent": []
+              }
+            },
+            "answers": {
+              "$ref": "#/$defs/RecordedAnswers",
+              "default": {
+                "recorded": 0,
+                "recent": []
+              }
+            },
+            "gotchas": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Gotchas",
+              "type": "array"
+            }
+          },
+          "required": [
+            "slug",
+            "closed_at",
+            "head",
+            "shipped",
+            "pr",
+            "tracker",
+            "summary",
+            "investigations",
+            "tasks",
+            "verification",
+            "decisions",
+            "review",
+            "gotchas"
+          ],
+          "title": "ArchiveRecord",
+          "type": "object"
+        },
+        "ArchivedCommand": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "argv": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Argv",
+              "type": "array"
+            },
+            "expect_exit": {
+              "title": "Expect Exit",
+              "type": "integer"
+            },
+            "outcome": {
+              "title": "Outcome",
+              "type": "string"
+            },
+            "head": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head"
+            },
+            "digest": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Digest"
+            }
+          },
+          "required": [
+            "id",
+            "argv",
+            "expect_exit",
+            "outcome",
+            "head",
+            "digest"
+          ],
+          "title": "ArchivedCommand",
+          "type": "object"
+        },
+        "ArchivedDecision": {
+          "properties": {
+            "text": {
+              "title": "Text",
+              "type": "string"
+            },
+            "from": {
+              "title": "From",
+              "type": "string"
+            }
+          },
+          "required": [
+            "text",
+            "from"
+          ],
+          "title": "ArchivedDecision",
+          "type": "object"
+        },
+        "ArchivedReview": {
+          "properties": {
+            "run": {
+              "title": "Run",
+              "type": "string"
+            },
+            "depth": {
+              "$ref": "#/$defs/Depth"
+            },
+            "findings": {
+              "title": "Findings",
+              "type": "integer"
+            },
+            "by_decision": {
+              "additionalProperties": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "title": "By Decision",
+              "type": "object"
+            },
+            "reasons": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "title": "Reasons",
+              "type": "object"
+            }
+          },
+          "required": [
+            "run",
+            "depth",
+            "findings",
+            "by_decision",
+            "reasons"
+          ],
+          "title": "ArchivedReview",
+          "type": "object"
+        },
+        "ArchivedTask": {
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/Status"
+            },
+            "attempts": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "title": "Attempts",
+              "type": "object"
+            }
+          },
+          "required": [
+            "status",
+            "attempts"
+          ],
+          "title": "ArchivedTask",
+          "type": "object"
+        },
+        "ClosedArchive": {
+          "properties": {
+            "markdown": {
+              "title": "Markdown",
+              "type": "string"
+            },
+            "record": {
+              "$ref": "#/$defs/ArchiveRecord"
+            },
+            "markdown_path": {
+              "title": "Markdown Path",
+              "type": "string"
+            },
+            "record_path": {
+              "title": "Record Path",
+              "type": "string"
+            }
+          },
+          "required": [
+            "markdown",
+            "record",
+            "markdown_path",
+            "record_path"
+          ],
+          "title": "ClosedArchive",
+          "type": "object"
+        },
+        "Depth": {
+          "enum": [
+            "quick",
+            "standard",
+            "deep"
+          ],
+          "title": "Depth",
+          "type": "string"
+        },
+        "NotYetRecorded": {
+          "maxItems": 0,
+          "minItems": 0,
+          "type": "array"
+        },
+        "RecordedAnswers": {
+          "properties": {
+            "recorded": {
+              "default": 0,
+              "title": "Recorded",
+              "type": "integer"
+            },
+            "recent": {
+              "$ref": "#/$defs/NotYetRecorded",
+              "default": []
+            }
+          },
+          "title": "RecordedAnswers",
+          "type": "object"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "Status": {
+          "enum": [
+            "pending",
+            "in-progress",
+            "verified",
+            "failed",
+            "blocked",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "Tracker": {
+          "properties": {
+            "issue": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issue"
+            },
+            "jira": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Jira"
+            }
+          },
+          "required": [
+            "issue",
+            "jira"
+          ],
+          "title": "Tracker",
+          "type": "object"
+        },
+        "WorkerRuns": {
+          "properties": {
+            "runs": {
+              "default": 0,
+              "title": "Runs",
+              "type": "integer"
+            },
+            "by_status": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "title": "By Status",
+              "type": "object"
+            },
+            "recent": {
+              "$ref": "#/$defs/NotYetRecorded",
+              "default": []
+            }
+          },
+          "title": "WorkerRuns",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "blocked": {
+          "title": "Blocked",
+          "type": "boolean"
+        },
+        "blockers": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "archive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClosedArchive"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "text",
+        "blocked"
+      ],
+      "title": "CloseView",
+      "type": "object"
+    }
+  },
+  "investigation": {
+    "description": "Open an investigation, append ledger entries, or render the ledger or its knowns.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "AddInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "add",
+              "title": "Action",
+              "type": "string"
+            },
+            "investigation_id": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/AddInvestigationPayload"
+            }
+          },
+          "required": [
+            "action",
+            "investigation_id",
+            "payload"
+          ],
+          "title": "AddInvestigation",
+          "type": "object"
+        },
+        "AddInvestigationPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "$ref": "#/$defs/LedgerEntry"
+              },
+              "title": "Entries",
+              "type": "array"
+            },
+            "request": {
+              "$ref": "#/$defs/LedgerRound"
+            }
+          },
+          "required": [
+            "entries",
+            "request"
+          ],
+          "title": "AddInvestigationPayload",
+          "type": "object"
+        },
+        "Cite": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "EntryKind": {
+          "enum": [
+            "target",
+            "known",
+            "open",
+            "decision",
+            "resource",
+            "next"
+          ],
+          "title": "EntryKind",
+          "type": "string"
+        },
+        "InvestigationRequest": {
+          "discriminator": {
+            "mapping": {
+              "add": "#/$defs/AddInvestigation",
+              "knowns": "#/$defs/KnownsInvestigation",
+              "list": "#/$defs/ListInvestigation",
+              "render": "#/$defs/RenderInvestigation",
+              "start": "#/$defs/StartInvestigation"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StartInvestigation"
+            },
+            {
+              "$ref": "#/$defs/AddInvestigation"
+            },
+            {
+              "$ref": "#/$defs/RenderInvestigation"
+            },
+            {
+              "$ref": "#/$defs/KnownsInvestigation"
+            },
+            {
+              "$ref": "#/$defs/ListInvestigation"
+            }
+          ]
+        },
+        "InvestigationStartRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/ProseText"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TargetKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "target"
+          ],
+          "title": "InvestigationStartRequest",
+          "type": "object"
+        },
+        "KnownsFilter": {
+          "additionalProperties": false,
+          "properties": {
+            "kinds": {
+              "$ref": "#/$defs/TableKinds",
+              "default": [
+                "known",
+                "open",
+                "decision",
+                "resource"
+              ]
+            },
+            "limit": {
+              "$ref": "#/$defs/KnownsLimit",
+              "default": 40
+            }
+          },
+          "title": "KnownsFilter",
+          "type": "object"
+        },
+        "KnownsInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "knowns",
+              "title": "Action",
+              "type": "string"
+            },
+            "investigation_id": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/KnownsInvestigationPayload"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action",
+            "investigation_id"
+          ],
+          "title": "KnownsInvestigation",
+          "type": "object"
+        },
+        "KnownsInvestigationPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/KnownsFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "title": "KnownsInvestigationPayload",
+          "type": "object"
+        },
+        "KnownsLimit": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "LedgerEntry": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/EntryKind"
+            },
+            "text": {
+              "$ref": "#/$defs/ProseText"
+            },
+            "source": {
+              "$ref": "#/$defs/Source"
+            },
+            "cite": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Cite"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "supersedes": {
+              "default": [],
+              "items": {
+                "type": "integer"
+              },
+              "title": "Supersedes",
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "text",
+            "source"
+          ],
+          "title": "LedgerEntry",
+          "type": "object"
+        },
+        "LedgerRound": {
+          "additionalProperties": false,
+          "properties": {
+            "round": {
+              "title": "Round",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "round"
+          ],
+          "title": "LedgerRound",
+          "type": "object"
+        },
+        "ListInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "list",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "ListInvestigation",
+          "type": "object"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "RenderInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "render",
+              "title": "Action",
+              "type": "string"
+            },
+            "investigation_id": {
+              "$ref": "#/$defs/Slug"
+            }
+          },
+          "required": [
+            "action",
+            "investigation_id"
+          ],
+          "title": "RenderInvestigation",
+          "type": "object"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "Source": {
+          "enum": [
+            "code-scout",
+            "web-scout",
+            "user",
+            "primary"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "StartInvestigation": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "start",
+              "title": "Action",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/StartInvestigationPayload"
+            }
+          },
+          "required": [
+            "action",
+            "payload"
+          ],
+          "title": "StartInvestigation",
+          "type": "object"
+        },
+        "StartInvestigationPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/InvestigationStartRequest"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "title": "StartInvestigationPayload",
+          "type": "object"
+        },
+        "TableKind": {
+          "enum": [
+            "known",
+            "open",
+            "decision",
+            "resource"
+          ],
+          "type": "string"
+        },
+        "TableKinds": {
+          "items": {
+            "$ref": "#/$defs/TableKind"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "TargetKind": {
+          "enum": [
+            "behavior",
+            "claim",
+            "research",
+            "change"
+          ],
+          "title": "TargetKind",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/InvestigationRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "investigationArguments"
+    },
+    "output_schema": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "investigation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Investigation Id"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "InvestigationView",
+      "type": "object"
+    }
+  },
+  "crashout": {
+    "description": "Journal a crashout, or report recurring patterns.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "AddCrashout": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "add",
+              "title": "Action",
+              "type": "string"
+            },
+            "entry": {
+              "$ref": "#/$defs/CrashoutEntry"
+            }
+          },
+          "required": [
+            "action",
+            "entry"
+          ],
+          "title": "AddCrashout",
+          "type": "object"
+        },
+        "CrashoutEntry": {
+          "additionalProperties": false,
+          "properties": {
+            "ticket": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Slug"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "branch": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NameText"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "verdict": {
+              "$ref": "#/$defs/Verdict"
+            },
+            "rant": {
+              "$ref": "#/$defs/NotBlank"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "root_cause": {
+              "$ref": "#/$defs/Stripped"
+            },
+            "corrective_action": {
+              "$ref": "#/$defs/Stripped"
+            },
+            "barked_back": {
+              "title": "Barked Back",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "severity",
+            "verdict",
+            "rant",
+            "failures",
+            "root_cause",
+            "corrective_action",
+            "barked_back"
+          ],
+          "title": "CrashoutEntry",
+          "type": "object"
+        },
+        "CrashoutRequest": {
+          "discriminator": {
+            "mapping": {
+              "add": "#/$defs/AddCrashout",
+              "last": "#/$defs/LastCrashout",
+              "stats": "#/$defs/StatsCrashout"
+            },
+            "propertyName": "action"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AddCrashout"
+            },
+            {
+              "$ref": "#/$defs/StatsCrashout"
+            },
+            {
+              "$ref": "#/$defs/LastCrashout"
+            }
+          ]
+        },
+        "Failures": {
+          "items": {
+            "$ref": "#/$defs/NotBlank"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "LastCrashout": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "last",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "LastCrashout",
+          "type": "object"
+        },
+        "NameText": {
+          "maxLength": 255,
+          "type": "string"
+        },
+        "NotBlank": {
+          "maxLength": 4000,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "Severity": {
+          "enum": [
+            "mild-tilt",
+            "heated",
+            "crashout",
+            "full-meltdown"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "StatsCrashout": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "stats",
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "StatsCrashout",
+          "type": "object"
+        },
+        "Stripped": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "Verdict": {
+          "enum": [
+            "deserved",
+            "split",
+            "unreasonable"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/CrashoutRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "crashoutArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "JournaledCrashout": {
+          "properties": {
+            "at": {
+              "title": "At",
+              "type": "string"
+            },
+            "ticket": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ticket"
+            },
+            "branch": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Branch"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "verdict": {
+              "$ref": "#/$defs/Verdict"
+            },
+            "rant": {
+              "title": "Rant",
+              "type": "string"
+            },
+            "failures": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Failures",
+              "type": "array"
+            },
+            "root_cause": {
+              "title": "Root Cause",
+              "type": "string"
+            },
+            "corrective_action": {
+              "title": "Corrective Action",
+              "type": "string"
+            },
+            "barked_back": {
+              "title": "Barked Back",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "at",
+            "ticket",
+            "branch",
+            "severity",
+            "verdict",
+            "rant",
+            "failures",
+            "root_cause",
+            "corrective_action",
+            "barked_back"
+          ],
+          "title": "JournaledCrashout",
+          "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "mild-tilt",
+            "heated",
+            "crashout",
+            "full-meltdown"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "Verdict": {
+          "enum": [
+            "deserved",
+            "split",
+            "unreasonable"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "entry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JournaledCrashout"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "CrashoutView",
+      "type": "object"
+    }
+  },
+  "similarity": {
+    "description": "Search the stored ledger entries, scout reports, review findings and crashouts.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "SimilarityKind": {
+          "enum": [
+            "ledger-entry",
+            "scout-report",
+            "review-finding",
+            "crashout"
+          ],
+          "title": "SimilarityKind",
+          "type": "string"
+        },
+        "SimilarityRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "search",
+              "title": "Action",
+              "type": "string"
+            },
+            "query": {
+              "$ref": "#/$defs/ProseText"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/SimilarityKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "action",
+            "query"
+          ],
+          "title": "SimilarityRequest",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/SimilarityRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "similarityArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "Match": {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/SimilarityKind"
+            },
+            "reference": {
+              "title": "Reference",
+              "type": "string"
+            },
+            "text": {
+              "title": "Text",
+              "type": "string"
+            },
+            "overlap": {
+              "title": "Overlap",
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "reference",
+            "text",
+            "overlap"
+          ],
+          "title": "Match",
+          "type": "object"
+        },
+        "SimilarityKind": {
+          "enum": [
+            "ledger-entry",
+            "scout-report",
+            "review-finding",
+            "crashout"
+          ],
+          "title": "SimilarityKind",
+          "type": "string"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "matches": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Match"
+          },
+          "title": "Matches",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "SimilarityView",
+      "type": "object"
+    }
+  },
+  "failed_fix": {
+    "description": "Record a fix that failed, with the hypothesis it tested; the fourth is refused.",
+    "input_schema": {
+      "type": "object",
+      "$defs": {
+        "FailedFixPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "$ref": "#/$defs/TaskId"
+            },
+            "change": {
+              "$ref": "#/$defs/TaskFailedFix"
+            }
+          },
+          "required": [
+            "task_id",
+            "change"
+          ],
+          "title": "FailedFixPayload",
+          "type": "object"
+        },
+        "FailedFixRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record",
+              "title": "Action",
+              "type": "string"
+            },
+            "slug": {
+              "$ref": "#/$defs/Slug"
+            },
+            "payload": {
+              "$ref": "#/$defs/FailedFixPayload"
+            }
+          },
+          "required": [
+            "action",
+            "slug",
+            "payload"
+          ],
+          "title": "FailedFixRequest",
+          "type": "object"
+        },
+        "ProseText": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "Slug": {
+          "$ref": "#/$defs/SlugText",
+          "title": "Slug"
+        },
+        "SlugText": {
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+          "type": "string"
+        },
+        "TaskFailedFix": {
+          "additionalProperties": false,
+          "properties": {
+            "hypothesis": {
+              "$ref": "#/$defs/ProseText"
+            }
+          },
+          "required": [
+            "hypothesis"
+          ],
+          "title": "TaskFailedFix",
+          "type": "object"
+        },
+        "TaskId": {
+          "pattern": "^[TCR][0-9]{1,6}$",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "$ref": "#/$defs/FailedFixRequest"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "failed_fixArguments"
+    },
+    "output_schema": {
+      "$defs": {
+        "Status": {
+          "enum": [
+            "pending",
+            "in-progress",
+            "verified",
+            "failed",
+            "blocked",
+            "superseded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "TaskRecord": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/Status"
+            },
+            "owned": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Owned",
+              "type": "array"
+            },
+            "base": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Base"
+            },
+            "commit": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Commit"
+            },
+            "attempts": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "title": "Attempts",
+              "type": "object"
+            },
+            "reasons": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Reasons",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "status"
+          ],
+          "title": "TaskRecord",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "advanced": {
+          "title": "Advanced",
+          "type": "boolean"
+        },
+        "tasks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TaskRecord"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "advanced"
+      ],
+      "title": "TaskView",
+      "type": "object"
+    }
+  }
+}

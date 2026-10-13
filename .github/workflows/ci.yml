@@ -86,9 +86,13 @@ jobs:
         uses: ./.github/actions/bootstrap
 
       - name: Run pre-commit
+        id: pre-commit
         run: uv run pre-commit run --all-files
 
-      - if: ${{ failure() && !cancelled() }}
+      - name: Run tests
+        run: scripts/quality.sh --test
+
+      - if: ${{ failure() && !cancelled() && steps.pre-commit.outcome == 'failure' }}
         shell: bash
         run: |
           echo ":x:One or more step(s) failed" >> "${GITHUB_STEP_SUMMARY}"

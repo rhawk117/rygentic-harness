@@ -22,7 +22,7 @@ A Claude Code plugin for Python engineering. It ships:
 ## Install
 
 ```text
-/plugin marketplace add <owner>/rygentic-harness
+/plugin marketplace add rhawk117/rygentic-harness
 /plugin install python-harness@rygentic-harness
 ```
 

@@ -1,0 +1,282 @@
+#!/usr/bin/env bash
+set -o nounset -o pipefail
+
+readonly DEFAULT_BUDGET_MINUTES=20
+readonly MAX_BUDGET_MINUTES=60
+readonly REGISTER_WINDOW_SECONDS=180
+readonly POLL_SECONDS=${GITTY_POLL_SECONDS:-15}
+readonly SLICE_SECONDS=${GITTY_SLICE_SECONDS:-90}
+readonly MAX_LOGGED_JOBS=5
+readonly LOG_TAIL_LINES=60
+
+export GH_PAGER=cat GH_PROMPT_DISABLED=1 NO_COLOR=1 GH_NO_UPDATE_NOTIFIER=1 GH_SPINNER_DISABLED=1
+
+print_usage() {
+	cat <<'USAGE'
+gitty-up: open a pull request, wait for its checks, report a verdict.
+Every command's result starts with a line beginning GITTY.
+A GITTY ERROR result exits 1, a usage error exits 2, every other result exits 0.
+
+  open --head BRANCH --base BRANCH --title TEXT --body-file PATH
+      GITTY PR <number> created|reused <url>
+
+  deadline [--budget-minutes N]
+      GITTY DEADLINE deadline=<epoch> register_by=<epoch>
+      N defaults to 20 and is clamped to 1..60.
+
+  wait --pr NUMBER --deadline EPOCH --register-by EPOCH
+      GITTY SETTLED | GITTY WAIT pending=<n> | GITTY TIMEOUT pending=<n> | GITTY NO_CHECKS
+      Returns within about 90 seconds; on WAIT run it again with the same numbers.
+
+  verdict --pr NUMBER
+      GITTY VERDICT pass|fail|error, then one <bucket>\t<name>\t<link> row per check,
+      then up to 5 "=== GITTY LOG job=<id>" sections when the verdict is fail.
+USAGE
+}
+
+emit() {
+	printf 'GITTY %s\n' "$*"
+}
+
+exit_with_error() {
+	emit "ERROR $*"
+	exit 1
+}
+
+exit_with_usage_error() {
+	emit "ERROR usage: $*"
+	exit 2
+}
+
+require_option_value() {
+	[[ $# -ge 2 ]] || exit_with_usage_error "$1 needs a value"
+}
+
+require_integer() {
+	[[ $2 =~ ^[0-9]+$ ]] || exit_with_usage_error "$1 must be a non-negative integer, got '$2'"
+}
+
+require_options_present() {
+	local missing=''
+	local pair
+	for pair in "$@"; do
+		[[ -n ${pair#*=} ]] || missing="${missing} ${pair%%=*}"
+	done
+	[[ -z ${missing} ]] || exit_with_usage_error "missing${missing}"
+}
+
+epoch_now() {
+	date +%s
+}
+
+clamp_budget_minutes() {
+	local minutes=$((10#$1))
+	[[ ${minutes} -ge 1 ]] || minutes=1
+	[[ ${minutes} -le ${MAX_BUDGET_MINUTES} ]] || minutes=${MAX_BUDGET_MINUTES}
+	printf '%s' "${minutes}"
+}
+
+pull_url_from_output() {
+	printf '%s\n' "$1" | grep -Eo 'https?://[^[:space:]]+/pull/[0-9]+' | tail -n 1
+}
+
+report_existing_pull_request() {
+	local number=$1 state=$2 url=$3
+	[[ ${state} == OPEN ]] || exit_with_error "existing PR is not open: ${number} ${state} ${url}"
+	emit "PR ${number} reused ${url}"
+}
+
+create_pull_request() {
+	local head=$1 base=$2 title=$3 body_file=$4
+	local created url
+	created=$(gh pr create --base "${base}" --head "${head}" --title "${title}" --body-file "${body_file}" 2>&1)
+	url=$(pull_url_from_output "${created}")
+	[[ -n ${url} ]] || exit_with_error "${created}"
+	emit "PR ${url##*/} created ${url}"
+}
+
+command_open() {
+	local head='' base='' title='' body_file=''
+	while [[ $# -gt 0 ]]; do
+		require_option_value "$@"
+		case $1 in
+		--head) head=$2 ;;
+		--base) base=$2 ;;
+		--title) title=$2 ;;
+		--body-file) body_file=$2 ;;
+		*) exit_with_usage_error "open does not take $1" ;;
+		esac
+		shift 2
+	done
+	require_options_present --head="${head}" --base="${base}" --title="${title}" --body-file="${body_file}"
+	[[ -r ${body_file} ]] || exit_with_error "body file is not readable: ${body_file}"
+
+	local found number state url
+	if found=$(gh pr view "${head}" --json number,state,url --jq '"\(.number) \(.state) \(.url)"' 2>&1); then
+		read -r number state url <<<"${found}"
+		report_existing_pull_request "${number}" "${state}" "${url}"
+		return
+	fi
+	case ${found} in
+	*"no pull requests found"*) create_pull_request "${head}" "${base}" "${title}" "${body_file}" ;;
+	*) exit_with_error "${found}" ;;
+	esac
+}
+
+command_deadline() {
+	local budget=${DEFAULT_BUDGET_MINUTES}
+	while [[ $# -gt 0 ]]; do
+		require_option_value "$@"
+		case $1 in
+		--budget-minutes) budget=$2 ;;
+		*) exit_with_usage_error "deadline does not take $1" ;;
+		esac
+		shift 2
+	done
+	require_integer --budget-minutes "${budget}"
+
+	local now minutes
+	now=$(epoch_now)
+	minutes=$(clamp_budget_minutes "${budget}")
+	emit "DEADLINE deadline=$((now + minutes * 60)) register_by=$((now + REGISTER_WINDOW_SECONDS))"
+}
+
+report_unregistered_checks() {
+	local register_by=$1
+	local now
+	now=$(epoch_now)
+	[[ ${now} -ge ${register_by} ]] || {
+		printf 'pending=unregistered'
+		return
+	}
+	printf 'NO_CHECKS'
+}
+
+outcome_while_pending() {
+	local deadline=$1 slice_end=$2 pending=$3
+	local now
+	now=$(epoch_now)
+	[[ ${now} -lt ${deadline} ]] || {
+		printf 'TIMEOUT %s' "${pending}"
+		return
+	}
+	[[ ${now} -lt ${slice_end} ]] || {
+		printf 'WAIT %s' "${pending}"
+		return
+	}
+	sleep "${POLL_SECONDS}"
+}
+
+poll_checks_once() {
+	local pr=$1 register_by=$2
+	local pending
+	if ! pending=$(gh pr checks "${pr}" --json bucket --jq 'map(select(.bucket == "pending")) | length' 2>&1); then
+		case ${pending} in
+		*"no checks reported"*) report_unregistered_checks "${register_by}" ;;
+		*) printf 'ERROR %s' "${pending}" ;;
+		esac
+		return
+	fi
+	case ${pending} in
+	0) printf 'SETTLED' ;;
+	'' | *[!0-9]*) printf 'ERROR unexpected gh output: %s' "${pending}" ;;
+	*) printf 'pending=%s' "${pending}" ;;
+	esac
+}
+
+command_wait() {
+	local pr='' deadline='' register_by=''
+	while [[ $# -gt 0 ]]; do
+		require_option_value "$@"
+		case $1 in
+		--pr) pr=$2 ;;
+		--deadline) deadline=$2 ;;
+		--register-by) register_by=$2 ;;
+		*) exit_with_usage_error "wait does not take $1" ;;
+		esac
+		shift 2
+	done
+	require_options_present --pr="${pr}" --deadline="${deadline}" --register-by="${register_by}"
+	require_integer --pr "${pr}"
+	require_integer --deadline "${deadline}"
+	require_integer --register-by "${register_by}"
+
+	local now slice_end outcome='' poll
+	now=$(epoch_now)
+	slice_end=$((now + SLICE_SECONDS))
+	until [[ -n ${outcome} ]]; do
+		poll=$(poll_checks_once "${pr}" "${register_by}")
+		case ${poll} in
+		pending=*) outcome=$(outcome_while_pending "${deadline}" "${slice_end}" "${poll}") ;;
+		*) outcome=${poll} ;;
+		esac
+	done
+	case ${outcome} in
+	ERROR*) exit_with_error "${outcome#ERROR }" ;;
+	*) emit "${outcome}" ;;
+	esac
+}
+
+verdict_of_checks() {
+	jq -r 'if length == 0 then "error"
+		elif any(.[]; .bucket == "fail" or .bucket == "cancel") then "fail"
+		elif all(.[]; .bucket == "pass" or .bucket == "skipping") then "pass"
+		else "error" end'
+}
+
+rows_of_checks() {
+	jq -r '.[] | "\(.bucket)\t\(.name)\t\(.link)"'
+}
+
+failed_job_ids() {
+	jq -r '.[] | select(.bucket == "fail" or .bucket == "cancel")
+		| .link | capture("/job/(?<id>[0-9]+)").id? // empty' | head -n "${MAX_LOGGED_JOBS}"
+}
+
+print_failed_job_logs() {
+	local checks=$1
+	local job_ids job
+	job_ids=$(failed_job_ids <<<"${checks}")
+	for job in ${job_ids}; do
+		printf '=== GITTY LOG job=%s\n' "${job}"
+		gh run view --job "${job}" --log-failed 2>&1 | tail -n "${LOG_TAIL_LINES}"
+	done
+}
+
+command_verdict() {
+	local pr=''
+	while [[ $# -gt 0 ]]; do
+		require_option_value "$@"
+		case $1 in
+		--pr) pr=$2 ;;
+		*) exit_with_usage_error "verdict does not take $1" ;;
+		esac
+		shift 2
+	done
+	require_options_present --pr="${pr}"
+	require_integer --pr "${pr}"
+
+	local checks verdict
+	checks=$(gh pr checks "${pr}" --json name,bucket,link 2>&1) || exit_with_error "${checks}"
+	jq -e 'type == "array"' <<<"${checks}" >/dev/null 2>&1 || exit_with_error "unexpected gh output: ${checks}"
+	verdict=$(verdict_of_checks <<<"${checks}")
+	emit "VERDICT ${verdict}"
+	rows_of_checks <<<"${checks}"
+	[[ ${verdict} != fail ]] || print_failed_job_logs "${checks}"
+}
+
+main() {
+	[[ $# -gt 0 ]] || exit_with_usage_error "no command given; run gitty-up help"
+	local command=$1
+	shift
+	case ${command} in
+	open) command_open "$@" ;;
+	deadline) command_deadline "$@" ;;
+	wait) command_wait "$@" ;;
+	verdict) command_verdict "$@" ;;
+	help | -h | --help) print_usage ;;
+	*) exit_with_usage_error "unknown command '${command}'; run gitty-up help" ;;
+	esac
+}
+
+main "$@"

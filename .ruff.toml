@@ -69,17 +69,29 @@ extend-select = [
 ]
 
 
-ignore = ["E111", "E114", "E117", "W191", "T201", "TRY003"]
+ignore = [
+    "E111",  # conflicts with the formatter, which owns indentation
+    "E114",  # conflicts with the formatter, which owns indentation
+    "E117",  # conflicts with the formatter, which owns indentation
+    "W191",  # conflicts with the formatter, which owns indentation
+    "T201",  # every print the rule reports is in the vibe-code plugin, whose CLI writes to stdout
+]
 
 
 [lint.per-file-ignores]
 "**/tests/**/*.py" = [
-    "S101",
-    "PLR2004",
-    "PLR0913",
-    "PLR0917",
-    "FBT001",
-    "ANN401",
+    "S101",  # tests are written as bare assert statements
+    "PLR2004",  # tests compare against literal expected values
+    "PLR0913",  # test functions and helpers take many fixtures as arguments
+    "PLR0917",  # test functions and helpers take many positional fixtures
+    "FBT001",  # test helpers and parametrized tests take boolean positional flags
+    "TID251",  # tests write input and read output back with the standard library, independent of the codec under test
+]
+"plugins/python-harness/**" = [
+    "TID251",  # the json ban belongs to the mightymodels plugin (issue #17); this plugin has no codec and uses the standard library
+]
+"plugins/vibe-code/**" = [
+    "TID251",  # the json ban belongs to the mightymodels plugin (issue #17); this plugin has no codec and uses the standard library
 ]
 
 [lint.flake8-annotations]
@@ -95,6 +107,10 @@ check-typed-exception = true
 [lint.flake8-builtins]
 strict-checking = true
 
+[lint.flake8-import-conventions]
+extend-aliases = { sqlalchemy = "sql" }
+banned-from = ["sqlalchemy"]
+
 [lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
@@ -102,8 +118,15 @@ parametrize-names-type = "tuple"
 parametrize-values-type = "list"
 parametrize-values-row-type = "tuple"
 
+[lint.flake8-tidy-imports.banned-api]
+"json.dumps".msg = "encode with mightymodels_plugin/core/codec.py, which writes JSON on msgspec alone"
+"json.dump".msg = "encode with mightymodels_plugin/core/codec.py, which writes JSON on msgspec alone"
+"json.loads".msg = "decode with mightymodels_plugin/core/codec.py, which reads JSON on msgspec alone"
+"json.load".msg = "decode with mightymodels_plugin/core/codec.py, which reads JSON on msgspec alone"
+
 [lint.flake8-type-checking]
 strict = true
+runtime-evaluated-base-classes = ["mightymodels_plugin.tools.request.RequestModel"]
 
 [lint.flake8-unused-arguments]
 ignore-variadic-names = false

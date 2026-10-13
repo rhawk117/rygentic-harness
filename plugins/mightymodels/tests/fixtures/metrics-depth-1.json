@@ -1,0 +1,173 @@
+{
+  "tool": "uncle-bob metrics.py",
+  "granularity_note": "fan-in/fan-out counted at module level, rolled up to top-level packages",
+  "totals": {
+    "files": 9,
+    "source_files": 7,
+    "test_files": 2,
+    "source_loc": 68,
+    "test_loc": 5,
+    "test_to_source_ratio": 0.074,
+    "functions_measured": 8,
+    "loc_by_language": {
+      "python": 46,
+      "typescript": 17,
+      "javascript": 10
+    }
+  },
+  "component_metrics": {
+    "packages": {
+      "tools": {
+        "modules": 1,
+        "classes": 0,
+        "abstract_classes": 0,
+        "loc": 3,
+        "fan_in_ca": 0,
+        "fan_out_ce": 1,
+        "instability_i": 1.0,
+        "abstractness_a": null,
+        "distance_d": null
+      },
+      "billing": {
+        "modules": 4,
+        "classes": 2,
+        "abstract_classes": 1,
+        "loc": 43,
+        "fan_in_ca": 1,
+        "fan_out_ce": 0,
+        "instability_i": 0.0,
+        "abstractness_a": 0.5,
+        "distance_d": 0.5
+      },
+      "web": {
+        "modules": 4,
+        "classes": 3,
+        "abstract_classes": 2,
+        "loc": 27,
+        "fan_in_ca": 0,
+        "fan_out_ce": 0,
+        "instability_i": null,
+        "abstractness_a": 0.667,
+        "distance_d": null
+      }
+    },
+    "package_cycles": []
+  },
+  "module_cycles_adp": {
+    "count": 2,
+    "cycles": [
+      [
+        "src.billing.core",
+        "src.billing.io"
+      ],
+      [
+        "web",
+        "web.shapes"
+      ]
+    ]
+  },
+  "violations": {
+    "functions_over_20_loc": {
+      "count": 1,
+      "worst": [
+        {
+          "file": "src/billing/core.py",
+          "name": "busy",
+          "line": 14,
+          "loc": 28,
+          "params": 7,
+          "bool_params": 2,
+          "max_depth": 3,
+          "approximate": false
+        }
+      ]
+    },
+    "functions_over_3_params": {
+      "count": 2,
+      "worst": [
+        {
+          "file": "src/billing/core.py",
+          "name": "busy",
+          "line": 14,
+          "loc": 28,
+          "params": 7,
+          "bool_params": 2,
+          "max_depth": 3,
+          "approximate": false
+        },
+        {
+          "file": "web/index.ts",
+          "name": "draw",
+          "line": 10,
+          "loc": 6,
+          "params": 4,
+          "bool_params": 2,
+          "max_depth": -1,
+          "approximate": true
+        }
+      ]
+    },
+    "functions_with_bool_params": {
+      "count": 4,
+      "worst": [
+        {
+          "file": "src/billing/core.py",
+          "name": "busy",
+          "line": 14,
+          "loc": 28,
+          "params": 7,
+          "bool_params": 2,
+          "max_depth": 3,
+          "approximate": false
+        },
+        {
+          "file": "web/index.ts",
+          "name": "draw",
+          "line": 10,
+          "loc": 6,
+          "params": 4,
+          "bool_params": 2,
+          "max_depth": -1,
+          "approximate": true
+        },
+        {
+          "file": "src/billing/io.py",
+          "name": "write",
+          "line": 5,
+          "loc": 2,
+          "params": 2,
+          "bool_params": 1,
+          "max_depth": 0,
+          "approximate": false
+        },
+        {
+          "file": "web/util.js",
+          "name": "load",
+          "line": 5,
+          "loc": 3,
+          "params": 2,
+          "bool_params": 1,
+          "max_depth": -1,
+          "approximate": true
+        }
+      ]
+    },
+    "functions_nested_deeper_than_2": {
+      "count": 1,
+      "worst": [
+        {
+          "file": "src/billing/core.py",
+          "name": "busy",
+          "line": 14,
+          "loc": 28,
+          "params": 7,
+          "bool_params": 2,
+          "max_depth": 3,
+          "approximate": false
+        }
+      ]
+    },
+    "files_over_500_loc": [],
+    "long_lines_over_120_chars": 1
+  }
+}

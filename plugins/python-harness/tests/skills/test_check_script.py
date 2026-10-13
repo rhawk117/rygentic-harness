@@ -5,7 +5,6 @@ import json
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock
 
 import check_script
@@ -47,7 +46,7 @@ RUFF_VERSION = check_script.PINNED_TOOL_VERSIONS['ruff']
 TY_VERSION = check_script.PINNED_TOOL_VERSIONS['ty']
 
 
-def make_source(text: str) -> Any:
+def make_source(text: str) -> check_script.ScriptSource:
     return check_script.ScriptSource(path=Path('script.py'), text=text, tree=ast.parse(text))
 
 

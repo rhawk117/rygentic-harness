@@ -1,0 +1,15 @@
+{
+  "skill_name": "open-ticket",
+  "rigor": 1,
+  "eval_model": "haiku",
+  "max_runs_per_iteration": 8,
+  "repeats": 1,
+  "permissions": [],
+  "evals": [
+    {"id": 0, "name": "ticket-after-triage", "prompt": "That's enough investigating. Cut a ticket for this.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 1, "name": "jira-under-epic", "prompt": "Make a jira ticket under PLAT-40 for this, story, 3 points.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 2, "name": "no-tracker-current-branch", "prompt": "Stage this as a unit of work, no tracker, stay on this branch.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 3, "name": "stale-investigation", "prompt": "Turn yesterday's retry-queue investigation into a ticket.", "fixtures": null, "expect_skill_loaded": true, "criteria": []},
+    {"id": 4, "name": "does-not-trigger-on-starting-work", "prompt": "Start working the retry-queue ticket.", "fixtures": null, "expect_skill_loaded": false, "criteria": []}
+  ]
+}

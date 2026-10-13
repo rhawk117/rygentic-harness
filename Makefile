@@ -14,7 +14,9 @@ format: ## Apply repository formatters
 	./scripts/quality.sh --format
 lint: ## Run repository linting and plugin checks
 	./scripts/quality.sh --lint
-quality: ## Run formatting and linting
+test: ## Run the test suite and coverage reports
+	./scripts/quality.sh --test
+quality: ## Run formatting, linting and tests
 	./scripts/quality.sh
 pre-commit: ## Run all pre-commit hooks
 	$(UV) run pre-commit run --all-files

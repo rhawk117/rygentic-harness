@@ -1,0 +1,13 @@
+#!/bin/sh
+set -u
+
+here=$(cd -- "$(dirname -- "$0")" && pwd -P)
+launcher=${MIGHTYMODELS_HOOK_LAUNCHER:-${here}/mightymodels}
+
+if output=$("${launcher}" "$@"); then
+  test -z "${output}" || printf '%s\n' "${output}"
+  exit 0
+fi
+
+printf 'mightymodels hook did nothing: %s could not run\n' "${1:-the hook}" >&2
+exit 0
