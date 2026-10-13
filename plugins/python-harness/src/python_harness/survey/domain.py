@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 PYPROJECT = 'pyproject.toml'
 RUFF_CONFIG_FILES = ('.ruff.toml', 'ruff.toml')
+TY_CONFIG_FILES = ('ty.toml',)
 UV_LOCK = 'uv.lock'
 
 
@@ -110,3 +111,4 @@ class ProjectSurvey:
     ruff_config: str | None
     external_packages: tuple[str, ...]
     source_roots: tuple[str, ...]
+    ty_config: str | None

@@ -1,5 +1,6 @@
 """Planned verification commands, how they ran, and what the run left behind."""
 
+import re
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -8,7 +9,12 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Literal
 
+from python_harness.gate.errors import InvalidRuffVersionError
 from python_harness.survey.domain import Domain
+
+RUFF_VERSION_OPTION = 'ruff_version'
+RUFF_VERSION_VARIABLE = 'PYTHON_HARNESS_RUFF_VERSION'
+RUFF_VERSION_PATTERN = re.compile(r'[0-9]+\.[0-9]+\.[0-9]+')
 
 
 class GateTool(StrEnum):
@@ -18,38 +24,63 @@ class GateTool(StrEnum):
     PYTEST = auto()
 
 
-class RuffConfigSource(StrEnum):
+class ConfigKind(StrEnum):
+    RUFF = auto()
+    TY = auto()
+
+
+class ConfigSource(StrEnum):
     REPOSITORY = auto()
     FALLBACK = auto()
     DEFAULTS = auto()
 
 
 @dataclass(frozen=True, slots=True)
+class RuffVersion:
+    text: str
+
+    def __post_init__(self) -> None:
+        if RUFF_VERSION_PATTERN.fullmatch(self.text) is None:
+            raise InvalidRuffVersionError(RUFF_VERSION_OPTION, RUFF_VERSION_VARIABLE, self.text)
+
+
+DEFAULT_RUFF_VERSION = RuffVersion('0.16.9')
+
+
+@dataclass(frozen=True, slots=True)
 class ToolInvocation:
     distribution: str
     arguments: tuple[str, ...]
-    reads_ruff_config: bool = False
+    config: ConfigKind | None = None
     runs_in_project_environment: bool = False
     required_domain: Domain | None = None
+    pinned_version: RuffVersion | None = None
 
 
 type ToolInvocations = Mapping[GateTool, ToolInvocation]
 
 
-def default_tool_invocations() -> ToolInvocations:
+def default_tool_invocations(ruff_version: RuffVersion = DEFAULT_RUFF_VERSION) -> ToolInvocations:
     return MappingProxyType(
         {
             GateTool.RUFF_CHECK: ToolInvocation(
                 'ruff',
-                ('ruff', 'check', '--statistics', '--no-cache'),
-                reads_ruff_config=True,
+                ('ruff', 'check', '--no-fix', '--statistics', '--no-cache'),
+                config=ConfigKind.RUFF,
+                pinned_version=ruff_version,
             ),
             GateTool.RUFF_FORMAT: ToolInvocation(
                 'ruff',
                 ('ruff', 'format', '--check', '--no-cache'),
-                reads_ruff_config=True,
+                config=ConfigKind.RUFF,
+                pinned_version=ruff_version,
             ),
-            GateTool.TY: ToolInvocation('ty', ('ty', 'check'), runs_in_project_environment=True),
+            GateTool.TY: ToolInvocation(
+                'ty',
+                ('ty', 'check'),
+                config=ConfigKind.TY,
+                runs_in_project_environment=True,
+            ),
             GateTool.PYTEST: ToolInvocation(
                 'pytest',
                 ('pytest', '-q', '-p', 'no:cacheprovider'),
@@ -69,8 +100,11 @@ PYTHON_HARNESS_ENVIRONMENT = frozenset(
 )
 
 
+COLOUR_FORCING_ENVIRONMENT = frozenset({'CLICOLOR_FORCE', 'FORCE_COLOR'})
+
+
 def default_child_environment() -> Mapping[str, str]:
-    return MappingProxyType({'PYTHONDONTWRITEBYTECODE': '1'})
+    return MappingProxyType({'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'})
 
 
 def default_launcher_environment() -> Path | None:
@@ -81,8 +115,8 @@ def default_launcher_environment() -> Path | None:
 
 @dataclass(frozen=True, slots=True)
 class GateOptions:
-    fallback_ruff_config: Path | None = None
-    dropped_environment: frozenset[str] = PYTHON_HARNESS_ENVIRONMENT
+    fallbacks: Mapping[ConfigKind, Path] = field(default_factory=dict)
+    dropped_environment: frozenset[str] = PYTHON_HARNESS_ENVIRONMENT | COLOUR_FORCING_ENVIRONMENT
     launcher_environment: Path | None = field(default_factory=default_launcher_environment)
     child_environment: Mapping[str, str] = field(default_factory=default_child_environment)
     timeout_seconds: float = 600.0
@@ -95,21 +129,25 @@ class GateOptions:
 class GateInputs:
     declared_distributions: frozenset[str]
     has_uv_lock: bool
-    has_ruff_config: bool
+    project_configs: frozenset[ConfigKind]
     domains: frozenset[Domain]
     source_roots: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
-class RuffConfigSelection:
-    source: RuffConfigSource
+class ConfigSelection:
+    source: ConfigSource
     arguments: tuple[str, ...]
+
+
+type ConfigArguments = Mapping[ConfigKind, tuple[str, ...]]
 
 
 @dataclass(frozen=True, slots=True)
 class Launcher:
     program: str
     arguments: tuple[str, ...] = ()
+    pins_version: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,7 +174,8 @@ class ResolvedCommand:
 @dataclass(frozen=True, slots=True)
 class GatePlan:
     commands: tuple[GateCommand, ...]
-    ruff_config_source: RuffConfigSource
+    ruff_config_source: ConfigSource
+    ty_config_source: ConfigSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,7 +238,8 @@ type UntrackedBaseline = UntrackedSnapshot | NotTracked
 
 @dataclass(frozen=True, slots=True)
 class GateReport:
-    ruff_config_source: RuffConfigSource
+    ruff_config_source: ConfigSource
+    ty_config_source: ConfigSource
     results: tuple[GateResult, ...]
     created_paths: CreationTracking
 

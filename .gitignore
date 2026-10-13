@@ -8,3 +8,4 @@ dist/
 .coverage
 .ref
 plugins/vibe-code/evals/results/
+plugins/python-harness/evals/results/

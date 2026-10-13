@@ -30,9 +30,11 @@ def deep_project(project_builder: ProjectBuilder) -> None:
 class TestDeeplyNestedModule:
     @pytest.mark.usefixtures('deep_project')
     async def test_calls_still_answer_for_a_sibling(self, project_client: Client) -> None:
-        result = await project_client.call_tool('map_python_calls', {'paths': [SIBLING]})
+        result = await project_client.call_tool(
+            'map_python_calls', {'paths': [SIBLING], 'detail': 'full'}
+        )
 
-        calls = document_of(result)
+        calls = document_of(result)['result']
         assert (result.is_error, [item['metrics']['path'] for item in calls['modules']]) == (
             False,
             [SIBLING],
@@ -42,9 +44,11 @@ class TestDeeplyNestedModule:
     async def test_calls_list_the_requested_module_as_unparsable(
         self, project_client: Client
     ) -> None:
-        result = await project_client.call_tool('map_python_calls', {'paths': [DEEP]})
+        result = await project_client.call_tool(
+            'map_python_calls', {'paths': [DEEP], 'detail': 'full'}
+        )
 
-        calls = document_of(result)
+        calls = document_of(result)['result']
         reported = ([item['path'] for item in calls['unparsable']], calls['modules'])
         assert (result.is_error, reported) == (False, ([DEEP], []))
 
@@ -52,7 +56,7 @@ class TestDeeplyNestedModule:
     async def test_symbol_search_answers_with_the_module_in_the_project(
         self, project_client: Client
     ) -> None:
-        arguments = {'paths': [SIBLING], 'symbol': 'plain'}
+        arguments = {'paths': [SIBLING], 'symbol': 'plain', 'detail': 'full'}
 
         result = await project_client.call_tool('map_python_calls', arguments)
 
@@ -64,8 +68,12 @@ class TestDeeplyNestedModule:
     ) -> None:
         write_project(project_builder, deep_source)
 
-        facts = await project_client.call_tool('collect_python_facts', {'paths': ['src/deep']})
-        calls = await project_client.call_tool('map_python_calls', {'paths': [DEEP]})
+        facts = await project_client.call_tool(
+            'collect_python_facts', {'paths': ['src/deep'], 'detail': 'full'}
+        )
+        calls = await project_client.call_tool(
+            'map_python_calls', {'paths': [DEEP], 'detail': 'full'}
+        )
 
-        unparsable = [item['path'] for item in document_of(facts)['unparsable']]
+        unparsable = [item['path'] for item in document_of(facts)['result']['unparsable']]
         assert (facts.is_error, unparsable, calls.is_error) == (False, [DEEP], False)

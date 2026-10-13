@@ -4,8 +4,16 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from itertools import chain
 from operator import attrgetter
+from pathlib import Path
 
-from python_harness.core.sources import ParsedModule, UnparsableSource, load_sources
+from python_harness.core.sources import (
+    LoadedSources,
+    ParsedModule,
+    ParseOutcome,
+    UnparsableSource,
+    load_source,
+    load_sources,
+)
 from python_harness.core.workspace import Workspace
 from python_harness.facts.domain import FactCollector, FactsReport, ModuleFacts, NodeDetector
 from python_harness.facts.util.annotations import ANNOTATION_DETECTORS
@@ -72,12 +80,34 @@ def collect_facts_or_unparsable(
         return UnparsableSource(module.source.path, None, 'nested too deeply to walk')
 
 
+def source_path_of(outcome: ParseOutcome) -> str:
+    if isinstance(outcome, ParsedModule):
+        return outcome.source.path
+    return outcome.path
+
+
+def load_sources_reusing(
+    workspace: Workspace, files: Iterable[Path], loaded: LoadedSources
+) -> LoadedSources:
+    held = {source_path_of(item): item for item in (*loaded.modules, *loaded.unparsable)}
+    outcomes = tuple(
+        held.get(workspace.relative(file)) or load_source(workspace, file) for file in files
+    )
+    modules = tuple(item for item in outcomes if isinstance(item, ParsedModule))
+    unparsable = tuple(item for item in outcomes if isinstance(item, UnparsableSource))
+    return LoadedSources(modules, unparsable)
+
+
+def collect_facts_from(loaded: LoadedSources, catalog: FactCatalog) -> FactsReport:
+    outcomes = tuple(collect_facts_or_unparsable(module, catalog) for module in loaded.modules)
+    modules = tuple(item for item in outcomes if isinstance(item, ModuleFacts))
+    too_deep = tuple(item for item in outcomes if isinstance(item, UnparsableSource))
+    return FactsReport(modules, (*loaded.unparsable, *too_deep))
+
+
 def collect_facts(
     workspace: Workspace, paths: Iterable[str], catalog: FactCatalog | None = None
 ) -> FactsReport:
     chosen = FactCatalog() if catalog is None else catalog
     loaded = load_sources(workspace, workspace.python_files_in(paths))
-    outcomes = tuple(collect_facts_or_unparsable(module, chosen) for module in loaded.modules)
-    modules = tuple(item for item in outcomes if isinstance(item, ModuleFacts))
-    too_deep = tuple(item for item in outcomes if isinstance(item, UnparsableSource))
-    return FactsReport(modules, (*loaded.unparsable, *too_deep))
+    return collect_facts_from(loaded, chosen)

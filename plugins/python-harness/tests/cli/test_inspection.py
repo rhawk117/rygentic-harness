@@ -1,17 +1,31 @@
 """The inspect commands end to end: arguments and streams in, JSON and exit code out."""
 
+import argparse
 import io
 import json
+from collections.abc import Mapping
+from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 from python_harness.cli import main
 from python_harness.cli.domain import InspectCommand, ProcessEdge
 from python_harness.cli.exit_codes import ExitCode
-from python_harness.cli.inspection import default_inspect_commands
+from python_harness.cli.inspection import (
+    add_gate_arguments,
+    default_inspect_commands,
+    gate_options_from,
+)
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.tests.support import JsonDocument
 from python_harness.core.workspace import Workspace
+from python_harness.gate.domain import (
+    DEFAULT_RUFF_VERSION,
+    RUFF_VERSION_OPTION,
+    RUFF_VERSION_VARIABLE,
+    GateTool,
+    RuffVersion,
+)
 
 PROJECT = MappingProxyType(
     {
@@ -49,9 +63,11 @@ def run_inspect(workspace: Workspace, *arguments: str) -> tuple[int, JsonDocumen
     return exit_code, json.loads(stdout.getvalue())
 
 
-def run_failing_inspect(workspace: Workspace, *arguments: str) -> tuple[int, str]:
+def run_failing_inspect(
+    workspace: Workspace, *arguments: str, environment: Mapping[str, str] = MappingProxyType({})
+) -> tuple[int, str]:
     stderr = io.StringIO()
-    edge = ProcessEdge(io.StringIO(), io.StringIO(), stderr, MappingProxyType({}))
+    edge = ProcessEdge(io.StringIO(), io.StringIO(), stderr, environment)
     command = ('inspect', *arguments, '--root', str(workspace.root))
     exit_code = main(command, edge=edge)
     return exit_code, stderr.getvalue()
@@ -173,6 +189,22 @@ class TestGate:
             'fallback',
         )
 
+    def test_ty_runs_on_its_defaults_because_the_cli_passes_no_ty_fallback(
+        self, workspace: Workspace
+    ) -> None:
+        exit_code, document = run_inspect(workspace, 'gate', *self.EVERY_TOOL_SKIPPED)
+
+        assert (exit_code, document['ty_config_source']) == (ExitCode.PASSED, 'defaults')
+
+    def test_a_ty_config_in_the_project_is_reported_as_the_projects(
+        self, project_builder: ProjectBuilder
+    ) -> None:
+        workspace = project_builder.write({**PROJECT, 'ty.toml': ''})
+
+        exit_code, document = run_inspect(workspace, 'gate', *self.EVERY_TOOL_SKIPPED)
+
+        assert (exit_code, document['ty_config_source']) == (ExitCode.PASSED, 'repository')
+
     def test_missing_fallback_ruff_config_is_refused_before_any_tool_runs(
         self, workspace: Workspace
     ) -> None:
@@ -186,3 +218,43 @@ class TestGate:
             ExitCode.ERROR,
             f'python-harness: --fallback-ruff-config {missing} is not a file\n',
         )
+
+
+class TestGateRuffVersion:
+    @staticmethod
+    def parsed_options(environment: Mapping[str, str]) -> list[RuffVersion | None]:
+        parser = argparse.ArgumentParser()
+        add_gate_arguments(parser)
+        options = gate_options_from(parser.parse_args([]), Path('/work/shop'), environment)
+        return [
+            options.tools[tool].pinned_version
+            for tool in (GateTool.RUFF_CHECK, GateTool.RUFF_FORMAT)
+        ]
+
+    @pytest.mark.parametrize(
+        ('environment', 'expected'),
+        [
+            pytest.param({}, DEFAULT_RUFF_VERSION, id='unset'),
+            pytest.param({RUFF_VERSION_VARIABLE: ''}, DEFAULT_RUFF_VERSION, id='empty'),
+            pytest.param(
+                {RUFF_VERSION_VARIABLE: '${user_config.ruff_version}'},
+                DEFAULT_RUFF_VERSION,
+                id='unexpanded-literal',
+            ),
+            pytest.param({RUFF_VERSION_VARIABLE: '0.15.2'}, RuffVersion('0.15.2'), id='override'),
+        ],
+    )
+    def test_both_ruff_checks_get_the_version_the_environment_names(
+        self, environment: Mapping[str, str], expected: RuffVersion
+    ) -> None:
+        assert self.parsed_options(environment) == [expected, expected]
+
+    @pytest.mark.parametrize('text', ['0.16 .9', '-0.16.9', 'ruff@0.16.9', '../0.16.9'])
+    def test_an_invalid_version_is_refused_before_any_tool_runs(
+        self, workspace: Workspace, text: str
+    ) -> None:
+        exit_code, stderr = run_failing_inspect(
+            workspace, 'gate', environment={RUFF_VERSION_VARIABLE: text}
+        )
+
+        assert (exit_code, RUFF_VERSION_OPTION in stderr) == (ExitCode.ERROR, True)

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from python_harness.core.errors import GitCommandError
 from python_harness.core.git import list_changed_python_files
-from python_harness.core.tests.fixtures import GitProject
+from python_harness.core.tests.fixtures import GitProject, stubbed_uv
 from python_harness.core.workspace import Workspace, open_workspace
 
 
@@ -62,7 +62,7 @@ class TestWorkspaceInsideTheRepository:
         git_project.commit({'service/pkg/core.py': 'a = 1\n', 'other/x.py': 'b = 1\n'}, 'base')
         git_project.switch_to_new_branch('feature')
         git_project.commit({'service/pkg/core.py': 'a = 2\n', 'other/x.py': 'b = 2\n'}, 'change')
-        return open_workspace(git_project.builder.root.joinpath('service'))
+        return open_workspace(git_project.builder.root.joinpath('service'), uv_runner=stubbed_uv)
 
     def test_paths_are_relative_to_the_workspace_and_scoped_to_it(
         self, workspace: Workspace

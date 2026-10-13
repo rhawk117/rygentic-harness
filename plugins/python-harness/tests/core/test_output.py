@@ -8,11 +8,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.output import (
-    UnsupportedJsonValueError,
-    to_json_value,
-    write_document,
-)
+from python_harness.core.output import UnsupportedJsonValueError, to_json_value, write_document
 
 
 class Colour(StrEnum):

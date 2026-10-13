@@ -15,7 +15,7 @@ ships as a plugin under `plugins/`, one directory each, with its own manifest, s
 | --- | --- | --- | --- |
 | mightymodels | 1.0.0 | Takes a piece of work from the first question to a merged PR, with nineteen skills, twelve worker agents, seven hooks and a state server | [README](plugins/mightymodels/README.md) |
 | vibe-code | 0.4.0 | Eleven skills for building and tuning Claude Code skills, subagents, hooks, rule files, MCP servers, loops and plugins, plus a CLI that validates what they write | [README](plugins/vibe-code/README.md) |
-| python-harness | 0.1.0 | A Python review skill, a read-only fact agent, two hooks, a CLI and an MCP server | [README](plugins/python-harness/README.md) |
+| python-harness | 0.2.0 | Eight Python skills, four agents, a ty language server, two hooks, a CLI and an MCP server | [README](plugins/python-harness/README.md) |
 
 No plugin depends on another. Install the ones you want.
 
@@ -107,17 +107,26 @@ Windows.
 
 ### python-harness
 
-`/python-harness:what-would-ryan-say` reviews a PR, a branch or a codebase and writes
-`PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`. It never edits code, and it runs only when you type it.
-It dispatches a read-only agent, `pylens`, which returns cited facts.
+Eight skills, four agents, a language server, two hooks, a CLI and an MCP server for Python
+projects. The skills are `build-web-service`, `enterprise-design`, `design-persistence` and
+`design-tests` (a service track that hands work along in that order), `data-engineering` and
+`data-analysis` (a data track whose two skills hand work to each other), `automate-task` (a
+script track) and `tactical-slop-review`, which every track hands to once code exists. Claude
+offers a skill when the request matches its description, and you can run any of them as
+`/python-harness:<name>`. `tactical-slop-review` reviews a PR, a branch or a codebase, writes
+`PYTHON-REVIEW.md` or `REFACTOR-PLAN.md`, and never edits code. The four agents are `pylens` and
+`pep-talk`, which are read-only and run on Haiku, `reviewer`, which cannot edit files, and
+`test-engineer`, which writes the tests it is assigned. The `ty` language server gives Claude Code
+type diagnostics for Python files and downloads ty through `uv` on its first start.
 
 Two hooks come with it. One briefs each session on the project's Python toolchain. The other adds
 a note when a Bash command runs plain `python` where `uv run python` was meant. Neither blocks a
-command. The MCP server has six tools: two read standard-library documentation from
-`docs.python.org`, and four read the project Claude Code was started in.
+command. The MCP server has eight tools: two read standard-library documentation from
+`docs.python.org`, and six read the project Claude Code was started in.
 
 > [!WARNING]
-> As of 0.1.0 the hooks and the server have not yet been run inside a live Claude Code session. The
+> As of 0.2.0 the skills, the agents, the language server, the hooks and the server have not yet
+> been run inside a live Claude Code session. The
 > [python-harness README](plugins/python-harness/README.md#limitations) lists what is unconfirmed.
 
 ## Layout
@@ -127,8 +136,8 @@ plugins/          one directory per plugin; each carries its own manifest and sk
   mightymodels/   the dev loop: nineteen skills, twelve worker agents
   vibe-code/      authoring skills and the `vibe-code` CLI: eleven skills, no agents,
                   with its own tests and eval cases
-  python-harness/ Python review: one skill, one agent, hooks, the `python-harness` CLI
-                  and an MCP server, with its own tests
+  python-harness/ Python engineering: eight skills, four agents, a ty language server, hooks,
+                  the `python-harness` CLI and an MCP server, with its own tests
 docs/             human documentation for the harness and the mightymodels plugin
 scripts/          the quality gate (`quality.sh`), checkout setup, and a log helper
 .claude-plugin/   the rygentic-harness marketplace manifest
@@ -140,7 +149,7 @@ scripts/          the quality gate (`quality.sh`), checkout setup, and a log hel
 | --- | --- |
 | [plugins/mightymodels/README.md](plugins/mightymodels/README.md) | The mightymodels plugin: requirements, the loop, skills, workers, hooks, state |
 | [plugins/vibe-code/README.md](plugins/vibe-code/README.md) | The vibe-code plugin: install, skills, CLI, launcher |
-| [plugins/python-harness/README.md](plugins/python-harness/README.md) | The python-harness plugin: install, hooks, server, launcher, limitations |
+| [plugins/python-harness/README.md](plugins/python-harness/README.md) | The python-harness plugin: install, skills, agents, language server, hooks, server, launcher, limitations |
 | [docs/workflow.md](docs/workflow.md) | The full mightymodels loop, stage by stage, with diagrams |
 | [docs/skills.md](docs/skills.md) | Every mightymodels skill: what it does and when it fires |
 | [docs/agents.md](docs/agents.md) | The twelve workers and how models get routed |

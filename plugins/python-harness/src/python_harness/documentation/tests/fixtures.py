@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 import pytest
 from mcp import Client
 
+from python_harness.core.tests.fixtures import stubbed_uv
 from python_harness.documentation.domain import PythonVersion
 from python_harness.documentation.inventory import parse_inventory
 from python_harness.documentation.matching import SymbolCatalog, catalog_symbols
@@ -47,6 +48,6 @@ def docs_site() -> DocsSite:
 async def docs_client(settings: Settings, docs_site: DocsSite) -> AsyncGenerator[Client]:
     async with (
         documentation_service(settings, docs_site.transport()) as service,
-        Client(build_server(service)) as client,
+        Client(build_server(service, uv_runner=stubbed_uv)) as client,
     ):
         yield client

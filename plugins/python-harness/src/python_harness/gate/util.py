@@ -1,24 +1,54 @@
 """Pure helpers: gate inputs, child environments, output tails and git status entries."""
 
 import os
+import re
 import sys
 from collections.abc import Collection, Mapping
 from pathlib import Path
 
-from python_harness.gate.domain import GateInputs, GateOptions
+from python_harness.gate.domain import (
+    DEFAULT_RUFF_VERSION,
+    RUFF_VERSION_VARIABLE,
+    ConfigKind,
+    GateInputs,
+    GateOptions,
+    RuffVersion,
+    ToolInvocations,
+    default_tool_invocations,
+)
 from python_harness.survey.domain import ProjectSurvey
 
+UNEXPANDED_OPTION = re.compile(r'\$\{[^{}]*\}')
 SEARCH_PATH = 'PATH'
 VIRTUAL_ENV = 'VIRTUAL_ENV'
 VIRTUALENV_SCRIPTS = 'Scripts' if sys.platform == 'win32' else 'bin'
 UNTRACKED_STATUS_CODES = frozenset({'??', '!!'})
 
 
+def ruff_version_from(environment: Mapping[str, str]) -> RuffVersion:
+    text = environment.get(RUFF_VERSION_VARIABLE, '')
+    if text == '' or UNEXPANDED_OPTION.fullmatch(text) is not None:
+        return DEFAULT_RUFF_VERSION
+    return RuffVersion(text)
+
+
+def tool_invocations_from(environment: Mapping[str, str]) -> ToolInvocations:
+    return default_tool_invocations(ruff_version_from(environment))
+
+
+def project_configs_from(survey: ProjectSurvey) -> frozenset[ConfigKind]:
+    found = {
+        ConfigKind.RUFF: survey.ruff_config,
+        ConfigKind.TY: survey.ty_config,
+    }
+    return frozenset(kind for kind, config in found.items() if config is not None)
+
+
 def gate_inputs_from(survey: ProjectSurvey) -> GateInputs:
     return GateInputs(
         declared_distributions=survey.manifest.declared_distributions,
         has_uv_lock=survey.layout.has_uv_lock,
-        has_ruff_config=survey.ruff_config is not None,
+        project_configs=project_configs_from(survey),
         domains=frozenset(survey.domains),
         source_roots=survey.source_roots,
     )

@@ -1,10 +1,17 @@
 """End to end over MCP: schemas, search tiers, paginated reads, model-visible errors."""
 
+from pathlib import Path
+
 import pytest
 from mcp import Client
 from mcp.types import CallToolResult
+from python_harness.core.tests.fixtures import STUBBED_UV_DIAGNOSTIC, ProjectBuilder
 from python_harness.core.tests.support import JsonDocument
+from python_harness.core.workspace import open_workspace
 from python_harness.documentation.tests.support import DOCS_VERSION, DocsSite, standard_pages
+from python_harness.imports.services import load_project_index
+from python_harness.tools.project import workspace_diagnostics
+from python_harness.tools.tests.support import document_of
 
 OS_PATH_PAGE_PATH = f'/{DOCS_VERSION}/library/os.path.html'
 INVENTORY_PATH = f'/{DOCS_VERSION}/objects.inv'
@@ -14,6 +21,26 @@ VERSION_PATTERN = r'^3\.(0|[1-9][0-9]?)$'
 VERSION_HELP = (
     'Python minor version such as 3.13.\n\n'
     'Read requires-python in pyproject.toml or .python-version first; do not guess.'
+)
+EIGHT_TOOLS = (
+    'search_python_docs',
+    'read_python_docs',
+    'survey',
+    'gate',
+    'plan_review_surface',
+    'collect_python_facts',
+    'map_python_calls',
+    'check_citations',
+)
+BUDGETED_TOOLS = ('collect_python_facts', 'map_python_calls')
+PROJECT_DIAGNOSTIC_ARGUMENTS = (
+    pytest.param('survey', {}, id='survey'),
+    pytest.param(
+        'collect_python_facts', {'paths': ['src/shop/pricing.py']}, id='collect-python-facts'
+    ),
+    pytest.param('map_python_calls', {'paths': ['src/shop/pricing.py']}, id='map-python-calls'),
+    pytest.param('check_citations', {'text': 'text'}, id='check-citations'),
+    pytest.param('plan_review_surface', {'paths': ['src']}, id='plan-review-surface'),
 )
 
 
@@ -36,15 +63,17 @@ def dereferenced(schema: JsonDocument, node: JsonDocument) -> JsonDocument:
 
 @pytest.mark.anyio
 class TestToolSchemas:
-    async def test_the_server_lists_exactly_its_six_tools(self, docs_client: Client) -> None:
+    async def test_the_server_lists_exactly_its_eight_tools(self, docs_client: Client) -> None:
         tools = (await docs_client.list_tools()).tools
         assert sorted(tool.name for tool in tools) == [
             'check_citations',
             'collect_python_facts',
+            'gate',
             'map_python_calls',
             'plan_review_surface',
             'read_python_docs',
             'search_python_docs',
+            'survey',
         ]
 
     async def test_every_tool_takes_object_arguments(self, docs_client: Client) -> None:
@@ -61,11 +90,60 @@ class TestToolSchemas:
         assert {tool.name: set(tool.input_schema['properties']) for tool in tools} == {
             'search_python_docs': {'version', 'query', 'limit'},
             'read_python_docs': {'version', 'symbol', 'offset', 'max_chars'},
-            'collect_python_facts': {'paths', 'with_function_shapes'},
-            'map_python_calls': {'paths', 'symbol'},
+            'collect_python_facts': {'paths', 'with_function_shapes', 'detail', 'budget'},
+            'map_python_calls': {'paths', 'symbol', 'detail', 'budget'},
             'check_citations': {'path', 'text'},
             'plan_review_surface': {'paths', 'diff_base', 'diff_head'},
+            'survey': set(),
+            'gate': set(),
         }
+
+    async def test_only_the_budgeted_tools_take_detail_and_budget(
+        self, docs_client: Client
+    ) -> None:
+        tools = (await docs_client.list_tools()).tools
+        budgeted = [
+            tool.name
+            for tool in tools
+            if {'detail', 'budget'} & set(tool.input_schema['properties'])
+        ]
+        assert sorted(budgeted) == sorted(BUDGETED_TOOLS)
+
+    @pytest.mark.parametrize('name', BUDGETED_TOOLS)
+    async def test_budget_and_detail_describe_themselves_in_the_schema(
+        self, docs_client: Client, name: str
+    ) -> None:
+        tools = {tool.name: tool for tool in (await docs_client.list_tools()).tools}
+        schema = tools[name].input_schema
+        budget = dereferenced(schema, schema['properties']['budget'])
+        detail = dereferenced(schema, schema['properties']['detail'])
+        assert (budget['minimum'], budget['default'], bool(budget['description'])) == (
+            256,
+            4000,
+            True,
+        )
+        assert (detail['enum'], bool(detail['description'])) == (
+            ['full', 'summary', 'counts'],
+            True,
+        )
+
+    async def test_no_tool_takes_a_project_root(self, docs_client: Client) -> None:
+        tools = (await docs_client.list_tools()).tools
+        rooted = [tool.name for tool in tools if 'project_root' in tool.input_schema['properties']]
+        assert rooted == []
+
+    async def test_gate_is_not_read_only_and_survey_is(self, docs_client: Client) -> None:
+        tools = {tool.name: tool for tool in (await docs_client.list_tools()).tools}
+        assert tools['gate'].annotations is not None
+        assert tools['survey'].annotations is not None
+        assert (
+            tools['gate'].annotations.read_only_hint,
+            tools['survey'].annotations.read_only_hint,
+        ) == (False, True)
+
+    async def test_the_instructions_name_all_eight_tools(self, docs_client: Client) -> None:
+        instructions = docs_client.instructions or ''
+        assert [name for name in EIGHT_TOOLS if name not in instructions] == []
 
     @pytest.mark.parametrize(
         'name',
@@ -85,6 +163,45 @@ class TestToolSchemas:
             VERSION_PATTERN,
             VERSION_HELP,
         )
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures('shop')
+class TestProjectDiagnostics:
+    @pytest.mark.parametrize(('tool', 'arguments'), PROJECT_DIAGNOSTIC_ARGUMENTS)
+    async def test_project_tools_add_workspace_diagnostics(
+        self, project_client: Client, tool: str, arguments: dict[str, object]
+    ) -> None:
+        result = await project_client.call_tool(tool, arguments)
+
+        assert result.is_error is False
+        diagnostics = document_of(result)['workspace']
+        assert diagnostics['source_roots'] == ['src']
+        assert diagnostics['fallback_diagnostics'] == [STUBBED_UV_DIAGNOSTIC]
+
+
+class TestWorkspaceDiagnostics:
+    def test_unindexed_workspace_package_has_a_relative_directory(
+        self, project_builder: ProjectBuilder
+    ) -> None:
+        project_builder.write(
+            {
+                'members/one/src/one/__init__.py': 'from shared import value\n',
+                'members/two/src/shared/py.typed': '',
+            }
+        )
+        root = project_builder.root
+        members = (root.joinpath('members', 'one'), root.joinpath('members', 'two'))
+
+        def list_members(_: Path) -> str:
+            return '\n'.join(str(member) for member in members)
+
+        workspace = open_workspace(root, uv_runner=list_members)
+        graph = load_project_index(workspace).graph
+
+        assert workspace_diagnostics(workspace, graph)['unindexed_packages'] == [
+            {'name': 'shared', 'directory': 'members/two/src/shared'}
+        ]
 
 
 @pytest.mark.anyio

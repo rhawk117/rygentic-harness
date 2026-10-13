@@ -28,13 +28,17 @@ class PathInput:
     tool: str
     argument: str
     takes_many: bool
+    detail: str | None = None
 
     def arguments(self, target: str) -> dict[str, object]:
-        return {self.argument: [target] if self.takes_many else target}
+        arguments = {self.argument: [target] if self.takes_many else target}
+        if self.detail is not None:
+            arguments['detail'] = self.detail
+        return arguments
 
 
-FACTS = PathInput(tool='collect_python_facts', argument='paths', takes_many=True)
-CALLS = PathInput(tool='map_python_calls', argument='paths', takes_many=True)
+FACTS = PathInput(tool='collect_python_facts', argument='paths', takes_many=True, detail='full')
+CALLS = PathInput(tool='map_python_calls', argument='paths', takes_many=True, detail='full')
 SURFACE = PathInput(tool='plan_review_surface', argument='paths', takes_many=True)
 DOCUMENT = PathInput(tool='check_citations', argument='path', takes_many=False)
 DIRECTORY_INPUTS = [
@@ -192,5 +196,7 @@ class TestUndecodableSource:
     ) -> None:
         result = await project_client.call_tool(path_input.tool, path_input.arguments(PACKAGE))
 
-        unparsable = [item['path'] for item in document_of(result)['unparsable']]
+        document = document_of(result)
+        facts = document['result'] if path_input.tool == FACTS.tool else document
+        unparsable = [item['path'] for item in facts['unparsable']]
         assert (result.is_error, unparsable) == (False, [self.PATH])

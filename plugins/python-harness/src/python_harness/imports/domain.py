@@ -75,3 +75,9 @@ def longest_module_prefix(dotted_name: str, modules: Mapping[str, ModuleRef]) ->
 class ProjectIndex:
     sources: LoadedSources
     graph: ImportGraph
+
+
+@dataclass(frozen=True, slots=True)
+class UnindexedPackage:
+    name: str
+    directory: str

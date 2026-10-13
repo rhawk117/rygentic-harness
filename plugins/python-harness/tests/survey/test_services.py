@@ -3,13 +3,14 @@
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import ProjectBuilder, stubbed_uv
 from python_harness.core.toml import TomlTable
 from python_harness.core.workspace import DiscoveryOptions, Workspace, open_workspace
 from python_harness.survey.domain import Domain, LayoutFacts, Mode, ModeInference
 from python_harness.survey.errors import ManifestUnreadableError
 from python_harness.survey.services import (
     find_ruff_config,
+    find_ty_config,
     load_pyproject,
     read_layout,
     survey_project,
@@ -136,7 +137,7 @@ class TestReadLayoutWithConfiguredTestDirectories:
     @pytest.fixture
     def workspace(self, project_builder: ProjectBuilder) -> Workspace:
         project_builder.write(self.FILES)
-        return open_workspace(project_builder.root, self.OPTIONS)
+        return open_workspace(project_builder.root, self.OPTIONS, uv_runner=stubbed_uv)
 
     def test_workspace_test_directories_decide_the_layout(self, workspace: Workspace) -> None:
         assert read_layout(workspace) == self.EXPECTED
@@ -193,6 +194,48 @@ class TestFindRuffConfig:
         assert find_ruff_config(workspace, pyproject) == expected
 
 
+class TestFindTyConfig:
+    @pytest.fixture
+    def workspace(
+        self, project_builder: ProjectBuilder, request: pytest.FixtureRequest
+    ) -> Workspace:
+        return project_builder.write(request.param)
+
+    @pytest.fixture
+    def pyproject(self, workspace: Workspace) -> TomlTable | None:
+        return load_pyproject(workspace)
+
+    @pytest.mark.parametrize(
+        ('workspace', 'expected'),
+        [
+            pytest.param(
+                {
+                    'ty.toml': 'environment = {}\n',
+                    'pyproject.toml': '[tool.ty]\n',
+                },
+                'ty.toml',
+                id='ty-toml-before-pyproject',
+            ),
+            pytest.param(
+                {'pyproject.toml': '[tool.ty]\n'},
+                'pyproject.toml',
+                id='pyproject-tool-ty',
+            ),
+            pytest.param(
+                {'pyproject.toml': '[tool.ruff]\nline-length = 70\n'},
+                None,
+                id='pyproject-without-tool-ty',
+            ),
+            pytest.param({'demo.py': ''}, None, id='no-config-files'),
+        ],
+        indirect=['workspace'],
+    )
+    def test_finds_the_file_ty_would_read(
+        self, workspace: Workspace, pyproject: TomlTable | None, expected: str | None
+    ) -> None:
+        assert find_ty_config(workspace, pyproject) == expected
+
+
 class TestSurveyProject:
     FILES = MappingProxyType(
         {
@@ -243,6 +286,20 @@ class TestSurveyProject:
         survey = survey_project(workspace)
 
         assert survey.ruff_config == self.RUFF_CONFIG
+
+    def test_survey_has_no_ty_config_when_the_project_declares_none(
+        self, workspace: Workspace
+    ) -> None:
+        survey = survey_project(workspace)
+
+        assert survey.ty_config is None
+
+    def test_ty_config_names_the_file_ty_reads(self, project_builder: ProjectBuilder) -> None:
+        workspace = project_builder.write({**self.FILES, 'ty.toml': 'environment = {}\n'})
+
+        survey = survey_project(workspace)
+
+        assert survey.ty_config == 'ty.toml'
 
     def test_mode_comes_with_its_reasons(self, workspace: Workspace) -> None:
         survey = survey_project(workspace)

@@ -5,7 +5,6 @@ from types import MappingProxyType
 from python_harness.core.git import list_changed_python_files
 from python_harness.core.workspace import Workspace
 from python_harness.imports.domain import ProjectIndex
-from python_harness.imports.services import load_project_index
 from python_harness.surface.domain import (
     DiffTarget,
     SurfaceGraph,
@@ -38,13 +37,16 @@ def index_surface(index: ProjectIndex, surface_paths: frozenset[str]) -> Surface
 
 
 def plan_surface(
-    workspace: Workspace, target: Target, options: SurfaceOptions | None = None
+    workspace: Workspace,
+    index: ProjectIndex,
+    target: Target,
+    *,
+    options: SurfaceOptions | None = None,
 ) -> SurfacePlan:
     chosen = SurfaceOptions() if options is None else options
     surface_paths = frozenset(resolve_surface_paths(workspace, target))
     if not surface_paths:
         return SurfacePlan(target, (), (), chosen)
-    index = load_project_index(workspace)
     view = index_surface(index, surface_paths)
     groups = cluster_modules(view, options=chosen)
     reported = index.sources.unparsable

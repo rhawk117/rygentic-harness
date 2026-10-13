@@ -12,14 +12,27 @@ import pytest
 import tomllib
 from python_harness.core.tests.fixtures import ProjectBuilder
 from python_harness.core.workspace import Workspace
-from python_harness.gate.domain import GateInputs, GateOptions, GateTool
+from python_harness.gate.domain import (
+    COLOUR_FORCING_ENVIRONMENT,
+    DEFAULT_RUFF_VERSION,
+    RUFF_VERSION_OPTION,
+    RUFF_VERSION_VARIABLE,
+    ConfigKind,
+    GateInputs,
+    GateOptions,
+    GateTool,
+    RuffVersion,
+)
+from python_harness.gate.errors import ECHOED_VALUE_LIMIT, InvalidRuffVersionError
 from python_harness.gate.policy import plan_gate
 from python_harness.gate.tests.support import argv_for
 from python_harness.gate.util import (
     VIRTUALENV_SCRIPTS,
     build_child_environment,
     gate_inputs_from,
+    ruff_version_from,
     take_output_tail,
+    tool_invocations_from,
     untracked_paths_from_status,
 )
 from python_harness.survey.domain import (
@@ -64,6 +77,7 @@ class TestGateInputsFrom:
         ruff_config=None,
         external_packages=(),
         source_roots=('src',),
+        ty_config=None,
     )
     EXTRA_ONLY_PYTEST_ARGV = (
         'uv',
@@ -86,11 +100,24 @@ class TestGateInputsFrom:
         assert inputs.declared_distributions == {'fastapi', 'ruff'}
 
     def test_layout_config_and_domains_carry_over(self, inputs: GateInputs) -> None:
-        assert (inputs.has_uv_lock, inputs.has_ruff_config, inputs.domains) == (
+        assert (inputs.has_uv_lock, inputs.project_configs, inputs.domains) == (
             True,
-            False,
+            frozenset(),
             {Domain.PYTEST, Domain.FASTAPI},
         )
+
+    def test_ty_config_is_absent_when_the_survey_found_none(self, inputs: GateInputs) -> None:
+        assert ConfigKind.TY not in inputs.project_configs
+
+    def test_ty_config_carries_over_from_the_survey(self) -> None:
+        inputs = gate_inputs_from(replace(self.SURVEY, ty_config='ty.toml'))
+
+        assert ConfigKind.TY in inputs.project_configs
+
+    def test_ruff_config_carries_over_from_the_survey(self) -> None:
+        inputs = gate_inputs_from(replace(self.SURVEY, ruff_config='ruff.toml'))
+
+        assert ConfigKind.RUFF in inputs.project_configs
 
     def test_source_roots_carry_over(self, inputs: GateInputs) -> None:
         assert inputs.source_roots == self.SURVEY.source_roots
@@ -109,7 +136,7 @@ class TestGateInputsFrom:
 
 
 class TestSourceRootsFromTheWorkspace:
-    FALLBACK_OPTIONS = GateOptions(fallback_ruff_config=Path('/plugin/assets/ruff.toml'))
+    FALLBACK_OPTIONS = GateOptions(fallbacks={ConfigKind.RUFF: Path('/plugin/assets/ruff.toml')})
 
     @pytest.fixture
     def workspace(
@@ -176,6 +203,7 @@ class TestBuildChildEnvironment:
                 {
                     'PATH': join_search_path('/usr/local/bin', '/usr/bin'),
                     'HOME': '/home/ryan',
+                    'NO_COLOR': '1',
                     'PYTHONDONTWRITEBYTECODE': '1',
                 },
                 id='active-virtualenv-scripts-leave-path-with-the-dropped-variables',
@@ -185,21 +213,32 @@ class TestBuildChildEnvironment:
                     'PATH': join_search_path('/usr/bin', f'{ACTIVE_SCRIPTS}/'),
                     'VIRTUAL_ENV': str(ACTIVE_VIRTUALENV),
                 },
-                {'PATH': '/usr/bin', 'PYTHONDONTWRITEBYTECODE': '1'},
+                {'PATH': '/usr/bin', 'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'},
                 id='trailing-separator-still-matches',
             ),
             pytest.param(
                 {'PATH': join_search_path(ACTIVE_SCRIPTS, '/usr/bin')},
                 {
                     'PATH': join_search_path(ACTIVE_SCRIPTS, '/usr/bin'),
+                    'NO_COLOR': '1',
                     'PYTHONDONTWRITEBYTECODE': '1',
                 },
                 id='path-untouched-without-a-virtualenv',
             ),
             pytest.param(
                 {'VIRTUAL_ENV': str(ACTIVE_VIRTUALENV)},
-                {'PYTHONDONTWRITEBYTECODE': '1'},
+                {'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'},
                 id='no-path-is-invented',
+            ),
+            pytest.param(
+                {
+                    'CLICOLOR_FORCE': '0',
+                    'FORCE_COLOR': '1',
+                    'NO_COLOR': '',
+                    'CLICOLOR': '1',
+                },
+                {'CLICOLOR': '1', 'NO_COLOR': '1', 'PYTHONDONTWRITEBYTECODE': '1'},
+                id='colour-forcing-variables-leave-and-no-color-is-set',
             ),
         ],
     )
@@ -257,7 +296,10 @@ class TestLauncherEnvironment:
         environment, child = launched
 
         assert environment != session
-        assert child == session | dict(GateOptions().child_environment)
+        kept = {
+            name: value for name, value in session.items() if name not in COLOUR_FORCING_ENVIRONMENT
+        }
+        assert child == kept | dict(GateOptions().child_environment)
 
 
 class TestUntrackedPathsFromStatus:
@@ -287,3 +329,68 @@ class TestUntrackedPathsFromStatus:
     )
     def test_untracked_paths(self, status: str, prefix: str, expected: frozenset[str]) -> None:
         assert untracked_paths_from_status(status, prefix) == expected
+
+
+class TestRuffVersionOption:
+    @pytest.mark.parametrize(
+        'environment',
+        [
+            pytest.param({}, id='unset'),
+            pytest.param({RUFF_VERSION_VARIABLE: ''}, id='empty'),
+            pytest.param(
+                {RUFF_VERSION_VARIABLE: '${user_config.ruff_version}'}, id='unexpanded-literal'
+            ),
+        ],
+    )
+    def test_an_absent_value_is_the_default(self, environment: Mapping[str, str]) -> None:
+        assert ruff_version_from(environment) == DEFAULT_RUFF_VERSION
+
+    @pytest.mark.parametrize('text', ['0.15.2', '0.16.10', '1.0.0'])
+    def test_a_version_overrides_the_default(self, text: str) -> None:
+        assert ruff_version_from({RUFF_VERSION_VARIABLE: text}) == RuffVersion(text)
+
+    @pytest.mark.parametrize(
+        'text',
+        [
+            pytest.param('0.16 .9', id='space'),
+            pytest.param(' 0.16.9', id='leading-space'),
+            pytest.param('-0.16.9', id='leading-dash'),
+            pytest.param('--version', id='flag'),
+            pytest.param('ruff@0.16.9', id='at-sign'),
+            pytest.param('0.16.9@latest', id='trailing-at-sign'),
+            pytest.param('../0.16.9', id='slash'),
+            pytest.param('0.16', id='two-components'),
+            pytest.param('0.16.9rc1', id='pre-release'),
+            pytest.param('0.16.9\n', id='trailing-newline'),
+            pytest.param('latest', id='word'),
+            pytest.param('$(id)', id='command-substitution'),
+            pytest.param('${user_config.ruff_version', id='unterminated-literal'),
+            pytest.param('١.٢.٣', id='non-ascii-digits'),
+        ],
+    )
+    def test_any_other_value_is_refused_by_naming_the_option(self, text: str) -> None:
+        with pytest.raises(InvalidRuffVersionError, match=RUFF_VERSION_OPTION):
+            ruff_version_from({RUFF_VERSION_VARIABLE: text})
+
+    def test_a_long_refused_value_is_cut_in_the_message(self) -> None:
+        error = InvalidRuffVersionError(RUFF_VERSION_OPTION, RUFF_VERSION_VARIABLE, 'x' * 10_000)
+
+        message = str(error)
+
+        assert len(message) < 200
+        assert RUFF_VERSION_OPTION in message
+        assert RUFF_VERSION_VARIABLE in message
+        assert 'x' * ECHOED_VALUE_LIMIT in message
+        assert 'x' * (ECHOED_VALUE_LIMIT + 1) not in message
+        assert f'cut to {ECHOED_VALUE_LIMIT} characters' in message
+        assert error.value == 'x' * 10_000
+
+    def test_the_environment_variable_sets_the_pin_of_both_ruff_commands(self) -> None:
+        tools = tool_invocations_from({RUFF_VERSION_VARIABLE: '0.15.2'})
+
+        assert [tools[tool].pinned_version for tool in GateTool] == [
+            RuffVersion('0.15.2'),
+            RuffVersion('0.15.2'),
+            None,
+            None,
+        ]

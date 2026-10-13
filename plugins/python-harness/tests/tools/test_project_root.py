@@ -13,6 +13,8 @@ PORTED_CALLS = [
     pytest.param('map_python_calls', {'paths': ['.']}, id='map_python_calls'),
     pytest.param('check_citations', {'text': 'no citations'}, id='check_citations'),
     pytest.param('plan_review_surface', {}, id='plan_review_surface'),
+    pytest.param('survey', {}, id='survey'),
+    pytest.param('gate', {}, id='gate'),
 ]
 
 

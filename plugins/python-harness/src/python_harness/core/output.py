@@ -1,4 +1,4 @@
-"""JSON documents built from result values: dataclass fields plus public properties."""
+"""JSON documents built from result values."""
 
 import inspect
 import json

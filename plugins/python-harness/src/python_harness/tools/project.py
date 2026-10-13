@@ -6,7 +6,10 @@ from typing import Annotated
 
 from pydantic import Field, StringConstraints
 
-from python_harness.core.workspace import Workspace, open_workspace
+from python_harness.core.output import JsonValue
+from python_harness.core.workspace import UvRunner, Workspace, open_workspace
+from python_harness.imports.domain import ImportGraph
+from python_harness.imports.services import unindexed_packages_for
 from python_harness.tools.errors import ProjectRootRelativeError, ProjectRootUnsetError
 
 PROJECT_ROOT_VARIABLE = 'CLAUDE_PROJECT_DIR'
@@ -34,8 +37,19 @@ def check_project_root(
     return None
 
 
-def open_project(environment: Mapping[str, str]) -> Workspace:
+def open_project(environment: Mapping[str, str], uv_runner: UvRunner) -> Workspace:
     declared = environment.get(PROJECT_ROOT_VARIABLE, '')
     if (problem := check_project_root(declared)) is not None:
         raise problem
-    return open_workspace(Path(declared))
+    return open_workspace(Path(declared), uv_runner=uv_runner)
+
+
+def workspace_diagnostics(workspace: Workspace, graph: ImportGraph) -> dict[str, JsonValue]:
+    return {
+        'source_roots': [workspace.relative(root) for root in workspace.source_roots],
+        'fallback_diagnostics': list(workspace.fallback_diagnostics),
+        'unindexed_packages': [
+            {'name': package.name, 'directory': package.directory}
+            for package in unindexed_packages_for(workspace, graph)
+        ],
+    }

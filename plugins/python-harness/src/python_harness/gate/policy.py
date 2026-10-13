@@ -5,14 +5,16 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from python_harness.gate.domain import (
+    ConfigArguments,
+    ConfigKind,
+    ConfigSelection,
+    ConfigSource,
     GateCommand,
     GateInputs,
     GateOptions,
     GatePlan,
     GateTool,
     Launcher,
-    RuffConfigSelection,
-    RuffConfigSource,
     ToolInvocation,
 )
 
@@ -26,22 +28,30 @@ def build_source_roots_override(roots: Iterable[Path]) -> str:
     return f'src = {json.dumps([root.as_posix() for root in roots])}'
 
 
-def select_ruff_config(
-    inputs: GateInputs, workspace_root: Path, options: GateOptions
-) -> RuffConfigSelection:
-    fallback = options.fallback_ruff_config
-    if inputs.has_ruff_config:
-        return RuffConfigSelection(RuffConfigSource.REPOSITORY, ())
-    if fallback is None:
-        return RuffConfigSelection(RuffConfigSource.DEFAULTS, ())
-    source_roots = list_ruff_source_roots(inputs, workspace_root)
-    arguments = (
+def build_fallback_arguments(
+    kind: ConfigKind, fallback: Path, *, source_roots: Iterable[Path]
+) -> tuple[str, ...]:
+    if kind is ConfigKind.TY:
+        return ('--config-file', fallback.as_posix())
+    return (
         '--config',
         fallback.as_posix(),
         '--config',
         build_source_roots_override(source_roots),
     )
-    return RuffConfigSelection(RuffConfigSource.FALLBACK, arguments)
+
+
+def select_config(
+    kind: ConfigKind, inputs: GateInputs, workspace_root: Path, *, options: GateOptions
+) -> ConfigSelection:
+    fallback = options.fallbacks.get(kind)
+    if kind in inputs.project_configs:
+        return ConfigSelection(ConfigSource.REPOSITORY, ())
+    if fallback is None:
+        return ConfigSelection(ConfigSource.DEFAULTS, ())
+    source_roots = list_ruff_source_roots(inputs, workspace_root)
+    arguments = build_fallback_arguments(kind, fallback, source_roots=source_roots)
+    return ConfigSelection(ConfigSource.FALLBACK, arguments)
 
 
 def project_launcher(inputs: GateInputs) -> Launcher:
@@ -57,20 +67,27 @@ def choose_launcher(invocation: ToolInvocation, inputs: GateInputs) -> Launcher:
     if invocation.runs_in_project_environment:
         joined = (*project.arguments, '--with', invocation.distribution)
         return Launcher(project.program, joined)
-    return Launcher('uvx')
+    return Launcher('uvx', pins_version=True)
+
+
+def tool_arguments(invocation: ToolInvocation, launcher: Launcher) -> tuple[str, ...]:
+    version = invocation.pinned_version
+    if version is None or not launcher.pins_version:
+        return invocation.arguments
+    return (f'{invocation.distribution}@{version.text}', *invocation.arguments[1:])
 
 
 def build_command(
     tool: GateTool,
     inputs: GateInputs,
-    ruff_config: RuffConfigSelection,
+    configs: ConfigArguments,
     *,
     options: GateOptions,
 ) -> GateCommand:
     invocation = options.tools[tool]
     launcher = choose_launcher(invocation, inputs)
-    config = ruff_config.arguments if invocation.reads_ruff_config else ()
-    arguments = (*launcher.arguments, *invocation.arguments, *config)
+    config = () if invocation.config is None else configs[invocation.config]
+    arguments = (*launcher.arguments, *tool_arguments(invocation, launcher), *config)
     return GateCommand(tool, launcher.program, arguments)
 
 
@@ -85,7 +102,14 @@ def plan_gate(
     inputs: GateInputs, workspace_root: Path, options: GateOptions | None = None
 ) -> GatePlan:
     chosen = GateOptions() if options is None else options
-    ruff_config = select_ruff_config(inputs, workspace_root, chosen)
+    selections = {
+        kind: select_config(kind, inputs, workspace_root, options=chosen) for kind in ConfigKind
+    }
+    configs = {kind: selection.arguments for kind, selection in selections.items()}
     planned = (tool for tool in chosen.tools if is_tool_planned(tool, inputs, chosen))
-    commands = tuple(build_command(tool, inputs, ruff_config, options=chosen) for tool in planned)
-    return GatePlan(commands, ruff_config.source)
+    commands = tuple(build_command(tool, inputs, configs, options=chosen) for tool in planned)
+    return GatePlan(
+        commands,
+        selections[ConfigKind.RUFF].source,
+        selections[ConfigKind.TY].source,
+    )

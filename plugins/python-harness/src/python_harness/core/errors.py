@@ -38,3 +38,9 @@ class GitCommandError(PythonHarnessError):
         self.arguments = arguments
         self.exit_code = exit_code
         self.stderr = stderr
+
+
+class UvWorkspaceError(PythonHarnessError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(f'uv workspace discovery failed: {reason}')
+        self.reason = reason

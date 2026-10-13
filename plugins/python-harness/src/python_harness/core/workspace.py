@@ -9,8 +9,11 @@ from pathlib import Path, PurePosixPath
 from python_harness.core.errors import (
     PathOutsideWorkspaceError,
     TargetPathMissingError,
+    UvWorkspaceError,
     WorkspaceRootMissingError,
 )
+
+type UvRunner = Callable[[Path], str]
 
 DEFAULT_EXCLUDED_DIRECTORIES = frozenset(
     {
@@ -45,6 +48,7 @@ class Workspace:
     root: Path
     source_roots: tuple[Path, ...]
     options: DiscoveryOptions = field(default_factory=DiscoveryOptions)
+    fallback_diagnostics: tuple[str, ...] = ()
 
     def resolve(self, relative: str | Path) -> Path:
         candidate = self.root.joinpath(relative).resolve()
@@ -97,12 +101,63 @@ def find_source_roots(root: Path, options: DiscoveryOptions) -> tuple[Path, ...]
     return tuple(path for path in candidates if path.is_dir())
 
 
-def open_workspace(root: Path, options: DiscoveryOptions | None = None) -> Workspace:
+def discover_uv_members(root: Path, uv_runner: UvRunner) -> tuple[Path, ...]:
+    return tuple(Path(line) for line in uv_runner(root).splitlines() if line)
+
+
+def validate_workspace_members(root: Path, members: tuple[Path, ...]) -> tuple[Path, ...]:
+    if not members:
+        msg = 'no workspace members'
+        raise UvWorkspaceError(msg)
+    if any(not member.is_absolute() for member in members):
+        msg = 'non-absolute member path'
+        raise UvWorkspaceError(msg)
+    resolved = tuple(member.resolve() for member in members)
+    if any(not member.is_relative_to(root) for member in resolved):
+        msg = 'path outside the project root'
+        raise UvWorkspaceError(msg)
+    return resolved
+
+
+def derive_workspace_source_roots(
+    members: tuple[Path, ...],
+    options: DiscoveryOptions,
+) -> tuple[Path, ...]:
+    return tuple(
+        source_root
+        for member in members
+        for source_root in (find_source_roots(member, options) or (member,))
+    )
+
+
+def construct_workspace(
+    root: Path,
+    source_roots: tuple[Path, ...],
+    options: DiscoveryOptions,
+    *,
+    diagnostic: str | None = None,
+) -> Workspace:
+    diagnostics = () if diagnostic is None else (diagnostic,)
+    return Workspace(root, source_roots, options, diagnostics)
+
+
+def open_workspace(
+    root: Path,
+    options: DiscoveryOptions | None = None,
+    *,
+    uv_runner: UvRunner,
+) -> Workspace:
     resolved = root.resolve()
     if not resolved.is_dir():
         raise WorkspaceRootMissingError(resolved)
     chosen = DiscoveryOptions() if options is None else options
-    return Workspace(resolved, find_source_roots(resolved, chosen), chosen)
+    try:
+        members = validate_workspace_members(resolved, discover_uv_members(resolved, uv_runner))
+    except UvWorkspaceError as error:
+        fallback = find_source_roots(resolved, chosen)
+        return construct_workspace(resolved, fallback, chosen, diagnostic=str(error))
+    roots = derive_workspace_source_roots(members, chosen)
+    return construct_workspace(resolved, roots, chosen)
 
 
 def find_ancestor(start: Path, contains: Callable[[Path], bool]) -> Path | None:

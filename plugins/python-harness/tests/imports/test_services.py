@@ -1,9 +1,10 @@
 """Module naming, binding collection and edge building for the import graph."""
 
+from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.tests.fixtures import ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import DiscoveryOptions, Workspace, open_workspace
 from python_harness.imports.domain import ImportEdge, ImportGraph, ProjectIndex
 from python_harness.imports.services import load_project_index, module_name_for
@@ -52,6 +53,17 @@ class TestModuleNameFor:
         self, workspace: Workspace, path: str, expected: str
     ) -> None:
         assert module_name_for(workspace, path) == expected
+
+    def test_most_specific_source_root_wins(self, project_builder: ProjectBuilder) -> None:
+        project_builder.write({'packages/member/src/member/module.py': ''})
+        root = project_builder.root
+
+        def list_members(_: Path) -> str:
+            return '\n'.join((str(root), str(root.joinpath('packages', 'member'))))
+
+        workspace = open_workspace(root, uv_runner=list_members)
+
+        assert module_name_for(workspace, 'packages/member/src/member/module.py') == 'member.module'
 
 
 class TestEdges:
@@ -123,7 +135,9 @@ class TestConfiguredTestFileNames:
     @pytest.fixture
     def graph(self, project_builder: ProjectBuilder) -> ImportGraph:
         project_builder.write(self.FILES)
-        return load_project_index(open_workspace(project_builder.root, self.OPTIONS)).graph
+        return load_project_index(
+            open_workspace(project_builder.root, self.OPTIONS, uv_runner=stubbed_uv)
+        ).graph
 
     @pytest.mark.parametrize(
         ('module', 'expected'),

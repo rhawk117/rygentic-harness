@@ -1,8 +1,7 @@
 """The python-harness MCP server over stdio: Python documentation, and facts about one project."""
 
-import json
 import os
-from collections.abc import AsyncGenerator, Callable, Generator, Mapping
+from collections.abc import AsyncGenerator, Generator, Mapping
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from dataclasses import dataclass
 
@@ -13,8 +12,9 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from python_harness.core.errors import PythonHarnessError
-from python_harness.core.output import COMPACT_SEPARATORS, to_json_value
-from python_harness.core.workspace import Workspace
+from python_harness.core.output import JsonValue, to_json_value
+from python_harness.core.uv import run_uv_workspace
+from python_harness.core.workspace import UvRunner, Workspace
 from python_harness.documentation.repository import documentation_http_client
 from python_harness.documentation.services import (
     DocumentationService,
@@ -22,19 +22,36 @@ from python_harness.documentation.services import (
     call_deadline,
 )
 from python_harness.documentation.settings import Settings
+from python_harness.gate.domain import ConfigKind, GateOptions
+from python_harness.gate.fallbacks import RUFF_CONFIG, TY_CONFIG
+from python_harness.gate.services import run_gate_for
+from python_harness.gate.util import tool_invocations_from
+from python_harness.imports.domain import ProjectIndex
+from python_harness.imports.services import load_project_index
+from python_harness.survey.services import survey_document, survey_indexed_project
 from python_harness.tools.check_citations import use_case as citations_use_case
 from python_harness.tools.check_citations.schema import (
     CitationsRequest,
     DocumentPath,
     DocumentText,
 )
+from python_harness.tools.collect_python_facts import output as facts_output
 from python_harness.tools.collect_python_facts import use_case as facts_use_case
 from python_harness.tools.collect_python_facts.schema import FactsRequest, FunctionShapes
+from python_harness.tools.envelope import (
+    DEFAULT_BUDGET,
+    Budget,
+    Detail,
+    DetailLevel,
+    OutputOptions,
+    compact_json,
+)
+from python_harness.tools.map_python_calls import output as calls_output
 from python_harness.tools.map_python_calls import use_case as calls_use_case
 from python_harness.tools.map_python_calls.schema import CallsRequest, SymbolReference
 from python_harness.tools.plan_review_surface import use_case as surface_use_case
 from python_harness.tools.plan_review_surface.schema import Revision, SurfaceRequest
-from python_harness.tools.project import ProjectPaths, open_project
+from python_harness.tools.project import ProjectPaths, open_project, workspace_diagnostics
 from python_harness.tools.read_python_docs import use_case as read_use_case
 from python_harness.tools.read_python_docs.schema import (
     DEFAULT_PAGE_CHARACTERS,
@@ -57,12 +74,13 @@ SERVER_NAME = 'python-harness'
 SERVER_INSTRUCTIONS = (
     'Official Python standard-library documentation for a specific Python version.'
     ' Find exact names with search_python_docs, then read them with read_python_docs.'
-    ' The other four tools read the Python project at CLAUDE_PROJECT_DIR and return one JSON'
-    ' document each: plan_review_surface, collect_python_facts, map_python_calls and'
-    ' check_citations. Their paths are relative to that root and cannot leave it.'
+    ' The other six tools read the Python project at CLAUDE_PROJECT_DIR and return one JSON'
+    ' document each: survey, gate, plan_review_surface, collect_python_facts, map_python_calls'
+    ' and check_citations. Their paths are relative to that root and cannot leave it.'
 )
 READ_ONLY_REMOTE = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 READ_ONLY_LOCAL = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+RUNS_PROJECT_CODE = ToolAnnotations(read_only_hint=False)
 
 
 @contextmanager
@@ -73,8 +91,12 @@ def tool_errors() -> Generator[None]:
         raise ToolError(str(error)) from error
 
 
-def render_document(report: object) -> str:
-    return json.dumps(to_json_value(report), separators=COMPACT_SEPARATORS)
+def render_project_document(report: object, diagnostics: dict[str, JsonValue]) -> str:
+    document = to_json_value(report)
+    if not isinstance(document, dict):
+        msg = 'project reports must serialize to JSON objects'
+        raise TypeError(msg)
+    return compact_json(document | {'workspace': diagnostics})
 
 
 async def close_client(client: httpx.AsyncClient, timeout_seconds: float) -> None:
@@ -137,34 +159,60 @@ class DocumentationTools:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProjectTools:
     environment: Mapping[str, str]
+    uv_runner: UvRunner
 
-    def answer[Request](self, run: Callable[[Workspace, Request], object], request: Request) -> str:
-        with tool_errors():
-            return render_document(run(open_project(self.environment), request))
+    def open_indexed_project(self) -> tuple[Workspace, ProjectIndex]:
+        workspace = open_project(self.environment, self.uv_runner)
+        return workspace, load_project_index(workspace)
 
     def collect_python_facts(
-        self, *, paths: ProjectPaths, with_function_shapes: FunctionShapes = False
+        self,
+        *,
+        paths: ProjectPaths,
+        with_function_shapes: FunctionShapes = False,
+        detail: DetailLevel = Detail.SUMMARY,
+        budget: Budget = DEFAULT_BUDGET,
     ) -> str:
         """Collect mechanical AST facts for Python modules of the project, as JSON.
 
         Each module lists its facts by line and kind, with a count per kind; files that
-        cannot be read or parsed are listed under unparsable. Facts are observations,
-        never verdicts.
+        cannot be read or parsed are listed under unparsable. The default response is a
+        budgeted summary; request detail=full for facts from the requested paths. Facts
+        are observations, never verdicts.
         """
         request = FactsRequest(paths=paths, with_function_shapes=with_function_shapes)
-        return self.answer(facts_use_case.run, request)
+        with tool_errors():
+            options = OutputOptions(detail=detail, budget=budget)
+            workspace = open_project(self.environment, self.uv_runner)
+            target = facts_use_case.target_for(workspace, request)
+            index = load_project_index(workspace)
+            report = facts_use_case.run(workspace, index, target)
+            diagnostics = workspace_diagnostics(workspace, index.graph)
+            return facts_output.render_facts_document(report, request, diagnostics, options=options)
 
     def map_python_calls(
-        self, *, paths: ProjectPaths, symbol: SymbolReference | None = None
+        self,
+        *,
+        paths: ProjectPaths,
+        symbol: SymbolReference | None = None,
+        detail: DetailLevel = Detail.SUMMARY,
+        budget: Budget = DEFAULT_BUDGET,
     ) -> str:
         """Map where the project references the symbols of the given modules, as JSON.
 
         Without symbol, each module gets coupling metrics and its symbols grouped by who
         references them. With symbol, every reference of that one symbol is listed by
-        path and line. Resolution is static, so dynamic use is not seen.
+        path and line. The default response is a budgeted summary; request detail=full
+        for references and coupling facts from the requested paths. Resolution is static,
+        so dynamic use is not seen.
         """
         request = CallsRequest(paths=paths, symbol=symbol)
-        return self.answer(calls_use_case.run, request)
+        with tool_errors():
+            options = OutputOptions(detail=detail, budget=budget)
+            workspace, index = self.open_indexed_project()
+            report = calls_use_case.run(workspace, index, request)
+            diagnostics = workspace_diagnostics(workspace, index.graph)
+            return calls_output.render_calls_document(report, request, diagnostics, options=options)
 
     def check_citations(self, *, path: DocumentPath = '', text: DocumentText = '') -> str:
         """Check every path.py:line citation and its backticked quote in Markdown, as JSON.
@@ -174,7 +222,29 @@ class ProjectTools:
         lists are empty. A failed check is a report, not an error.
         """
         request = CitationsRequest(path=path or None, text=text or None)
-        return self.answer(citations_use_case.run, request)
+        with tool_errors():
+            workspace = open_project(self.environment, self.uv_runner)
+            report = citations_use_case.run(workspace, request)
+            index = load_project_index(workspace)
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
+
+    def survey(self) -> str:
+        """Survey the project and return its mode, domains and layout as JSON."""
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            report = survey_document(survey_indexed_project(workspace, index.graph))
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
+
+    def gate(self) -> str:
+        """Run the project's ruff, ty and pytest checks and return the report as JSON."""
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            fallbacks = {ConfigKind.RUFF: RUFF_CONFIG, ConfigKind.TY: TY_CONFIG}
+            tools = tool_invocations_from(self.environment)
+            options = GateOptions(fallbacks=fallbacks, tools=tools)
+            survey = survey_indexed_project(workspace, index.graph)
+            report = run_gate_for(workspace, survey, options, environment=self.environment)
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
     def plan_review_surface(
         self,
@@ -191,14 +261,22 @@ class ProjectTools:
         other modules that depend on them.
         """
         request = SurfaceRequest(paths=paths, diff_base=diff_base, diff_head=diff_head)
-        return self.answer(surface_use_case.run, request)
+        with tool_errors():
+            workspace, index = self.open_indexed_project()
+            report = surface_use_case.run(workspace, index, request)
+            return render_project_document(report, workspace_diagnostics(workspace, index.graph))
 
 
 def build_server(
-    service: DocumentationService, environment: Mapping[str, str] | None = None
+    service: DocumentationService,
+    environment: Mapping[str, str] | None = None,
+    *,
+    uv_runner: UvRunner,
 ) -> MCPServer:
     documentation = DocumentationTools(service=service)
-    project = ProjectTools(environment={} if environment is None else environment)
+    project = ProjectTools(
+        environment={} if environment is None else environment, uv_runner=uv_runner
+    )
     server = MCPServer(SERVER_NAME, instructions=SERVER_INSTRUCTIONS)
     server.add_tool(documentation.search_python_docs, annotations=READ_ONLY_REMOTE)
     server.add_tool(
@@ -211,12 +289,14 @@ def build_server(
         project.plan_review_surface,
     ):
         server.add_tool(tool, annotations=READ_ONLY_LOCAL, structured_output=False)
+    server.add_tool(project.survey, annotations=READ_ONLY_LOCAL, structured_output=False)
+    server.add_tool(project.gate, annotations=RUNS_PROJECT_CODE, structured_output=False)
     return server
 
 
 async def serve(settings: Settings) -> None:
     async with documentation_service(settings) as service:
-        await build_server(service, os.environ).run_stdio_async()
+        await build_server(service, os.environ, uv_runner=run_uv_workspace).run_stdio_async()
 
 
 def main() -> int:

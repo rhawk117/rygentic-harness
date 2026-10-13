@@ -1,6 +1,7 @@
 """The `python-harness inspect` group: facts about a project as JSON, never verdicts."""
 
 import argparse
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
 
@@ -13,23 +14,17 @@ from python_harness.cli.domain import (
 from python_harness.cli.errors import FallbackRuffConfigMissingError
 from python_harness.cli.exit_codes import ExitCode, exit_code_for
 from python_harness.cli.util import add_command_parsers, build_root_parent
-from python_harness.core.output import JsonValue, dataclass_to_json, write_document
+from python_harness.core.output import write_document
+from python_harness.core.uv import run_uv_workspace
 from python_harness.core.workspace import open_workspace
-from python_harness.gate.domain import GateOptions, GateTool
+from python_harness.gate.domain import ConfigKind, GateOptions, GateTool
 from python_harness.gate.services import run_gate_for
-from python_harness.survey.domain import NO_MANIFEST, ProjectSurvey
-from python_harness.survey.services import survey_project
-
-
-def survey_document(survey: ProjectSurvey) -> JsonValue:
-    document = dataclass_to_json(survey)
-    if survey.manifest is NO_MANIFEST:
-        return document | {'manifest': None}
-    return document
+from python_harness.gate.util import tool_invocations_from
+from python_harness.survey.services import survey_document, survey_project
 
 
 def run_survey(arguments: argparse.Namespace, edge: ProcessEdge) -> ExitCode:
-    workspace = open_workspace(arguments.root)
+    workspace = open_workspace(arguments.root, uv_runner=run_uv_workspace)
     write_document(survey_document(survey_project(workspace)), edge.stdout)
     return ExitCode.PASSED
 
@@ -52,19 +47,24 @@ def locate_fallback_ruff_config(given: Path | None, root: Path) -> Path | None:
     return located
 
 
-def gate_options_from(arguments: argparse.Namespace, root: Path) -> GateOptions:
-    fallback = locate_fallback_ruff_config(arguments.fallback_ruff_config, root)
+def gate_options_from(
+    arguments: argparse.Namespace, root: Path, environment: Mapping[str, str]
+) -> GateOptions:
+    ruff_fallback = locate_fallback_ruff_config(arguments.fallback_ruff_config, root)
+    fallbacks = {} if ruff_fallback is None else {ConfigKind.RUFF: ruff_fallback}
     return GateOptions(
-        fallback_ruff_config=fallback,
+        fallbacks=fallbacks,
         timeout_seconds=arguments.timeout,
         skipped=frozenset(GateTool(name) for name in arguments.skip),
+        tools=tool_invocations_from(environment),
     )
 
 
 def run_gate_command(arguments: argparse.Namespace, edge: ProcessEdge) -> ExitCode:
-    workspace = open_workspace(arguments.root)
-    options = gate_options_from(arguments, workspace.root)
-    report = run_gate_for(workspace, options, environment=edge.environment)
+    workspace = open_workspace(arguments.root, uv_runner=run_uv_workspace)
+    options = gate_options_from(arguments, workspace.root, edge.environment)
+    survey = survey_project(workspace)
+    report = run_gate_for(workspace, survey, options, environment=edge.environment)
     write_document(report, edge.stdout)
     return exit_code_for(passed=report.passed)
 

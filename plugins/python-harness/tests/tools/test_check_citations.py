@@ -3,14 +3,19 @@
 import pytest
 from mcp import Client
 from python_harness.citations.services import check_citations, check_citations_in_text
-from python_harness.core.output import to_json_value
-from python_harness.core.tests.fixtures import ProjectBuilder
+from python_harness.core.output import dataclass_to_json
+from python_harness.core.tests.fixtures import STUBBED_UV_DIAGNOSTIC, ProjectBuilder
 from python_harness.core.workspace import Workspace
 from python_harness.tools.check_citations.schema import INLINE_DOCUMENT_NAME
 from python_harness.tools.tests.support import SHOP_PROJECT, document_of, text_of
 
 TOOL = 'check_citations'
 REVIEW = 'REVIEW.md'
+SHOP_WORKSPACE = {
+    'source_roots': ['src'],
+    'fallback_diagnostics': [STUBBED_UV_DIAGNOSTIC],
+    'unindexed_packages': [],
+}
 PYLENS_RETURN = '| src/shop/pricing.py:2 | `return total` | returns its argument |\n'
 MALFORMED_RETURN = (
     '| src/shop/pricing.py:2 | `return total` | returns its argument |\n'
@@ -21,12 +26,15 @@ MALFORMED_RETURN = (
 @pytest.mark.anyio
 class TestDocumentInTheProject:
     async def test_result_is_the_citation_report_as_json(
-        self, project_client: Client, shop: Workspace
+        self,
+        project_client: Client,
+        shop: Workspace,
     ) -> None:
         result = await project_client.call_tool(TOOL, {'path': REVIEW})
 
-        expected = check_citations(shop, shop.root.joinpath(REVIEW))
-        assert (result.is_error, document_of(result)) == (False, to_json_value(expected))
+        report = check_citations(shop, shop.root.joinpath(REVIEW))
+        expected = dataclass_to_json(report) | {'workspace': SHOP_WORKSPACE}
+        assert (result.is_error, document_of(result)) == (False, expected)
 
     @pytest.mark.usefixtures('shop')
     async def test_a_failed_citation_is_a_report_not_an_error(self, project_client: Client) -> None:
@@ -41,12 +49,15 @@ class TestInlineText:
     MALFORMED_ROWS = (1, [2], False)
 
     async def test_result_is_the_citation_report_as_json(
-        self, project_client: Client, shop: Workspace
+        self,
+        project_client: Client,
+        shop: Workspace,
     ) -> None:
         result = await project_client.call_tool(TOOL, {'text': PYLENS_RETURN})
 
-        expected = check_citations_in_text(shop, PYLENS_RETURN, INLINE_DOCUMENT_NAME)
-        assert (result.is_error, document_of(result)) == (False, to_json_value(expected))
+        report = check_citations_in_text(shop, PYLENS_RETURN, INLINE_DOCUMENT_NAME)
+        expected = dataclass_to_json(report) | {'workspace': SHOP_WORKSPACE}
+        assert (result.is_error, document_of(result)) == (False, expected)
 
     @pytest.mark.usefixtures('shop')
     async def test_text_is_checked_under_the_inline_name(self, project_client: Client) -> None:
@@ -111,3 +122,18 @@ class TestUndecodableDocument:
 
         expected = f'citation document {self.DOCUMENT} is not readable'
         assert (result.is_error, expected in text_of(result)) == (True, True)
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures('shop')
+class TestWorkspaceDiagnostics:
+    async def test_check_citations_reports_the_workspace_in_its_diagnostics(
+        self, project_client: Client
+    ) -> None:
+        result = await project_client.call_tool(TOOL, {'path': REVIEW})
+
+        diagnostics = document_of(result)['workspace']
+        assert (result.is_error, sorted(diagnostics)) == (
+            False,
+            ['fallback_diagnostics', 'source_roots', 'unindexed_packages'],
+        )

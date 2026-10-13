@@ -1,29 +1,54 @@
 """Running gate commands: outcomes, output tails, environment, timeouts and leftovers."""
 
+import gc
+import os
+import signal
 import stat
 import sys
 import time
+import warnings
+from collections.abc import Iterator
+from contextlib import suppress
 from types import MappingProxyType
 
 import pytest
-from python_harness.core.tests.fixtures import GitProject, ProjectBuilder
+from python_harness.core.tests.fixtures import GitProject, ProjectBuilder, stubbed_uv
 from python_harness.core.workspace import Workspace, open_workspace
 from python_harness.gate.domain import (
+    ConfigSource,
     CreatedPaths,
     Exited,
     GateCommand,
     GateOptions,
     GatePlan,
+    GateReport,
     GateTool,
     NotTracked,
-    RuffConfigSource,
     TimedOut,
 )
 from python_harness.gate.errors import LauncherUnavailableError
 from python_harness.gate.services import run_gate, run_gate_for
 from python_harness.survey.errors import ManifestUnreadableError
+from python_harness.survey.services import survey_project
 
 NO_ENVIRONMENT = MappingProxyType({})
+POLL_SECONDS = 0.05
+RECORD_PID_AND_SLEEP = (
+    'import os, pathlib, sys, time; '
+    'pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); '
+    'time.sleep(60)'
+)
+
+
+def is_gone_within(pid: int, seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(POLL_SECONDS)
+    return False
 
 
 def python_command(tool: GateTool, script: str, *arguments: str) -> GateCommand:
@@ -31,7 +56,7 @@ def python_command(tool: GateTool, script: str, *arguments: str) -> GateCommand:
 
 
 def plan_of(*commands: GateCommand) -> GatePlan:
-    return GatePlan(commands, RuffConfigSource.DEFAULTS)
+    return GatePlan(commands, ConfigSource.DEFAULTS, ConfigSource.DEFAULTS)
 
 
 @pytest.fixture
@@ -57,9 +82,10 @@ class TestPassAndFail:
     def test_report_fails_when_any_command_fails(self, workspace: Workspace) -> None:
         report = run_gate(workspace, self.PLAN, environment=NO_ENVIRONMENT)
 
-        assert (report.passed, report.ruff_config_source) == (
+        assert (report.passed, report.ruff_config_source, report.ty_config_source) == (
             False,
-            RuffConfigSource.DEFAULTS,
+            ConfigSource.DEFAULTS,
+            ConfigSource.DEFAULTS,
         )
 
     def test_stderr_is_merged_into_the_tail(self, workspace: Workspace) -> None:
@@ -146,6 +172,7 @@ class TestMissingProgram:
 
 class TestTimeout:
     OPTIONS = GateOptions(timeout_seconds=0.5)
+    RECORDING_OPTIONS = GateOptions(timeout_seconds=3.0)
     DEADLINE_SECONDS = 15.0
     SLOW_PLAN = plan_of(
         python_command(
@@ -176,6 +203,144 @@ class TestTimeout:
 
         assert report.results[0].timed_out
         assert elapsed < self.DEADLINE_SECONDS
+
+    def test_the_grandchild_process_no_longer_exists_after_the_timeout(
+        self, workspace: Workspace
+    ) -> None:
+        pid_file = workspace.root.joinpath('grandchild.pid')
+        plan = plan_of(
+            python_command(
+                GateTool.PYTEST,
+                'import subprocess, sys; '
+                'subprocess.run([sys.executable, "-c", sys.argv[1], sys.argv[2]])',
+                RECORD_PID_AND_SLEEP,
+                str(pid_file),
+            )
+        )
+
+        report = run_gate(workspace, plan, self.RECORDING_OPTIONS, environment=NO_ENVIRONMENT)
+
+        grandchild = int(pid_file.read_text(encoding='utf-8'))
+        try:
+            assert report.results[0].timed_out
+            assert is_gone_within(grandchild, self.DEADLINE_SECONDS)
+        finally:
+            with suppress(ProcessLookupError):
+                os.kill(grandchild, signal.SIGTERM)
+
+
+class TestNormalExit:
+    DEADLINE_SECONDS = 15.0
+    START_DETACHED_GRANDCHILD = (
+        'import pathlib, subprocess, sys, time\n'
+        'subprocess.Popen(\n'
+        '    [sys.executable, "-c", sys.argv[1], sys.argv[2]],\n'
+        '    stdout=subprocess.DEVNULL,\n'
+        '    stderr=subprocess.DEVNULL,\n'
+        ')\n'
+        'pid_file = pathlib.Path(sys.argv[2])\n'
+        'while not (pid_file.exists() and pid_file.read_text()):\n'
+        '    time.sleep(0.05)\n'
+    )
+
+    def test_a_grandchild_started_by_a_passing_check_is_gone_after_the_gate_returns(
+        self, workspace: Workspace
+    ) -> None:
+        pid_file = workspace.root.joinpath('grandchild.pid')
+        plan = plan_of(
+            python_command(
+                GateTool.PYTEST,
+                self.START_DETACHED_GRANDCHILD,
+                RECORD_PID_AND_SLEEP,
+                str(pid_file),
+            )
+        )
+
+        report = run_gate(workspace, plan, environment=NO_ENVIRONMENT)
+
+        grandchild = int(pid_file.read_text(encoding='utf-8'))
+        try:
+            assert report.results[0].outcome == Exited(0)
+            assert is_gone_within(grandchild, self.DEADLINE_SECONDS)
+        finally:
+            with suppress(ProcessLookupError):
+                os.kill(grandchild, signal.SIGTERM)
+
+
+class TestOutputPipeRelease:
+    OPTIONS = GateOptions(timeout_seconds=0.5)
+    HOLD_SECONDS = 2
+    DETACHED_HOLDER = (
+        'import subprocess, sys; '
+        'subprocess.Popen([sys.executable, "-c", sys.argv[1]], start_new_session=True)'
+    )
+    HOLD_THE_PIPE = f'import time; time.sleep({HOLD_SECONDS})'
+    GROUP_HOLDER = (
+        'import subprocess, sys; '
+        'subprocess.run([sys.executable, "-c", "import time; time.sleep(60)"])'
+    )
+
+    def resource_warnings_after(
+        self, workspace: Workspace, plan: GatePlan, options: GateOptions | None = None
+    ) -> list[str]:
+        gc.collect()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            run_gate(workspace, plan, options, environment=NO_ENVIRONMENT)
+            gc.collect()
+        return [str(item.message) for item in caught if issubclass(item.category, ResourceWarning)]
+
+    def test_a_descendant_that_left_the_group_and_holds_the_pipe_leaks_nothing(
+        self, workspace: Workspace
+    ) -> None:
+        plan = plan_of(
+            python_command(GateTool.PYTEST, self.DETACHED_HOLDER, self.HOLD_THE_PIPE),
+        )
+
+        assert self.resource_warnings_after(workspace, plan, self.OPTIONS) == []
+
+    def test_a_timed_out_command_with_a_child_in_its_group_leaks_nothing(
+        self, workspace: Workspace
+    ) -> None:
+        plan = plan_of(python_command(GateTool.PYTEST, self.GROUP_HOLDER))
+
+        assert self.resource_warnings_after(workspace, plan, self.OPTIONS) == []
+
+    def test_a_command_that_exits_normally_leaks_nothing(self, workspace: Workspace) -> None:
+        plan = plan_of(python_command(GateTool.PYTEST, 'print("done")'))
+
+        assert self.resource_warnings_after(workspace, plan) == []
+
+
+class TestCheckStandardInput:
+    OPTIONS = GateOptions(timeout_seconds=5.0)
+    SERVER_BYTES = b'client request'
+    COPY_STDIN = 'import sys; sys.stdout.write(sys.stdin.read())'
+
+    @pytest.fixture
+    def server_stdin(self) -> Iterator[None]:
+        saved = os.dup(0)
+        read_end, write_end = os.pipe()
+        try:
+            os.write(write_end, self.SERVER_BYTES)
+            os.close(write_end)
+            os.dup2(read_end, 0)
+            os.close(read_end)
+            yield
+        finally:
+            os.dup2(saved, 0)
+            os.close(saved)
+
+    @pytest.mark.usefixtures('server_stdin')
+    def test_a_check_reads_the_null_device_and_leaves_the_server_stdin_unread(
+        self, workspace: Workspace
+    ) -> None:
+        plan = plan_of(python_command(GateTool.PYTEST, self.COPY_STDIN))
+
+        report = run_gate(workspace, plan, self.OPTIONS, environment=NO_ENVIRONMENT)
+
+        assert self.SERVER_BYTES.decode() not in report.results[0].output_tail
+        assert os.read(0, len(self.SERVER_BYTES)) == self.SERVER_BYTES
 
 
 class TestConcurrency:
@@ -214,7 +379,7 @@ class TestCreatedPaths:
     def repository_workspace(self, git_project: GitProject) -> Workspace:
         git_project.commit(self.PROJECT, 'base')
         git_project.builder.write({'service/draft.txt': 'already here\n'})
-        return open_workspace(git_project.builder.root.joinpath('service'))
+        return open_workspace(git_project.builder.root.joinpath('service'), uv_runner=stubbed_uv)
 
     def test_files_the_run_creates_are_listed_relative_to_the_workspace(
         self, repository_workspace: Workspace
@@ -234,6 +399,44 @@ class TestCreatedPaths:
         assert report.created_paths == NotTracked()
 
 
+class TestRuffCheckLeavesFilesAlone:
+    SOURCE = 'src/shop/prices.py'
+    UNUSED_IMPORT = b'import os\n\n\ndef price(total: int) -> int:\n    return total\n'
+    PROJECT = MappingProxyType(
+        {
+            'pyproject.toml': (
+                '[project]\nname = "shop"\nversion = "0"\nrequires-python = ">=3.14"\n'
+                '[tool.ruff]\nfix = true\nunsafe-fixes = true\n'
+                '[tool.ruff.lint]\nselect = ["F401"]\n'
+            ),
+            SOURCE: UNUSED_IMPORT.decode(),
+        }
+    )
+    OPTIONS = GateOptions(skipped=frozenset({GateTool.RUFF_FORMAT, GateTool.TY, GateTool.PYTEST}))
+
+    @pytest.fixture
+    def checked(self, project_builder: ProjectBuilder) -> tuple[Workspace, GateReport]:
+        workspace = project_builder.write(self.PROJECT)
+        survey = survey_project(workspace)
+        report = run_gate_for(workspace, survey, self.OPTIONS, environment=os.environ)
+        return workspace, report
+
+    def test_a_project_config_that_enables_fixes_does_not_change_the_source(
+        self, checked: tuple[Workspace, GateReport]
+    ) -> None:
+        workspace, _ = checked
+
+        assert workspace.root.joinpath(self.SOURCE).read_bytes() == self.UNUSED_IMPORT
+
+    def test_the_violation_is_reported_instead_of_fixed(
+        self, checked: tuple[Workspace, GateReport]
+    ) -> None:
+        _, report = checked
+
+        (result,) = report.results
+        assert (result.passed, 'F401' in result.output_tail) == (False, True)
+
+
 class TestUnreadableManifest:
     UNDECODABLE_PYPROJECT = b'[project]\nname = "caf\xe9"\n'
 
@@ -247,7 +450,11 @@ class TestUnreadableManifest:
         self, undecodable_workspace: Workspace
     ) -> None:
         with pytest.raises(ManifestUnreadableError) as caught:
-            run_gate_for(undecodable_workspace, environment=NO_ENVIRONMENT)
+            run_gate_for(
+                undecodable_workspace,
+                survey_project(undecodable_workspace),
+                environment=NO_ENVIRONMENT,
+            )
 
         expected = undecodable_workspace.root.joinpath('pyproject.toml')
         assert caught.value.path == expected

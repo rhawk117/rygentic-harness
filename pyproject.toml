@@ -23,12 +23,13 @@ check = [
 test = [
     "hypothesis>=6.168.3",
     "jsonschema>=4.26.0",
+    "pyarrow>=26.0.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.16.0",
     "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
-    "python-harness-plugin[mcp]",
+    "python-harness-plugin[mcp,data]",
 ]
 dev = [{ include-group = "check" }, { include-group = "test" }]
 

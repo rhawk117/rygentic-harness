@@ -1,6 +1,6 @@
 [project]
 name = "python-harness-plugin"
-version = "0.1.0"
+version = "0.2.0"
 description = "The CLI behind the python-harness Claude Code plugin: facts about a Python project as JSON, and the plugin's hook handlers"
 readme = "README.md"
 authors = [{ name = "rhawk117", email = "hawkinsry19@gmail.com" }]
@@ -25,6 +25,14 @@ mcp = [
     "pydantic-settings>=2.15.0",
     "rapidfuzz>=3.14.6",
     "sphobjinv>=2.4",
+]
+data = [
+    "duckdb>=1.5.6",
+    "msgspec>=0.22.0",
+    "numpy>=2.5.3",
+    "polars>=2.0.0",
+    "pyyaml>=6.0.3",
+    "scipy>=1.18.1",
 ]
 
 [build-system]
