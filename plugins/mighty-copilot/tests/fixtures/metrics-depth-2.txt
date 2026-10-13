@@ -1,0 +1,20 @@
+files	9 (2 test)
+source LOC	68	test LOC	5	ratio	0.074
+module cycles (ADP)	2
+package cycles (ADP)	2
+functions > 20 LOC	1
+functions > 3 params	2
+functions with bool params	4
+functions nested > 2	1
+files > 500 LOC	0
+lines > 120 chars	1
+
+package	Ca	Ce	I	A	D
+billing	0	0	None	None	None
+billing.core	2	1	0.333	0.5	0.167
+billing.io	2	1	0.333	None	None
+billing.spec	0	1	1.0	None	None
+tools.cli	0	1	1.0	None	None
+web	1	2	0.667	0.667	0.334
+web.shapes	1	1	0.5	None	None
+web.util	1	0	0.0	None	None

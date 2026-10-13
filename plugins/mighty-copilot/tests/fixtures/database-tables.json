@@ -1,0 +1,260 @@
+[
+  {
+    "type": "table",
+    "name": "closings",
+    "tbl_name": "closings",
+    "sql": "CREATE TABLE closings (\n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\tclosed_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\thead VARCHAR(64), \n\tshipped VARCHAR(4000) NOT NULL, \n\tpr VARCHAR(4000), \n\tgotchas JSON DEFAULT '[]' NOT NULL, \n\tarchive VARCHAR(255) NOT NULL, \n\tCONSTRAINT pk_closings PRIMARY KEY (repository_key, slug), \n\tCONSTRAINT fk_closings_repository_key_tickets FOREIGN KEY(repository_key, slug) REFERENCES tickets (repository_key, slug) DEFERRABLE INITIALLY DEFERRED, \n\tCONSTRAINT uq_closings_repository_key UNIQUE (repository_key, archive)\n)"
+  },
+  {
+    "type": "table",
+    "name": "contract_commands",
+    "tbl_name": "contract_commands",
+    "sql": "CREATE TABLE contract_commands (\n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\tcommand_id VARCHAR(255) NOT NULL, \n\ttask_id VARCHAR(7), \n\targv JSON NOT NULL, \n\texpect_exit INTEGER DEFAULT 0 NOT NULL, \n\ttimeout INTEGER DEFAULT 300 NOT NULL, \n\tapproved_by VARCHAR(255) NOT NULL, \n\tapproved_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\thead VARCHAR(64), \n\tCONSTRAINT pk_contract_commands PRIMARY KEY (repository_key, slug, command_id)\n)"
+  },
+  {
+    "type": "table",
+    "name": "crashouts",
+    "tbl_name": "crashouts",
+    "sql": "CREATE TABLE crashouts (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tticket VARCHAR(64), \n\tbranch VARCHAR(255), \n\tseverity VARCHAR(32) NOT NULL, \n\tverdict VARCHAR(32) NOT NULL, \n\trant VARCHAR(4000) NOT NULL, \n\tfailures JSON NOT NULL, \n\troot_cause VARCHAR(4000) NOT NULL, \n\tcorrective_action VARCHAR(4000) NOT NULL, \n\tbarked_back BOOLEAN NOT NULL, \n\tCONSTRAINT pk_crashouts PRIMARY KEY (id)\n)"
+  },
+  {
+    "type": "index",
+    "name": "ix_crashouts_repository_key",
+    "tbl_name": "crashouts",
+    "sql": "CREATE INDEX ix_crashouts_repository_key ON crashouts (repository_key)"
+  },
+  {
+    "type": "index",
+    "name": "ix_receipts_command",
+    "tbl_name": "receipts",
+    "sql": "CREATE INDEX ix_receipts_command ON receipts (repository_key, slug, command_id)"
+  },
+  {
+    "type": "index",
+    "name": "ix_review_runs_slug",
+    "tbl_name": "review_runs",
+    "sql": "CREATE INDEX ix_review_runs_slug ON review_runs (repository_key, slug, run_id)"
+  },
+  {
+    "type": "index",
+    "name": "ix_scout_reports_repository_key",
+    "tbl_name": "scout_reports",
+    "sql": "CREATE INDEX ix_scout_reports_repository_key ON scout_reports (repository_key)"
+  },
+  {
+    "type": "index",
+    "name": "ix_task_attempts_task_mode",
+    "tbl_name": "task_attempts",
+    "sql": "CREATE INDEX ix_task_attempts_task_mode ON task_attempts (repository_key, slug, task_id, mode)"
+  },
+  {
+    "type": "index",
+    "name": "ix_task_failed_fixes_task",
+    "tbl_name": "task_failed_fixes",
+    "sql": "CREATE INDEX ix_task_failed_fixes_task ON task_failed_fixes (repository_key, slug, task_id)"
+  },
+  {
+    "type": "index",
+    "name": "ix_task_transitions_after",
+    "tbl_name": "task_transitions",
+    "sql": "CREATE INDEX ix_task_transitions_after ON task_transitions (repository_key, slug, \"after\")"
+  },
+  {
+    "type": "table",
+    "name": "ledger_entries",
+    "tbl_name": "ledger_entries",
+    "sql": "CREATE TABLE ledger_entries (\n\trepository_key VARCHAR(140) NOT NULL, \n\tinvestigation_id VARCHAR(64) NOT NULL, \n\tseq INTEGER NOT NULL, \n\tround INTEGER NOT NULL, \n\tkind VARCHAR(32) NOT NULL, \n\ttext VARCHAR(4000) NOT NULL, \n\tsource VARCHAR(32) NOT NULL, \n\tcite VARCHAR(4000), \n\tsupersedes JSON DEFAULT '[]' NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\thead VARCHAR(64), \n\tCONSTRAINT pk_ledger_entries PRIMARY KEY (repository_key, investigation_id, seq)\n)"
+  },
+  {
+    "type": "table",
+    "name": "receipts",
+    "tbl_name": "receipts",
+    "sql": "CREATE TABLE receipts (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\tcommand_id VARCHAR(255) NOT NULL, \n\targv JSON NOT NULL, \n\toutcome VARCHAR(32) NOT NULL, \n\texit INTEGER, \n\tduration_ms INTEGER NOT NULL, \n\tstdout_tail VARCHAR(4000) NOT NULL, \n\tstderr_tail VARCHAR(4000) NOT NULL, \n\tdigest VARCHAR(64) NOT NULL, \n\thead VARCHAR(64), \n\tphase VARCHAR(32) NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_receipts PRIMARY KEY (id), \n\tCONSTRAINT fk_receipts_repository_key_contract_commands FOREIGN KEY(repository_key, slug, command_id) REFERENCES contract_commands (repository_key, slug, command_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "review_dispositions",
+    "tbl_name": "review_dispositions",
+    "sql": "CREATE TABLE review_dispositions (\n\trepository_key VARCHAR(140) NOT NULL, \n\trun_id VARCHAR(15) NOT NULL, \n\tfinding_id VARCHAR(20) NOT NULL, \n\tdecision VARCHAR(32) NOT NULL, \n\treason VARCHAR(4000) DEFAULT '' NOT NULL, \n\t\"by\" VARCHAR(255) NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_review_dispositions PRIMARY KEY (repository_key, run_id, finding_id), \n\tCONSTRAINT fk_review_dispositions_repository_key_review_findings FOREIGN KEY(repository_key, run_id, finding_id) REFERENCES review_findings (repository_key, run_id, finding_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "review_findings",
+    "tbl_name": "review_findings",
+    "sql": "CREATE TABLE review_findings (\n\trepository_key VARCHAR(140) NOT NULL, \n\trun_id VARCHAR(15) NOT NULL, \n\tfinding_id VARCHAR(20) NOT NULL, \n\tsources JSON NOT NULL, \n\tseverity VARCHAR(32) NOT NULL, \n\tkind VARCHAR(32) DEFAULT 'defect' NOT NULL, \n\tsecurity BOOLEAN DEFAULT 0 NOT NULL, \n\ttitle VARCHAR(4000) NOT NULL, \n\tlocation VARCHAR(4000) NOT NULL, \n\tfix VARCHAR(4000) NOT NULL, \n\tverify VARCHAR(4000) NOT NULL, \n\tevidence_kind VARCHAR(32), \n\tevidence_cite VARCHAR(4000), \n\t\"conflict\" VARCHAR(4000), \n\tCONSTRAINT pk_review_findings PRIMARY KEY (repository_key, run_id, finding_id), \n\tCONSTRAINT fk_review_findings_repository_key_review_runs FOREIGN KEY(repository_key, run_id) REFERENCES review_runs (repository_key, run_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "review_outcomes",
+    "tbl_name": "review_outcomes",
+    "sql": "CREATE TABLE review_outcomes (\n\trepository_key VARCHAR(140) NOT NULL, \n\trun_id VARCHAR(15) NOT NULL, \n\tfinding_id VARCHAR(20) NOT NULL, \n\tresult VARCHAR(32) NOT NULL, \n\t\"commit\" VARCHAR(255) DEFAULT '' NOT NULL, \n\treason VARCHAR(4000) DEFAULT '' NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_review_outcomes PRIMARY KEY (repository_key, run_id, finding_id), \n\tCONSTRAINT fk_review_outcomes_repository_key_review_dispositions FOREIGN KEY(repository_key, run_id, finding_id) REFERENCES review_dispositions (repository_key, run_id, finding_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "review_runs",
+    "tbl_name": "review_runs",
+    "sql": "CREATE TABLE review_runs (\n\trepository_key VARCHAR(140) NOT NULL, \n\trun_id VARCHAR(15) NOT NULL, \n\tslug VARCHAR(64), \n\tscope VARCHAR(32) NOT NULL, \n\tbase VARCHAR(255), \n\thead VARCHAR(64), \n\tdepth VARCHAR(32) NOT NULL, \n\temphasis VARCHAR(32) NOT NULL, \n\tweights JSON NOT NULL, \n\tpersonas JSON NOT NULL, \n\tmodels JSON NOT NULL, \n\tcreated_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_review_runs PRIMARY KEY (repository_key, run_id)\n)"
+  },
+  {
+    "type": "table",
+    "name": "scout_reports",
+    "tbl_name": "scout_reports",
+    "sql": "CREATE TABLE scout_reports (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tscout VARCHAR(32) NOT NULL, \n\ttarget VARCHAR(255) NOT NULL, \n\treport VARCHAR(60000) NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_scout_reports PRIMARY KEY (id)\n)"
+  },
+  {
+    "type": "table",
+    "name": "similarity",
+    "tbl_name": "similarity",
+    "sql": "CREATE TABLE similarity (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tkind VARCHAR(32) NOT NULL, \n\treference VARCHAR(255) NOT NULL, \n\ttext VARCHAR(60000) NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_similarity PRIMARY KEY (id), \n\tCONSTRAINT uq_similarity_repository_key UNIQUE (repository_key, kind, reference)\n)"
+  },
+  {
+    "type": "table",
+    "name": "similarity_index",
+    "tbl_name": "similarity_index",
+    "sql": "CREATE VIRTUAL TABLE similarity_index\nUSING fts5(text, content='similarity', content_rowid='id', tokenize='unicode61')"
+  },
+  {
+    "type": "table",
+    "name": "similarity_index_config",
+    "tbl_name": "similarity_index_config",
+    "sql": "CREATE TABLE 'similarity_index_config'(k PRIMARY KEY, v) WITHOUT ROWID"
+  },
+  {
+    "type": "table",
+    "name": "similarity_index_data",
+    "tbl_name": "similarity_index_data",
+    "sql": "CREATE TABLE 'similarity_index_data'(id INTEGER PRIMARY KEY, block BLOB)"
+  },
+  {
+    "type": "trigger",
+    "name": "similarity_index_delete",
+    "tbl_name": "similarity",
+    "sql": "CREATE TRIGGER similarity_index_delete AFTER DELETE ON similarity BEGIN\n  INSERT INTO similarity_index(similarity_index, rowid, text) VALUES ('delete', old.id, old.text);\nEND"
+  },
+  {
+    "type": "table",
+    "name": "similarity_index_docsize",
+    "tbl_name": "similarity_index_docsize",
+    "sql": "CREATE TABLE 'similarity_index_docsize'(id INTEGER PRIMARY KEY, sz BLOB)"
+  },
+  {
+    "type": "table",
+    "name": "similarity_index_idx",
+    "tbl_name": "similarity_index_idx",
+    "sql": "CREATE TABLE 'similarity_index_idx'(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID"
+  },
+  {
+    "type": "trigger",
+    "name": "similarity_index_insert",
+    "tbl_name": "similarity",
+    "sql": "CREATE TRIGGER similarity_index_insert AFTER INSERT ON similarity BEGIN\n  INSERT INTO similarity_index(rowid, text) VALUES (new.id, new.text);\nEND"
+  },
+  {
+    "type": "trigger",
+    "name": "similarity_index_update",
+    "tbl_name": "similarity",
+    "sql": "CREATE TRIGGER similarity_index_update AFTER UPDATE ON similarity BEGIN\n  INSERT INTO similarity_index(similarity_index, rowid, text) VALUES ('delete', old.id, old.text);\n  INSERT INTO similarity_index(rowid, text) VALUES (new.id, new.text);\nEND"
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_closings_1",
+    "tbl_name": "closings",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_closings_2",
+    "tbl_name": "closings",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_contract_commands_1",
+    "tbl_name": "contract_commands",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_ledger_entries_1",
+    "tbl_name": "ledger_entries",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_review_dispositions_1",
+    "tbl_name": "review_dispositions",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_review_findings_1",
+    "tbl_name": "review_findings",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_review_outcomes_1",
+    "tbl_name": "review_outcomes",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_review_runs_1",
+    "tbl_name": "review_runs",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_similarity_1",
+    "tbl_name": "similarity",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_tasks_1",
+    "tbl_name": "tasks",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_tickets_1",
+    "tbl_name": "tickets",
+    "sql": null
+  },
+  {
+    "type": "index",
+    "name": "sqlite_autoindex_tickets_2",
+    "tbl_name": "tickets",
+    "sql": null
+  },
+  {
+    "type": "table",
+    "name": "task_attempts",
+    "tbl_name": "task_attempts",
+    "sql": "CREATE TABLE task_attempts (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\ttask_id VARCHAR(7) NOT NULL, \n\tworker VARCHAR(32) NOT NULL, \n\tmode VARCHAR(32), \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_task_attempts PRIMARY KEY (id), \n\tCONSTRAINT fk_task_attempts_repository_key_tasks FOREIGN KEY(repository_key, slug, task_id) REFERENCES tasks (repository_key, slug, task_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "task_failed_fixes",
+    "tbl_name": "task_failed_fixes",
+    "sql": "CREATE TABLE task_failed_fixes (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\ttask_id VARCHAR(7) NOT NULL, \n\thypothesis VARCHAR(4000) NOT NULL, \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_task_failed_fixes PRIMARY KEY (id), \n\tCONSTRAINT fk_task_failed_fixes_repository_key_tasks FOREIGN KEY(repository_key, slug, task_id) REFERENCES tasks (repository_key, slug, task_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "task_transitions",
+    "tbl_name": "task_transitions",
+    "sql": "CREATE TABLE task_transitions (\n\tid INTEGER NOT NULL, \n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\ttask_id VARCHAR(7) NOT NULL, \n\t\"before\" VARCHAR(32) NOT NULL, \n\t\"after\" VARCHAR(32) NOT NULL, \n\treasons JSON NOT NULL, \n\thead VARCHAR(64), \n\tat VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_task_transitions PRIMARY KEY (id), \n\tCONSTRAINT fk_task_transitions_repository_key_tasks FOREIGN KEY(repository_key, slug, task_id) REFERENCES tasks (repository_key, slug, task_id) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "tasks",
+    "tbl_name": "tasks",
+    "sql": "CREATE TABLE tasks (\n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\ttask_id VARCHAR(7) NOT NULL, \n\tstatus VARCHAR(32) NOT NULL, \n\towned JSON NOT NULL, \n\tbase VARCHAR(64), \n\t\"commit\" VARCHAR(255), \n\treasons JSON DEFAULT '[]' NOT NULL, \n\tupdated_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tCONSTRAINT pk_tasks PRIMARY KEY (repository_key, slug, task_id), \n\tCONSTRAINT fk_tasks_repository_key_tickets FOREIGN KEY(repository_key, slug) REFERENCES tickets (repository_key, slug) DEFERRABLE INITIALLY DEFERRED\n)"
+  },
+  {
+    "type": "table",
+    "name": "tickets",
+    "tbl_name": "tickets",
+    "sql": "CREATE TABLE tickets (\n\trepository_key VARCHAR(140) NOT NULL, \n\tslug VARCHAR(64) NOT NULL, \n\tstatus VARCHAR(32) DEFAULT 'staged' NOT NULL, \n\tticket VARCHAR(255) NOT NULL, \n\tsummary VARCHAR(4000) NOT NULL, \n\tbranch VARCHAR(255) NOT NULL, \n\tscope VARCHAR(32) NOT NULL, \n\tplan_first BOOLEAN NOT NULL, \n\tissue INTEGER, \n\tjira VARCHAR(255), \n\tmodels JSON NOT NULL, \n\tcontext JSON NOT NULL, \n\tinvestigations JSON DEFAULT '[]' NOT NULL, \n\tvalidated_at VARCHAR(25) DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')) NOT NULL, \n\tauto_escalate BOOLEAN DEFAULT 0 NOT NULL, \n\tCONSTRAINT pk_tickets PRIMARY KEY (repository_key, slug), \n\tCONSTRAINT uq_tickets_repository_key UNIQUE (repository_key, ticket)\n)"
+  }
+]
