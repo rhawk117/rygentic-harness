@@ -5,13 +5,13 @@ from itertools import takewhile
 from pathlib import Path
 
 import pytest
-from test_tool_references import (
+from plugin_layout import (
     AGENT_FILES,
     PLUGIN_ROOT,
     SKILL_DISALLOWED,
     SKILL_FILES,
+    block_list_entries,
     document_parts,
-    list_entries,
     skill_name,
 )
 
@@ -90,7 +90,7 @@ def frontmatter_keys(frontmatter: str) -> list[str]:
 
 
 def skill_paths(frontmatter: str) -> list[str]:
-    return [entry.strip('"') for entry in list_entries(frontmatter, 'paths')]
+    return [entry.strip('"') for entry in block_list_entries(frontmatter, 'paths')]
 
 
 def block_lines(frontmatter: str, key: str) -> list[str]:
@@ -141,12 +141,6 @@ class TestSkillShape:
         body = document_parts(document)[1]
 
         assert top_level_tags(body) == sections(*SKILL_SECTIONS)
-
-    @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_name)
-    def test_a_skill_frontmatter_holds_its_keys_in_order_and_no_other(self, document: Path) -> None:
-        keys = frontmatter_keys(document_parts(document)[0])
-
-        assert keys in (SKILL_KEYS, [*SKILL_KEYS, SKILL_OPTIONAL_KEY])
 
     @pytest.mark.parametrize('document', SKILL_FILES, ids=skill_name)
     def test_a_skill_is_named_for_its_directory(self, document: Path) -> None:

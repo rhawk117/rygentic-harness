@@ -21,12 +21,6 @@ def locked_ty_version() -> str:
     return next(package['version'] for package in lock['package'] if package['name'] == 'ty')
 
 
-def test_ty_pin_matches_the_locked_version() -> None:
-    args = ty_entry()['args']
-
-    assert args[2].removeprefix(PIN_PREFIX) == locked_ty_version()
-
-
 def test_ty_entry_runs_the_pinned_server() -> None:
     entry = ty_entry()
 

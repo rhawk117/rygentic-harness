@@ -2,13 +2,23 @@
 
 import re
 from dataclasses import dataclass
-from itertools import takewhile
 from pathlib import Path
 
 import pytest
 from mcp import Client
+from plugin_layout import (
+    AGENT_FILES,
+    PLUGIN_ROOT,
+    SKILL_DISALLOWED,
+    SKILL_FILES,
+    SKILL_MARKDOWN,
+    WRITE_TOOLS,
+    block_list_entries,
+    document_parts,
+    inline_list_entries,
+    skill_name,
+)
 
-PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 TOOL_PREFIX = 'mcp__plugin_python-harness_python-harness__'
 TOOL_REFERENCE = re.compile(rf'{TOOL_PREFIX}(?P<tool>\w+)')
 SERVER_TOOLS = frozenset(
@@ -28,12 +38,9 @@ DATA_COMMAND = re.compile(r'python-harness-data (?P<subcommand>[a-z][\w-]*)')
 LAUNCHER_ENTRY = re.compile(r"^    '(?P<name>[\w-]+)': ", re.MULTILINE)
 DATA_LAUNCHER = PLUGIN_ROOT.joinpath('bin', 'python-harness-data')
 REFERENCING_DIRECTORIES = ('skills', 'agents')
-SKILL_FILES = sorted(PLUGIN_ROOT.glob('skills/*/SKILL.md'))
-AGENT_FILES = sorted(PLUGIN_ROOT.glob('agents/*.md'))
-SKILL_MARKDOWN = sorted(PLUGIN_ROOT.joinpath('skills').rglob('*.md'))
-SKILL = PLUGIN_ROOT.joinpath('skills', 'tactical-slop-review', 'SKILL.md')
+REVIEW_SKILL = PLUGIN_ROOT.joinpath('skills', 'tactical-slop-review', 'SKILL.md')
 AUTOMATE_TASK = PLUGIN_ROOT.joinpath('skills', 'automate-task', 'SKILL.md')
-SKILL_TOOLS = [
+REVIEW_SKILL_TOOLS = [
     'check_citations',
     'collect_python_facts',
     'gate',
@@ -43,7 +50,7 @@ SKILL_TOOLS = [
     'search_python_docs',
     'survey',
 ]
-SKILL_BASH = [
+REVIEW_SKILL_BASH = [
     'Bash(git rev-parse HEAD)',
     'Bash(git symbolic-ref --short refs/remotes/origin/HEAD)',
     'Bash(git fetch origin *)',
@@ -55,22 +62,11 @@ BUNDLED_SCRIPT_BASH = [
     'Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/check_script.py *)',
     'Bash(uv run ${CLAUDE_SKILL_DIR}/scripts/parallelism.py *)',
 ]
-OTHER_BASH = {'tactical-slop-review': SKILL_BASH, 'automate-task': BUNDLED_SCRIPT_BASH}
-WRITE_TOOLS = ('Edit', 'Write', 'NotebookEdit')
+OTHER_BASH = {'tactical-slop-review': REVIEW_SKILL_BASH, 'automate-task': BUNDLED_SCRIPT_BASH}
 READ_ONLY_FORBIDDEN_GRANTS = ('Bash', 'Edit', 'Write', 'NotebookEdit', f'{TOOL_PREFIX}gate')
-SKILL_DISALLOWED = {
-    'build-web-service': WRITE_TOOLS,
-    'enterprise-design': WRITE_TOOLS,
-    'design-persistence': WRITE_TOOLS,
-    'design-tests': WRITE_TOOLS,
-    'tactical-slop-review': ('Edit', 'NotebookEdit'),
-    'automate-task': (),
-    'data-analysis': (),
-    'data-engineering': (),
-}
 
 
-def server(*names: str) -> tuple[str, ...]:
+def server_tool_names(*names: str) -> tuple[str, ...]:
     return tuple(f'{TOOL_PREFIX}{name}' for name in names)
 
 
@@ -87,7 +83,9 @@ AGENT_GRANTS = {
             'Read',
             'Grep',
             'Glob',
-            *server('collect_python_facts', 'map_python_calls', 'check_citations', 'survey'),
+            *server_tool_names(
+                'collect_python_facts', 'map_python_calls', 'check_citations', 'survey'
+            ),
         ),
         disallowed=('Bash', *WRITE_TOOLS),
         skills=(),
@@ -97,7 +95,9 @@ AGENT_GRANTS = {
             'Read',
             'Grep',
             'Glob',
-            *server('search_python_docs', 'read_python_docs', 'survey', 'check_citations'),
+            *server_tool_names(
+                'search_python_docs', 'read_python_docs', 'survey', 'check_citations'
+            ),
         ),
         disallowed=('Bash', *WRITE_TOOLS),
         skills=(),
@@ -108,7 +108,7 @@ AGENT_GRANTS = {
             'Grep',
             'Glob',
             'Bash',
-            *server('plan_review_surface', 'check_citations', 'survey', 'gate'),
+            *server_tool_names('plan_review_surface', 'check_citations', 'survey', 'gate'),
         ),
         disallowed=WRITE_TOOLS,
         skills=('tactical-slop-review',),
@@ -121,7 +121,7 @@ AGENT_GRANTS = {
             'Bash',
             'Edit',
             'Write',
-            *server(
+            *server_tool_names(
                 'survey',
                 'collect_python_facts',
                 'map_python_calls',
@@ -146,35 +146,8 @@ def referenced_tools() -> set[str]:
     return {found['tool'] for text in texts for found in TOOL_REFERENCE.finditer(text)}
 
 
-def document_parts(document: Path) -> tuple[str, str]:
-    _, frontmatter, body = document.read_text(encoding='utf-8').split('---\n', maxsplit=2)
-    return frontmatter, body
-
-
-def frontmatter_lines(document: Path) -> list[str]:
-    return document_parts(document)[0].splitlines()
-
-
-def list_entries(frontmatter: str, key: str) -> list[str]:
-    lines = frontmatter.splitlines()
-    if f'{key}:' not in lines:
-        return []
-    following = lines[lines.index(f'{key}:') + 1 :]
-    return [
-        line.removeprefix('  - ') for line in takewhile(lambda x: x.startswith('  - '), following)
-    ]
-
-
-def line_entries(frontmatter: str, key: str) -> list[str]:
-    prefix = f'{key}: '
-    values = [
-        line.removeprefix(prefix) for line in frontmatter.splitlines() if line.startswith(prefix)
-    ]
-    return values[0].split(', ') if values else []
-
-
 def tool_mismatch(frontmatter: str, body: str) -> tuple[set[str], set[str]]:
-    entries = list_entries(frontmatter, 'allowed-tools')
+    entries = block_list_entries(frontmatter, 'allowed-tools')
     granted = {
         entry.removeprefix(TOOL_PREFIX) for entry in entries if entry.startswith(TOOL_PREFIX)
     }
@@ -184,7 +157,7 @@ def tool_mismatch(frontmatter: str, body: str) -> tuple[set[str], set[str]]:
 
 
 def bash_mismatch(frontmatter: str, name: str) -> tuple[list[str], list[str]]:
-    bash = [e for e in list_entries(frontmatter, 'allowed-tools') if e.startswith('Bash(')]
+    bash = [e for e in block_list_entries(frontmatter, 'allowed-tools') if e.startswith('Bash(')]
     carried = [entry for entry in bash if entry not in LAUNCHER_BASH]
     listed = OTHER_BASH.get(name, [])
     return (
@@ -200,10 +173,6 @@ def launcher_subcommands() -> set[str]:
 
 def unknown_subcommands(text: str, known: set[str]) -> set[str]:
     return {found['subcommand'] for found in DATA_COMMAND.finditer(text)} - known
-
-
-def skill_name(document: Path) -> str:
-    return document.parent.name
 
 
 @pytest.mark.anyio
@@ -224,9 +193,6 @@ class TestReferencedTools:
 
         assert listed == SERVER_TOOLS
 
-    def test_the_plugin_ships_eight_skills_and_four_agents(self) -> None:
-        assert (len(SKILL_FILES), len(AGENT_FILES)) == (8, 4)
-
     def test_the_skills_and_agents_found_are_the_ones_the_tests_pin(self) -> None:
         skills = {skill_name(path) for path in SKILL_FILES}
         agents = {path.stem for path in AGENT_FILES}
@@ -243,9 +209,9 @@ class TestAgentGrants:
         grant = AGENT_GRANTS[document.stem]
 
         held = (
-            tuple(line_entries(frontmatter, 'tools')),
-            tuple(line_entries(frontmatter, 'disallowedTools')),
-            tuple(list_entries(frontmatter, 'skills')),
+            tuple(inline_list_entries(frontmatter, 'tools')),
+            tuple(inline_list_entries(frontmatter, 'disallowedTools')),
+            tuple(block_list_entries(frontmatter, 'skills')),
         )
 
         assert held == (grant.tools, grant.disallowed, grant.skills)
@@ -255,11 +221,11 @@ class TestAgentGrants:
         self, name: str
     ) -> None:
         frontmatter = document_parts(PLUGIN_ROOT.joinpath('agents', f'{name}.md'))[0]
-        tools = line_entries(frontmatter, 'tools')
+        tools = inline_list_entries(frontmatter, 'tools')
 
         granted = [tool for tool in READ_ONLY_FORBIDDEN_GRANTS if tool in tools]
 
-        assert (granted, line_entries(frontmatter, 'disallowedTools')) == (
+        assert (granted, inline_list_entries(frontmatter, 'disallowedTools')) == (
             [],
             ['Bash', *WRITE_TOOLS],
         )
@@ -268,11 +234,14 @@ class TestAgentGrants:
         self,
     ) -> None:
         frontmatter = document_parts(PLUGIN_ROOT.joinpath('agents', 'reviewer.md'))[0]
-        tools = line_entries(frontmatter, 'tools')
+        tools = inline_list_entries(frontmatter, 'tools')
 
         granted = [tool for tool in ('Edit', 'Write') if tool in tools]
 
-        assert (granted, line_entries(frontmatter, 'disallowedTools')) == ([], list(WRITE_TOOLS))
+        assert (granted, inline_list_entries(frontmatter, 'disallowedTools')) == (
+            [],
+            list(WRITE_TOOLS),
+        )
 
 
 class TestSkillGrants:
@@ -322,7 +291,7 @@ class TestSkillGrants:
     def test_a_skill_denies_exactly_the_tools_it_is_designed_to_deny(self, document: Path) -> None:
         frontmatter = document_parts(document)[0]
 
-        denied = tuple(list_entries(frontmatter, 'disallowed-tools'))
+        denied = tuple(block_list_entries(frontmatter, 'disallowed-tools'))
 
         assert denied == SKILL_DISALLOWED[skill_name(document)]
 
@@ -331,7 +300,7 @@ class TestSkillGrants:
         self, document: Path
     ) -> None:
         frontmatter, body = document_parts(document)
-        entries = list_entries(frontmatter, 'allowed-tools')
+        entries = block_list_entries(frontmatter, 'allowed-tools')
 
         mismatch = bash_mismatch(frontmatter, skill_name(document))
 
@@ -368,7 +337,7 @@ class TestSkillGrants:
         frontmatter, body = document_parts(AUTOMATE_TASK)
         commands = [entry.removeprefix('Bash(').removesuffix('*)') for entry in BUNDLED_SCRIPT_BASH]
 
-        last = list_entries(frontmatter, 'allowed-tools')[-len(BUNDLED_SCRIPT_BASH) :]
+        last = block_list_entries(frontmatter, 'allowed-tools')[-len(BUNDLED_SCRIPT_BASH) :]
 
         assert (last, all(command in body for command in commands)) == (BUNDLED_SCRIPT_BASH, True)
 
@@ -400,10 +369,10 @@ class TestDataCommands:
 
 class TestFrontmatter:
     def test_the_skill_allows_the_eight_server_tools_and_keeps_its_bash_entries(self) -> None:
-        entries = [line.removeprefix('  - ') for line in frontmatter_lines(SKILL)]
+        entries = block_list_entries(document_parts(REVIEW_SKILL)[0], 'allowed-tools')
         allowed = sorted(
             entry.removeprefix(TOOL_PREFIX) for entry in entries if entry.startswith(TOOL_PREFIX)
         )
         bash = [entry for entry in entries if entry.startswith('Bash(')]
 
-        assert (allowed, bash) == (SKILL_TOOLS, SKILL_BASH)
+        assert (allowed, bash) == (REVIEW_SKILL_TOOLS, REVIEW_SKILL_BASH)

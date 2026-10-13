@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from test_tool_references import PLUGIN_ROOT, SKILL_FILES, document_parts, skill_name
+from plugin_layout import PLUGIN_ROOT, SKILL_FILES, document_parts, skill_name
 
 README = PLUGIN_ROOT.joinpath('README.md')
 CHAIN_SECTION = re.compile(
@@ -73,7 +73,7 @@ class TestChainTable:
     def test_the_table_has_one_row_for_each_skill_directory(self) -> None:
         rows = chain_rows()
 
-        assert (len(rows), set(rows)) == (8, set(SKILLS))
+        assert set(rows) == SKILLS
 
     def test_every_list_cell_is_none_or_backticked_skill_names(self) -> None:
         cells = [cell for row in chain_rows().values() for cell in (row.receives, row.hands)]
@@ -96,10 +96,12 @@ class TestChainAgainstSkills:
         assert mismatch == (set(), set())
 
     def test_a_row_that_names_the_wrong_skill_is_reported(self) -> None:
-        skill = 'design-tests'
-        document = PLUGIN_ROOT.joinpath('skills', skill, 'SKILL.md')
+        body = (
+            '<inputs>\nThe contract from design-persistence.\n</inputs>\n'
+            '<handoff>\nThe tests go to tactical-slop-review.\n</handoff>\n'
+        )
         row = ChainRow(track='service', receives='`enterprise-design`', hands=NONE_CELL)
 
-        mismatch = chain_mismatch(skill, row, document_parts(document)[1])
+        mismatch = chain_mismatch('design-tests', row, body)
 
         assert mismatch == ({'design-persistence', 'enterprise-design'}, {'tactical-slop-review'})

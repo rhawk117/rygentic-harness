@@ -1,15 +1,14 @@
 """Structural checks and tool runs of automate-task's check_script.py."""
 
 import ast
-import importlib.util
 import json
 import subprocess
-import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
+import check_script
 import pytest
 from pytest_mock import MockerFixture
 from python_harness.gate.domain import DEFAULT_RUFF_VERSION
@@ -19,18 +18,6 @@ SCRIPT = PLUGIN / 'skills' / 'automate-task' / 'scripts'
 TEMPLATE = SCRIPT.parent / 'assets' / 'script.template.py'
 LSP_CONFIG = PLUGIN / '.lsp.json'
 
-
-def load_script(path: Path, name: str) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-check_script = load_script(SCRIPT / 'check_script.py', 'check_script')
 
 HEADER = '# /// script\n# requires-python = ">=3.12"\n# dependencies = []\n# ///\n'
 GOOD_SCRIPT = (

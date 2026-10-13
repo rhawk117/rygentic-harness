@@ -1,34 +1,17 @@
 """Validation and publication of data-engineering's results.py."""
 
 import hashlib
-import importlib.util
 import json
 import math
-import sys
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+import results
 from pytest_mock import MockerFixture
-
-SCRIPT = Path(__file__).resolve().parents[2] / 'skills' / 'data-engineering' / 'assets'
-
-
-def load_script(path: Path, name: str) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-results = load_script(SCRIPT / 'results.py', 'results')
 
 CREATED_AT = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 NAIVE = datetime.fromisoformat('2026-01-01T00:00:00')

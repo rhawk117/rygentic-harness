@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from test_tool_references import (
+from plugin_layout import (
     AGENT_FILES,
     PLUGIN_ROOT,
     SKILL_FILES,
+    block_list_entries,
     document_parts,
-    line_entries,
-    list_entries,
+    inline_list_entries,
     skill_name,
 )
 
@@ -69,12 +69,12 @@ def dispatch_blocks(body: str) -> list[DispatchBlock]:
 
 
 def declared_block(agent: str, frontmatter: str) -> DispatchBlock:
-    efforts = line_entries(frontmatter, 'effort')
+    efforts = inline_list_entries(frontmatter, 'effort')
     return DispatchBlock(
         agent=agent,
-        model=line_entries(frontmatter, 'model')[0],
+        model=inline_list_entries(frontmatter, 'model')[0],
         effort=efforts[0] if efforts else None,
-        tools=tuple(line_entries(frontmatter, 'tools')),
+        tools=tuple(inline_list_entries(frontmatter, 'tools')),
     )
 
 
@@ -129,7 +129,7 @@ class TestPairing:
         self, document: Path
     ) -> None:
         frontmatter, body = document_parts(document)
-        allowed = list_entries(frontmatter, 'allowed-tools')
+        allowed = block_list_entries(frontmatter, 'allowed-tools')
         expected = dispatched_by(skill_name(document))
 
         assert (AGENT_TOOL in allowed, named_agents(body)) == (bool(expected), expected)
