@@ -14,7 +14,7 @@ import logging
 import math
 import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from enum import IntEnum, StrEnum
 from pathlib import Path
@@ -23,6 +23,10 @@ if sys.platform != 'win32':
     import resource
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PER_HOST_LIMIT = 6
+WINDOWS_OPEN_FILE_LIMIT = 512
+UNLIMITED_OPEN_FILE_FALLBACK = 1024
 
 
 class Workload(StrEnum):
@@ -59,7 +63,7 @@ class HostFacts:
 
 @dataclass(slots=True, kw_only=True, frozen=True)
 class CapOptions:
-    per_host_limit: int = 6
+    per_host_limit: int = DEFAULT_PER_HOST_LIMIT
     io_moderate: int = 8
     io_a_lot: int = 32
     io_toaster_ceiling: int = 256
@@ -104,9 +108,9 @@ def read_cgroup_cpus(cpu_max: Path) -> int | None:
 
 def read_open_file_limit() -> int:
     if sys.platform == 'win32':
-        return 512
+        return WINDOWS_OPEN_FILE_LIMIT
     soft, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
-    return soft if soft > 0 else 1024
+    return soft if soft > 0 else UNLIMITED_OPEN_FILE_FALLBACK
 
 
 def detect_host(cpus_override: int | None) -> HostFacts:
@@ -119,24 +123,53 @@ def detect_host(cpus_override: int | None) -> HostFacts:
     )
 
 
+@dataclass(slots=True, kw_only=True, frozen=True)
+class LevelRule:
+    cpu_workers: Callable[[int], int]
+    subprocess_workers: Callable[[int], int]
+    io_in_flight: Callable[[CapOptions, int], int]
+    has_library_threads: bool
+    niced: bool
+
+
+LEVEL_RULES = {
+    Level.SEQUENTIAL: LevelRule(
+        cpu_workers=lambda _cpus: 1,
+        subprocess_workers=lambda _cpus: 1,
+        io_in_flight=lambda _caps, _ceiling: 1,
+        has_library_threads=False,
+        niced=False,
+    ),
+    Level.MODERATE: LevelRule(
+        cpu_workers=lambda cpus: max(1, cpus // 2),
+        subprocess_workers=lambda cpus: max(2, cpus // 2),
+        io_in_flight=lambda caps, _ceiling: caps.io_moderate,
+        has_library_threads=True,
+        niced=True,
+    ),
+    Level.A_LOT: LevelRule(
+        cpu_workers=lambda cpus: max(1, cpus - 1),
+        subprocess_workers=lambda cpus: cpus,
+        io_in_flight=lambda caps, _ceiling: caps.io_a_lot,
+        has_library_threads=True,
+        niced=False,
+    ),
+    Level.TOASTER: LevelRule(
+        cpu_workers=lambda cpus: cpus,
+        subprocess_workers=lambda cpus: cpus,
+        io_in_flight=lambda _caps, ceiling: ceiling,
+        has_library_threads=True,
+        niced=False,
+    ),
+}
+
+
 def compute_cpu_workers(level: Level, cpus: int) -> int:
-    table = {
-        Level.SEQUENTIAL: 1,
-        Level.MODERATE: max(1, cpus // 2),
-        Level.A_LOT: max(1, cpus - 1),
-        Level.TOASTER: cpus,
-    }
-    return table[level]
+    return LEVEL_RULES[level].cpu_workers(cpus)
 
 
 def compute_subprocess_workers(level: Level, cpus: int) -> int:
-    table = {
-        Level.SEQUENTIAL: 1,
-        Level.MODERATE: max(2, cpus // 2),
-        Level.A_LOT: cpus,
-        Level.TOASTER: cpus,
-    }
-    return table[level]
+    return LEVEL_RULES[level].subprocess_workers(cpus)
 
 
 def compute_io_ceiling(host: HostFacts, caps: CapOptions) -> int:
@@ -144,53 +177,80 @@ def compute_io_ceiling(host: HostFacts, caps: CapOptions) -> int:
 
 
 def compute_io_in_flight(level: Level, host: HostFacts, caps: CapOptions) -> int:
-    table = {
-        Level.SEQUENTIAL: 1,
-        Level.MODERATE: caps.io_moderate,
-        Level.A_LOT: caps.io_a_lot,
-        Level.TOASTER: compute_io_ceiling(host, caps),
-    }
-    return min(table[level], compute_io_ceiling(host, caps))
+    ceiling = compute_io_ceiling(host, caps)
+    return min(LEVEL_RULES[level].io_in_flight(caps, ceiling), ceiling)
 
 
 def compute_library_threads(level: Level, cpus: int) -> int | None:
-    if level is Level.SEQUENTIAL:
-        return None
-    return compute_cpu_workers(level, cpus)
+    rule = LEVEL_RULES[level]
+    return rule.cpu_workers(cpus) if rule.has_library_threads else None
+
+
+@dataclass(slots=True, kw_only=True, frozen=True)
+class WorkloadRule:
+    mapped_workers: Callable[[Request, HostFacts], int]
+    mechanism_hint: Callable[[HostFacts], str]
+    cpu_bound: bool
+    io_bound: bool
+    has_library_threads: bool
+
+
+WORKLOAD_RULES = {
+    Workload.CPU: WorkloadRule(
+        mapped_workers=lambda request, host: compute_cpu_workers(request.level, host.cpus),
+        mechanism_hint=lambda host: (
+            'ProcessPoolExecutor' if host.gil_enabled else 'threads (free-threaded, no GIL)'
+        ),
+        cpu_bound=True,
+        io_bound=False,
+        has_library_threads=False,
+    ),
+    Workload.SUBPROCESS: WorkloadRule(
+        mapped_workers=lambda request, host: compute_subprocess_workers(request.level, host.cpus),
+        mechanism_hint=lambda _host: 'ThreadPoolExecutor or asyncio.create_subprocess_exec',
+        cpu_bound=True,
+        io_bound=False,
+        has_library_threads=False,
+    ),
+    Workload.IO: WorkloadRule(
+        mapped_workers=lambda request, host: compute_io_in_flight(
+            request.level, host, request.caps
+        ),
+        mechanism_hint=lambda _host: (
+            'asyncio with a Semaphore, or ThreadPoolExecutor for sync clients'
+        ),
+        cpu_bound=False,
+        io_bound=True,
+        has_library_threads=False,
+    ),
+    Workload.LIBRARY: WorkloadRule(
+        mapped_workers=lambda _request, _host: 1,
+        mechanism_hint=lambda _host: 'library-internal threads; keep the outer pool at 1',
+        cpu_bound=False,
+        io_bound=False,
+        has_library_threads=True,
+    ),
+}
 
 
 def describe_mechanism(workload: Workload, host: HostFacts) -> str:
-    cpu_hint = 'ProcessPoolExecutor' if host.gil_enabled else 'threads (free-threaded, no GIL)'
-    hints = {
-        Workload.CPU: cpu_hint,
-        Workload.SUBPROCESS: 'ThreadPoolExecutor or asyncio.create_subprocess_exec',
-        Workload.IO: 'asyncio with a Semaphore, or ThreadPoolExecutor for sync clients',
-        Workload.LIBRARY: 'library-internal threads; keep the outer pool at 1',
-    }
-    return hints[workload]
+    return WORKLOAD_RULES[workload].mechanism_hint(host)
 
 
 def compute_mapped_workers(request: Request, host: HostFacts) -> int:
-    level, cpus = request.level, host.cpus
-    table = {
-        Workload.CPU: compute_cpu_workers(level, cpus),
-        Workload.SUBPROCESS: compute_subprocess_workers(level, cpus),
-        Workload.IO: compute_io_in_flight(level, host, request.caps),
-        Workload.LIBRARY: 1,
-    }
-    return table[request.workload]
+    return WORKLOAD_RULES[request.workload].mapped_workers(request, host)
 
 
 def find_override_warnings(request: Request, host: HostFacts, workers: int) -> list[str]:
     warnings: list[str] = []
+    rule = WORKLOAD_RULES[request.workload]
     io_ceiling = compute_io_ceiling(host, request.caps)
-    if request.workload is Workload.IO and workers > io_ceiling:
+    if rule.io_bound and workers > io_ceiling:
         warnings.append(
             f'{workers} in flight exceeds the open-file ceiling of {io_ceiling}; '
             'kept as requested, expect EMFILE errors unless the limit is raised'
         )
-    cpu_bound = request.workload in {Workload.CPU, Workload.SUBPROCESS}
-    if cpu_bound and workers > host.cpus:
+    if rule.cpu_bound and workers > host.cpus:
         warnings.append(
             f'{workers} workers exceeds {host.cpus} usable CPUs; kept as requested, '
             'extra workers will contend for the same cores'
@@ -198,16 +258,15 @@ def find_override_warnings(request: Request, host: HostFacts, workers: int) -> l
     return warnings
 
 
-def compute_library_plan_threads(request: Request, host: HostFacts) -> int | None:
-    if request.workload is not Workload.LIBRARY:
-        return None
-    return compute_library_threads(request.level, host.cpus)
-
-
 def build_plan(request: Request, host: HostFacts) -> Plan:
+    workload_rule = WORKLOAD_RULES[request.workload]
     workers = request.requested_workers or compute_mapped_workers(request, host)
-    comfort = request.level is Level.MODERATE and request.workload is not Workload.IO
-    uses_hosts = request.workload is Workload.IO
+    comfort = LEVEL_RULES[request.level].niced and not workload_rule.io_bound
+    library_threads = (
+        compute_library_threads(request.level, host.cpus)
+        if workload_rule.has_library_threads
+        else None
+    )
     return Plan(
         workload=request.workload,
         level=request.level,
@@ -217,9 +276,9 @@ def build_plan(request: Request, host: HostFacts) -> Plan:
         gil_enabled=host.gil_enabled,
         open_file_limit=host.open_file_limit,
         outer_workers=workers,
-        library_threads=compute_library_plan_threads(request, host),
+        library_threads=library_threads,
         nice=request.caps.comfort_nice if comfort else 0,
-        per_host_limit=request.caps.per_host_limit if uses_hosts else None,
+        per_host_limit=request.caps.per_host_limit if workload_rule.io_bound else None,
         mechanism_hint=describe_mechanism(request.workload, host),
         explicit_override=request.requested_workers is not None,
         warnings=find_override_warnings(request, host, workers),
@@ -243,7 +302,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_positive_int,
         help='an explicit count the user asked for; kept even above caps, with warnings',
     )
-    parser.add_argument('--per-host-limit', type=parse_positive_int, default=6)
+    parser.add_argument('--per-host-limit', type=parse_positive_int, default=DEFAULT_PER_HOST_LIMIT)
     parser.add_argument('--cpus', type=parse_positive_int, help='override detected CPUs')
     return parser
 

@@ -1,5 +1,6 @@
 """Level and workload mapping of automate-task's parallelism.py."""
 
+import ast
 import importlib.util
 import json
 import sys
@@ -26,6 +27,16 @@ parallelism = load_script(SCRIPT / 'parallelism.py', 'parallelism')
 
 LEVELS = parallelism.Level
 WORKLOADS = parallelism.Workload
+
+
+def read_function_source(path: Path, name: str) -> str:
+    source = path.read_text(encoding='utf-8')
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            segment = ast.get_source_segment(source, node)
+            assert segment is not None
+            return segment
+    pytest.fail(f'{path.name} defines no function {name}')
 
 
 def make_host(
@@ -80,7 +91,7 @@ class TestReadOpenFileLimit:
         self, mocker: MockerFixture
     ) -> None:
         mocker.patch.object(parallelism, 'sys', SimpleNamespace(platform='win32'))
-        resource = mocker.patch.object(parallelism, 'resource')
+        resource = mocker.patch.object(parallelism, 'resource', create=True)
 
         assert parallelism.read_open_file_limit() == 512
         resource.getrlimit.assert_not_called()
@@ -285,6 +296,14 @@ class TestParsePositiveInt:
         with pytest.raises(parallelism.argparse.ArgumentTypeError):
             parallelism.parse_positive_int(text)
 
+    def test_the_script_template_carries_the_same_function(self) -> None:
+        script = read_function_source(SCRIPT / 'parallelism.py', 'parse_positive_int')
+        template = read_function_source(
+            SCRIPT.parent / 'assets' / 'script.template.py', 'parse_positive_int'
+        )
+
+        assert script == template
+
 
 class TestMain:
     def test_the_plan_is_printed_as_json_and_the_exit_code_is_zero(
@@ -310,6 +329,7 @@ class TestMain:
         plan = json.loads(capsys.readouterr().out)
         assert code == parallelism.ExitCode.OK
         assert plan['outer_workers'] == 9
+        assert plan['warnings']
         assert plan['warnings'] == [record.getMessage() for record in caplog.records]
 
     def test_the_per_host_limit_flows_into_an_io_plan(
