@@ -40,12 +40,18 @@ run_linter() {
   run 'Ruff Format Check' uv run ruff format "${RUFF_CONFIG[@]}" --check .
   run 'Ruff Check' uv run ruff check "${RUFF_CONFIG[@]}" --no-fix .
   run 'Markdown Check' uv run mdformat --check "${MARKDOWN_GLOBS[@]}"
+  run 'Python Line Cap' scripts/check-python-line-cap.sh
 
   run 'ty (3.14)' uv run ty check --config-file .ty.toml
   run 'ty (3.12 skills)' uv run ty check --config-file .ty.toml \
     --python-version 3.12 plugins/mightymodels/skills plugins/vibe-code/skills \
     plugins/vibe-code/src plugins/vibe-code/tests
   run 'pytest' uv run pytest
+
+  for plugin in plugins/*/; do
+    run "[${plugin#plugins/}] coverage" \
+      uv run coverage report --rcfile=.coveragerc.ini --include="${plugin}*"
+  done
 
   if ! command -v claude >/dev/null; then
     log::error 'claude not on PATH: npm install -g @anthropic-ai/claude-code'

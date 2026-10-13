@@ -1,0 +1,46 @@
+#!/bin/sh
+set -u
+
+here=$(cd -- "$(dirname -- "$0")" && pwd -P)
+launcher=${MIGHTYMODELS_DISPATCH_LAUNCHER:-${here}/mightymodels}
+limit_seconds=${MIGHTYMODELS_DISPATCH_SECONDS:-8}
+input=$(cat)
+
+launcher_within_limit() {
+  printf '%s' "${input}" | "${launcher}" dispatch-hook &
+  launched=$!
+  { sleep "${limit_seconds}" && kill "${launched}"; } >/dev/null 2>&1 &
+  timer=$!
+  wait "${launched}"
+  status=$?
+  kill "${timer}" 2>/dev/null
+  return "${status}"
+}
+
+refuse() {
+  printf 'mightymodels: the dispatch hook could not run, so %s\n' "$1" >&2
+  exit 2
+}
+
+if output=$(launcher_within_limit); then
+  test -z "${output}" || printf '%s\n' "${output}"
+  exit 0
+fi
+
+compact=$(printf '%s' "${input}" | tr -d '[:space:]')
+case ${compact} in
+  *'"agent_type":"mightymodels:'*)
+    refuse 'this subagent dispatch is refused'
+    ;;
+esac
+if test -d "${CLAUDE_PROJECT_DIR:-.}/.mightymodels"; then
+  for implementer in engineer architect intern; do
+    case ${compact} in
+      *"\"subagent_type\":\"${implementer}\""* | *"\"subagent_type\":\"mightymodels:workers:${implementer}\""*)
+        refuse "it cannot tell whether a task is started and this dispatch of the ${implementer} is refused"
+        ;;
+    esac
+  done
+fi
+printf '%s\n' 'mightymodels: the dispatch hook could not run, so this dispatch was not checked' >&2
+exit 0

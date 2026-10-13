@@ -1,31 +1,220 @@
 ---
 name: review-circus
 description: >-
-  Endgame review session for an mightymodels ticket, a branch, or the whole codebase: scouts triage the review surface, uncle-bob and merge-vader run with models from ticket.yml writing reports under .mightymodels/<slug>/review/, findings are deduped and severity-unified through the shared table, an abridged human-friendly comment is ALWAYS posted to the PR — pass or fail — and worth-fixing triage routes remediation by risk first (Critical findings and High+ security findings to a full engineer regardless of source), then by source: remaining uncle-bob findings to a full engineer, remaining merge-vader findings to budgetron. Use when a PR is green and awaiting the deep pass — "run the review circus", "full review pass", "review the sprint", "both reviewers on this". For a single quick review, invoke merge-vader or uncle-bob directly instead.
+  Review a diff, branch, ticket, or whole codebase with the mightymodels persona reviewers. One
+  AskUserQuestion gate sets depth (quick runs its reviewers on sonnet, standard and deep on opus), persona
+  emphasis, and scope; the `review` tool records the run, mightymodels review-metrics and review-signals
+  measure, merge-vader and uncle-bob report, and the tool reads their reports
+  and merges overlapping findings, presented by id through AskUserQuestion. Only the findings
+  the user picks go to remediation, risk first, through the `task` tool; an abridged PR comment
+  is always posted. Not for fixing CI (stick-the-landing) or mid-sprint work
+  (agents-assemble).
+when_to_use: >-
+  Use for
+  "run the review circus", "review the sprint", "full review pass", "both reviewers on this", and
+  for a quick single-persona pass: "quick merge-vader on this branch", "uncle-bob this module",
+  "is this safe to merge".
+argument-hint: "[diff | branch | ticket <slug> | codebase]"
+allowed-tools:
+  - AskUserQuestion
+  - mcp__plugin_mightymodels_state__review
+  - mcp__plugin_mightymodels_state__task
 ---
 
 # review-circus
 
-The endgame. Two reviewers with different worldviews run in parallel, and this session's primary is the ringmaster: it aggregates, it translates severities into one language, it documents, and it routes fixes. It never reviews code itself and never invents findings — an empty `review/` directory means the reviewers haven't run, not that the primary should improvise.
+Two reviewers with different worldviews, and this session's primary as the ringmaster: it
+sets the profile, measures, dispatches, normalizes, and routes what the user chooses to fix.
+It never reviews code itself and never invents a finding. An empty run means the reviewers
+have not reported, not that the primary should improvise.
 
-Severity table and finding format come from `agents-assemble/references/contracts.md`. Read it before aggregating; the whole point of this session is that MV and UB findings land in one vocabulary.
+Run the commands from the repository root. `${CLAUDE_SKILL_DIR}` is this skill's directory, which
+Claude Code substitutes in this file as an absolute path. Subagents do not inherit it, so every
+path a dispatch carries is absolute.
 
-## Sequence
+- `mcp__plugin_mightymodels_state__review` records the run, the findings, and the decisions.
+- `mightymodels review-metrics` measures structure (fan-in, fan-out, cycles, sizes); it is a bare Bash command (the plugin's `bin/` is on the Bash PATH).
+- `mightymodels review-signals` measures git history (churn, coupling, hotspots); it is a bare Bash command (the plugin's `bin/` is on the Bash PATH).
 
-**1. Scope.** Ask the user: this branch (against which base), or the entire codebase? Branch mode reviews the sprint; codebase mode is a health pass — the mechanics below are identical, only the reviewers' scope changes.
+Read `references/profiles.md` and `references/review-state.md` before the first run in a
+session, and `agents-assemble/references/contracts.md` for the severity table. Dispatch every
+worker through prompting-subagents.
 
-**2. Surface triage.** Scouts (models from ticket.yml) establish what the reviewers will want fast: diff stat, risk hotspots (auth, input handling, CI config, dependency manifests), test-file coverage of the changed area. This shortens the reviewers' own recon, not replaces their judgment.
+## 1. Profile
 
-**3. Dispatch both reviewers in parallel** — uncle-bob and merge-vader, models from ticket.yml's `subagent-models` block, reports to `.mightymodels/<slug>/review/`. Give merge-vader the plan/issue for its conformance check (a "not supplied" conformance section when the issue exists is a worse report for no reason). Wait for both.
+**Argument:** the scope to review (diff, branch, ticket with its slug, or codebase), given when the
+skill was started: "$ARGUMENTS". Empty quotes mean none was given, and the scope is settled as
+below.
 
-**4. Aggregate.** Dedupe by file:line overlap; map severities through the contracts table (UB `Blocker` → Critical). Same defect at two severities → the higher wins, both noted; a gap of two-plus levels goes to the user's judgment rather than silent resolution. Every surviving finding keeps its provenance (MV-n / UB-n) and its Fix:/Verify: lines — a finding an engineer can't act on without re-deriving the analysis is a finding half-delivered.
+The profile is the scope, the depth and the emphasis of the review. Say what each depth costs
+(profiles.md): quick is one persona on sonnet, standard and deep run their reviewers on opus.
+Then record the profile with `mcp__plugin_mightymodels_state__review` and action `start`,
+carrying only what the conversation has already settled. The tool puts each of `scope`, `depth`
+and `emphasis` that the payload leaves out to the user and starts the run with the answers:
 
-**5. Comment the PR — always.** Pass or fail, low-findings-only or Critical-laden: an abridged, human-friendly summary goes on the PR (prose through humanizer; IDs preserved so the thread links back to the reports). The PR thread is the durable record; the review/ files are working state. `gh` unavailable → write `review/pr-comment.md` and surface the command.
+```json
+{"request": {"action": "start", "payload": {"scope": "ticket", "slug": "SLUG", "base": "main"}}}
+```
 
-**6. All-clear rule.** Only Low findings → report all clear, comment posted, session done.
+An answer starting `needs input` means no one could be asked through the tool: put each question
+it names to the user in one `AskUserQuestion` dialog, then call again with those arguments in the
+payload. A scope of branch needs `base`, a scope of ticket needs `slug`, and an emphasis of custom
+needs `weights`; a refusal naming one of them means: ask the user for it, then call again.
 
-**7. Worth-fixing triage** (anything Medium+). Per finding, scouts establish: pre-existing defect or regression from this branch? Blast radius and scope of the fix? Then the judgment — worth fixing now, ticketed for later, or accepted risk with the user's sign-off.
+For a quick review with balanced weights, ask the user which persona and pass it as `persona`.
 
-**8. Remediation, routed by risk first, then source.** Risk takes precedence: a **Critical** finding, or a **security finding at High severity or above** (severities per the contracts table), routes to a full **engineer** regardless of which reviewer found it — a defect that says "harm now" never waits on a budgeted fixer's escalation round trip. Below that line, source decides: uncle-bob findings → full **engineer** (abstraction and structure work needs judgment); merge-vader findings → **budgetron** (implicit-but-straightforward fixes with consumable Fix:/Verify: lines). A dual-provenance finding — one both reviewers flagged — routes to the engineer: when the structure judge saw it too, the fix is rarely mechanical. The budgetron contract remains the safety valve for everything routed to it: a merge-vader finding that turns out non-straightforward escalates on budget or scope and re-routes to an engineer. Remediation runs the normal loop with two deltas: engineer commits are **pushed** (CI must not regress silently) and gitty-up watches. Two remediation rounds per finding, then accepted-risk-or-escalate — never a third quiet round.
+It answers with the run id, the run directory, and each persona's model. Every later step
+names the run with `run_id`.
 
-**9. Close.** Updated comment on the PR with remediation outcomes per finding ID. The human review comes after this session — say so, and stop.
+A run may spend one override on its heavier-weighted reviewer (the first persona, merge-vader, on equal weights), moving it to fable. Ask for it only when the user wants the strongest reviewer, with action `override`:
+
+```json
+{"request": {"action": "override", "run_id": "20261005-103000"}}
+```
+
+The answer names the reviewer and says to dispatch it with effort high; a second request on the run is refused. A ticket's reviewer keys change no review.
+
+## 2. Measure
+
+When uncle-bob is in the run, measure structure into the run directory:
+
+```bash
+mightymodels review-metrics <repo root> --out RUNDIR/uncle-bob-metrics.json
+```
+
+Add `--package-depth 2` when the repository is one top-level package. When the languages are
+ones it does not parse (it reads Python, JavaScript, and TypeScript), skip it and say so in
+the dispatch.
+
+At standard and deep, pick the history window for `mightymodels review-signals` per profiles.md
+(`--baseline-ref BASE_REF` for branch and ticket scope). At standard and deep, a code-scout
+surface triage also runs first: diff stat, risk hotspots (auth, input handling, CI config,
+dependency manifests), tests covering the changed area. Quick skips both unless the persona
+names a specific gap.
+
+## 3. Dispatch the personas
+
+Dispatch each persona in the run, in parallel, with prompting-subagents' reviewer template
+and the model the run recorded. Each persona preloads its doctrine as a skill of its own
+(`becoming-merge-vader`, `becoming-uncle-bob`) and is passed no doctrine path. The packet carries
+`${CLAUDE_SKILL_DIR}/references/profiles.md`, `${CLAUDE_SKILL_DIR}/references/idiom-evidence.md`,
+the run directory, the depth and the persona's role (the heavier weight leads), the metrics
+path, the signals history window (which the persona hands qualitylens), and for a ticket,
+ticket.yml, the issue, and the plan
+(merge-vader's conformance check needs them). The `${CLAUDE_SKILL_DIR}` paths are absolute once substituted.
+
+For a ticket, the packet also names every brief that holds a `## FINDINGS` section
+(`rg --no-config -l '^## FINDINGS' .mightymodels/SLUG/briefs`): the fact-checker's Medium, Low
+and advisory findings, which agents-assemble recorded when it let the task go on. A persona opens
+the line of each and reports the ones that stand as findings of its own. A recorded finding no
+persona confirms does not reach the gate, because `add` takes findings from the persona reports
+and from nowhere else.
+
+Personas gather their own evidence through code-scout and qualitylens, merge-vader through
+web-scout too, and nothing else. Write each response unchanged to `RUNDIR/MERGE-VADER-REPORT.md` or
+`RUNDIR/UNCLE-BOB-REPORT.md`, the files `add` reads. Wait for every persona in the run.
+
+## 4. Record the reports
+
+Call `mcp__plugin_mightymodels_state__review` with action `add`, once per persona in the run:
+
+```json
+{"request": {"action": "add", "run_id": "20261005-103000", "payload": {"persona": "merge-vader"}}}
+```
+
+The tool reads that persona's report itself, so no step retypes a finding, and one finding it
+refuses rejects the batch with the reason and stores nothing. A quality finding at Medium or
+above needs typed evidence (idiom-evidence.md): lower it to Low or find the evidence, never
+relabel it a defect. A security question a reviewer left UNKNOWN-BLOCKED belongs in its report
+as a High finding in the `security` dimension whose Fix is to answer it, since CLEAR is
+impossible while it stands. Overlapping findings merge in the tool, and a two-level severity
+gap is flagged for the user. When `add` answers that findings are `back to undecided`, show
+the gate again and call `dispose` for them again before any remediation continues.
+
+## 5. The finding gate
+
+Always, when any finding exists. Show the user the `review` answer to action `gate`: findings
+by severity, security first, then by persona weight, with sources, location, any severity
+conflict, and the decision so far. Then take the findings one at a time, in gate order. For each
+`Fn`, call `mcp__plugin_mightymodels_state__review` with action `dispose` and a `payload` holding
+`finding` and no `decisions`; the tool asks the user what to do with that finding and records the answer. Two of
+the choices need a reason, which the tool asks with the choice. A severity conflict is settled
+here by the decision the user makes about it:
+
+```json
+{"request": {"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "finding": "F1"}}}
+```
+
+The answer says which findings are still undecided. An answer starting `needs input` means no one
+could be asked through the tool: put the question it names to the user in one `AskUserQuestion`
+dialog, then call again with `payload` `decisions` for that finding (several findings may go in one call):
+
+```json
+{"request": {"action": "dispose", "run_id": "20261005-103000", "payload": {"by": "user", "decisions": {"F1": {"decision": "fix"}, "F2": {"decision": "accept-risk", "reason": "..."}}}}}
+```
+
+Nothing the user did not pick is remediated.
+
+## 6. Comment the PR, always
+
+Pass or fail, one finding or twenty: render the report and the abridged comment, check the
+comment, and post it. `mcp__plugin_mightymodels_state__review` with action `report` returns
+text and writes no file, so the primary writes the full report (the call without `payload`) to
+`RUNDIR/report.md` and this call's answer to `RUNDIR/pr-comment.md`:
+
+```json
+{"request": {"action": "report", "run_id": "20261005-103000", "payload": {"shape": "comment"}}}
+```
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/open-ticket/scripts/humanize_tracker_body.py" fix RUNDIR/pr-comment.md --shape comment
+gh pr comment <PR> --body-file RUNDIR/pr-comment.md
+```
+
+Reword whatever `fix` still reports; the finding ids stay so the thread links back to the
+report. Without `gh` or a PR, keep the file and surface the command. With nothing chosen for
+fixing, the session ends here with the verdict `report` returned.
+
+## 7. Remediate, risk first
+
+Remediation needs a ticket, because its proof lives in the ticket's verification contract. In
+a codebase or branch run without one, offer open-ticket with the chosen findings as the
+rollup, and stop.
+
+Order: Critical findings and High security findings first, then the rest in gate order. For
+each finding `Fn` chosen for fixing:
+
+1. `task` `start` with `payload` `task_id` the next `R<n>` that `task` `show` does not list
+   and `change` `by` `engineer`, `owned` the files the Fix touches and `acceptance` `AC-1`, the
+   id the Verify line goes under (agents-assemble's call). That number is the task's own and
+   not the finding's: a sprint residual may hold `R1` already, so `F1` can be fixed under `R2`.
+2. The finding's Verify command goes to the user as contract id `R<n>.AC-1`, under that task
+   id, in one `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands`
+   entry (game-plan's call).
+3. Dispatch an **engineer**: the residual variant for a single-concern merge-vader finding
+   with usable Fix and Verify lines; the full template for uncle-bob findings, findings both
+   personas raised, and anything Critical or High security. Either way the dispatch carries
+   SLUG, that `R<n>` as the task id and `R<n>.AC-1` as the contract id, and the persona's own
+   id (`MV-n`, `UB-n`) in a slot of its own as the finding: a finding id is never the task id.
+4. `mightymodels verify run --slug SLUG --phase review --id R<n>.AC-1`, then `task` `verify`
+   with `payload` `task_id` that `R<n>` and `change` `commit`, then `review` `resolve` with
+   `payload` `finding` `Fn`, `result` `fixed` and `commit` (it takes only a finding the user
+   chose to fix).
+5. Failed or blocked: `task` `mark` (a task the gate blocked already is `blocked`), then the
+   owner's question unless `auto-escalate` is on, `task` `start` on that `R<n>` with `by`
+   `architect`, and **architect** once, then whats-broken, as in agents-assemble. Record
+   `resolve` with `result` `failed` or `blocked` and a `reason` when a finding stops.
+
+A finding whose reviewer wrote an Architect escalation line (a design decision beyond its
+Fix) is a question for the user first. On their yes, dispatch architect in diagnose-replan
+mode; its revised plan goes back to agents-assemble as new tasks, not into this loop.
+
+Before every push: `mightymodels verify run --slug SLUG --all --phase landing` and `task`
+`ready`, as stick-the-landing does, then push (only the primary pushes) and dispatch gitty-up
+with the PR number to watch CI.
+
+## 8. Close
+
+Re-render with `report` in both shapes, rewrite the two files, and replace the PR comment
+(`gh pr comment <PR> --edit-last --body-file RUNDIR/pr-comment.md`) so it shows each finding's
+outcome by id. The human review comes after this session; say so, and stop.

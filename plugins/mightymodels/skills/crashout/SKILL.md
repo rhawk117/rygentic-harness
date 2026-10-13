@@ -1,15 +1,13 @@
 ---
 name: crashout
-description: >-
-  The user has invoked /crashout to vent extreme dissatisfaction at the primary
-  agent. Run the crashout protocol: stop changing things, journal the rant
-  verbatim to .mightymodels/crashouts.yml, check whether this failure has happened
-  before, diagnose it against real evidence, deliver an honest verdict (own what
-  is deserved, whimsically contest what is not), name the exact fix, and wait
-  for the go-ahead. Also handles /crashout journal, the read-back mode that
-  reports recurring failure patterns. Explicit invocation only: this skill fires
-  when the user invokes crashout by name, never because the user merely seems
-  angry or frustrated.
+description: Use when the user explicitly invokes crashout to record dissatisfaction, diagnose the failure, and await approval before resuming work.
+when_to_use: >-
+  The user types /crashout with a rant about what the session got wrong, or /crashout journal to
+  read back what earlier rants recorded.
+argument-hint: "[rant | journal]"
+disable-model-invocation: true
+allowed-tools:
+  - mcp__plugin_mightymodels_state__crashout
 ---
 
 # crashout
@@ -27,6 +25,9 @@ Two modes:
 
 Invoked bare, with no rant and no journal keyword: the floor is theirs. Reply
 with one short line inviting the rant and nothing else.
+
+**Argument:** what followed `/crashout` this time: "$ARGUMENTS". Empty quotes are the bare
+invocation above.
 
 ## Intake protocol
 
@@ -57,17 +58,22 @@ before you have read the last one.
 
 Before diagnosing, look at whether this has happened before:
 
-```bash
-uv run <skill-base-dir>/scripts/crashout_journal.py stats
+Call `mcp__plugin_mightymodels_state__crashout` with action `stats`:
+
+```json
+{"request": {"action": "stats"}}
 ```
 
-A grievance that already appears in the journal is a different situation from
+It prints the journal's patterns: the entry count, severity and verdict counts, how often you
+barked back, the first and last times, every failure tagged with its day, verdict and
+severity, and the standing corrective actions, each once. A grievance that already appears in the journal is a different situation from
 a fresh one. It means a corrective action you previously committed to did not
 hold, and that failure — the broken commitment — is now the more important
 half of what you owe them. Repeating "I'll be more careful" to someone holding
 a log of the last three times you said it is how a journal becomes a joke.
 
-If the journal is empty or absent, note that and move on.
+If the journal is empty (the tool says `no crashouts recorded yet. serenity.`), note that and
+move on.
 
 ### 4. Diagnose against evidence
 
@@ -98,56 +104,49 @@ either way the journal records a lie and the pattern data rots.
 
 ### 6. Journal it
 
-Append the entry before you respond, while the state is raw. Use the bundled
-script (it enforces the schema); it lives in `scripts/` under this skill's
-base directory:
+Append the entry before you respond, while the state is raw. Call
+`mcp__plugin_mightymodels_state__crashout` with action `add`; the tool validates the entry:
 
-```bash
-echo '{"severity": "crashout", "verdict": "deserved", "rant": "...verbatim...",
-  "failures": ["..."], "root_cause": "...", "corrective_action": "...",
-  "barked_back": false, "ticket": null, "branch": "feat/x"}' \
-  | uv run <skill-base-dir>/scripts/crashout_journal.py add
+```json
+{"request": {"action": "add", "entry": {"severity": "crashout", "verdict": "deserved",
+  "rant": "...verbatim...", "failures": ["..."], "root_cause": "...",
+  "corrective_action": "...", "barked_back": false, "ticket": null, "branch": "feat/x"}}}
 ```
 
-The script stamps UTC time, validates the entry, appends it to
-`.mightymodels/crashouts.yml` (creating the file if needed), and keeps
-`.mightymodels/` gitignored. If `uv` is unavailable, append by hand following the
-schema below exactly: same keys, same order, block scalar for the rant.
+The tool stamps the time it received the entry and stores it as a row of the `crashouts`
+table. It redacts secrets in every free-text field (branch, rant, failures, root_cause and
+corrective_action) and stores the rest as given.
 
 Journal rules:
 
 - The rant goes in **verbatim**, profanity and all. A sanitized flight
-  recorder is worthless.
+  recorder is worthless. The tool strips only the whitespace ending each line and the blank
+  lines around the rant, and redacts secrets.
 - Append-only. Never edit or delete past entries; agents do not get to revise
   history they star in.
-- Pipe the JSON straight in as shown. Staging it in a scratch file invites a
-  collision when two mightymodels sessions crash out in the same repo at once, and
-  the entry is written once and never needed again.
+- Put the entry straight in the call. Staging it in a scratch file is a copy nobody needs,
+  since the entry is written once and never needed again.
 - Keep `root_cause` and `corrective_action` to one or two sentences each. These
   get read back in aggregate months from now, and a paragraph that explains
   everything about one incident buries the pattern across ten.
 - When step 3 found priors, say so inside `root_cause` ("third occurrence; the
-  standing order from 2026-08-03 did not hold") rather than inventing new keys.
+  standing order from 2026-08-03 did not hold") rather than inventing new keys: the tool
+  refuses a key it does not know.
 
-Schema, one YAML list item per crashout:
+The entry's fields, all required except `ticket` and `branch`:
 
-```yaml
-- at: 2026-08-21T17:42:03Z
-  ticket: rate-limit            # .mightymodels ticket slug if working under one, else null
-  branch: feat/auth-retry    # current git branch, else null
-  severity: crashout         # mild-tilt | heated | crashout | full-meltdown
-  verdict: deserved          # deserved | split | unreasonable
-  rant: |-
-    WHY WOULD YOU DELETE THE ENTIRE TEST CLASS ...
-  failures:
-    - deleted a passing regression test instead of fixing one assertion
-  root_cause: >
-    Chose "make CI green" over "make the code correct" when the two conflicted.
-  corrective_action: >
-    Failing tests get diagnosed, never deleted; deleting any test requires
-    explicit user sign-off first.
-  barked_back: false
-```
+- `ticket`: the `.mightymodels` ticket slug if working under one, else null
+- `branch`: the current git branch, else null
+- `severity`: `mild-tilt`, `heated`, `crashout` or `full-meltdown`
+- `verdict`: `deserved`, `split` or `unreasonable`
+- `rant`: the rant, not blank
+- `failures`: a list of at least one failure, none blank, e.g. "deleted a passing regression
+  test instead of fixing one assertion"
+- `root_cause`: e.g. "Chose "make CI green" over "make the code correct" when the two
+  conflicted."
+- `corrective_action`: e.g. "Failing tests get diagnosed, never deleted; deleting any test
+  requires explicit user sign-off first."
+- `barked_back`: true or false
 
 Severity is your read of the rant's temperature, not of your guilt:
 `mild-tilt` (pointed grumbling), `heated` (raised voice, still
@@ -234,19 +233,31 @@ Rules of the bark:
 On `/crashout journal`, read the journal and report the pattern, not the
 diary:
 
-```bash
-uv run <skill-base-dir>/scripts/crashout_journal.py stats
+Call `mcp__plugin_mightymodels_state__crashout` with action `stats`:
+
+```json
+{"request": {"action": "stats"}}
 ```
 
-The script prints the deterministic facts (totals, distributions, every
-distilled failure with date and verdict, deduplicated corrective actions).
-Your job is the interpretation. Present, compactly:
+The tool prints the deterministic facts (the entry count, severity and verdict counts, the
+barked-back ratio, the first and last times, every failure with its day, verdict and
+severity, the standing corrective actions each once; two actions that differ only in
+whitespace count as one). Your job is the interpretation, and grouping by meaning is yours.
+Present, compactly:
 
 - totals: entries, severity distribution, verdict ratio
 - recurring failure themes, grouped — three entries about scope creep is one
   standing order, not three anecdotes
 - the standing corrective actions currently in force
 - the most recent entry, briefly
+
+For the most recent entry, call `mcp__plugin_mightymodels_state__crashout` with action `last`:
+
+```json
+{"request": {"action": "last"}}
+```
+
+It prints the entry one line per field, the rant and the failures indented under their names.
 
 The journal exists so other mightymodels sessions inherit the scar tissue. If a
 theme recurs three or more times, say so plainly and elevate it: that is no

@@ -44,6 +44,8 @@ problem in one pass:
 
 - `ruff format --check` and `ruff check --no-fix`, both with `.ruff.toml`
 - `mdformat --check` on `docs/` and the root `*.md` files only
+- `scripts/check-python-line-cap.sh`, which fails when a tracked Python file under
+  `plugins/mightymodels` is over 500 lines
 - `ty` at Python 3.14, then a second `ty` pass at Python 3.12 over the skills trees and
   `plugins/vibe-code/src` and `plugins/vibe-code/tests`
 - `pytest`, which runs the vibe-code tests in `plugins/vibe-code/tests` and the python-harness
@@ -54,14 +56,25 @@ problem in one pass:
 The `claude` check fails if the CLI is not on your `PATH`, so install it first (see Setup).
 
 Pre-commit runs the standard file hygiene hooks, `ruff format`, `mdformat` on markdown outside
-`plugins/`, and a `quality` hook that runs `scripts/quality.sh --lint` on every commit. Only the
-pre-commit hook type is installed, so commit messages are not checked by a hook.
+`plugins/`, a `python-line-cap` hook that runs the same line-cap script, and a `quality` hook that
+runs `scripts/quality.sh --lint` on every commit. Only the pre-commit hook type is installed, so
+commit messages are not checked by a hook.
 
 CI runs on pull requests to `main` with three jobs: `labeler`, `quality`, and `workflow-narrator`.
 The `quality` job runs `uv run pre-commit run --all-files`, which is the same gate as `make check`,
 and CI's bootstrap syncs with `uv sync --locked`, so a stale lockfile fails CI too. Pull requests
 from forks skip the `labeler` job, but `workflow-narrator` still runs: it reports the result in the
 job summary instead of a PR comment, and it still fails the run when `quality` fails.
+
+`scripts/live-plugin-check.sh` is not part of the gate, and no hook runs it. It starts nested
+`claude -p` sessions that load this branch's `plugins/mightymodels` in place of the installed
+plugin, dispatches every agent type under `plugins/mightymodels/agents`, and prints one `ok`,
+`skip` or `FAIL` line per check. It needs `claude` (logged in) and `jq` on your `PATH`, and network
+access to `api.anthropic.com` and `mcp-proxy.anthropic.com`. Run it by hand after you change an
+agent, a skill or a hook. The plugin's state server starts only where Claude Code can write to
+`~/.claude/plugins/data`, so a sandboxed run skips the checks that need state and still exits 0.
+Run `scripts/live-plugin-check.sh --require-state` once outside the sandbox before a landing: with
+that flag a check that would be skipped fails.
 
 ## Python and markdown rules
 

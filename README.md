@@ -32,15 +32,15 @@ A ticket-scoped development loop for coding agents. One unit of work gets one
 `.mightymodels/<slug>/` directory and one `ticket.yml` carrying its scope and model routing. The
 lifecycle ends with `/prune-ticket` compressing the whole directory into a 30-line archive. The
 unit of deletion is the unit of work, so working state never outlives the ticket that produced
-it. The skills are standard `SKILL.md` directories and the seven workers are Claude Code
+it. The skills are standard `SKILL.md` directories and the twelve workers are Claude Code
 subagent files, all under `plugins/mightymodels/`.
 
 ```mermaid
 flowchart TD
     A["lets-investigate\nchat triage with scouts"] --> B["what-we-know\ncited knowns, SWOT"]
-    B --> C["prepare-handoff\ninterview, ticket.yml, issue, branch"]
+    B --> C["open-ticket\ninterview, ticket.yml, issue, branch"]
     C --> D{scope}
-    D -->|"sm, no plan"| E["yolo"]
+    D -->|"sm, no plan"| E["one-shot"]
     D -->|"any other combination"| F["game-plan"]
     E --> G["agents-assemble\nper-task work loop"]
     F --> G
@@ -54,7 +54,7 @@ Each stage has one job, writes one artifact, and reads `ticket.yml` before doing
 Contracts shared by every stage live with the skills that own them: the severity table, verdict
 vocabularies, and the two-half brief schema are in
 `plugins/mightymodels/skills/agents-assemble/references/contracts.md`; the ticket schema and
-directory layout are in `plugins/mightymodels/skills/prepare-handoff/references/`. When a skill
+directory layout are in `plugins/mightymodels/skills/open-ticket/references/`. When a skill
 and a contract disagree, the contract wins and the skill gets fixed.
 
 ### vibe-code
@@ -110,7 +110,7 @@ the server, the launcher and the known limitations.
 
 ```text
 plugins/         one directory per plugin; each carries its own manifest and skills
-  mightymodels/  the dev loop: twenty skills, seven worker agents
+  mightymodels/  the dev loop: nineteen skills, twelve worker agents
   vibe-code/     authoring skills and the `vibe-code` CLI: eleven skills, no agents,
                  with its own tests and eval cases
   python-harness/ Python review: one skill, one agent, hooks, the `python-harness` CLI
@@ -134,7 +134,7 @@ frontmatter. [CONTRIBUTING.md](CONTRIBUTING.md) has the details.
 | ------------------------------------------ | ----------------------------------------------- |
 | [docs/workflow.md](docs/workflow.md) | The full loop, stage by stage, with diagrams |
 | [docs/skills.md](docs/skills.md) | Every skill: what it does and when it fires |
-| [docs/agents.md](docs/agents.md) | The seven workers and how models get routed |
+| [docs/agents.md](docs/agents.md) | The twelve workers and how models get routed |
 | [docs/state.md](docs/state.md) | The `.mightymodels/` directory and `ticket.yml` |
 | [docs/claude-code.md](docs/claude-code.md) | Running under Claude Code |
 | [plugins/vibe-code/README.md](plugins/vibe-code/README.md) | The vibe-code plugin: install, skills, CLI, launcher |
@@ -151,9 +151,13 @@ a change has to pass: `make check`, which syncs the locked environment, runs pre
 ## Status
 
 vibe-code is at 0.4.0. python-harness is at 0.1.0. mightymodels is at 0.8.0 and is the
-marketplace's first plugin. Its hook layer (session covenant injection, verification gates at
-Stop, PreCompact ticket snapshots) and the team/personal overlay split are designed but not yet
-shipped. CHANGELOG.md has the full trail.
+marketplace's first plugin. Its hooks ship with it. `plugins/mightymodels/hooks/hooks.json`
+registers seven: one on `SessionStart`, two on `PreToolUse` for dispatches and for the main
+thread's edits and pushes, one each on `SubagentStop` and `PostToolUse` for scout reports, one on
+`SubagentStop` for the implementers' completion gate, and one on `PreCompact` for the ticket
+snapshot. Its state is rows in one SQLite database in the plugin data directory, outside every
+repository, and the per-ticket files are in the repository's `.mightymodels/` directory.
+CHANGELOG.md has the full trail.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR, and
 [SECURITY.md](SECURITY.md) for reporting anything sensitive.
