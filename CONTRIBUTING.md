@@ -1,7 +1,7 @@
 # Contributing
 
 This repository is the rygentic-harness plugin marketplace: every capability ships as a plugin
-under `plugins/`, and mightymodels, the ticket-scoped dev loop, is its first plugin. It is a
+under `plugins/`, and mightymodels is its first plugin. It is a
 working harness, not a sample gallery. The bar for a change is that the loop still measures
 better with it than without it, and that the artifacts agents parse keep their contracts. This
 file is the whole gate; there is no hidden tribal knowledge beyond it.

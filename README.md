@@ -13,7 +13,7 @@ ships as a plugin under `plugins/`, one directory each, with its own manifest, s
 
 | Plugin | Version | What you get | Details |
 | --- | --- | --- | --- |
-| mightymodels | 1.0.0 | A ticket-scoped development loop: nineteen skills, twelve worker agents, seven hooks and a state server | [README](plugins/mightymodels/README.md) |
+| mightymodels | 1.0.0 | Takes a piece of work from the first question to a merged PR, with nineteen skills, twelve worker agents, seven hooks and a state server | [README](plugins/mightymodels/README.md) |
 | vibe-code | 0.4.0 | Eleven skills for building and tuning Claude Code skills, subagents, hooks, rule files, MCP servers, loops and plugins, plus a CLI that validates what they write | [README](plugins/vibe-code/README.md) |
 | python-harness | 0.1.0 | A Python review skill, a read-only fact agent, two hooks, a CLI and an MCP server | [README](plugins/python-harness/README.md) |
 
@@ -67,7 +67,8 @@ model ids, agent discovery and validation.
 This is the plugin I cannot live without. It is built from the failures of spec-driven
 development, and it is oriented around human-in-the-loop decision making: scouts fetch the facts,
 the decisions come to me, and a task closes only when a command proves it. It has cut my token
-consumption, the model gets more of the work right, and it has changed the way I work with AI.
+consumption, the model gets more of the work right, and it has changed the way I work with AI. I have no
+numbers for that yet. Evaluating this release is what I am doing next.
 
 It is also the biggest of the three and the marketplace's first plugin. One unit of work gets one
 `.mightymodels/<slug>/` directory and one `ticket.yml` carrying its scope and model routing. The
@@ -109,7 +110,7 @@ command. The MCP server has six tools: two read standard-library documentation f
 `docs.python.org`, and four read the project Claude Code was started in.
 
 > [!WARNING]
-> As of 0.1.0 the hooks and the server have not been run inside a live Claude Code session. The
+> As of 0.1.0 the hooks and the server have not yet been run inside a live Claude Code session. The
 > [python-harness README](plugins/python-harness/README.md#limitations) lists what is unconfirmed.
 
 ## Layout

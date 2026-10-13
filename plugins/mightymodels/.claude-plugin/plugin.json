@@ -3,7 +3,7 @@
   "name": "mightymodels",
   "displayName": "mightymodels",
   "version": "1.0.0",
-  "description": "Ticket-scoped development loop for Claude Code, built from the failures of spec-driven development. You make the decisions at ask-user gates, each worker runs on the model its job needs, and a task closes only when its verification commands pass. Nineteen skills, twelve worker agents, seven hooks and a state server.",
+  "description": "Takes a piece of work from the first question to a merged PR in Claude Code. Cheap workers do the reading, you make the decisions, and a task closes only when its verification commands pass. Built from the failures of spec-driven development. Nineteen skills, twelve worker agents, seven hooks and a state server.",
   "author": {
     "name": "rhawk117"
   },
