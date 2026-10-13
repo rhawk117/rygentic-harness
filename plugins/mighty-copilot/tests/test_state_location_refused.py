@@ -18,7 +18,7 @@ from mightymodels.core.database import (
     open_database,
 )
 from mightymodels.core.repository_key import local_key
-from mightymodels.core.workspace import PROJECT_DIR_VARIABLE, STATE_DIRECTORY
+from mightymodels.core.workspace import STATE_DIRECTORY
 from mightymodels.tools.row_types import ROW_TYPES
 from mightymodels.tools.tests.slug_calls import SHOW, SLUG, VALIDATE, WRITE, slug_results
 from mightymodels.tools.tests.state_location import (
@@ -168,7 +168,7 @@ class TestWithNoDataDirectory:
     def session_without_the_export(
         self, repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
     ) -> RefusedStart:
-        monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(repository))
+        monkeypatch.chdir(str(repository))
         monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))
         monkeypatch.delenv(SESSION_DATA_VARIABLE, raising=False)
         server = StateServer(root=repository, data_directory=data_directory)
@@ -205,7 +205,7 @@ class TestWithNoGitToplevel:
     ) -> RefusedStart:
         directory = tmp_path.joinpath('plain-directory')
         directory.mkdir()
-        monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(directory))
+        monkeypatch.chdir(str(directory))
         monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
         server = StateServer(root=directory, data_directory=data_directory)
         return RefusedStart(server=server, top=tmp_path, files_before=tree(tmp_path))
@@ -215,7 +215,7 @@ class TestWithNoGitToplevel:
         self, state_server: StateServer, data_directory: Path, monkeypatch: pytest.MonkeyPatch
     ) -> RefusedStart:
         top = state_server.root.parent
-        monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(state_server.root))
+        monkeypatch.chdir(str(state_server.root))
         monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
         monkeypatch.setenv('PATH', str(top.joinpath('no-binaries')))
         return RefusedStart(server=state_server, top=top, files_before=tree(top))

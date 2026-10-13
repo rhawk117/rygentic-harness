@@ -126,7 +126,7 @@ LEAKING_REPORT = """## Findings
 
 @pytest.fixture
 def project(repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    monkeypatch.setenv('CLAUDE_PROJECT_DIR', str(repository))
+    monkeypatch.chdir(str(repository))
     monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
     repository.joinpath('outside.jsonl').write_text('', encoding='utf-8')
     return repository

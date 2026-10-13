@@ -36,7 +36,6 @@ from mightymodels.core.data_directory import (
 from mightymodels.core.edge import open_state
 from mightymodels.core.errors import StateError
 from mightymodels.core.process import process_runner
-from mightymodels.core.workspace import find_root
 from mightymodels.tools.close.repository import close_store
 from mightymodels.tools.close.service import CloseService
 from mightymodels.tools.close.tool import close_tool
@@ -150,5 +149,5 @@ def build_server(start: Path, data_directory: DataDirectory) -> MCPServer[Served
 
 
 def serve() -> None:
-    start = find_root(os.environ, Path.cwd())
+    start = Path.cwd()
     build_server(start, data_directory_from(os.environ, PLUGIN_DATA_VARIABLE)).run()

@@ -78,7 +78,7 @@ def workspace(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> Workspace:
-    monkeypatch.setenv('CLAUDE_PROJECT_DIR', str(contract_service.workspace.root))
+    monkeypatch.chdir(str(contract_service.workspace.root))
     monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
     return Workspace(contracts=contract_service, database=repository_database, capsys=capsys)
 

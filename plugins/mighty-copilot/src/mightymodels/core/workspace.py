@@ -39,7 +39,6 @@ of its own, so a test hands it a history kept in memory and launches nothing.
 
 import re
 import shutil
-from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
@@ -56,7 +55,6 @@ from mightymodels.core.repository_key import RepositoryKey, local_key, origin_ke
 from mightymodels.core.run_id import RunId
 from mightymodels.core.slug import ARCHIVES_DIRECTORY, Slug
 
-PROJECT_DIR_VARIABLE = 'CLAUDE_PROJECT_DIR'
 STATE_DIRECTORY = '.mightymodels'
 RUNTIME_DIRECTORY = '.runtime'
 GIT_EXECUTABLE = 'git'
@@ -147,11 +145,6 @@ class PersonaReport:
 class RecordFiles:
     markdown: Path
     record: Path
-
-
-def find_root(environ: Mapping[str, str], cwd: Path) -> Path:
-    project_dir = environ.get(PROJECT_DIR_VARIABLE, '')
-    return Path(project_dir) if project_dir else cwd
 
 
 def revision_error(*revisions: str) -> UnsafeRevisionError | None:

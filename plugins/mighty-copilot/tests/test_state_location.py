@@ -19,7 +19,7 @@ from mightymodels.commands.session_start import ENV_FILE_VARIABLE
 from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
 from mightymodels.core.database import BUSY_TIMEOUT, DATABASE_NAME, SCHEMA_VERSION, Database
 from mightymodels.core.tests.support import GitRunner
-from mightymodels.core.workspace import PROJECT_DIR_VARIABLE, STATE_DIRECTORY
+from mightymodels.core.workspace import STATE_DIRECTORY
 from mightymodels.tools.tests.slug_calls import SHOW, SLUG, VALIDATE, WRITE, slug_results
 from mightymodels.tools.tests.state_location import (
     NOT_SET,
@@ -60,7 +60,7 @@ def subdirectory(repository: Path) -> Path:
 def session_in_the_subdirectory(
     subdirectory: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(subdirectory))
+    monkeypatch.chdir(str(subdirectory))
     monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
 
 
@@ -378,7 +378,7 @@ class TestTheSessionStartHook:
         name, _, value = assignment.partition('=')
         monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
         monkeypatch.setenv(name, value)
-        monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(approved_command.root))
+        monkeypatch.chdir(str(approved_command.root))
         return approved_command
 
     @pytest.mark.usefixtures('first_commit')

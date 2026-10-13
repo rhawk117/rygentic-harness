@@ -20,7 +20,6 @@ from mightymodels.core.declarative import Base
 from mightymodels.core.edge import exclude_state_from_git
 from mightymodels.core.repository_key import RepositoryKey, local_key
 from mightymodels.core.workspace import (
-    PROJECT_DIR_VARIABLE,
     Checkout,
     Git,
     Workspace,
@@ -222,7 +221,7 @@ def repository_database(
 def session_in_the_repository(
     repository: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(repository))
+    monkeypatch.chdir(str(repository))
     monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
 
 

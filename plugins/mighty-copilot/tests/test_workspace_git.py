@@ -9,7 +9,7 @@ from mightymodels.cli import main
 from mightymodels.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels.core.process import process_runner
 from mightymodels.core.tests.support import GitRunner
-from mightymodels.core.workspace import PROJECT_DIR_VARIABLE, git_at, workspace_at
+from mightymodels.core.workspace import git_at, workspace_at
 from mightymodels.tools.contract.repository import contract_store
 from mightymodels.tools.contract.service import ContractService
 from mightymodels.tools.task.tables import TransitionRow
@@ -112,7 +112,7 @@ class Project:
 def project(
     state_server: StateServer, data_directory: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Project:
-    monkeypatch.setenv(PROJECT_DIR_VARIABLE, str(state_server.root))
+    monkeypatch.chdir(str(state_server.root))
     monkeypatch.setenv(SESSION_DATA_VARIABLE, str(data_directory))
     slug_results(state_server, APPROVE)
     return Project(

@@ -21,7 +21,6 @@ from mightymodels.core.edge import open_state
 from mightymodels.core.errors import StateError
 from mightymodels.core.process import process_runner
 from mightymodels.core.slug import InvalidSlugError, parsed_slug
-from mightymodels.core.workspace import find_root
 from mightymodels.tools.contract.repository import contract_store
 from mightymodels.tools.contract.schema import Phase
 from mightymodels.tools.contract.service import ContractService, RunRequest
@@ -36,7 +35,7 @@ def verify_run(arguments: argparse.Namespace) -> int:
         return rejected(slug)
     ids = None if arguments.all else tuple(arguments.id)
     request = RunRequest(ids=ids, phase=Phase(arguments.phase))
-    start = find_root(os.environ, Path.cwd())
+    start = Path.cwd()
     data_directory = data_directory_from(os.environ, SESSION_DATA_VARIABLE)
     try:
         with open_state(start, data_directory, ROW_TYPES) as state:

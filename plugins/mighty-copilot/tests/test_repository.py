@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -11,45 +10,28 @@ from mightymodels.core.workspace import (
     EXCLUDE_LINE,
     STATE_DIRECTORY,
     NotARepositoryError,
-    find_root,
     git_at,
 )
+from mightymodels.server import serve
 from mightymodels.tools.row_types import ROW_TYPES
 from mightymodels.tools.tests.support import StateServer
+from pytest_mock import MockerFixture
 
 type MasterRow = dict[str, str | None]
 
 
-class TestFindRoot:
-    def test_uses_claude_project_dir_when_set(self, tmp_path: Path) -> None:
-        project = tmp_path.joinpath('project')
-
-        assert find_root({'CLAUDE_PROJECT_DIR': str(project)}, tmp_path) == project
-
-    @pytest.mark.parametrize(
-        'environ',
-        [pytest.param({}, id='unset'), pytest.param({'CLAUDE_PROJECT_DIR': ''}, id='empty')],
-    )
-    def test_falls_back_to_the_working_directory(
-        self, environ: dict[str, str], tmp_path: Path
+class TestServerRoot:
+    def test_serve_takes_the_root_from_the_process_directory(
+        self, repository: Path, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
     ) -> None:
-        assert find_root(environ, tmp_path) == tmp_path
-
-    def test_lookup_from_the_process_environment(
-        self, repository: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv('CLAUDE_PROJECT_DIR', str(repository))
-        monkeypatch.chdir(tmp_path)
-
-        assert find_root(os.environ, Path.cwd()) == repository
-
-    def test_lookup_from_the_process_working_directory(
-        self, repository: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.delenv('CLAUDE_PROJECT_DIR', raising=False)
+        build_server = mocker.patch('mightymodels.server.build_server')
         monkeypatch.chdir(repository)
 
-        assert find_root(os.environ, Path.cwd()) == repository.resolve()
+        serve()
+
+        build_server.assert_called_once()
+        assert build_server.call_args.args[0] == repository.resolve()
+        build_server.return_value.run.assert_called_once_with()
 
 
 class TestOpenRepository:

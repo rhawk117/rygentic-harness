@@ -3,7 +3,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-PROJECT_VARIABLE = 'CLAUDE_PROJECT_DIR'
 STATE_DIRECTORY = '.mightymodels'
 HUNG = 'exec sleep 30'
 CUT_OFF_SECONDS = '1'
@@ -37,7 +36,6 @@ class Wrapped:
     def environment(self) -> dict[str, str]:
         given = {
             self.script.launcher_variable: str(self.launcher),
-            PROJECT_VARIABLE: None if self.project is None else str(self.project),
             self.script.limit_variable: self.limit,
         }
         inherited = {name: value for name, value in os.environ.items() if name not in given}
@@ -46,6 +44,7 @@ class Wrapped:
     async def spawn(self, text: str) -> Outcome:
         process = await asyncio.create_subprocess_exec(
             self.script.path,
+            cwd=self.project,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
