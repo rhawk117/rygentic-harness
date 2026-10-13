@@ -33,11 +33,11 @@ It installs the pre-commit hook (`uv run pre-commit install --install-hooks`) an
 1. `make sync` runs `uv sync --locked --all-packages --group check` and `uv lock --check`, so a
    stale lockfile fails the gate.
 2. `make pre-commit` runs `uv run pre-commit run --all-files`.
-3. `make quality` runs `scripts/quality.sh`, which formats and then lints.
+3. `make quality` runs `scripts/quality.sh`, which formats, lints, and then runs the tests.
 
-`make format` and `make lint` are the two halves of `make quality`, and they map to
-`scripts/quality.sh --format` and `scripts/quality.sh --lint`. Run `make format` first when you
-want the tools to fix what they can. `make lint` only reports.
+`make format`, `make lint`, and `make test` are the three parts of `make quality`, and they map to
+`scripts/quality.sh --format`, `scripts/quality.sh --lint`, and `scripts/quality.sh --test`. Run
+`make format` first when you want the tools to fix what they can. `make lint` only reports.
 
 `scripts/quality.sh --lint` runs these checks, and keeps going after a failure so you see every
 problem in one pass:
@@ -48,21 +48,23 @@ problem in one pass:
   `plugins/mightymodels` is over 500 lines
 - `ty` at Python 3.14, then a second `ty` pass at Python 3.12 over the skills trees and
   `plugins/vibe-code/src` and `plugins/vibe-code/tests`
-- `pytest`, which runs the vibe-code tests in `plugins/vibe-code/tests` and the python-harness
-  tests in `plugins/python-harness/tests`
 - `claude plugin validate --strict` for each plugin under `plugins/`, then for the root
   marketplace
 
 The `claude` check fails if the CLI is not on your `PATH`, so install it first (see Setup).
 
+`scripts/quality.sh --test` runs `pytest`, which covers the vibe-code tests in
+`plugins/vibe-code/tests` and the python-harness tests in `plugins/python-harness/tests`, then a
+`coverage report` for each plugin. It does not run on commit.
+
 Pre-commit runs the standard file hygiene hooks, `ruff format`, `mdformat` on markdown outside
 `plugins/`, a `python-line-cap` hook that runs the same line-cap script, and a `quality` hook that
-runs `scripts/quality.sh --lint` on every commit. Only the pre-commit hook type is installed, so
-commit messages are not checked by a hook.
+runs `scripts/quality.sh --lint` on every commit. The test suite is not part of the hook. Only the
+pre-commit hook type is installed, so commit messages are not checked by a hook.
 
 CI runs on pull requests to `main` with three jobs: `labeler`, `quality`, and `workflow-narrator`.
-The `quality` job runs `uv run pre-commit run --all-files`, which is the same gate as `make check`,
-and CI's bootstrap syncs with `uv sync --locked`, so a stale lockfile fails CI too. Pull requests
+The `quality` job runs `uv run pre-commit run --all-files` and then `scripts/quality.sh --test`,
+which together cover the same checks as `make check`, and CI's bootstrap syncs with `uv sync --locked`, so a stale lockfile fails CI too. Pull requests
 from forks skip the `labeler` job, but `workflow-narrator` still runs: it reports the result in the
 job summary instead of a PR comment, and it still fails the run when `quality` fails.
 
