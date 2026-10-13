@@ -50,6 +50,8 @@ This skill writes no project files and dispatches nothing. The accepted persiste
   - [SQLAlchemy and Alembic](references/sqlalchemy-alembic.md)
   - [Django ORM](references/django-orm.md)
   - [sqlite3](references/sqlite3.md)
+- Contributor mode receives that brief, asks only missing persistence questions, and returns a bounded packet to the lead.
+- Database type, duplicate behavior, transaction ownership, concurrent-write outcome, and migration compatibility are blocking when they affect correctness. Naming a private helper is normally inferable. A future archival tier may be deferred when it does not change today's retention contract.
 - The plugin's MCP server names each tool `mcp__plugin_python-harness_python-harness__<tool>`; the steps below use the short names `survey` and `gate`. The project tools take no root argument: the project is the session's project directory (`CLAUDE_PROJECT_DIR`). If these tools are not available, stop: the server did not start. Tell the user to check the plugin in `/plugin` (its Errors tab) and the server in `/mcp`.
 - Require:
   - the records' business meaning and identifiers;

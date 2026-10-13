@@ -7,6 +7,10 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 SKILL_FILES = sorted(PLUGIN_ROOT.glob('skills/*/SKILL.md'))
 AGENT_FILES = sorted(PLUGIN_ROOT.glob('agents/*.md'))
 SKILL_MARKDOWN = sorted(PLUGIN_ROOT.joinpath('skills').rglob('*.md'))
+DESIGN_SKILLS = ('build-web-service', 'design-persistence', 'design-tests', 'enterprise-design')
+SHARED_METHOD_FILES = [
+    PLUGIN_ROOT / 'skills' / name / 'references' / 'shared-method.md' for name in DESIGN_SKILLS
+]
 WRITE_TOOLS = ('Edit', 'Write', 'NotebookEdit')
 SKILL_DISALLOWED = {
     'build-web-service': WRITE_TOOLS,

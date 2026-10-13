@@ -48,6 +48,15 @@ This skill writes no project files and dispatches no implementation. The accepte
 <inputs>
 - This skill is the entry of the service track. It can be invoked directly, by name or when the request matches the description.
 - Paths below that start with `references/` are inside this skill's directory, `${CLAUDE_SKILL_DIR}`. Read now: `references/shared-method.md` (shared operating method), `references/interview-and-gates.md` (requirements interview and decision gates), `references/fastapi-pydantic-v2.md` (FastAPI and Pydantic v2 recipe), `references/infrastructure-lifecycle-observability.md` (infrastructure, lifecycle, and observability), `references/async-work-and-capacity.md` (async work, traffic, rate limits, and caching) and `references/vertical-slice-packet.md` (the vertical-slice packet).
+- `build-web-service` owns the outcome, progressive interview, complexity classification, and final integration.
+- The order is:
+  1. requirements and complexity;
+  2. contracts;
+  3. persistence and data-layer decisions;
+  4. scenario tests;
+  5. implementation phase;
+  6. lifecycle and resulting-state verification;
+  7. expansion using proven conventions.
 - The plugin's MCP server names each tool `mcp__plugin_python-harness_python-harness__<tool>`; the steps below use the short names `survey` and `gate`. The project tools take no root argument: the project is the session's project directory (`CLAUDE_PROJECT_DIR`). If these tools are not available, stop: the server did not start. Tell the user to check the plugin in `/plugin` (its Errors tab) and the server in `/mcp`.
 - Require:
   - consumers, operations, and representative requests and responses;

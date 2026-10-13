@@ -1,19 +1,31 @@
 # Shared operating method
 
-Carry one shared brief between contributing skills:
+The lead owns one shared brief. Carry it between contributing skills:
 
 - outcome and caller;
 - representative accepted and rejected examples;
 - rules, errors, and partial-success behavior;
 - environment and inspected evidence;
 - state, dependency, transaction, concurrency, and cleanup ownership;
-- decisions, unresolved questions, and verification evidence.
+- decisions with rationale;
+- unresolved questions and what they block;
+- verification commands, results, and limitations.
 
-Ask two to four connected questions per round and skip facts already
-established by evidence. In contributor mode, return missing questions to the
-lead rather than starting a second interview.
+Ask two to four connected questions per round and skip facts already established by
+evidence. Classify missing information as blocking, safely inferable from repository
+convention, or deferred. In contributor mode, ask only questions absent from the shared brief
+and return them to the lead rather than starting a second interview.
 
-This skill owns scenario tests, not the public contract or production
-implementation. Test friction reopens the relevant design gate. A completed
-handoff names inputs, permitted files, required outputs, acceptance criteria,
-and unresolved questions.
+One mutable artifact has one owner:
+
+- the contract phase owns public application contracts.
+- Design Persistence owns persistence decisions, adapter contracts, and migration plans.
+- the `design-tests` skill, run by the `test-engineer` agent, owns scenario tests.
+- the implementation phase owns the permitted implementation slice.
+
+Contributors return conflicts to the lead rather than silently rewriting another owner's
+artifact. A handoff names the task, input artifacts, permitted changes, required outputs,
+acceptance criteria, and unresolved questions.
+
+Report design inspection, manual walkthrough, and implementation-backed checks separately.
+Test friction reopens the relevant design gate.

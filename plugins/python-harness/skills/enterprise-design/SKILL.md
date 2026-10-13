@@ -42,6 +42,8 @@ This skill writes no project files and dispatches nothing. The accepted contract
 <inputs>
 - The service track hands to this skill from build-web-service, with its shared brief. It can also be invoked directly, by name or when the request matches the description.
 - Paths below that start with `references/` are inside this skill's directory, `${CLAUDE_SKILL_DIR}`. Read now: `references/shared-method.md` (shared operating method), `references/architecture-boundaries.md` (architecture boundaries), `references/interview-and-gates.md` (interview branches and decision gates), `references/contract-packet.md` (contract packet and worked example) and `references/implementation-handoff.md` (implementation handoff).
+- Write interfaces before implementation when behavior or ownership is consequential. Use a protocol only at a meaningful replaceable or caller-owned boundary.
+- A domain implementer owns business behavior.
 - The plugin's MCP server names each tool `mcp__plugin_python-harness_python-harness__<tool>`; the steps below use the short names `survey` and `gate`. The project tools take no root argument: the project is the session's project directory (`CLAUDE_PROJECT_DIR`). If these tools are not available, stop: the server did not start. Tell the user to check the plugin in `/plugin` (its Errors tab) and the server in `/mcp`.
 - Start from the shared brief. Require:
   - the intended operation and caller;

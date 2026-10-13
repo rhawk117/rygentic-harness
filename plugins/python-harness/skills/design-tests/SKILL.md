@@ -51,6 +51,7 @@ This skill designs the scenarios, briefs the agent that writes them and reads it
   - [Shared operating method](references/shared-method.md)
   - [Interview branches and decision gates](references/interview-and-gates.md)
   - [Scenario-test packet and worked example](references/test-packet.md)
+- This skill owns scenario tests, not the public contract or production implementation.
 - The plugin's MCP server names each tool `mcp__plugin_python-harness_python-harness__<tool>`; the steps below use the short names `survey` and `gate`. The project tools take no root argument: the project is the session's project directory (`CLAUDE_PROJECT_DIR`). If these tools are not available, stop: the server did not start. Tell the user to check the plugin in `/plugin` (its Errors tab) and the server in `/mcp`.
 - Require:
   - the shared brief;
