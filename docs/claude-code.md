@@ -9,7 +9,7 @@ actually does with each piece, so you can tell a packaging problem from a harnes
 ## Install as a plugin
 
 ```text
-/plugin marketplace add <owner>/rygentic-harness
+/plugin marketplace add rhawk117/rygentic-harness
 /plugin install mightymodels@rygentic-harness
 ```
 

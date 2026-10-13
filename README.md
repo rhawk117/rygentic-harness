@@ -78,10 +78,17 @@ before it does anything else.
 
 When the work merges, `/prune-ticket` compresses the directory into a 30-line archive and deletes
 it. The unit of deletion is the unit of work, so working state never outlives the ticket that
-produced it.
+produced it. None of it is ever tracked by git, by design: spec-driven development leaves slop
+artifacts all over a repository, and they confuse the agents that read them later.
 
-It also has `/crashout`, for when the agent has earned a rant. It writes the rant down verbatim
-and checks whether the same failure has happened before.
+People ask me about the names, which are odd on purpose: `ask-an-adult`, `merge-vader`,
+`stick-the-landing`, `crashout`. They are supposed to be memorable. `/crashout` is for when the
+agent has earned a rant. It writes the rant down verbatim and checks whether the same failure has
+happened before.
+
+One of my favorite features is `baton-pass`. With AI it is hard to walk away from a session
+without a penalty. `baton-pass` writes down the facts that live nowhere else and prints the
+opening prompt for the next session, so the next one picks up where I stopped.
 
 The [mightymodels README](plugins/mightymodels/README.md) has the loop diagram, every skill and
 worker, the hooks and where the state lives.

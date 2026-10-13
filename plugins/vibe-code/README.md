@@ -11,7 +11,7 @@ Eleven skills for authoring Claude Code skills, subagents, hooks, rule files, MC
 ## Install
 
 ```text
-/plugin marketplace add <owner>/rygentic-harness
+/plugin marketplace add rhawk117/rygentic-harness
 /plugin install vibe-code@rygentic-harness
 ```
 
