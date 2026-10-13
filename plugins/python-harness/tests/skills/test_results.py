@@ -129,14 +129,17 @@ class TestFindReportViolation:
     def test_a_complete_report_has_no_violation(self) -> None:
         assert results.find_report_violation(make_report()) is None
 
-    @pytest.mark.parametrize(
-        'created_at',
-        [NAIVE, datetime(2026, 1, 1, tzinfo=timezone(timedelta(hours=1)))],
-    )
-    def test_only_utc_timestamps_are_accepted(self, created_at: datetime) -> None:
+    def test_a_naive_timestamp_is_reported(self) -> None:
+        violation = results.find_report_violation(make_report(created_at=NAIVE))
+
+        assert isinstance(violation, results.NonUtcTimestampError)
+
+    def test_an_aware_timestamp_that_is_not_utc_is_reported(self) -> None:
+        created_at = datetime(2026, 1, 1, tzinfo=timezone(timedelta(hours=1)))
+
         violation = results.find_report_violation(make_report(created_at=created_at))
 
-        assert isinstance(violation, results.NaiveTimestampError)
+        assert isinstance(violation, results.NonUtcTimestampError)
 
     def test_a_report_without_inputs_is_reported(self) -> None:
         violation = results.find_report_violation(make_report(inputs=()))
@@ -165,7 +168,7 @@ class TestErrorMessages:
         [
             (results.InvalidIntervalError, 'lower <= upper'),
             (results.IncompleteMetricError, 'nonnegative n'),
-            (results.NaiveTimestampError, 'UTC-aware created_at'),
+            (results.NonUtcTimestampError, 'UTC-aware created_at'),
             (results.MissingInputsError, 'no inputs'),
             (results.DuplicateMetricError, 'repeats a metric name'),
         ],
@@ -229,14 +232,14 @@ class TestPublishBundle:
         assert manifest['schema_version'] == results.SCHEMA_VERSION
         assert manifest['run_id'] == 'run-1'
         assert manifest['publication_status'] == 'complete'
-        assert [artifact['path'] for artifact in manifest['artifacts']] == [
+        assert [artifact['name'] for artifact in manifest['artifacts']] == [
             'metrics.json',
             'table.parquet',
             'report.md',
         ]
         for artifact in manifest['artifacts']:
-            written = (directory / artifact['path']).read_bytes()
-            assert artifact['bytes'] == len(written)
+            written = (directory / artifact['name']).read_bytes()
+            assert artifact['size_bytes'] == len(written)
             assert artifact['sha256'] == hashlib.sha256(written).hexdigest()
 
     def test_the_metrics_file_holds_the_report_and_environment(self, tmp_path: Path) -> None:
@@ -265,7 +268,7 @@ class TestPublishBundle:
 
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         assert figure.saved == [(directory / 'figure.svg', {'bbox_inches': 'tight'})]
-        assert manifest['artifacts'][-1]['path'] == 'figure.svg'
+        assert manifest['artifacts'][-1]['name'] == 'figure.svg'
 
     def test_custom_names_are_honoured(self, tmp_path: Path) -> None:
         directory = tmp_path / 'run'
@@ -293,9 +296,9 @@ class TestPublishOrderAndFailures:
         seen: list[tuple[str, ...]] = []
         original = results.write_manifest
 
-        def spy(target: Path, run_id: str, names: tuple[str, ...], **kwargs: Any) -> Path:
+        def spy(target: Path, manifest: Any, options: Any) -> Path:
             seen.append(tuple(sorted(path.name for path in target.iterdir())))
-            return original(target, run_id, names, **kwargs)
+            return original(target, manifest, options)
 
         mocker.patch.object(results, 'write_manifest', side_effect=spy)
 
@@ -327,7 +330,7 @@ class TestPublishOrderAndFailures:
                 {'metrics': (make_metric(interval=make_interval(level=2.0)),)},
                 'InvalidIntervalError',
             ),
-            ({'created_at': NAIVE}, 'NaiveTimestampError'),
+            ({'created_at': NAIVE}, 'NonUtcTimestampError'),
             ({'inputs': ()}, 'MissingInputsError'),
             ({'metrics': (make_metric(), make_metric())}, 'DuplicateMetricError'),
         ],
@@ -341,12 +344,3 @@ class TestPublishOrderAndFailures:
             results.publish_bundle(directory, make_bundle(report=make_report(**changes)))
 
         assert not directory.exists()
-
-
-class TestProtocols:
-    def test_a_pyarrow_table_satisfies_the_table_protocol(self) -> None:
-        assert isinstance(pa.table({'a': [1]}), results.ArrowTable)
-
-    def test_an_object_with_savefig_satisfies_the_figure_protocol(self) -> None:
-        assert isinstance(FakeFigure(), results.SavesFigure)
-        assert not isinstance(object(), results.SavesFigure)

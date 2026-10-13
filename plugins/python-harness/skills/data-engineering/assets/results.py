@@ -8,7 +8,7 @@ from enum import StrEnum, auto
 from importlib.metadata import PackageNotFoundError, version
 from math import isfinite
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 import msgspec
 import pyarrow as pa
@@ -68,8 +68,8 @@ class PublishedMetrics(msgspec.Struct, frozen=True, kw_only=True):
 
 
 class Artifact(msgspec.Struct, frozen=True, kw_only=True):
-    path: str
-    bytes: int
+    name: str
+    size_bytes: int
     sha256: str
 
 
@@ -95,7 +95,7 @@ class IncompleteMetricError(ValueError):
         super().__init__(f'metric {name!r} needs a name, a unit, and a nonnegative n')
 
 
-class NaiveTimestampError(ValueError):
+class NonUtcTimestampError(ValueError):
     def __init__(self, run_id: str) -> None:
         super().__init__(f'report {run_id!r} needs a UTC-aware created_at')
 
@@ -110,12 +110,10 @@ class DuplicateMetricError(ValueError):
         super().__init__(f'report {run_id!r} repeats a metric name')
 
 
-@runtime_checkable
 class ArrowTable(Protocol):
     def __arrow_c_stream__(self, requested_schema: object | None = None) -> object: ...
 
 
-@runtime_checkable
 class SavesFigure(Protocol):
     def savefig(self, fname: Path, **kwargs: object) -> None: ...
 
@@ -158,15 +156,22 @@ def find_metric_violation(metric: Metric) -> ValueError | None:
     return None if valid else InvalidIntervalError(metric.name)
 
 
+def first_violation(metrics: tuple[Metric, ...]) -> ValueError | None:
+    for metric in metrics:
+        if violation := find_metric_violation(metric):
+            return violation
+    return None
+
+
 def find_report_violation(report: AnalysisReport) -> ValueError | None:
     if report.created_at.utcoffset() != timedelta(0):
-        return NaiveTimestampError(report.run_id)
+        return NonUtcTimestampError(report.run_id)
     if not report.inputs:
         return MissingInputsError(report.run_id)
     names = [metric.name for metric in report.metrics]
     if len(names) != len(set(names)):
         return DuplicateMetricError(report.run_id)
-    return next(filter(None, map(find_metric_violation, report.metrics)), None)
+    return first_violation(report.metrics)
 
 
 def file_sha256(path: Path) -> str:
@@ -208,18 +213,19 @@ def write_artifacts(
 
 def describe_artifact(directory: Path, name: str) -> Artifact:
     path = directory.joinpath(name)
-    return Artifact(path=name, bytes=path.stat().st_size, sha256=file_sha256(path))
+    return Artifact(name=name, size_bytes=path.stat().st_size, sha256=file_sha256(path))
 
 
-def write_manifest(
-    directory: Path, run_id: str, names: tuple[str, ...], *, options: PublicationOptions
-) -> Path:
-    manifest = Manifest(
+def describe_manifest(directory: Path, run_id: str, names: tuple[str, ...]) -> Manifest:
+    return Manifest(
         schema_version=SCHEMA_VERSION,
         run_id=run_id,
         publication_status='complete',
         artifacts=tuple(describe_artifact(directory, name) for name in names),
     )
+
+
+def write_manifest(directory: Path, manifest: Manifest, options: PublicationOptions) -> Path:
     staging = directory.joinpath(options.staging_name)
     staging.write_bytes(msgspec.json.encode(manifest))
     return staging.replace(directory.joinpath(options.manifest_name))
@@ -233,4 +239,5 @@ def publish_bundle(
         raise violation
     directory.mkdir(parents=True, exist_ok=False)
     names = write_artifacts(directory, bundle, chosen)
-    return write_manifest(directory, bundle.report.run_id, names, options=chosen)
+    manifest = describe_manifest(directory, bundle.report.run_id, names)
+    return write_manifest(directory, manifest, chosen)
