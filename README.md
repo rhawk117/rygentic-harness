@@ -150,7 +150,7 @@ a change has to pass: `make check`, which syncs the locked environment, runs pre
 
 ## Status
 
-vibe-code is at 0.4.0. python-harness is at 0.1.0. mightymodels is at 0.8.0 and is the
+vibe-code is at 0.4.0. python-harness is at 0.1.0. mightymodels is at 1.0.0 and is the
 marketplace's first plugin. Its hooks ship with it. `plugins/mightymodels/hooks/hooks.json`
 registers seven: one on `SessionStart`, two on `PreToolUse` for dispatches and for the main
 thread's edits and pushes, one each on `SubagentStop` and `PostToolUse` for scout reports, one on
