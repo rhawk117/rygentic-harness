@@ -43,8 +43,7 @@ Then one `ask_user` dialog that settles two questions:
   assumed and listed.
 - **Relentless**: rounds until the frontier is empty. Nothing is assumed.
 
-**Width.** Whole frontier per round (dialogs of up to three questions until the frontier is
-covered), or one question per dialog. One at a time is slower and easier to steer; offer it
+**Width.** Whole frontier each round, or one question at a time. One at a time is slower and easier to steer; offer it
 without recommending it.
 
 Record both at the top of the decisions record. A plan reader needs to know how much was
