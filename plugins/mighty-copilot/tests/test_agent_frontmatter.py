@@ -21,11 +21,11 @@ DISPATCHERS = frozenset(worker for worker, targets in DISPATCH_RULES.items() if 
 FRONTMATTER = re.compile(r'\A---\n(?P<head>.*?)\n---\n(?P<body>.*)\Z', re.DOTALL)
 KEY = re.compile(r'^(?P<key>\w+):', re.MULTILINE)
 PIN = re.compile(r'^(?P<key>model|effort|maxTurns): (?P<value>\S+)$', re.MULTILINE)
-GRANT = r'\w+(?:\([\w:-]+(?:, [\w:-]+)*\))?'
+GRANT = r'[\w/]+(?:\([\w:-]+(?:, [\w:-]+)*\))?'
 TOOLS_LINE = re.compile(rf'^tools: (?P<grants>\[\]|{GRANT}(?:, {GRANT})*)$', re.MULTILINE)
-TOOL_GRANT = re.compile(r'(?P<name>\w+)(?:\((?P<types>[^)]*)\))?')
+TOOL_GRANT = re.compile(r'(?P<name>[\w/]+)(?:\((?P<types>[^)]*)\))?')
 AGENT_TYPE = re.compile(r'[\w:-]+')
-STATE_TOOL = re.compile(r'\bmcp__\w+')
+STATE_TOOL = re.compile(rf'\b{SERVER_NAME}/\w+')
 PRELOADED_SKILLS = re.compile(r'^skills:(?P<names>.*(?:\n[ \t]*- .*)*)$', re.MULTILINE)
 SKILL_NAME = re.compile(r'\w[\w-]*')
 FORBIDDEN_PHRASES = (
@@ -130,7 +130,7 @@ class TestToolsOfTheAgents:
             'Grep',
             'Glob',
             'Bash',
-            'mcp__plugin_mightymodels_state__snapshot',
+            'state/snapshot',
         )
 
     def test_terry_toolchain_holds_the_tools_to_read_and_run_and_the_skill_tool_and_no_other(
@@ -140,9 +140,7 @@ class TestToolsOfTheAgents:
 
 
 class TestStateToolsOfTheAgents:
-    REGISTERED = frozenset(
-        f'mcp__plugin_mightymodels_{SERVER_NAME}__{tool.__name__}' for tool in TOOLS
-    )
+    REGISTERED = frozenset(f'{SERVER_NAME}/{tool.__name__}' for tool in TOOLS)
 
     @pytest.mark.parametrize(
         'agent',
@@ -161,8 +159,8 @@ class TestStateToolsOfTheAgents:
         }
 
         assert granted == {
-            Worker.ENGINEER: ('mcp__plugin_mightymodels_state__failed_fix',),
-            Worker.FACT_CHECKER: ('mcp__plugin_mightymodels_state__snapshot',),
+            Worker.ENGINEER: ('state/failed_fix',),
+            Worker.FACT_CHECKER: ('state/snapshot',),
         }
 
 

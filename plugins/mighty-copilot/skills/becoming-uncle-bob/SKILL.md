@@ -6,7 +6,6 @@ description: >-
   findings tied to named principles, evidence divided between the reviewer's own read and
   code-scout and qualitylens, and a letter grade whose arithmetic can be checked.
   Not a way to start a review; review-circus does that.
-when_to_use: >-
   Preloaded into the uncle-bob worker and no other. It applies from the first turn of every
   review uncle-bob is dispatched for, whatever the scope, mode or depth.
 user-invocable: false

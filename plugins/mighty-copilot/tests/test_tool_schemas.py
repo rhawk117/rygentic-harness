@@ -13,7 +13,7 @@ from mightymodels.tools.tests.tool_names import TOOL_NAMES
 
 PLUGIN = Path(__file__).parent.parent
 PROMPT_DIRECTORIES = ('skills', 'agents')
-TOOL_NAME = re.compile(rf'mcp__plugin_mightymodels_{SERVER_NAME}__(\w+)')
+TOOL_NAME = re.compile(rf'\b{SERVER_NAME}/(\w+)')
 JSON_BLOCK = re.compile(r'^[ \t]*```json\n(?P<arguments>.*?)^[ \t]*```$', re.DOTALL | re.MULTILINE)
 
 

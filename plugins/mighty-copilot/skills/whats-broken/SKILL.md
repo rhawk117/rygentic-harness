@@ -1,13 +1,12 @@
 ---
 name: whats-broken
-description: Use when CI has a non-obvious failure, a test resists repair, or behavior contradicts expectations after repeated verification.
-when_to_use: >-
+description: >-
+  Use when CI has a non-obvious failure, a test resists repair, or behavior contradicts expectations after repeated verification.
   Use for "CI is red", "this won't stop failing", "why does this test keep failing", and when
   stick-the-landing or agents-assemble routes a failure here.
-argument-hint: "[failing check, test or symptom]"
 allowed-tools:
-  - mcp__plugin_mightymodels_state__contract
-  - mcp__plugin_mightymodels_state__task
+  - state/contract
+  - state/task
 ---
 
 # whats-broken
@@ -16,7 +15,7 @@ The protocol exists because of one failure mode: a plausible quick fix that skip
 
 **Entry paths:** stick-the-landing routes a CI failure here when the fix isn't obvious from the log tail; agents-assemble routes a task here after both its engineer attempt and its architect recovery failed; and bare invocation ("CI is red", "this won't stop failing") works with or without an active ticket. With no ticket the hypothesis log lives at `.mightymodels/whats-broken.md`; first make sure `.mightymodels/` is excluded, since nothing under it is ever tracked: `git check-ignore -q .mightymodels || echo '.mightymodels/' >> "$(git rev-parse --git-common-dir)/info/exclude"`.
 
-**Argument:** the failure to diagnose, given when the skill was started: "$ARGUMENTS". Empty quotes mean nothing was given, and the failure is the one the session or the routing skill named.
+**Argument:** the failure to diagnose, the text the user wrote after the skill name. When nothing follows the name, the failure is the one the session or the routing skill named.
 
 ## Phases
 
@@ -38,7 +37,7 @@ Current-state only — each attempt regenerates the file (prior attempts live in
 
 **4. Test the hypothesis, minimally.** The cheapest check that could falsify it — a log line, a one-off command, a narrowed test invocation. Not a fix. Falsified → back to phase 3 with the new evidence, attempt counter up. Confirmed → phase 5.
 
-**5. Fix, through the normal path.** A confirmed cause is new, well-understood work, so it goes to a fresh **engineer** dispatch whose ASKED stanza includes a regression test as an acceptance criterion. With an active ticket, the regression test gets a contract id through `mcp__plugin_mightymodels_state__contract` with action `approve`, as game-plan shows (the user approves it in the dialog, as every contract command is), and is proven with `mightymodels verify run`, not by the engineer's word; the task the fix goes under is started with `task` `start` before the dispatch, because the dispatch hook refuses an engineer while the ticket has no task in progress. The fix targets the confirmed cause: if the diff patches the symptom's location instead of the hypothesis's location, that is the quick fix wearing a lab coat; reject it.
+**5. Fix, through the normal path.** A confirmed cause is new, well-understood work, so it goes to a fresh **engineer** dispatch whose ASKED stanza includes a regression test as an acceptance criterion. With an active ticket, the regression test gets a contract id through `state/contract` with action `approve`, as game-plan shows (the user approves it in the dialog, as every contract command is), and is proven with `mightymodels verify run`, not by the engineer's word; the task the fix goes under is started with `task` `start` before the dispatch, because the dispatch hook refuses an engineer while the ticket has no task in progress. The fix targets the confirmed cause: if the diff patches the symptom's location instead of the hypothesis's location, that is the quick fix wearing a lab coat; reject it.
 
 Route to **architect** instead only when the confirmed cause needs a design decision or files outside the task's owned set: `diagnose-replan` when the fix is not yet clear, `systemic-refactor` only after the user approves the expanded envelope, started through the `task` tool on the task that is still in progress. A task the architect replans is marked `superseded`, and its revised contract is a new task. `diagnose-replan` stays allowed after the architect's one implementation attempt. Diagnosis stays here and implementation stays with them; architect never widens scope it discovered while debugging.
 

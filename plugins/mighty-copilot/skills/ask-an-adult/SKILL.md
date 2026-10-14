@@ -3,17 +3,16 @@ name: ask-an-adult
 description: >-
   Escalate a stuck decision to the wingman advisor and act on what comes back. Builds the
   escalation packet, dispatches wingman, then puts wingman's questions to the
-  user through `AskUserQuestion` before any work resumes. Not for retrieving facts (send a
+  user through `ask_user` before any work resumes. Not for retrieving facts (send a
   scout), not for work you can simply do, and not for confirming a plan you have
   already committed to.
-when_to_use: >-
   Use when the user says they want a second opinion, when they invoke
   /ask-an-adult, or when the session has stalled on a judgment call - two
   defensible options, a hard-to-reverse choice, conflicting scout reports, a
   failure that survived two attempts, or a guess about user intent.
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__investigation
+  - ask_user
+  - state/investigation
 ---
 
 # ask-an-adult
@@ -53,7 +52,7 @@ no active ticket, write `none`.
 State your lean honestly. wingman is instructed to form its own view first and to lead with
 disagreement, so hiding your preference buys nothing and costs the advisor a useful signal.
 
-Run the template's ten-second checklist, then send the packet to `mightymodels:triage:wingman` through the `Agent` tool, its `model` the ticket's alias. Do not
+Run the template's ten-second checklist, then send the packet to `mightymodels:triage:wingman` through the `agent` tool, its `model` the ticket's alias. Do not
 paraphrase file contents you have not read, and do not summarize scout findings into
 conclusions: pass the citations through as they came back. While the ticket has a task that is
 blocked or failed, or with the architect after either, and its `auto-escalate` is off, put the block
@@ -70,7 +69,7 @@ wingman returns a `<report agent="wingman">` block. Handle it in this order:
 2. **Check `<confidence>`.** At `low`, the recommendation is provisional -
    resolve `<missing>` before acting on it.
 3. **Run `<user_questions>` immediately.** Put wingman's questions to the user through
-   `AskUserQuestion` (up to four questions a call, two to four options each), using the
+   `ask_user`, using the
    options it supplied. This is the point of the call.
 4. **Dispatch scouts for `<missing>` items marked `scout`:** code-scout for repository
    facts, web-scout for external documentation. Do those in parallel
@@ -90,7 +89,7 @@ decision to defer to it, in those words. Do not escalate the same packet again.
 A decision escalated once and then lost to compaction gets escalated again, so persist it
 before any work resumes. When an investigation is active, or the ticket's `investigations`
 list links one, append it through lets-investigate's ledger. Call
-`mcp__plugin_mightymodels_state__investigation` with action `add`:
+`state/investigation` with action `add`:
 
 ```json
 {"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [{"kind": "decision", "text": "<the choice> (wingman: <verdict, one line>; user: <answer>)", "source": "user"}]}}}

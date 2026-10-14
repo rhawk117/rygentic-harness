@@ -1,7 +1,7 @@
 ---
 name: open-ticket
 description: >-
-  Turn an understood problem into a staged unit of work: one AskUserQuestion interview (slug,
+  Turn an understood problem into a staged unit of work: one ask_user interview (slug,
   tracker GitHub / Jira / both / none), then the
   ticket directory, a Findings rollup from the lets-investigate ledger or what-we-know, the
   GitHub issue and/or Jira ticket (a draft file when the CLI is absent) with a checked tracker
@@ -9,15 +9,13 @@ description: >-
   state database. Ends by asking whether to plan now (game-plan), go straight to one-shot, or
   hand off (baton-pass). Not for starting the implementation
   itself (game-plan or one-shot), and not for handing off an existing ticket (baton-pass).
-when_to_use: >-
   Use when triage is done: "cut a ticket for this", "open a ticket",
   "make a jira ticket under this epic", "turn this investigation into a ticket", "stage this
   for the next session", "get this ready to implement".
-argument-hint: "[slug]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__investigation
-  - mcp__plugin_mightymodels_state__ticket
+  - ask_user
+  - state/investigation
+  - state/ticket
 ---
 
 # open-ticket
@@ -28,7 +26,7 @@ tracker; what happens next is the user's call, asked at the end.
 
 Read `references/ticket-schema.md` and `references/mightymodels-dir.md` before the first run
 in a session; they are the contract this skill instantiates. State goes through the plugin's MCP
-tools, called by full name: `mcp__plugin_mightymodels_state__ticket`, `..._investigation`.
+tools, called by full name: `state/ticket`, `..._investigation`.
 
 Nothing under `.mightymodels/` is ever tracked by git. The state server adds `.mightymodels/`
 to the repository's local exclude file when it starts, so a `git add -A` cannot ship briefs,
@@ -36,13 +34,12 @@ reports, or the database, which may carry raw command output.
 
 ## The interview
 
-One `AskUserQuestion` dialog containing only the questions the conversation has not already
-answered. Each
-question carries two to four options, and the user can always type an answer of their own.
+One `ask_user` dialog containing only the questions the conversation has not already
+answered. The user can always type an answer of their own.
 Answers already given are confirmed in the summary, not re-asked.
 
-**Argument:** a slug for the new ticket, given when the skill was started: "$ARGUMENTS". Empty
-quotes mean none was given. A slug given here is an answer already given to question 1.
+**Argument:** a slug for the new ticket, the text the user wrote after the skill name. When
+nothing follows the name, none was given. A slug given here is an answer already given to question 1.
 
 1. **Name** this unit of work; options: a slug proposed from the triage target, a shorter one.
 2. **Tracker**: GitHub issue, Jira ticket, both, or none.
@@ -63,7 +60,7 @@ the end.
 The tracker body is built from the triage, not from memory of it. Take the findings in this
 order of preference:
 
-1. **The investigation ledger.** Call `mcp__plugin_mightymodels_state__investigation` with
+1. **The investigation ledger.** Call `state/investigation` with
    action `knowns`:
 
    ```json
@@ -135,7 +132,7 @@ branch exists locally. When it is the current checkout, create nothing. A detach
 checkout the sprint can run on; the tool refuses it, so ask the user for a branch name and call
 `write` again with `branch` in `fields`.
 
-**D. ticket.yml.** Call `mcp__plugin_mightymodels_state__ticket` with action `write` and
+**D. ticket.yml.** Call `state/ticket` with action `write` and
 the rollup and tracker answers under `fields`, and no `scope`, `compaction` or `branch`; the tool
 asks the user for those three:
 
@@ -146,7 +143,7 @@ asks the user for those three:
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put each question
-it names to the user in one `AskUserQuestion` dialog, then call again with those arguments in
+it names to the user in one `ask_user` dialog, then call again with those arguments in
 `fields` (`scope`, `compaction`, and `branch` as the current branch name or the new branch name).
 
 The tool derives the model routing from the scope and `plan-first` from the compaction answer,
@@ -156,7 +153,7 @@ edit wins over the derivation.
 
 **E. Validate and stage.** After the tweak pass:
 
-Call `mcp__plugin_mightymodels_state__ticket` with action `validate`:
+Call `state/ticket` with action `validate`:
 
 ```json
 {"request": {"action": "validate", "slug": "SLUG"}}
@@ -169,7 +166,7 @@ staged until this passes.
 
 ## What next
 
-Ask once, through `AskUserQuestion`:
+Ask once, through `ask_user`:
 
 - **Plan now**: invoke game-plan in this session. Recommended when `plan-first` is true and the
   context has room for it.

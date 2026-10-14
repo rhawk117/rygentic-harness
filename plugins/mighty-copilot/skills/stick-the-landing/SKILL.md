@@ -5,19 +5,17 @@ description: >-
   with a checked body, have gitty-up watch CI, and route each failing check as a recorded C task
   (mechanical fixes to an engineer residual, then architect once; non-obvious causes to
   whats-broken), re-proving the whole verification contract at every new HEAD before re-pushing.
-  On green, ask through AskUserQuestion whether to review now (review-circus) or hand off (baton-pass).
+  On green, ask through ask_user whether to review now (review-circus) or hand off (baton-pass).
   Not for Jira sprint operations, not the review itself
   (review-circus), and not for mid-sprint work (agents-assemble owns the loop).
-when_to_use: >-
   Only the user starts it, when the
   sprint's tasks are done: "finish the sprint", "wrap up the ticket", "push and open the PR",
   "get the PR open", "ship it up".
-argument-hint: "[ticket-slug]"
 disable-model-invocation: true
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__contract
-  - mcp__plugin_mightymodels_state__task
+  - ask_user
+  - state/contract
+  - state/task
 ---
 
 # stick-the-landing
@@ -29,22 +27,22 @@ not handled by whoever is cheapest.
 Run from the repository root. Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` in this file as
 an absolute path:
 
-- `mcp__plugin_mightymodels_state__task` for task state and the push gate.
-- `mcp__plugin_mightymodels_state__contract` for the verification contract, and
+- `state/task` for task state and the push gate.
+- `state/contract` for the verification contract, and
   `mightymodels verify run` to run its commands.
 - `python3 "${CLAUDE_PLUGIN_ROOT}/skills/open-ticket/scripts/humanize_tracker_body.py"` for the PR body.
 
 Dispatch workers through prompting-subagents. Models are the fixed aliases `subagent-models`
 lists, never memory.
 
-**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
-none was given, and the ticket is the session's active one.
+**Argument:** the ticket's slug, the text the user wrote after the skill name. When nothing
+follows the name, the ticket is the session's active one.
 
 ## 1. Gate
 
 `REPORT.md` must exist: agents-assemble writes it as its last act, so its absence means the
 loop stopped early. Say so and stop rather than papering over it. Then call
-`mcp__plugin_mightymodels_state__task` with action `ready`:
+`state/task` with action `ready`:
 
 ```json
 {"request": {"action": "ready", "slug": "SLUG"}}
@@ -94,7 +92,7 @@ one. Apply the log-tail test: *can the fix be stated as one Fix:/Verify: line fr
 tail alone?*
 
 - **Yes, mechanical** (lint rule, formatter drift, missing import, a trivially wrong
-  assertion). Record the attempt with `mcp__plugin_mightymodels_state__task` and action
+  assertion). Record the attempt with `state/task` and action
   `start`, then dispatch an **engineer** with the residual variant of its template,
   Fix:/Verify: verbatim, with SLUG, `C1` as the task id and the check's name as the finding:
 
@@ -103,7 +101,7 @@ tail alone?*
   ```
 
   When a local command reproduces the check, it is the Verify line and becomes contract id
-  `C1.AC-1`, shown to the user in one `AskUserQuestion` dialog and recorded with `contract`
+  `C1.AC-1`, shown to the user in one `ask_user` dialog and recorded with `contract`
   `approve` before the dispatch. Otherwise the Verify line is the CI check
   itself, proven after the re-push.
 
@@ -130,7 +128,7 @@ Push, then gitty-up re-watches.
 ## 6. Close or climb
 
 - **The check passes.** Close the C task on the evidence of the check it repaired, with
-  `mcp__plugin_mightymodels_state__task` and action `verify`:
+  `state/task` and action `verify`:
 
   ```json
   {"request": {"action": "verify", "slug": "SLUG", "payload": {"task_id": "C1", "change": {"commit": "<fix commit>", "assertions": {"AC-1": "<check link from gitty-up>"}}}}}
@@ -153,7 +151,7 @@ are the state; the conversation is not.
 ## 7. On green
 
 Every check passes and `task` `ready` answers `ready` at the pushed HEAD. Tell the user, then
-ask once through `AskUserQuestion` (up to four questions a call, two to four options each):
+ask once through `ask_user`, settling whether the session reviews now or hands off:
 
 - **Review now**: invoke review-circus in this session. Recommended when this session runs a
   mid-tier primary and has context to spare.

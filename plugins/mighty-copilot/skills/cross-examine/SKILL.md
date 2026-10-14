@@ -3,20 +3,19 @@ name: cross-examine
 description: >-
   Interview the user about a plan, design, or decision until a shared understanding exists,
   at a depth the user picks first (Skim, Standard, or Relentless). Works the design tree in
-  rounds: each round asks every decision whose prerequisites are settled, via AskUserQuestion
-  only, two to four concrete options each, one recommended, pitched at a senior
+  rounds: each round asks every decision whose prerequisites are settled, via ask_user
+  only, concrete options each, one recommended, pitched at a senior
   engineer with no rationale for asking. Facts go to scouts, decisions to the user, nothing
   assumed silently. Restates a decisions record after every round that game-plan lifts into
   approach, invariants, non-goals, acceptance, and risks. Writes no files. Not for retrieving
   facts (scouts), or for a stuck judgment
   call or tie (ask-an-adult, then the user).
-when_to_use: >-
   Runs inside game-plan between claim
   verification and drafting; also use standalone for "grill me", "cross-examine this plan",
   "stress-test my design", "interview me about the approach", "poke holes in this before I
   build it".
 allowed-tools:
-  - AskUserQuestion
+  - ask_user
 ---
 
 # cross-examine
@@ -35,7 +34,7 @@ State the target in one line: the plan, design, or decision under examination. I
 game-plan it is the ticket's `summary`, which game-plan records as the plan's `base-intent`;
 standalone it is whatever the user brought.
 
-Then one `AskUserQuestion` dialog with two questions:
+Then one `ask_user` dialog that settles two questions:
 
 **Depth.** How far the interview goes before it stops.
 
@@ -69,7 +68,7 @@ Three kinds of question arrive at the frontier, and only one goes to the user:
   unsettled prerequisite: only the questions downstream of it wait; ask the rest of the
   frontier now.
 - **Decisions** (which behavior, which boundary, which trade-off, what done looks like) go to
-  the user through `AskUserQuestion`.
+  the user through `ask_user`.
 - **Feel** questions (how should the interaction feel, is this abstraction pleasant) do not
   grill well and get a prototype instead. Record them as Open with "needs a prototype" and
   move on rather than asking the user to imagine the answer.
@@ -93,7 +92,7 @@ Retry bound for outbound webhooks?
   I don't know
 ```
 
-Two to four options in all, written as the actual choices rather than yes/no on your framing.
+Options are written as the actual choices rather than yes/no on your framing.
 Exactly one is marked `(recommended)` with its reason in the parenthetical; the other
 parentheticals carry that choice's trade-off, not a reason to reject it. The last option is
 always `I don't know`, and the user can also type an answer of their own. "I don't know" is a real
@@ -143,7 +142,7 @@ Open items are handed forward, never resolved by the primary's best guess.
 ## Ending
 
 The interview ends when the frontier is empty, when the depth's round cap is reached, or when
-the user says stop. Close with one `AskUserQuestion` dialog: shared understanding reached,
+the user says stop. Close with one `ask_user` dialog: shared understanding reached,
 one more round, or stop here. Only the first hands the record onward; inside game-plan that
 is a return to the drafting step, standalone it is an offer of game-plan or open-ticket,
 never an invocation.

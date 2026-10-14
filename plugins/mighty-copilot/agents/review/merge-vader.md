@@ -33,7 +33,7 @@ Subagents do not inherit the dispatching skill's base directory, which is why ev
 2. Read the doctrine's references (tool: `Read`): all three files in the skill's `references/` directory. They are the phases, the checklists, and the report template; do not review from memory.
 3. Establish ground truth (tool: `Bash`) with the doctrine's Phase 0 commands: `git rev-parse`, `git merge-base`, `git diff --stat`, `git log --oneline`, `git diff`, and `git log -p` for branch history.
 4. Read the diff and build the ledger (tools: `Read`, `Grep`, `Glob`), following the doctrine's Phase 1.
-5. Dispatch evidence waves (tool: `Agent`) per the doctrine's Phase 2: code-scout for repository facts; web-scout only when a finding turns on documented language or framework behavior; qualitylens only when the dispatch supplied a signals history window, passing the changed files as the target and that window. Build each packet from the worker's template that the preloaded `prompting-subagents` skill names.
+5. Dispatch evidence waves (tool: `agent`) per the doctrine's Phase 2: code-scout for repository facts; web-scout only when a finding turns on documented language or framework behavior; qualitylens only when the dispatch supplied a signals history window, passing the changed files as the target and that window. Build each packet from the worker's template that the preloaded `prompting-subagents` skill names.
 6. Judge, set the verdict, and compose the report per the doctrine's Phases 3 and 4.
 7. Run the checks in the verification section, then return the report.
 </workflow>

@@ -6,20 +6,18 @@ description: >-
   next) or from a session with no ticket at all. Writes an objective snapshot from the
   recorded state first (the snapshot tool: tasks, checks at HEAD, ledger decisions, failed
   attempts, review state), runs what-we-know in interactive mode, asks in one
-  AskUserQuestion call what the next session should focus on and what to do with uncommitted
+  ask_user call what the next session should focus on and what to do with uncommitted
   work, records new user decisions in the ledger, then writes handoffs/BATON.md with only what no
   file holds. With no ticket it runs open-ticket first. Ends by printing the next session's
   opening prompt in chat. Not a ticket for work not yet
   started from a clean triage (open-ticket directly).
-when_to_use: >-
   Use for "pass the baton", "hand this off to a fresh session", "I'm
   about to compact", "carry this over", "hand off to review".
-argument-hint: "[ticket-slug]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__investigation
-  - mcp__plugin_mightymodels_state__snapshot
-  - mcp__plugin_mightymodels_state__ticket
+  - ask_user
+  - state/investigation
+  - state/snapshot
+  - state/ticket
 ---
 
 # baton-pass
@@ -34,7 +32,7 @@ hour re-deriving it, and it will re-derive some of it wrong.
 The first kind is materialized by a tool, not recalled: `snapshot` reads the ticket's rows and
 git and returns the record and its Markdown, and you write them to `handoffs/snapshot.json` and
 `snapshot.md`. BATON.md then carries the second kind and only the second kind. Call
-`mcp__plugin_mightymodels_state__snapshot` (`limit`, 1 to 100, cuts each list; the default is 20):
+`state/snapshot` (`limit`, 1 to 100, cuts each list; the default is 20):
 
 ```json
 {"request": {"slug": "SLUG", "limit": 20}}
@@ -50,8 +48,8 @@ Read `references/snapshot-schema.md` before the first run in a session.
 Two entry states, decided by whether `.mightymodels/<slug>/ticket.yml` exists for the work in
 progress.
 
-**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
-none was given, and the work in progress decides which ticket, if any.
+**Argument:** the ticket's slug, the text the user wrote after the skill name. When nothing
+follows the name, the work in progress decides which ticket, if any.
 
 - **Active ticket.** Take the snapshot, write both files and read `snapshot.md`: tasks and
   their attempts, checks at HEAD, decisions and open questions from the ledger, failed
@@ -69,13 +67,12 @@ can settle get settled now rather than inherited.
 
 ## 2. Ask what the next session is for
 
-One `AskUserQuestion` call, two questions, options drawn from the state rather than generic:
+One `ask_user` dialog that settles two questions, options drawn from the state rather than generic:
 
 **Focus.** Derived from what is open: continue the in-flight task; start the next task not
 yet verified; take a specific open thread the session surfaced (name it); re-plan because the picture
 changed; land it (every task verified: stick-the-landing); review it (stick-the-landing
-handed off on green: review-circus); something else. A question takes two to four options, so
-offer the ones the state supports, one recommended with the reason in the parenthetical; the
+handed off on green: review-circus); something else. Offer the options the state supports, one recommended with the reason in the parenthetical; the
 user can type any other.
 
 **Uncommitted work**, only when the tree is dirty: commit as a WIP on the branch; stash with a
@@ -87,7 +84,7 @@ after that action, and a baton that describes a stash that was never made is wor
 
 Then record every user decision made this session that the ledger does not already hold, as
 a `decision` entry from `user` in the ticket's linked investigation. Call
-`mcp__plugin_mightymodels_state__investigation` with action `add`:
+`state/investigation` with action `add`:
 
 ```json
 {"request": {"action": "add", "investigation_id": "ID", "payload": {"request": {"round": 1}, "entries": [{"kind": "decision", "text": "<the decision>", "source": "user"}]}}}
@@ -98,7 +95,7 @@ reaches the next session through the snapshot; one only in the baton is one more
 
 ## 3. Prepare the ticket directory
 
-**Active ticket.** Call `mcp__plugin_mightymodels_state__snapshot` again and write both files
+**Active ticket.** Call `state/snapshot` again and write both files
 again, so they reflect the tree after the uncommitted-work action and the decisions just
 recorded:
 
@@ -170,7 +167,7 @@ prevents.
 Writes `handoffs/snapshot.json`, `snapshot.md`, `BATON.md`, user decisions into the linked
 ledger, the `context:` lines of ticket.yml, and whatever the user chose for uncommitted work;
 through open-ticket, the ticket directory when none existed. Refresh ticket.yml `context` with
-`mcp__plugin_mightymodels_state__ticket`: its `request` holds action `update-context`, `slug`, and
+`state/ticket`: its `request` holds action `update-context`, `slug`, and
 `fields` holding `context`, the whole list of lines. It replaces them and restages the ticket, so the edit stays
 inside the schema's subset. Never marks a task verified, appends a DONE half, or writes
 REPORT.md; those belong to the loop and the engineer, and a baton that closes a task the loop

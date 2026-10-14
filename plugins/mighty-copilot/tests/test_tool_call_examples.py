@@ -5,7 +5,7 @@ example is a fenced block that is marked `json` or holds the `"request"` key. It
 one JSON object with the single key `request`, the way a caller sends it, and the value has to
 pass the request model of the tool it belongs to.
 
-Placing rule: an example belongs to the tool whose full name, `mcp__plugin_mightymodels_state__`
+Placing rule: an example belongs to the tool whose full name, `state/`
 and the tool, is the last one written above the example in the body of its file. The frontmatter
 does not count, because it lists every tool the file may call. An example with no tool name above
 it cannot be placed, and an example placed with a name the server does not register is an example
@@ -38,8 +38,8 @@ FRONTMATTER = re.compile(r'\A---\n.*?\n---\n', re.DOTALL)
 FENCE = re.compile(
     r'^[ \t]*```(?P<mark>[^\n`]*)\n(?P<text>.*?)^[ \t]*```[ \t]*$', re.MULTILINE | re.DOTALL
 )
-TOOL_NAME = re.compile(r'\bmcp__\w+')
-TOOL_PREFIX = f'mcp__plugin_mightymodels_{SERVER_NAME}__'
+TOOL_PREFIX = f'{SERVER_NAME}/'
+TOOL_NAME = re.compile(rf'\b{TOOL_PREFIX}\w+')
 EXAMPLE_MARK = 'json'
 WRAPPER_KEY = '"request"'
 

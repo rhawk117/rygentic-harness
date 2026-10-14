@@ -3,7 +3,7 @@ name: game-plan
 description: >-
   Large-scope ramp for a mightymodels ticket: read ticket.yml and the issue, verify the
   ticket's claims with scouts, run cross-examine so the user
-  decides the design before drafting, interview the user (AskUserQuestion) on how each risk is handled, then
+  decides the design before drafting, interview the user (ask_user) on how each risk is handled, then
   write the ticket's plan.md as a compaction-safe ledger: intent, approach, invariants that
   must hold throughout, dependency-ordered tasks each with deterministic acceptance criteria
   and the commands that verify them, non-goals, and risks with the user's chosen handling. No
@@ -11,15 +11,13 @@ description: >-
   runs it at HEAD through a no-shell runner before approval, then invokes agents-assemble.
   Not for small tickets (one-shot), not a design
   document or ADR (the plan sequences work on a settled design).
-when_to_use: >-
   Auto-invoke at session start for any scope/plan-first combination other than scope sm with
   plan-first false; use for "plan this ticket", "run the game plan", "write the plan for
   issue #N", "ramp the big one".
-argument-hint: "[ticket-slug]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__contract
-  - mcp__plugin_mightymodels_state__ticket
+  - ask_user
+  - state/contract
+  - state/ticket
 ---
 
 # game-plan
@@ -45,8 +43,8 @@ proves it done.
 
 ## Sequence
 
-**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
-none was given, and the ticket is the session's active one.
+**Argument:** the ticket's slug, the text the user wrote after the skill name. When nothing
+follows the name, the ticket is the session's active one.
 
 **0.** Invoke `prompting-subagents`.
 
@@ -98,7 +96,7 @@ sees it; the user's time is for direction, not for catching a task with no accep
 
 **4b. Approve and run the verification commands.** Every invariant's proving command and
 every command-shaped acceptance criterion gets a contract id (`I1`, `T1.AC-1`) and an argv
-list. Make one call to `mcp__plugin_mightymodels_state__contract` with action `approve`, the full
+list. Make one call to `state/contract` with action `approve`, the full
 list, and no `approved_by`; the tool shows the user each id and argv and records the commands
 only when the user approves them:
 
@@ -111,7 +109,7 @@ only when the user approves them:
 
 An answer starting `not approved` means the user wants the list changed: change it as they said
 and call again. An answer starting `needs input` means no one could be asked through the tool: put
-the question it names to the user in one `AskUserQuestion` dialog, and on approval call again with
+the question it names to the user in one `ask_user` dialog, and on approval call again with
 `"approved_by": "user"` on each command.
 
 Then run them at HEAD with a bare Bash command (the plugin's `bin/` is on the Bash PATH):
@@ -129,7 +127,7 @@ thing it tests does not exist yet is the expected baseline. Read
 `references/verification-contract.md` when a record or run is refused.
 
 **5. Interview the user on risks.** Every risk in the draft gets a handling chosen by the user,
-not by you. One `AskUserQuestion` dialog, risks batched up to four a call, each offering the same
+not by you. One `ask_user` dialog settling the handling of every risk, each offering the same
 four handlings (the user can always type a handling of their own):
 
 - **Accept**: proceed; the signal is noted, nothing changes.
@@ -144,14 +142,14 @@ risk the post-compaction primary will handle by improvising. When no dialog is a
 in chat with the four handlings spelled out, and wait.
 
 **5b. Ask who answers a block.** The ticket's `auto-escalate` decides what happens when a task
-ends `blocked` or `failed` in the sprint. One `AskUserQuestion` dialog with one question, the
+ends `blocked` or `failed` in the sprint. One `ask_user` dialog with one question, the
 default first:
 
 - **Ask me first** (the default): `auto-escalate` stays off and nothing is written. agents-assemble
   puts the block and its reasons to the user before the architect or the wingman is dispatched for
   it, and the dispatch hook answers a main-thread dispatch of either with `ask`.
 - **Escalate automatically**: add the line `  auto-escalate: true` under `handoff-context` in
-  ticket.yml, then call `mcp__plugin_mightymodels_state__ticket` with action `validate`, which
+  ticket.yml, then call `state/ticket` with action `validate`, which
   stores it. A block then goes to the architect once with no question.
 
 ```json
@@ -162,7 +160,7 @@ A ticket.yml that already has the key has its answer, so do not ask again. When 
 available, ask in chat with both answers spelled out, and wait.
 
 **6. Get approval.** Write `plan.md` with the handlings folded in, present it, and ask through
-`AskUserQuestion`: approve, revise, or abandon. This gate is the user's, and it is the last cheap
+`ask_user`: approve, revise, or abandon. This gate is the user's, and it is the last cheap
 moment to change direction. On approve, invoke agents-assemble. On revise, regenerate the whole
 plan (never append to it) and state in one paragraph what changed and why, so the user reviews
 a delta rather than re-reading two hundred lines. A revision that contradicts a Decided line

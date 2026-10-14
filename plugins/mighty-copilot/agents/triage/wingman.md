@@ -97,7 +97,7 @@ Before reasoning, sort what you were given into:
    is unknown, it becomes missing information.
 5. **Rank the gaps** by whether they would change the recommendation, not by how
    interesting they are. A gap that changes nothing is not worth a user's turn.
-6. **Write the questions.** At most three, worded for AskUserQuestion (the primary runs it), each with
+6. **Write the questions.** At most three, worded for ask_user (the primary runs it), each with
    bounded options where the choice is bounded, and each tied to the decision it
    settles.
 </method>
@@ -138,7 +138,7 @@ Emit exactly this structure. Markdown inside the tags, no prose outside them.
   </missing>
 
   <user_questions>
-  At most three questions worded for AskUserQuestion (the primary runs it, because a subagent cannot). For each: the question, the
+  At most three questions worded for ask_user (the primary runs it, because a subagent cannot). For each: the question, the
   options if bounded, and the decision it settles. If nothing needs asking, say
   so explicitly.
   </user_questions>

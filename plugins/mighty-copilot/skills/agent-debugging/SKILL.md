@@ -1,12 +1,12 @@
 ---
 name: agent-debugging
-description: Use when you are an engineer and a task's verification fails after your edit, to debug it alone, record each failed fix, and stop blocked at the third.
-when_to_use: >-
+description: >-
+  Use when you are an engineer and a task's verification fails after your edit, to debug it alone, record each failed fix, and stop blocked at the third.
   Preloaded into the engineer. It applies the moment a test, lint or type check the task names
   fails on your change, or a fix you tried did not make it pass.
 user-invocable: false
 allowed-tools:
-  - mcp__plugin_mightymodels_state__failed_fix
+  - state/failed_fix
 ---
 
 # agent-debugging
@@ -25,7 +25,7 @@ The engineer's form of whats-broken, for one worker with no one to dispatch. The
 
 **5. Fix inside your owned files, then run the verification again.** A fix that needs a file outside the owned set is not yours to make: report `blocked` with the file and the hypothesis.
 
-**6. Record a fix that failed.** When the verification still fails, call `mcp__plugin_mightymodels_state__failed_fix` with action `record` before you try anything else (`SLUG` is the directory in the brief path `.mightymodels/<slug>/briefs/`, `T1` the task id from the dispatch):
+**6. Record a fix that failed.** When the verification still fails, call `state/failed_fix` with action `record` before you try anything else (`SLUG` is the directory in the brief path `.mightymodels/<slug>/briefs/`, `T1` the task id from the dispatch):
 
 ```json
 {"request": {"action": "record", "slug": "SLUG", "payload": {"task_id": "T1", "change": {"hypothesis": "I believe the batch size is zero because the drain log shows an empty batch; the fix that set it did not change the log"}}}}

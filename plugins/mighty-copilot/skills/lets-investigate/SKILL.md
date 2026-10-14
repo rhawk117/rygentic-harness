@@ -3,21 +3,19 @@ name: lets-investigate
 description: >-
   Run a chat-first investigation as a gated loop: frame one target, dispatch scouts for
   repository facts and documentation facts, fold every report into a restated in-chat ledger
-  (knowns, open questions, decisions, resources), then stop at an AskUserQuestion gate where the user
+  (knowns, open questions, decisions, resources), then stop at an ask_user gate where the user
   chooses to dig further, redirect, or consolidate. Persists its ledger as rows
   in the state database and changes nothing else. Not for reviewing a branch or grading a codebase (review-circus), debugging
   with a known reproduction (whats-broken), or non-engineering research such as market or
   vendor comparisons.
-when_to_use: >-
   Use at the START of work, before any ticket
   exists, whenever the user wants to understand something before acting: "let's investigate X",
   "look into this claim", "triage this bug report", "why would Y be happening", "dig into this
   error", "how does library Z actually handle this, check the docs and our usage". Also for
   research questions about a dependency, API, protocol, or tool the repository relies on.
-argument-hint: "[question, claim or error]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__investigation
+  - ask_user
+  - state/investigation
 ---
 
 # lets-investigate
@@ -29,7 +27,7 @@ or a new conversation resumes from the database instead of from memory; the chat
 the tool's own rendering, so the two cannot disagree.
 
 State goes through the plugin's MCP tool, called by full name:
-`mcp__plugin_mightymodels_state__investigation`. Read `references/ledger-schema.md` when an
+`state/investigation`. Read `references/ledger-schema.md` when an
 entry is rejected.
 
 <important>Invoke `prompting-subagents` before the first dispatch.</important>
@@ -41,8 +39,8 @@ it, and the user hears about a dead end after one round instead of five.
 
 ## Round zero: frame the target
 
-**Argument:** what to investigate, given when the skill was started: "$ARGUMENTS". Empty quotes
-mean nothing was given, and the target comes from the conversation.
+**Argument:** what to investigate, the text the user wrote after the skill name. When nothing
+follows the name, the target comes from the conversation.
 
 Write the target as one line the user can disagree with, then work out which of these it is (the
 user confirms the classification when the ledger opens):
@@ -57,14 +55,14 @@ the runtime configuration; a claim needs the exact lines that would make it true
 research question needs the documentation for the version in the lockfile and the call sites
 that depend on it.
 
-Put the framing to the user through one `AskUserQuestion` dialog before dispatching anything: the
+Put the framing to the user through one `ask_user` dialog before dispatching anything: the
 target line, and one question asking what they already know or have ruled out (the user can
 always type an answer of their own). Scouts pointed at a vague target return precise answers to the wrong question, and facts
 the user already holds cost nothing to record and a round to rediscover.
 
 Once the user confirms the target, open the ledger and record their answers as round 0:
 
-Call `mcp__plugin_mightymodels_state__investigation` with action `start` and the target, and
+Call `state/investigation` with action `start` and the target, and
 leave `kind` out: the tool asks the user for the classification and records the answer. The kinds
 are `behavior`, `claim`, `research` and `change` (a proposed change to weigh, which what-we-know
 opens):
@@ -74,7 +72,7 @@ opens):
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put the question
-it names to the user in one `AskUserQuestion` dialog, then call again with `kind` in the request.
+it names to the user in one `ask_user` dialog, then call again with `kind` in the request.
 
 `start` returns the investigation id; every later call names it. Then the same tool with action
 `add` records the user's answers:
@@ -132,7 +130,7 @@ is an entry `kind`:
 ]}}}
 ```
 
-Then call `mcp__plugin_mightymodels_state__investigation` with action `render`:
+Then call `state/investigation` with action `render`:
 
 ```json
 {"request": {"action": "render", "investigation_id": "ID"}}
@@ -145,8 +143,8 @@ If `add` is rejected, fix the entry the error names and retry; if it cannot be w
 stop at the gate and say so. A gate on an unpersisted round is the loss this skill exists to
 prevent.
 
-**5. Stop at the gate.** Open an `AskUserQuestion` dialog with the round's decision and any questions
-held for the user, batched into one call (up to four questions). The decision offers exactly
+**5. Stop at the gate.** Open an `ask_user` dialog with the round's decision and any questions
+held for the user, batched into one call. The decision offers exactly
 these choices:
 
 - **Sufficient**: consolidate through what-we-know.

@@ -1,7 +1,7 @@
 """Each skill's frontmatter says when to use it, who may start it and which tools it pre-approves.
 
-A skill started with a slug or a target hints at the argument and reads it in its body, and no
-skill holds a key but the ones pinned here.
+A skill that takes an argument reads it in its body as the text the user wrote after the skill
+name, and no skill holds a key but the ones pinned here.
 """
 
 import re
@@ -16,9 +16,9 @@ SKILLS = Path(__file__).parent.parent.joinpath('skills')
 FRONTMATTER = re.compile(r'\A---\n(?P<head>.*?)\n---\n(?P<body>.*)\Z', re.DOTALL)
 FIELD = re.compile(r'^(?P<key>[\w-]+):(?P<value>.*(?:\n[ \t]+.*)*)$', re.MULTILINE)
 LISTED_TOOL = re.compile(r'^[ \t]+- (?P<name>\S+)$', re.MULTILINE)
-STATE_TOOL = re.compile(r'\bmcp__\w+')
-QUESTION_TOOL = 'AskUserQuestion'
-ARGUMENTS = '$ARGUMENTS'
+STATE_TOOL = re.compile(rf'\b{SERVER_NAME}/\w+')
+QUESTION_TOOL = 'ask_user'
+ARGUMENT = re.compile(r'^\*\*Argument:\*\*(?P<paragraph>.*?)\n\n', re.DOTALL | re.MULTILINE)
 
 
 @dataclass(slots=True, kw_only=True, frozen=True)
@@ -26,7 +26,6 @@ class SkillFile:
     name: str
     keys: frozenset[str]
     description: str
-    when_to_use: str
     human_only: bool
     hidden_from_the_user: bool
     allowed_tools: tuple[str, ...]
@@ -45,7 +44,6 @@ def skill_file(path: Path) -> SkillFile:
         name=path.parent.name,
         keys=frozenset(fields),
         description=folded(fields.get('description', '')),
-        when_to_use=folded(fields.get('when_to_use', '')),
         human_only=fields.get('disable-model-invocation', '').strip() == 'true',
         hidden_from_the_user=fields.get('user-invocable', '').strip() == 'false',
         allowed_tools=tuple(LISTED_TOOL.findall(fields.get('allowed-tools', ''))),
@@ -63,10 +61,8 @@ class TestListingOfTheSkills:
     LISTING_CAP = 1536
 
     @EVERY_SKILL
-    def test_the_description_and_when_to_use_fit_the_listing_together(
-        self, skill: SkillFile
-    ) -> None:
-        assert len(skill.description) + len(skill.when_to_use) <= self.LISTING_CAP
+    def test_the_description_fits_the_listing(self, skill: SkillFile) -> None:
+        assert len(skill.description) <= self.LISTING_CAP
 
 
 class TestInvocationOfTheSkills:
@@ -85,9 +81,7 @@ class TestInvocationOfTheSkills:
 
 
 class TestAllowedToolsOfTheSkills:
-    REGISTERED = frozenset(
-        f'mcp__plugin_mightymodels_{SERVER_NAME}__{tool.__name__}' for tool in TOOLS
-    )
+    REGISTERED = frozenset(f'{SERVER_NAME}/{tool.__name__}' for tool in TOOLS)
 
     @EVERY_SKILL
     def test_every_state_tool_pre_approved_is_one_the_server_registers(
@@ -111,39 +105,64 @@ class TestAllowedToolsOfTheSkills:
 
 
 class TestArgumentsOfTheSkills:
+    TAKING_AN_ARGUMENT = frozenset(
+        {
+            'agents-assemble',
+            'baton-pass',
+            'break-it-down',
+            'crashout',
+            'game-plan',
+            'lets-investigate',
+            'one-shot',
+            'open-ticket',
+            'prune-ticket',
+            'review-circus',
+            'stick-the-landing',
+            'what-we-know',
+            'whats-broken',
+        }
+    )
+
+    def test_exactly_the_skills_that_take_an_argument_read_one_in_the_body(self) -> None:
+        reading = {skill.name for skill in SKILL_FILES if ARGUMENT.search(skill.body)}
+
+        assert reading == self.TAKING_AN_ARGUMENT
+
     @EVERY_SKILL
-    def test_the_body_reads_the_arguments_exactly_when_the_frontmatter_hints_at_them(
+    def test_the_argument_is_the_text_the_user_wrote_after_the_skill_name(
         self, skill: SkillFile
     ) -> None:
-        assert (ARGUMENTS in skill.body) == ('argument-hint' in skill.keys)
+        found = ARGUMENT.search(skill.body)
+        paragraph = '' if found is None else folded(found['paragraph'])
+
+        assert (found is None) or ('the text the user wrote after' in paragraph)
 
 
 class TestKeysOfTheSkills:
-    SHARED = frozenset({'name', 'description', 'when_to_use'})
+    SHARED = frozenset({'name', 'description'})
     PRE_APPROVING = SHARED.union({'allowed-tools'})
-    TAKING_AN_ARGUMENT = PRE_APPROVING.union({'argument-hint'})
-    HUMAN_ONLY = TAKING_AN_ARGUMENT.union({'disable-model-invocation'})
+    HUMAN_ONLY = PRE_APPROVING.union({'disable-model-invocation'})
     KEYS = MappingProxyType(
         {
             'agent-debugging': PRE_APPROVING.union({'user-invocable'}),
-            'agents-assemble': TAKING_AN_ARGUMENT,
+            'agents-assemble': PRE_APPROVING,
             'ask-an-adult': PRE_APPROVING,
-            'baton-pass': TAKING_AN_ARGUMENT,
-            'break-it-down': TAKING_AN_ARGUMENT,
+            'baton-pass': PRE_APPROVING,
+            'break-it-down': PRE_APPROVING,
             'becoming-merge-vader': SHARED.union({'user-invocable'}),
             'becoming-uncle-bob': SHARED.union({'user-invocable'}),
             'crashout': HUMAN_ONLY,
             'cross-examine': PRE_APPROVING,
-            'game-plan': TAKING_AN_ARGUMENT,
-            'lets-investigate': TAKING_AN_ARGUMENT,
-            'one-shot': TAKING_AN_ARGUMENT,
-            'open-ticket': TAKING_AN_ARGUMENT,
+            'game-plan': PRE_APPROVING,
+            'lets-investigate': PRE_APPROVING,
+            'one-shot': PRE_APPROVING,
+            'open-ticket': PRE_APPROVING,
             'prompting-subagents': SHARED.union({'user-invocable'}),
             'prune-ticket': HUMAN_ONLY,
-            'review-circus': TAKING_AN_ARGUMENT,
+            'review-circus': PRE_APPROVING,
             'stick-the-landing': HUMAN_ONLY,
-            'what-we-know': TAKING_AN_ARGUMENT,
-            'whats-broken': TAKING_AN_ARGUMENT,
+            'what-we-know': PRE_APPROVING,
+            'whats-broken': PRE_APPROVING,
         }
     )
 

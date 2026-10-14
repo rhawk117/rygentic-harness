@@ -6,18 +6,16 @@ description: >-
   unpushed commits), compacts the ticket's recorded state into a 30-line archive at
   .mightymodels/archives/<slug>.md with a JSON sidecar (contracts and results, decisions,
   review outcomes), marks the ticket closed, proposes cascading documentation updates as
-  diffs for the user's approval, then, on explicit confirmation through AskUserQuestion,
+  diffs for the user's approval, then, on explicit confirmation through ask_user,
   deletes the ticket directory.
   Not for deleting branches, closing issues, or general repo cleanup.
-when_to_use: >-
   Only the user starts it, once the ticket's work has shipped: "/prune-ticket",
   "archive the ticket", "close out the mightymodels ticket", "clean up the ticket dir for X".
-argument-hint: "[ticket-slug]"
 disable-model-invocation: true
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__close
-  - mcp__plugin_mightymodels_state__ticket
+  - ask_user
+  - state/close
+  - state/ticket
 ---
 
 # prune-ticket
@@ -30,12 +28,12 @@ and a place in the repository's real documentation. Nothing else survives.
 The `close` tool reads the ticket's rows and git and answers with text; you write the archive
 files and delete the directory. Read `references/archive-schema.md` before the first run.
 
-**Argument:** the ticket's slug, given when the skill was started: "$ARGUMENTS". Empty quotes mean
-none was given, and the ticket is the session's active one.
+**Argument:** the ticket's slug, the text the user wrote after the skill name. When nothing
+follows the name, the ticket is the session's active one.
 
 ## 1. Refuse live work
 
-Call `mcp__plugin_mightymodels_state__close` with action `check`:
+Call `state/close` with action `check`:
 
 ```json
 {"request": {"action": "check", "slug": "SLUG"}}
@@ -84,8 +82,8 @@ reports are in the directory step 4 deletes.
 The tool has no prune. This step is Bash and removes `.mightymodels/SLUG`, nothing else. List
 what will go: that directory and its contents. The ticket's rows, its linked ledgers included,
 stay in the database, and both archive files stay under `.mightymodels/archives/`. Ask once through
-`AskUserQuestion`, one question with two options: delete the directory, or keep it. Only on a
-yes, call `close` with action `check` again, call `mcp__plugin_mightymodels_state__ticket` with
+`ask_user`, one question with two options: delete the directory, or keep it. Only on a
+yes, call `close` with action `check` again, call `state/ticket` with
 action `show` and read `status closed`, and confirm both archive files exist at the paths step 2
 wrote. Any miss: stop and delete nothing, so a failed close never becomes a lost ticket. Then,
 from the repository root, with `SLUG` the slug those calls accepted (the tools take only

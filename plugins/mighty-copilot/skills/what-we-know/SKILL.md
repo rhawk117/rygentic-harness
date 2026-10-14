@@ -7,19 +7,17 @@ description: >-
   proposed change), closing with a readiness read for the next stage. Reads the persisted
   lets-investigate ledger, treats entries from an older HEAD as leads to re-verify, and writes
   current verdicts back; assembles from cited facts or one scout wave otherwise. Interactive mode resolves
-  uncertainties via AskUserQuestion; sprint mode (inside agents-assemble) compiles per-task
+  uncertainties via ask_user; sprint mode (inside agents-assemble) compiles per-task
   citations and files-in-scope and never asks.
   Not for summarizing a repository, writing docs, or general knowledge questions.
-when_to_use: >-
   Use for "what do we know", "summarize what
   we've learned", "where are the unknowns", "consolidate the findings", "before we ticket
   / plan / decide, what is verified", "do the swot pass", and as the facts packet before
   ask-an-adult.
-argument-hint: "[question or claim]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__investigation
-  - mcp__plugin_mightymodels_state__similarity
+  - ask_user
+  - state/investigation
+  - state/similarity
 ---
 
 # what-we-know
@@ -37,13 +35,13 @@ right; the same pause inside a running sprint stalls the loop on questions nobod
 **Mode detection:** sprint mode when invoked from agents-assemble, when a `briefs/` directory
 exists in the active ticket, or when the dispatch says so. Interactive otherwise.
 
-**Argument:** the question or claim to consolidate, given when the skill was started:
-"$ARGUMENTS". Empty quotes mean nothing was given, and the target comes from the conversation or
+**Argument:** the question or claim to consolidate, the text the user wrote after the skill name.
+When nothing follows the name, the target comes from the conversation or
 from the skill that called this one.
 
 The ledger belongs to lets-investigate, and this skill reads and writes it only through the
 `investigation` tool, so the rows have one writer: call
-`mcp__plugin_mightymodels_state__investigation`. The ledger-schema reference of lets-investigate,
+`state/investigation`. The ledger-schema reference of lets-investigate,
 `${CLAUDE_PLUGIN_ROOT}/skills/lets-investigate/references/ledger-schema.md`, describes the
 fields.
 
@@ -94,8 +92,7 @@ attempt. Each carries either what an inference rests on or where the answer live
 exceed about six, group them and ask the user which matter; twenty questions is a failed
 triage wearing thoroughness as a costume.
 
-**4. Resolve through `AskUserQuestion`.** One dialog, up to four questions a call with two to
-four options each (the user can always type an answer of their own), only for uncertainties
+**4. Resolve through `ask_user`.** One dialog (the user can always type an answer of their own), only for uncertainties
 the user can actually answer (intent, production observations, history, priorities). Uncertainties a scout could answer get one more narrow dispatch instead
 of a question; uncertainties nobody can answer yet are recorded as such. Record each answer as
 a known with source `user`. When no dialog is available, list the questions you
@@ -103,7 +100,7 @@ would ask, state a working assumption for each, and proceed on the assumptions l
 assumptions.
 
 **Persist before analysing.** Write the session's verdicts in one batch with
-`mcp__plugin_mightymodels_state__investigation`: its `request` holds action `add`, and the
+`state/investigation`: its `request` holds action `add`, and the
 `payload`'s own `request` is `{"round": N}` (the next round after the ledger's latest):
 
 ```json
@@ -176,7 +173,7 @@ plan and the ASKED stanza; adding a SWOT per task is context spent on a question
 ## Both modes
 
 Before a scout wave, search what the plugin already holds for this repository (ledger entries,
-scout reports, review findings and crashouts) through `mcp__plugin_mightymodels_state__similarity`:
+scout reports, review findings and crashouts) through `state/similarity`:
 
 ```json
 {"request": {"action": "search", "query": "<the target or the task's intent>"}}

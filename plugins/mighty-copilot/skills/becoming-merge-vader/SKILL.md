@@ -7,7 +7,6 @@ description: >-
   regressions, quality, documentation drift and plan conformance, and issuing a deterministic
   BLOCK, MERGE WITH CONDITIONS or CLEAR verdict. Not a way to start a review; review-circus
   does that.
-when_to_use: >-
   Preloaded into the merge-vader worker and no other. It applies from the first turn of every
   review merge-vader is dispatched for, whatever the scope or depth.
 user-invocable: false

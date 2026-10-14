@@ -1,6 +1,6 @@
 # Review state
 
-Read before the first `review` call in a session, and before another skill reads a review run. The `review` tool (`mcp__plugin_mightymodels_state__review`) is the only writer of a run's rows; `snapshot` and `close` read a ticket's latest run and write none.
+Read before the first `review` call in a session, and before another skill reads a review run. The `review` tool (`state/review`) is the only writer of a run's rows; `snapshot` and `close` read a ticket's latest run and write none.
 
 ## What a run keeps
 

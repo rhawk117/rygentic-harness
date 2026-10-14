@@ -2,23 +2,21 @@
 name: review-circus
 description: >-
   Review a diff, branch, ticket, or whole codebase with the mightymodels persona reviewers. One
-  AskUserQuestion gate sets depth (quick runs its reviewers on sonnet, standard and deep on opus), persona
+  ask_user gate sets depth (quick runs its reviewers on sonnet, standard and deep on opus), persona
   emphasis, and scope; the `review` tool records the run, mightymodels review-metrics and review-signals
   measure, merge-vader and uncle-bob report, and the tool reads their reports
-  and merges overlapping findings, presented by id through AskUserQuestion. Only the findings
+  and merges overlapping findings, presented by id through ask_user. Only the findings
   the user picks go to remediation, risk first, through the `task` tool; an abridged PR comment
   is always posted. Not for fixing CI (stick-the-landing) or mid-sprint work
   (agents-assemble).
-when_to_use: >-
   Use for
   "run the review circus", "review the sprint", "full review pass", "both reviewers on this", and
   for a quick single-persona pass: "quick merge-vader on this branch", "uncle-bob this module",
   "is this safe to merge".
-argument-hint: "[diff | branch | ticket <slug> | codebase]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__review
-  - mcp__plugin_mightymodels_state__task
+  - ask_user
+  - state/review
+  - state/task
 ---
 
 # review-circus
@@ -32,7 +30,7 @@ Run the commands from the repository root. `${CLAUDE_SKILL_DIR}` is this skill's
 Claude Code substitutes in this file as an absolute path. Subagents do not inherit it, so every
 path a dispatch carries is absolute.
 
-- `mcp__plugin_mightymodels_state__review` records the run, the findings, and the decisions.
+- `state/review` records the run, the findings, and the decisions.
 - `mightymodels review-metrics` measures structure (fan-in, fan-out, cycles, sizes); it is a bare Bash command (the plugin's `bin/` is on the Bash PATH).
 - `mightymodels review-signals` measures git history (churn, coupling, hotspots); it is a bare Bash command (the plugin's `bin/` is on the Bash PATH).
 
@@ -42,13 +40,13 @@ worker through prompting-subagents.
 
 ## 1. Profile
 
-**Argument:** the scope to review (diff, branch, ticket with its slug, or codebase), given when the
-skill was started: "$ARGUMENTS". Empty quotes mean none was given, and the scope is settled as
+**Argument:** the scope to review (diff, branch, ticket with its slug, or codebase), the text the
+user wrote after the skill name. When nothing follows the name, the scope is settled as
 below.
 
 The profile is the scope, the depth and the emphasis of the review. Say what each depth costs
 (profiles.md): quick is one persona on sonnet, standard and deep run their reviewers on opus.
-Then record the profile with `mcp__plugin_mightymodels_state__review` and action `start`,
+Then record the profile with `state/review` and action `start`,
 carrying only what the conversation has already settled. The tool puts each of `scope`, `depth`
 and `emphasis` that the payload leaves out to the user and starts the run with the answers:
 
@@ -57,7 +55,7 @@ and `emphasis` that the payload leaves out to the user and starts the run with t
 ```
 
 An answer starting `needs input` means no one could be asked through the tool: put each question
-it names to the user in one `AskUserQuestion` dialog, then call again with those arguments in the
+it names to the user in one `ask_user` dialog, then call again with those arguments in the
 payload. A scope of branch needs `base`, a scope of ticket needs `slug`, and an emphasis of custom
 needs `weights`; a refusal naming one of them means: ask the user for it, then call again.
 
@@ -116,7 +114,7 @@ web-scout too, and nothing else. Write each response unchanged to `RUNDIR/MERGE-
 
 ## 4. Record the reports
 
-Call `mcp__plugin_mightymodels_state__review` with action `add`, once per persona in the run:
+Call `state/review` with action `add`, once per persona in the run:
 
 ```json
 {"request": {"action": "add", "run_id": "20261005-103000", "payload": {"persona": "merge-vader"}}}
@@ -136,7 +134,7 @@ the gate again and call `dispose` for them again before any remediation continue
 Always, when any finding exists. Show the user the `review` answer to action `gate`: findings
 by severity, security first, then by persona weight, with sources, location, any severity
 conflict, and the decision so far. Then take the findings one at a time, in gate order. For each
-`Fn`, call `mcp__plugin_mightymodels_state__review` with action `dispose` and a `payload` holding
+`Fn`, call `state/review` with action `dispose` and a `payload` holding
 `finding` and no `decisions`; the tool asks the user what to do with that finding and records the answer. Two of
 the choices need a reason, which the tool asks with the choice. A severity conflict is settled
 here by the decision the user makes about it:
@@ -146,7 +144,7 @@ here by the decision the user makes about it:
 ```
 
 The answer says which findings are still undecided. An answer starting `needs input` means no one
-could be asked through the tool: put the question it names to the user in one `AskUserQuestion`
+could be asked through the tool: put the question it names to the user in one `ask_user`
 dialog, then call again with `payload` `decisions` for that finding (several findings may go in one call):
 
 ```json
@@ -158,7 +156,7 @@ Nothing the user did not pick is remediated.
 ## 6. Comment the PR, always
 
 Pass or fail, one finding or twenty: render the report and the abridged comment, check the
-comment, and post it. `mcp__plugin_mightymodels_state__review` with action `report` returns
+comment, and post it. `state/review` with action `report` returns
 text and writes no file, so the primary writes the full report (the call without `payload`) to
 `RUNDIR/report.md` and this call's answer to `RUNDIR/pr-comment.md`:
 
@@ -189,7 +187,7 @@ each finding `Fn` chosen for fixing:
    id the Verify line goes under (agents-assemble's call). That number is the task's own and
    not the finding's: a sprint residual may hold `R1` already, so `F1` can be fixed under `R2`.
 2. The finding's Verify command goes to the user as contract id `R<n>.AC-1`, under that task
-   id, in one `AskUserQuestion` dialog, then `contract` `approve` with it as a `commands`
+   id, in one `ask_user` dialog, then `contract` `approve` with it as a `commands`
    entry (game-plan's call).
 3. Dispatch an **engineer**: the residual variant for a single-concern merge-vader finding
    with usable Fix and Verify lines; the full template for uncle-bob findings, findings both

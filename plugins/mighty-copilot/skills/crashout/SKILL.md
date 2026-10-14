@@ -1,13 +1,12 @@
 ---
 name: crashout
-description: Use when the user explicitly invokes crashout to record dissatisfaction, diagnose the failure, and await approval before resuming work.
-when_to_use: >-
+description: >-
+  Use when the user explicitly invokes crashout to record dissatisfaction, diagnose the failure, and await approval before resuming work.
   The user types /crashout with a rant about what the session got wrong, or /crashout journal to
   read back what earlier rants recorded.
-argument-hint: "[rant | journal]"
 disable-model-invocation: true
 allowed-tools:
-  - mcp__plugin_mightymodels_state__crashout
+  - state/crashout
 ---
 
 # crashout
@@ -26,7 +25,7 @@ Two modes:
 Invoked bare, with no rant and no journal keyword: the floor is theirs. Reply
 with one short line inviting the rant and nothing else.
 
-**Argument:** what followed `/crashout` this time: "$ARGUMENTS". Empty quotes are the bare
+**Argument:** the text the user wrote after `/crashout`. Nothing after it is the bare
 invocation above.
 
 ## Intake protocol
@@ -58,7 +57,7 @@ before you have read the last one.
 
 Before diagnosing, look at whether this has happened before:
 
-Call `mcp__plugin_mightymodels_state__crashout` with action `stats`:
+Call `state/crashout` with action `stats`:
 
 ```json
 {"request": {"action": "stats"}}
@@ -105,7 +104,7 @@ either way the journal records a lie and the pattern data rots.
 ### 6. Journal it
 
 Append the entry before you respond, while the state is raw. Call
-`mcp__plugin_mightymodels_state__crashout` with action `add`; the tool validates the entry:
+`state/crashout` with action `add`; the tool validates the entry:
 
 ```json
 {"request": {"action": "add", "entry": {"severity": "crashout", "verdict": "deserved",
@@ -233,7 +232,7 @@ Rules of the bark:
 On `/crashout journal`, read the journal and report the pattern, not the
 diary:
 
-Call `mcp__plugin_mightymodels_state__crashout` with action `stats`:
+Call `state/crashout` with action `stats`:
 
 ```json
 {"request": {"action": "stats"}}
@@ -251,7 +250,7 @@ Present, compactly:
 - the standing corrective actions currently in force
 - the most recent entry, briefly
 
-For the most recent entry, call `mcp__plugin_mightymodels_state__crashout` with action `last`:
+For the most recent entry, call `state/crashout` with action `last`:
 
 ```json
 {"request": {"action": "last"}}

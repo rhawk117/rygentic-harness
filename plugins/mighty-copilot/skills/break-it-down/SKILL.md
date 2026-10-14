@@ -5,18 +5,16 @@ description: >-
   and put the split to the user before anything changes. Use when the `task` tool's `start`
   refuses a task for more than four acceptance criteria or more than ten owned files, when an
   engineer or architect returns `too-large` with its cuts, or when a plan task is plainly several
-  changes. Ends in one AskUserQuestion dialog showing every piece (id, intent, acceptance, owned
+  changes. Ends in one ask_user dialog showing every piece (id, intent, acceptance, owned
   files); only after the user answers is the original superseded and the plan updated. Not for
   revising the contract of one task (the architect's `replanned`), and not a way to get a large
   task past the refusal.
-when_to_use: >-
   Use for "break this task down", "split T4", "this task is too big", and when agents-assemble
   routes a `too-large` report or a `start` refusal here.
-argument-hint: "[task id]"
 allowed-tools:
-  - AskUserQuestion
-  - mcp__plugin_mightymodels_state__contract
-  - mcp__plugin_mightymodels_state__task
+  - ask_user
+  - state/contract
+  - state/task
 ---
 
 # break-it-down
@@ -37,8 +35,8 @@ ask in prose instead, and do not start on a piece while you wait.
 one sentence or leaving a file out of `owned` gets a call past `start` and leaves the task exactly
 as large. The gate then blocks the commit for the file that was left out.
 
-**Argument:** the id of the task to split, given when the skill was started: "$ARGUMENTS". Empty
-quotes mean none was given, and the task is the one `start` just refused or a worker just returned
+**Argument:** the id of the task to split, the text the user wrote after the skill name. When
+nothing follows the name, the task is the one `start` just refused or a worker just returned
 as `too-large`.
 
 **Preconditions:** a staged ticket and the task's entry in the task list (`plan.md`, or the
@@ -48,7 +46,7 @@ issue's task list after one-shot). Missing either: stop and name it.
 
 **1. Read the task as it stands.** Its entry in the task list (intent, acceptance, `depends-on`,
 verify), the ASKED stanza of its brief when one was written, and its status from
-`mcp__plugin_mightymodels_state__task` with action `show`:
+`state/task` with action `show`:
 
 ```json
 {"request": {"action": "show", "slug": "SLUG"}}
@@ -86,7 +84,7 @@ approved id never changes its argv, so the old ids close with the original. Each
 the original in `depends-on` will name the piece that carries what it waited for.
 
 **4. Ask the user once.** Write the pieces out in full in your message, then open one
-`AskUserQuestion` dialog about them. Each piece shows its id, its intent, its acceptance and its
+`ask_user` dialog about them. Each piece shows its id, its intent, its acceptance and its
 owned files:
 
 ```text
@@ -110,7 +108,7 @@ The dialog has one question with these options:
 
 **Split as shown.** In this order, so that a session cut off halfway still has a true record:
 
-1. Supersede the original with `mcp__plugin_mightymodels_state__task` and action `mark`, the
+1. Supersede the original with `state/task` and action `mark`, the
    reason naming the pieces. The tool takes this for a task `start` refused, which never
    started, as it does for one a worker returned:
 
@@ -122,7 +120,7 @@ The dialog has one question with these options:
    it). Under the original's heading leave one line, `superseded: split into T7, T8, T9`, in place
    of its acceptance and verify. Add the pieces in dependency order, and repoint each `depends-on`
    as the dialog listed.
-3. Record the pieces' commands with `mcp__plugin_mightymodels_state__contract` and action
+3. Record the pieces' commands with `state/contract` and action
    `approve`. The user approved each id and argv in the dialog, so each command carries that:
 
    ```json
@@ -136,7 +134,7 @@ The dialog has one question with these options:
 **Keep it as one task.** Split nothing and change nothing in the task list. A task a worker
 returned as `too-large` is still in progress, and `start` does not take one: `mark` it `blocked`
 with that reason first. Then start the task with the call `start` refused and one more field,
-which the tool accepts only as `user` (`mcp__plugin_mightymodels_state__task`, action `start`):
+which the tool accepts only as `user` (`state/task`, action `start`):
 
 ```json
 {"request": {"action": "start", "slug": "SLUG", "payload": {"task_id": "T4", "change": {"by": "engineer", "owned": ["<files-in-scope>"], "acceptance": ["AC-1", "AC-2", "AC-3", "AC-4", "AC-5"], "too_large_approved_by": "user"}}}}
