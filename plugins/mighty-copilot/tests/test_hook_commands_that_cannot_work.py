@@ -4,7 +4,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from mightymodels.commands.session_start import ENV_FILE_VARIABLE
 from mightymodels.commands.tests.hook_inputs import (
     SKIPPED,
     Hook,
@@ -26,7 +25,6 @@ def database_with_another_schema_version(data_directory: Path) -> None:
 
 INPUTS = MappingProxyType(
     {
-        'session-start': '{}',
         'subagent-record': scout_stop(),
         'completion-gate': implementer_stop(),
         'pre-compact': hook_input('PreCompact'),
@@ -37,10 +35,9 @@ INPUTS = MappingProxyType(
 class TestWhenAHookCannotWork:
     @pytest.fixture
     def without_a_data_directory(
-        self, hook_repository: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, hook_repository: Path, monkeypatch: pytest.MonkeyPatch
     ) -> Path:
         monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
-        monkeypatch.setenv(ENV_FILE_VARIABLE, str(tmp_path.joinpath('session-env.sh')))
         return hook_repository
 
     @pytest.fixture

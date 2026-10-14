@@ -1,55 +1,36 @@
 """The `mightymodels session-start` command, which the plugin's SessionStart hook runs.
 
-A command run through the Bash tool has none of the plugin's variables, so `verify run` could not
-find the state database the server opened. The hook has the data directory and the session's env
-file, and Claude Code sets what that file exports in every later Bash command of the session, a
-subagent's included. The command appends one line there, the export of the data directory, unless
-the file already holds that line, and does nothing else: it creates no directory and prints
-nothing. A last line that has no newline is read as a whole line:
-when it is the export the file is left as it is, and when it is anything else the command ends it
-with a newline first, so the export starts a line of its own. The file is read and written with no
-newline translation and the export is looked for as the text the command writes, where a line
-starts, so one whose directory name holds a newline, a form feed or a carriage return is found as
-well. When the variable or the env file is missing it says so on standard error and exits 0.
+A Copilot SessionStart hook has no env file to export into, and the plugin's `bin/` is not known
+to be on the shell's PATH. The command prints the absolute path of the launcher and the plugin
+root, both worked out from where this package sits (`<root>/src/mightymodels/commands`, run by
+`<root>/bin/mightymodels`), as one JSON object on standard output. The text is `additionalContext`
+at the top level and under `hookSpecificOutput`, so a skill can run the CLI at that path. The
+command writes no file and reads no variable.
 """
 
-from collections.abc import Mapping
 from pathlib import Path
+from typing import BinaryIO
 
-from mightymodels.commands.rejection import skipped
-from mightymodels.core.data_directory import (
-    PLUGIN_DATA_VARIABLE,
-    DataDirectoryMissingError,
-    data_directory_from,
-    export_line,
-)
-from mightymodels.core.errors import StateError
+from mightymodels.core.codec import encode_compact
 
-ENV_FILE_VARIABLE = 'CLAUDE_ENV_FILE'
+PLUGIN_ROOT = Path(__file__).resolve().parents[3]
+HOOK_EVENT = 'SessionStart'
+LAUNCHER_NAME = 'mightymodels'
 
 
-class EnvFileMissingError(StateError):
-    def __init__(self) -> None:
-        super().__init__(
-            f'{ENV_FILE_VARIABLE} is not set, so there is no session env file to export the '
-            'plugin data directory to; Claude Code sets it for a SessionStart hook'
-        )
+def announcement() -> str:
+    launcher = PLUGIN_ROOT.joinpath('bin', LAUNCHER_NAME)
+    return (
+        f'The mightymodels CLI is at {launcher}; run it by that absolute path, since the '
+        f"plugin's bin directory may not be on the PATH. The plugin root is {PLUGIN_ROOT}."
+    )
 
 
-def export_data_directory(environ: Mapping[str, str]) -> int:
-    data_directory = data_directory_from(environ, PLUGIN_DATA_VARIABLE)
-    if isinstance(data_directory, DataDirectoryMissingError):
-        return skipped(data_directory)
-    env_file = environ.get(ENV_FILE_VARIABLE, '')
-    if not env_file:
-        return skipped(EnvFileMissingError())
-    line = export_line(data_directory)
-    exports = Path(env_file)
-    held = exports.read_text(encoding='utf-8', newline='') if exports.is_file() else ''
-    missing_newline = '\n' if held and not held.endswith('\n') else ''
-    whole_lines = f'{held}{missing_newline}'
-    if whole_lines.startswith(line) or f'\n{line}' in whole_lines:
-        return 0
-    with exports.open('a', encoding='utf-8', newline='') as file:
-        file.write(f'{missing_newline}{line}')
+def announce(output: BinaryIO) -> int:
+    context = announcement()
+    document = {
+        'additionalContext': context,
+        'hookSpecificOutput': {'hookEventName': HOOK_EVENT, 'additionalContext': context},
+    }
+    output.write(encode_compact(document) + b'\n')
     return 0

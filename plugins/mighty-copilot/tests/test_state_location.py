@@ -15,18 +15,14 @@ from pathlib import Path
 
 import pytest
 from mightymodels.cli import build_parser, main
-from mightymodels.commands.session_start import ENV_FILE_VARIABLE
-from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
+from mightymodels.core.data_directory import SESSION_DATA_VARIABLE
 from mightymodels.core.database import BUSY_TIMEOUT, DATABASE_NAME, SCHEMA_VERSION, Database
 from mightymodels.core.tests.support import GitRunner
 from mightymodels.core.workspace import STATE_DIRECTORY
 from mightymodels.tools.tests.slug_calls import SHOW, SLUG, VALIDATE, WRITE, slug_results
 from mightymodels.tools.tests.state_location import (
-    NOT_SET,
     PASSED,
     VERIFY_RUN,
-    KeptFile,
-    kept,
 )
 from mightymodels.tools.tests.support import StateServer, ToolCall, tree
 
@@ -202,197 +198,8 @@ class TestAnOriginThatIsNotExactlyAnOwnerAndAName:
         assert capsys.readouterr().out.startswith('I1 pass ')
 
 
-@pytest.fixture
-def env_file(tmp_path: Path) -> Path:
-    return tmp_path.joinpath('session-env.sh')
-
-
-@pytest.fixture
-def hook_env_file(data_directory: Path, env_file: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))
-    monkeypatch.setenv(ENV_FILE_VARIABLE, str(env_file))
-    return env_file
-
-
-class TestSessionStartExport:
-    OTHER_EXPORT = 'export OTHER_PLUGIN_DATA=/elsewhere\n'
-
-    @pytest.fixture
-    def data_directory(self, tmp_path: Path) -> Path:
-        return tmp_path.joinpath("the plugin's $data; directory")
-
-    @pytest.fixture
-    def hook_env_file_with_another_export(self, hook_env_file: Path) -> Path:
-        hook_env_file.write_text(self.OTHER_EXPORT, encoding='utf-8')
-        return hook_env_file
-
-    @pytest.fixture
-    def hook_env_file_with_no_final_newline(self, hook_env_file: Path) -> Path:
-        hook_env_file.write_text(self.OTHER_EXPORT.removesuffix('\n'), encoding='utf-8')
-        return hook_env_file
-
-    @pytest.fixture
-    def hook_env_file_with_the_export_and_no_final_newline(self, hook_env_file: Path) -> Path:
-        main(SESSION_START)
-        exported = hook_env_file.read_text(encoding='utf-8')
-        hook_env_file.write_text(exported.removesuffix('\n'), encoding='utf-8')
-        return hook_env_file
-
-    def test_it_appends_one_shell_quoted_export_of_the_data_directory_and_nothing_else(
-        self, data_directory: Path, hook_env_file: Path, tmp_path: Path
-    ) -> None:
-        code = main(SESSION_START)
-        exported = hook_env_file.read_text(encoding='utf-8')
-
-        assert code == PASSED
-        assert exported.count('\n') == 1
-        assert shlex.split(exported) == ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
-        assert set(tree(tmp_path)) == {hook_env_file.name}
-
-    def test_it_keeps_what_the_env_file_already_exports(
-        self, hook_env_file_with_another_export: Path, data_directory: Path
-    ) -> None:
-        main(SESSION_START)
-        exports = hook_env_file_with_another_export.read_text(encoding='utf-8')
-        kept_line, exported = exports.splitlines(keepends=True)
-
-        assert kept_line == self.OTHER_EXPORT
-        assert shlex.split(exported) == ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
-
-    def test_run_twice_it_appends_the_export_once(
-        self, data_directory: Path, hook_env_file_with_another_export: Path
-    ) -> None:
-        main(SESSION_START)
-        main(SESSION_START)
-        exports = hook_env_file_with_another_export.read_text(encoding='utf-8').splitlines()
-
-        assert exports[0] == self.OTHER_EXPORT.strip()
-        assert [shlex.split(line) for line in exports[1:]] == [
-            ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
-        ]
-
-    @pytest.mark.parametrize(
-        'runs',
-        [
-            pytest.param(1, id='no-final-newline-run-once'),
-            pytest.param(2, id='no-final-newline-run-twice'),
-        ],
-    )
-    def test_after_a_line_with_no_newline_it_exports_once_on_a_line_of_its_own(
-        self, runs: int, data_directory: Path, hook_env_file_with_no_final_newline: Path
-    ) -> None:
-        for _ in range(runs):
-            main(SESSION_START)
-        exports = hook_env_file_with_no_final_newline.read_text(encoding='utf-8')
-        kept_line, exported = exports.splitlines(keepends=True)
-
-        assert kept_line == self.OTHER_EXPORT
-        assert shlex.split(exported) == ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
-
-    def test_it_appends_no_second_copy_of_an_export_with_no_final_newline(
-        self, data_directory: Path, hook_env_file_with_the_export_and_no_final_newline: Path
-    ) -> None:
-        main(SESSION_START)
-        exports = hook_env_file_with_the_export_and_no_final_newline.read_text(encoding='utf-8')
-
-        assert [shlex.split(line) for line in exports.splitlines()] == [
-            ['export', f'{SESSION_DATA_VARIABLE}={data_directory}']
-        ]
-
-    @pytest.mark.usefixtures('hook_env_file')
-    def test_it_prints_nothing(self, capsys: pytest.CaptureFixture[str]) -> None:
-        main(SESSION_START)
-
-        assert capsys.readouterr() == ('', '')
-
-
-class TestSessionStartExportWithALineBoundaryInTheName:
-    LINE_BOUNDARIES = (
-        pytest.param('\n', id='newline-in-the-name'),
-        pytest.param('\x0c', id='form-feed-in-the-name'),
-        pytest.param('\r', id='carriage-return-in-the-name'),
-    )
-
-    @pytest.fixture(params=LINE_BOUNDARIES)
-    def data_directory(self, request: pytest.FixtureRequest, tmp_path: Path) -> Path:
-        return tmp_path.joinpath(f'the plugin{request.param}data directory')
-
-    @pytest.fixture
-    def env_file_after_one_run(self, hook_env_file: Path) -> KeptFile:
-        main(SESSION_START)
-        return kept(hook_env_file)
-
-    def test_a_second_run_leaves_the_env_file_as_the_first_run_left_it_holding_one_export(
-        self, data_directory: Path, env_file_after_one_run: KeptFile
-    ) -> None:
-        main(SESSION_START)
-
-        assert env_file_after_one_run.is_as_it_was()
-        assert shlex.split(env_file_after_one_run.content.decode()) == [
-            'export',
-            f'{SESSION_DATA_VARIABLE}={data_directory}',
-        ]
-
-
-class TestSessionStartWithAVariableMissing:
-    @pytest.fixture
-    def without_a_data_directory(self, env_file: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv(PLUGIN_DATA_VARIABLE, raising=False)
-        monkeypatch.setenv(ENV_FILE_VARIABLE, str(env_file))
-
-    @pytest.fixture
-    def without_an_env_file(self, data_directory: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))
-        monkeypatch.delenv(ENV_FILE_VARIABLE, raising=False)
-
-    @pytest.mark.usefixtures('without_a_data_directory')
-    def test_without_a_data_directory_it_skips_naming_the_variable_and_writes_nothing(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        code = main(SESSION_START)
-
-        assert code == PASSED
-        assert f'{SKIPPED}{PLUGIN_DATA_VARIABLE} {NOT_SET}' in capsys.readouterr().err
-        assert tree(tmp_path) == {}
-
-    @pytest.mark.usefixtures('without_an_env_file')
-    def test_without_an_env_file_it_skips_naming_the_variable_and_writes_nothing(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        code = main(SESSION_START)
-
-        assert code == PASSED
-        assert f'{SKIPPED}{ENV_FILE_VARIABLE} is not set' in capsys.readouterr().err
-        assert tree(tmp_path) == {}
-
-
 class TestTheSessionStartHook:
     HOOKS = PLUGIN.joinpath('hooks', 'hooks.json')
-
-    @pytest.fixture
-    def session_after_the_hook(
-        self, approved_command: StateServer, hook_env_file: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> StateServer:
-        main(SESSION_START)
-        _, assignment = shlex.split(hook_env_file.read_text(encoding='utf-8'))
-        name, _, value = assignment.partition('=')
-        monkeypatch.delenv(PLUGIN_DATA_VARIABLE)
-        monkeypatch.setenv(name, value)
-        monkeypatch.chdir(str(approved_command.root))
-        return approved_command
-
-    @pytest.mark.usefixtures('first_commit')
-    def test_with_what_the_hook_exported_verify_run_opens_the_database_the_server_wrote(
-        self, session_after_the_hook: StateServer, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        code = main(VERIFY_RUN)
-        (status,) = slug_results(session_after_the_hook, STATUS)
-
-        assert code == PASSED
-        assert capsys.readouterr().out.startswith('I1 pass ')
-        assert [command['state'] for command in status.structured_content['commands']] == [
-            'pass task expect=0'
-        ]
 
     def test_the_plugin_registers_this_command_as_its_one_session_start_hook(self) -> None:
         hooks = json.loads(self.HOOKS.read_text(encoding='utf-8'))['hooks']

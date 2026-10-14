@@ -17,7 +17,6 @@ from types import MappingProxyType
 import pytest
 import sqlalchemy as sql
 from mightymodels.cli import build_parser
-from mightymodels.commands.session_start import ENV_FILE_VARIABLE
 from mightymodels.commands.tests.hook_inputs import (
     OTHER_AGENTS,
     REPORT,
@@ -27,7 +26,6 @@ from mightymodels.commands.tests.hook_inputs import (
     hook_input,
     scout_stop,
 )
-from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
 from mightymodels.core.database import Database
 from mightymodels.core.declarative import REPORT_LIMIT
 from mightymodels.core.repository_key import spool_file_prefix
@@ -128,37 +126,6 @@ class TestHooksJson:
             'subagent-record': '^mightymodels:triage:(code-scout|web-scout)$',
             'completion-gate': '^mightymodels:workers:(engineer|architect|intern)$',
         }
-
-
-class TestSessionBootstrap:
-    @pytest.fixture
-    def env_file(
-        self, tmp_path: Path, data_directory: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> Path:
-        file = tmp_path.joinpath('session-env.sh')
-        monkeypatch.setenv(PLUGIN_DATA_VARIABLE, str(data_directory))
-        monkeypatch.setenv(ENV_FILE_VARIABLE, str(file))
-        return file
-
-    def test_it_appends_the_export_of_the_data_directory(
-        self, env_file: Path, data_directory: Path, hook_command: Hook
-    ) -> None:
-        code, out, err = hook_command.run('session-start', '{}')
-
-        assert (code, out, err) == (0, '', '')
-        assert shlex.split(env_file.read_text(encoding='utf-8')) == [
-            'export',
-            f'{SESSION_DATA_VARIABLE}={data_directory}',
-        ]
-
-    def test_it_appends_no_second_copy_of_a_line_already_there(
-        self, env_file: Path, hook_command: Hook
-    ) -> None:
-        hook_command.run('session-start', '{}')
-        once = env_file.read_text(encoding='utf-8')
-        hook_command.run('session-start', '{}')
-
-        assert env_file.read_text(encoding='utf-8') == once
 
 
 class TestSubagentRecorder:

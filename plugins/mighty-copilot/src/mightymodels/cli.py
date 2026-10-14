@@ -21,7 +21,7 @@ from mightymodels.commands.hook_context import HookContext
 from mightymodels.commands.main_thread_hook import check_main_thread
 from mightymodels.commands.review_metrics import review_metrics
 from mightymodels.commands.review_signals import review_signals
-from mightymodels.commands.session_start import export_data_directory
+from mightymodels.commands.session_start import announce
 from mightymodels.commands.started_tasks import HookState
 from mightymodels.commands.verify import verify_run
 
@@ -174,7 +174,7 @@ def session_hook_context() -> HookContext:
 
 def run_hook_command(arguments: argparse.Namespace) -> int | None:
     if arguments.command == SESSION_START_COMMAND:
-        return export_data_directory(os.environ)
+        return announce(sys.stdout.buffer)
     if (check := TOOL_CHECKS.get(arguments.command)) is not None:
         context = session_hook_context()
         return check(context.stdin, sys.stdout.buffer, HookState(context=context))
