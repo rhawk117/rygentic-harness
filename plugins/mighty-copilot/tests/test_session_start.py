@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from mightymodels.cli import main
 from mightymodels.core.codec import decode_text
+from mightymodels.core.data_directory import PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = PLUGIN_ROOT.joinpath('bin', 'mightymodels')
@@ -47,7 +48,7 @@ class TestSessionStart:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        for variable in ('CLAUDE_PLUGIN_DATA', 'MIGHTYMODELS_DATA_DIR'):
+        for variable in (PLUGIN_DATA_VARIABLE, SESSION_DATA_VARIABLE):
             monkeypatch.delenv(variable, raising=False)
         monkeypatch.chdir(tmp_path)
 
