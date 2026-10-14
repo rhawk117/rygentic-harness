@@ -144,7 +144,7 @@ stop at the gate and say so. A gate on an unpersisted round is the loss this ski
 prevent.
 
 **5. Stop at the gate.** Open an `ask_user` dialog with the round's decision and any questions
-held for the user, batched into one call. The decision offers exactly
+held for the user. The decision offers exactly
 these choices:
 
 - **Sufficient**: consolidate through what-we-know.
