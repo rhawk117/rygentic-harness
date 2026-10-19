@@ -3,7 +3,7 @@
   "owner": {
     "name": "rhawk117"
   },
-  "description": "rygentic-harness: all of the agentic tooling I use with Claude Code every day. Three plugins: mightymodels, vibe-code and python-harness.",
+  "description": "rygentic-harness: all of the agentic tooling I use with Claude Code every day. Four plugins: mightymodels, vibe-code, python-harness and terraform-harness.",
   "plugins": [
     {
       "name": "mightymodels",
@@ -42,6 +42,35 @@
       "source": "./plugins/python-harness",
       "description": "Python engineering for Claude Code: eight skills (build-web-service, enterprise-design, design-persistence, design-tests, data-engineering, data-analysis, automate-task and tactical-slop-review), four agents (pylens, pep-talk, reviewer and test-engineer), the ty language server, standard-library docs on demand, and hooks that brief each session on the project's Python toolchain and a note whenever a Bash command runs plain python instead of uv run python.",
       "version": "0.2.0"
+    },
+    {
+      "name": "terraform-harness",
+      "source": {
+        "source": "github",
+        "repo": "rhawk117/cc-terraform-harness",
+        "ref": "v0.1.0"
+      },
+      "description": "Terraform and IaC repositories in Claude Code: an MCP server that checks modules, digests plans, traces change impact and looks up provider schemas, four subagents, five skills, terraform-ls, and hooks that format and check .tf files as Claude works.",
+      "version": "0.1.0",
+      "author": {
+        "name": "rhawk117"
+      },
+      "homepage": "https://github.com/rhawk117/cc-terraform-harness",
+      "repository": "https://github.com/rhawk117/cc-terraform-harness",
+      "category": "development",
+      "keywords": [
+        "terraform",
+        "iac",
+        "infrastructure-as-code",
+        "tflint",
+        "terraform-plan",
+        "provider-schema",
+        "subagents",
+        "skills",
+        "hooks",
+        "mcp",
+        "lsp"
+      ]
     }
   ]
 }
