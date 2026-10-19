@@ -192,9 +192,12 @@ automatic: `scripts/quality.sh` runs `claude plugin validate --strict` for every
 `plugins/` and for the marketplace root, which checks the manifests and the skill and agent
 frontmatter.
 
-A plugin developed in another repository gets a `github` source pinned to a release tag instead,
-the way terraform-harness does. `claude plugin validate` checks that entry's shape and does not
-fetch the plugin, so the gate here never runs against its files.
+A plugin developed in another repository gets a `url` source instead, the way terraform-harness
+does: the repository's `https://` clone URL, pinned to a release tag and that tag's commit. Use
+`url` rather than a `github` source, because a `github` source is cloned over SSH and fails with
+`Permission denied (publickey)` for anyone without a GitHub SSH key. `claude plugin validate`
+checks that entry's shape and does not fetch the plugin, so the gate here never runs against its
+files.
 
 ## Contributing
 

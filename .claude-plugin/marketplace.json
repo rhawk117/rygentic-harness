@@ -46,9 +46,10 @@
     {
       "name": "terraform-harness",
       "source": {
-        "source": "github",
-        "repo": "rhawk117/cc-terraform-harness",
-        "ref": "v0.1.0"
+        "source": "url",
+        "url": "https://github.com/rhawk117/cc-terraform-harness.git",
+        "ref": "v0.1.0",
+        "sha": "6f505df0a4a256312bc10ea0bc92ce3546ed936c"
       },
       "description": "Terraform and IaC repositories in Claude Code: an MCP server that checks modules, digests plans, traces change impact and looks up provider schemas, four subagents, five skills, terraform-ls, and hooks that format and check .tf files as Claude works.",
       "version": "0.1.0",
