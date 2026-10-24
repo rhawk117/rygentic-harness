@@ -20,7 +20,7 @@ entry points at a release tag there.
 | mightymodels | 1.0.0 | Takes a piece of work from the first question to a merged PR, with nineteen skills, twelve worker agents, seven hooks and a state server | [README](plugins/mightymodels/README.md) |
 | vibe-code | 0.4.0 | Eleven skills for building and tuning Claude Code skills, subagents, hooks, rule files, MCP servers, loops and plugins, plus a CLI that validates what they write | [README](plugins/vibe-code/README.md) |
 | python-harness | 0.2.0 | Eight Python skills, four agents, a ty language server, two hooks, a CLI and an MCP server | [README](plugins/python-harness/README.md) |
-| terraform-harness | 0.1.0 | Four Terraform agents, five skills, three hooks, the terraform-ls language server and an MCP server that checks modules, digests plans and looks up provider schemas | [README](https://github.com/rhawk117/cc-terraform-harness#readme) |
+| terraform-harness | 0.2.0 | Four Terraform agents, skills, three hooks, the terraform-ls language server and an MCP server that checks modules, digests plans and looks up provider schemas | [README](https://github.com/rhawk117/cc-terraform-harness#readme) |
 
 No plugin depends on another. Install the ones you want.
 
@@ -138,12 +138,13 @@ command. The MCP server has eight tools: two read standard-library documentation
 
 ### terraform-harness
 
-Four agents, five skills, three hooks, a language server and an MCP server for Terraform and IaC
+Four agents, skills, three hooks, a language server and an MCP server for Terraform and IaC
 repositories. The agents are `terraform-advisor`, which gives a second opinion on a Terraform
 call, `terraform-author`, which writes Terraform inside a scope it is handed,
 `terraform-edit-reviewer`, which checks a just-edited module for drift, and
 `terraform-researcher`, which answers one question about a repository. The skills are
-`check-module`, `explain-plan`, `look-up-schema`, `review-module` and `trace-change-impact`.
+`check-module`, `explain-plan`, `fix-review-findings`, `look-up-schema`, `onboard-toolchain`,
+`review-module`, `trace-change-impact` and `writing-terraform`.
 
 The hooks format a `.tf` or `.tfvars` file after Claude writes it, report `terraform validate`
 and `tflint` findings after Claude reads one, and report the terraform, tflint and terraform-ls
@@ -151,7 +152,7 @@ versions when a session starts. The MCP server describes modules, runs fmt, vali
 digests plans, traces a change's impact and looks up provider schemas.
 
 The plugin is developed in [cc-terraform-harness](https://github.com/rhawk117/cc-terraform-harness),
-not under `plugins/`, and the marketplace installs its `v0.1.0` tag. Its
+not under `plugins/`, and the marketplace installs its `v0.2.0` tag. Its
 [README](https://github.com/rhawk117/cc-terraform-harness#readme) lists every agent, skill and
 hook.
 
