@@ -9,15 +9,16 @@ terraform-harness gives Claude Code the tools to read, check and change Terrafor
 The repository runs on an "everything is a plugin" mindset, an idea I took from the DeepSeek
 harness. The root owns the marketplace manifest and the shared quality gate. Every capability
 ships as a plugin under `plugins/`, one directory each, with its own manifest, skills and agents.
-terraform-harness is the exception: it lives in its own repository,
-[cc-terraform-harness](https://github.com/rhawk117/cc-terraform-harness), and its marketplace
-entry points at a release tag there.
+mightymodels and terraform-harness are the exceptions: they live in their own repositories,
+[mightymodels](https://github.com/rhawk117/mightymodels) and
+[cc-terraform-harness](https://github.com/rhawk117/cc-terraform-harness), and their marketplace
+entries point at a release tag there.
 
 ## What's in the marketplace
 
 | Plugin | Version | What you get | Details |
 | --- | --- | --- | --- |
-| mightymodels | 1.0.0 | Takes a piece of work from the first question to a merged PR, with nineteen skills, twelve worker agents, seven hooks and a state server | [README](plugins/mightymodels/README.md) |
+| mightymodels | 1.1.0 | Context management for agentic coding: takes a piece of work from the first question to a merged PR, with nineteen skills, twelve worker agents, seven hooks and a state server | [README](https://github.com/rhawk117/mightymodels#readme) |
 | vibe-code | 0.4.0 | Eleven skills for building and tuning Claude Code skills, subagents, hooks, rule files, MCP servers, loops and plugins, plus a CLI that validates what they write | [README](plugins/vibe-code/README.md) |
 | python-harness | 0.2.0 | Eight Python skills, four agents, a ty language server, two hooks, a CLI and an MCP server | [README](plugins/python-harness/README.md) |
 | terraform-harness | 0.2.0 | Four Terraform agents, skills, three hooks, the terraform-ls language server and an MCP server that checks modules, digests plans and looks up provider schemas | [README](https://github.com/rhawk117/cc-terraform-harness#readme) |
@@ -64,8 +65,7 @@ npm install -g @anthropic-ai/claude-code@2.1.285
 ```
 
 The first line reads this repository's `.claude-plugin/marketplace.json`. Each line after it
-installs one of the plugins that file lists. [docs/claude-code.md](docs/claude-code.md) covers
-model ids, agent discovery and validation.
+installs one of the plugins that file lists.
 
 ## The plugins
 
@@ -73,7 +73,8 @@ model ids, agent discovery and validation.
 
 This is the plugin I cannot live without. It is built from the failures of spec-driven
 development, and it is oriented around human-in-the-loop decision making: scouts fetch the facts,
-the decisions come to me, and a task closes only when a command proves it. It has cut my token
+the decisions come to me, and the main session keeps its context window for judgment while
+every task runs in a worker with a clean one. It has cut my token
 consumption, the model gets more of the work right, and it has changed the way I work with AI. I have no
 numbers for that yet. Evaluating this release is what I am doing next.
 
@@ -97,7 +98,9 @@ One of my favorite features is `baton-pass`. With AI it is hard to walk away fro
 without a penalty. `baton-pass` writes down the facts that live nowhere else and prints the
 opening prompt for the next session, so the next one picks up where I stopped.
 
-The [mightymodels README](plugins/mightymodels/README.md) has the loop diagram, every skill and
+The plugin is developed in [mightymodels](https://github.com/rhawk117/mightymodels), not under
+`plugins/`, and the marketplace installs its `v1.1.0` tag. Its
+[README](https://github.com/rhawk117/mightymodels#readme) has the loop diagram, every skill and
 worker, the hooks and where the state lives.
 
 ### vibe-code
@@ -160,12 +163,10 @@ hook.
 
 ```text
 plugins/          one directory per plugin; each carries its own manifest and skills
-  mightymodels/   the dev loop: nineteen skills, twelve worker agents
   vibe-code/      authoring skills and the `vibe-code` CLI: eleven skills, no agents,
                   with its own tests and eval cases
   python-harness/ Python engineering: eight skills, four agents, a ty language server, hooks,
                   the `python-harness` CLI and an MCP server, with its own tests
-docs/             human documentation for the harness and the mightymodels plugin
 scripts/          the quality gate (`quality.sh`), checkout setup, and a log helper
 .claude-plugin/   the rygentic-harness marketplace manifest
 ```
@@ -174,15 +175,10 @@ scripts/          the quality gate (`quality.sh`), checkout setup, and a log hel
 
 | Page | What it covers |
 | --- | --- |
-| [plugins/mightymodels/README.md](plugins/mightymodels/README.md) | The mightymodels plugin: requirements, the loop, skills, workers, hooks, state |
+| [mightymodels README](https://github.com/rhawk117/mightymodels#readme) | The mightymodels plugin: requirements, the loop, skills, workers, hooks, state |
 | [plugins/vibe-code/README.md](plugins/vibe-code/README.md) | The vibe-code plugin: install, skills, CLI, launcher |
 | [plugins/python-harness/README.md](plugins/python-harness/README.md) | The python-harness plugin: install, skills, agents, language server, hooks, server, launcher, limitations |
 | [cc-terraform-harness README](https://github.com/rhawk117/cc-terraform-harness#readme) | The terraform-harness plugin: agents, skills, hooks, MCP server |
-| [docs/workflow.md](docs/workflow.md) | The full mightymodels loop, stage by stage, with diagrams |
-| [docs/skills.md](docs/skills.md) | Every mightymodels skill: what it does and when it fires |
-| [docs/agents.md](docs/agents.md) | The twelve workers and how models get routed |
-| [docs/state.md](docs/state.md) | The `.mightymodels/` directory and `ticket.yml` |
-| [docs/claude-code.md](docs/claude-code.md) | Running under Claude Code |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each plugin, version by version |
 
 ## Adding a plugin
@@ -193,8 +189,8 @@ automatic: `scripts/quality.sh` runs `claude plugin validate --strict` for every
 `plugins/` and for the marketplace root, which checks the manifests and the skill and agent
 frontmatter.
 
-A plugin developed in another repository gets a `url` source instead, the way terraform-harness
-does: the repository's `https://` clone URL, pinned to a release tag and that tag's commit. Use
+A plugin developed in another repository gets a `url` source instead, the way mightymodels and
+terraform-harness do: the repository's `https://` clone URL, pinned to a release tag and that tag's commit. Use
 `url` rather than a `github` source, because a `github` source is cloned over SSH and fails with
 `Permission denied (publickey)` for anyone without a GitHub SSH key. `claude plugin validate`
 checks that entry's shape and does not fetch the plugin, so the gate here never runs against its
@@ -205,8 +201,7 @@ files.
 `make check` is the gate a change has to pass. It syncs the locked environment, runs pre-commit,
 and runs `scripts/quality.sh`. Read [CONTRIBUTING.md](CONTRIBUTING.md) before you open a PR.
 
-Evals are separate from the gate. Some mightymodels skills keep dated eval results in
-`plugins/mightymodels/skills/<skill>/evals/`. The vibe-code eval cases live in
+Evals are separate from the gate. The vibe-code eval cases live in
 `plugins/vibe-code/evals` and run with `claude plugin eval`, which costs money.
 
 For anything sensitive, see [SECURITY.md](SECURITY.md).

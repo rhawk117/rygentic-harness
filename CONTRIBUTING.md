@@ -1,9 +1,10 @@
 # Contributing
 
 This repository is the rygentic-harness plugin marketplace: every capability ships as a plugin
-under `plugins/`, and mightymodels is its first plugin. It is a
-working harness, not a sample gallery. The bar for a change is that the loop still measures
-better with it than without it, and that the artifacts agents parse keep their contracts. This
+under `plugins/`, except mightymodels and terraform-harness, which are developed in their own
+repositories and installed from a pinned release tag. It is a working harness, not a sample
+gallery. The bar for a change is that the plugins still measure better with it than without it,
+and that the artifacts agents parse keep their contracts. This
 file is the whole gate; there is no hidden tribal knowledge beyond it.
 
 ## Setup
@@ -23,8 +24,7 @@ make setup    # scripts/setup.sh
 
 It installs the pre-commit hook (`uv run pre-commit install --install-hooks`) and runs
 `uv sync --all-packages --all-groups`. The root `pyproject.toml` is a uv workspace root named
-`rygentic-harness-plugins`; `plugins/mightymodels`, `plugins/vibe-code` and
-`plugins/python-harness` are its members.
+`rygentic-harness-plugins`; `plugins/vibe-code` and `plugins/python-harness` are its members.
 
 ## The gate
 
@@ -43,9 +43,7 @@ It installs the pre-commit hook (`uv run pre-commit install --install-hooks`) an
 problem in one pass:
 
 - `ruff format --check` and `ruff check --no-fix`, both with `.ruff.toml`
-- `mdformat --check` on `docs/` and the root `*.md` files only
-- `scripts/check-python-line-cap.sh`, which fails when a tracked Python file under
-  `plugins/mightymodels` is over 500 lines
+- `mdformat --check` on the root `*.md` files only
 - `ty` at Python 3.14, then a second `ty` pass at Python 3.12 over the skills trees and
   `plugins/vibe-code/src` and `plugins/vibe-code/tests`
 - `claude plugin validate --strict` for each plugin under `plugins/`, then for the root
@@ -58,7 +56,7 @@ The `claude` check fails if the CLI is not on your `PATH`, so install it first (
 `coverage report` for each plugin. It does not run on commit.
 
 Pre-commit runs the standard file hygiene hooks, `ruff format`, `mdformat` on markdown outside
-`plugins/`, a `python-line-cap` hook that runs the same line-cap script, and a `quality` hook that
+`plugins/`, and a `quality` hook that
 runs `scripts/quality.sh --lint` on every commit. The test suite is not part of the hook. Only the
 pre-commit hook type is installed, so commit messages are not checked by a hook.
 
@@ -68,16 +66,6 @@ which together cover the same checks as `make check`, and CI's bootstrap syncs w
 from forks skip the `labeler` job, but `workflow-narrator` still runs: it reports the result in the
 job summary instead of a PR comment, and it still fails the run when `quality` fails.
 
-`scripts/live-plugin-check.sh` is not part of the gate, and no hook runs it. It starts nested
-`claude -p` sessions that load this branch's `plugins/mightymodels` in place of the installed
-plugin, dispatches every agent type under `plugins/mightymodels/agents`, and prints one `ok`,
-`skip` or `FAIL` line per check. It needs `claude` (logged in) and `jq` on your `PATH`, and network
-access to `api.anthropic.com` and `mcp-proxy.anthropic.com`. Run it by hand after you change an
-agent, a skill or a hook. The plugin's state server starts only where Claude Code can write to
-`~/.claude/plugins/data`, so a sandboxed run skips the checks that need state and still exits 0.
-Run `scripts/live-plugin-check.sh --require-state` once outside the sandbox before a landing: with
-that flag a check that would be skipped fails.
-
 ## Python and markdown rules
 
 Skill scripts under `plugins/*/skills/**` must run on Python 3.12, so a contributor's system
@@ -86,7 +74,7 @@ Python can run them. The vibe-code CLI source and tests under `plugins/vibe-code
 those paths and the second `ty` pass checks them at 3.12. The rest of the repo targets Python 3.14.
 
 Plugin markdown is excluded from mdformat because mdformat escapes underscore-named XML prompt
-tags, which breaks the prompts. Only `docs/` and the root `*.md` files are formatted.
+tags, which breaks the prompts. Only the root `*.md` files are formatted.
 
 Fix the finding instead of suppressing it. A blanket ignore in config is not acceptable, and a
 targeted `noqa` or `ty: ignore` needs a comment with the reason.
@@ -142,6 +130,12 @@ plus its `skills/` and `agents/` trees. Add a matching entry to `.claude-plugin/
 marketplace, and it checks manifests and the skill and agent frontmatter, so a new plugin is
 covered without configuration.
 
+A plugin developed in another repository, as mightymodels and terraform-harness are, gets a `url`
+source instead: the repository's `https://` clone URL, pinned to a release tag (`ref`) and that
+tag's commit (`sha`). Updating it means moving both fields to the new release, plus its CHANGELOG
+entry. `claude plugin validate` checks the entry's shape and does not fetch the plugin, so the
+gate here never runs against its files.
+
 ## Adding or editing a skill
 
 A skill is a directory under its plugin's `skills/` tree (`plugins/<plugin>/skills/<name>`)
@@ -150,26 +144,20 @@ whose `SKILL.md` frontmatter carries `name` (matching the directory, lowercase w
 write it as trigger phrases plus boundaries. `claude plugin validate --strict` enforces the
 frontmatter.
 
-Skills that participate in the loop cite the shared contracts instead of restating them. If your
-change needs a new severity, verdict, or brief field, it goes in
-`plugins/mightymodels/skills/agents-assemble/references/contracts.md` first, and the consuming
-skills reference it.
-
 ## Documentation
 
-Prose in `README.md` and `docs/` is written under the humanizer rules: no em or en dashes,
+Prose in `README.md` and the other root markdown files is written under the humanizer rules: no em or en dashes,
 sentence-case headings, plain copulas, concrete claims over ceremony. mdformat enforces the
 mechanical half (see `.mdformat.toml`); keep doc files roughly 100 to 200 lines and split by
-subject rather than growing one page. Reference files under
-`plugins/mightymodels/skills/*/references/` are contracts consumed by agents; change their
-meaning only with a version note in the changelog.
+subject rather than growing one page. Reference files under `plugins/*/skills/*/references/`
+are contracts consumed by agents; change their meaning only with a version note in the changelog.
 
 ## Commits and PRs
 
 Commit subjects follow `prefix(scope): summary` with a lowercase summary and no trailing period;
 valid prefixes are feat, chore, ops, fix, release, and docs. No hook enforces this, so reviewers
 do. Branch from `main`, keep commits scoped to one concern, and arrive with `make check` already
-green. The PR template asks for the ticket, what changed, and the verification evidence.
+green. The PR template asks for the issue, what changed, and the verification evidence.
 
 ## Releases
 

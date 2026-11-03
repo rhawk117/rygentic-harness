@@ -7,14 +7,19 @@
   "plugins": [
     {
       "name": "mightymodels",
-      "source": "./plugins/mightymodels",
-      "description": "Takes work from the first question to a merged PR: cheap workers do the reading, you make the decisions, and a task closes only when its commands pass. Built from the failures of spec-driven development.",
-      "version": "1.0.0",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/rhawk117/mightymodels.git",
+        "ref": "v1.1.0",
+        "sha": "ff02ef482f7624d9abd60d5459fa97fbae5227c9"
+      },
+      "description": "Context management for agentic coding in Claude Code. The main session keeps its window for judgment, every task runs in a worker with a clean context and a precise brief, state survives compaction, and the record of the work goes to GitHub or Jira instead of your repository.",
+      "version": "1.1.0",
       "author": {
         "name": "rhawk117"
       },
-      "homepage": "https://github.com/rhawk117/rygentic-harness/tree/main/plugins/mightymodels",
-      "repository": "https://github.com/rhawk117/rygentic-harness",
+      "homepage": "https://github.com/rhawk117/mightymodels",
+      "repository": "https://github.com/rhawk117/mightymodels",
       "category": "development",
       "keywords": [
         "workflow",

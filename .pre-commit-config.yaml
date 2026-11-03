@@ -57,14 +57,6 @@ repos:
         always_run: true
         require_serial: true
 
-      - id: python-line-cap
-        name: python line cap
-        entry: scripts/check-python-line-cap.sh
-        language: system
-        pass_filenames: false
-        always_run: true
-        require_serial: true
-
       - id: quality
         name: quality
         entry: scripts/quality.sh --lint
