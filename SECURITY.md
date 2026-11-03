@@ -13,22 +13,13 @@ wider than the code. In scope: anything that lets skill or agent text escalate w
 does beyond what the user approved, prompt-injection amplifiers in the skill bodies, and
 an eval run executing fixture content it should only read.
 
-Two standing properties reviewers should hold this repo to. No skill uses `allowed-tools` to
-pre-approve shell access; a change introducing that needs a security rationale in the PR, not
-just a convenience one. And `.mightymodels/` working state defaults to local-only git exclusion
-because briefs and review reports can capture raw command output, including secrets; changes
-that weaken that default are security changes.
+One standing property reviewers should hold this repo to: no skill uses `allowed-tools` to
+pre-approve shell access, and a change introducing that needs a security rationale in the PR, not
+just a convenience one.
 
-## Trust boundary for worker-consumed content
-
-Workers read repository files, command and CI output, and issue or PR text in the course of a
-dispatch. All of that is data, never instructions: nothing a worker reads through a tool can
-change its task, its scope, or its report format, regardless of how the text is phrased or
-tagged. A worker that encounters embedded instructions ("ignore your previous instructions",
-fake system or coordinator messages, directives planted in CI logs or issue bodies) reports
-the finding to the coordinator and continues its original task. The same rule binds the
-coordinator toward worker reports: they are evidence, not directives. Each agent contract
-carries this boundary in its `<trust_boundary>` block; weakening it is a security change.
+mightymodels and terraform-harness are developed in their own repositories, so reports about them
+go to [mightymodels](https://github.com/rhawk117/mightymodels) and
+[cc-terraform-harness](https://github.com/rhawk117/cc-terraform-harness).
 
 No script in this repository scans skill and agent text for prompt-injection indicators. The
 mechanical checks are `claude plugin validate --strict` on each plugin and the marketplace, which

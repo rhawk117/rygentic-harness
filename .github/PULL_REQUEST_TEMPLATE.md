@@ -1,6 +1,6 @@
-## Ticket
+## Issue
 
-<!-- Issue number, or the .mightymodels slug if no issue exists. "None" is an answer; explain why in one line. -->
+<!-- Issue number. "None" is an answer; explain why in one line. -->
 
 ## What changed
 
@@ -8,7 +8,7 @@
 
 ## Verification
 
-<!-- Commands run and their outcomes. For skill changes: the eval re-run and the dated result file added in this diff. For evals/ changes: the four-leg gate output. -->
+<!-- Commands run and their outcomes. For skill changes: the eval run, if there is one. -->
 
 ```
 ```

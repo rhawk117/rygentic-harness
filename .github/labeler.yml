@@ -1,7 +1,3 @@
-plugin:mightymodels:
-  - changed-files:
-      - any-glob-to-any-file: plugins/mightymodels/**
-
 plugin:vibe-code:
   - changed-files:
       - any-glob-to-any-file: plugins/vibe-code/**

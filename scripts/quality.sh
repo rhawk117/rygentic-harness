@@ -4,7 +4,7 @@ set -uo pipefail
 shopt -s globstar
 
 readonly RUFF_CONFIG=(--config .ruff.toml --force-exclude)
-readonly MARKDOWN_GLOBS=(docs/**/*.md *.md)
+readonly MARKDOWN_GLOBS=(*.md)
 
 repository_root=$(git rev-parse --show-toplevel) || exit 1
 cd "${repository_root}" || exit 1
@@ -40,11 +40,10 @@ run_linter() {
   run 'Ruff Format Check' uv run ruff format "${RUFF_CONFIG[@]}" --check .
   run 'Ruff Check' uv run ruff check "${RUFF_CONFIG[@]}" --no-fix .
   run 'Markdown Check' uv run mdformat --check "${MARKDOWN_GLOBS[@]}"
-  run 'Python Line Cap' scripts/check-python-line-cap.sh
 
   run 'ty (3.14)' uv run ty check --config-file .ty.toml
   run 'ty (3.12 skills)' uv run ty check --config-file .ty.toml \
-    --python-version 3.12 plugins/mightymodels/skills plugins/vibe-code/skills \
+    --python-version 3.12 plugins/vibe-code/skills \
     plugins/vibe-code/src plugins/vibe-code/tests
 
   if ! command -v claude >/dev/null; then

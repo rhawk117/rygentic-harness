@@ -38,7 +38,6 @@ default-groups = ['dev']
 
 [tool.uv.workspace]
 members = [
-    "plugins/mightymodels",
     "plugins/vibe-code",
     "plugins/python-harness",
 ]
